@@ -21,6 +21,8 @@
 #include "executor/nodeBitmapAnd.h"
 #include "executor/nodeBitmapHeapscan.h"
 #include "executor/nodeBitmapIndexscan.h"
+#include "executor/nodeDynamicBitmapHeapscan.h"
+#include "executor/nodeDynamicBitmapIndexscan.h"
 #include "executor/nodeBitmapOr.h"
 #include "executor/nodeCtescan.h"
 #include "executor/nodeCustom.h"
@@ -62,6 +64,8 @@
 #include "executor/nodeWindowAgg.h"
 #include "executor/nodeWorktablescan.h"
 #include "executor/nodeAssertOp.h"
+#include "executor/nodeDynamicSeqscan.h"
+#include "executor/nodeDynamicIndexscan.h"
 #include "executor/nodeMotion.h"
 #include "executor/nodeSequence.h"
 #include "executor/nodeTableFunction.h"
@@ -215,6 +219,17 @@ ExecReScan(PlanState *node)
 			ExecReScanIndexScan((IndexScanState *) node);
 			break;
 
+/* GPDB_12_MERGE_FIXME */
+#if 0
+		case T_DynamicSeqScanState:
+			ExecReScanDynamicSeqScan((DynamicSeqScanState *) node);
+			break;
+
+		case T_DynamicIndexScanState:
+			ExecReScanDynamicIndex((DynamicIndexScanState *) node);
+			break;
+#endif
+			
 		case T_IndexOnlyScanState:
 			ExecReScanIndexOnlyScan((IndexOnlyScanState *) node);
 			break;
@@ -223,10 +238,24 @@ ExecReScan(PlanState *node)
 			ExecReScanBitmapIndexScan((BitmapIndexScanState *) node);
 			break;
 
+/* GPDB_12_MERGE_FIXME */
+#if 0
+		case T_DynamicBitmapIndexScanState:
+			ExecReScanDynamicBitmapIndex((DynamicBitmapIndexScanState *) node);
+			break;
+#endif
+			
 		case T_BitmapHeapScanState:
 			ExecReScanBitmapHeapScan((BitmapHeapScanState *) node);
 			break;
 
+/* GPDB_12_MERGE_FIXME */
+#if 0
+		case T_DynamicBitmapHeapScanState:
+			ExecReScanDynamicBitmapHeapScan((DynamicBitmapHeapScanState *) node);
+			break;
+#endif
+			
 		case T_TidScanState:
 			ExecReScanTidScan((TidScanState *) node);
 			break;
@@ -776,6 +805,7 @@ ExecSquelchNode(PlanState *node, bool force)
 		case T_BitmapAndState:
 		case T_BitmapOrState:
 		case T_RuntimeFilterState:
+		case T_DynamicBitmapHeapScanState:
 		case T_LimitState:
 		case T_LockRowsState:
 		case T_NestLoopState:
@@ -797,7 +827,10 @@ ExecSquelchNode(PlanState *node, bool force)
 			 */
 		case T_SeqScanState:
 		case T_IndexScanState:
+		case T_DynamicSeqScanState:
+		case T_DynamicIndexScanState:
 		case T_IndexOnlyScanState:
+		case T_DynamicBitmapIndexScanState:
 		case T_BitmapIndexScanState:
 		case T_TableFuncScanState:
 		case T_ValuesScanState:
