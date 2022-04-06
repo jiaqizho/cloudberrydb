@@ -1934,10 +1934,34 @@ _readSampleScan(void)
 /*
  * _readIndexScan
  */
+
+static void readIndexScanFields(IndexScan *local_node);
+static LogicalIndexInfo *readLogicalIndexInfo(void);
+
 static IndexScan *
 _readIndexScan(void)
 {
-	READ_LOCALS(IndexScan);
+	READ_LOCALS_NO_FIELDS(IndexScan);
+
+	readIndexScanFields(local_node);
+
+	READ_DONE();
+}
+
+static DynamicIndexScan *
+_readDynamicIndexScan(void)
+{
+	READ_LOCALS(DynamicIndexScan);
+	/* DynamicIndexScan has some content from IndexScan. */
+	readIndexScanFields(&local_node->indexscan);
+	READ_NODE_FIELD(partOids);
+	local_node->logicalIndexInfo = readLogicalIndexInfo();
+	READ_DONE();
+}
+static void
+readIndexScanFields(IndexScan *local_node)
+{
+	READ_TEMP_LOCALS();
 
 	ReadCommonScan(&local_node->scan);
 
@@ -1948,8 +1972,24 @@ _readIndexScan(void)
 	READ_NODE_FIELD(indexorderbyorig);
 	READ_NODE_FIELD(indexorderbyops);
 	READ_ENUM_FIELD(indexorderdir, ScanDirection);
+}
 
-	READ_DONE();
+static LogicalIndexInfo *
+readLogicalIndexInfo(void)
+{
+	READ_TEMP_LOCALS();
+	LogicalIndexInfo *local_node = palloc(sizeof(LogicalIndexInfo));
+	READ_OID_FIELD(logicalIndexOid);
+	READ_INT_FIELD(nColumns);
+	READ_ATTRNUMBER_ARRAY(indexKeys, local_node->nColumns);
+	READ_NODE_FIELD(indPred);
+	READ_NODE_FIELD(indExprs);
+	READ_BOOL_FIELD(indIsUnique);
+	READ_ENUM_FIELD(indType, LogicalIndexType);
+	READ_NODE_FIELD(partCons);
+	READ_NODE_FIELD(defaultLevels);
+	/* No READ_DONE, this is "embedded" in other structs */
+	return local_node;
 }
 
 /*
@@ -1972,13 +2012,10 @@ _readIndexOnlyScan(void)
 	READ_DONE();
 }
 
-/*
- * _readBitmapIndexScan
- */
-static BitmapIndexScan *
-_readBitmapIndexScan(void)
+static void
+readBitmapIndexScanFields(BitmapIndexScan *local_node)
 {
-	READ_LOCALS(BitmapIndexScan);
+	READ_TEMP_LOCALS();
 
 	ReadCommonScan(&local_node->scan);
 
@@ -1986,8 +2023,40 @@ _readBitmapIndexScan(void)
 	READ_BOOL_FIELD(isshared);
 	READ_NODE_FIELD(indexqual);
 	READ_NODE_FIELD(indexqualorig);
+}
+
+/*
+ * _readBitmapIndexScan
+ */
+static BitmapIndexScan *
+_readBitmapIndexScan(void)
+{
+	READ_LOCALS_NO_FIELDS(BitmapIndexScan);
+
+	readBitmapIndexScanFields(local_node);
 
 	READ_DONE();
+}
+
+static DynamicBitmapIndexScan *
+_readDynamicBitmapIndexScan(void)
+{
+	READ_LOCALS(DynamicBitmapIndexScan);
+	/* DynamicBitmapIndexScan has some content from BitmapIndexScan. */
+	readBitmapIndexScanFields(&local_node->biscan);
+	READ_NODE_FIELD(partOids);
+	local_node->logicalIndexInfo = readLogicalIndexInfo();
+	READ_DONE();
+}
+
+static void
+readBitmapHeapScanFields(BitmapHeapScan *local_node)
+{
+	READ_TEMP_LOCALS();
+
+	ReadCommonScan(&local_node->scan);
+
+	READ_NODE_FIELD(bitmapqualorig);
 }
 
 /*
@@ -1996,12 +2065,21 @@ _readBitmapIndexScan(void)
 static BitmapHeapScan *
 _readBitmapHeapScan(void)
 {
-	READ_LOCALS(BitmapHeapScan);
+	READ_LOCALS_NO_FIELDS(BitmapHeapScan);
 
-	ReadCommonScan(&local_node->scan);
+	readBitmapHeapScanFields(local_node);
 
-	READ_NODE_FIELD(bitmapqualorig);
+	READ_DONE();
+}
 
+
+static DynamicBitmapHeapScan *
+_readDynamicBitmapHeapScan(void)
+{
+	READ_LOCALS(DynamicBitmapHeapScan);
+	/* DynamicBitmapHeapScan has some content from BitmapHeapScan. */
+	readBitmapHeapScanFields(&local_node->bitmapheapscan);
+	READ_NODE_FIELD(partOids);
 	READ_DONE();
 }
 
@@ -3002,12 +3080,18 @@ parseNodeString(void)
 		return_value = _readSampleScan();
 	else if (MATCH("INDEXSCAN", 9))
 		return_value = _readIndexScan();
+	else if (MATCH("DYNAMICINDEXSCAN", 16))
+		return_value = _readDynamicIndexScan();
 	else if (MATCH("INDEXONLYSCAN", 13))
 		return_value = _readIndexOnlyScan();
 	else if (MATCH("BITMAPINDEXSCAN", 15))
 		return_value = _readBitmapIndexScan();
+	else if (MATCH("DYNAMICBITMAPINDEXSCAN", 23))
+		return_value = _readDynamicBitmapIndexScan();
 	else if (MATCH("BITMAPHEAPSCAN", 14))
 		return_value = _readBitmapHeapScan();
+	else if (MATCH("DYNAMICBITMAPHEAPSCAN", 21))
+		return_value = _readDynamicBitmapHeapScan();
 	else if (MATCH("TIDSCAN", 7))
 		return_value = _readTidScan();
 	else if (MATCH("TIDRANGESCAN", 12))

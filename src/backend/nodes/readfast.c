@@ -929,6 +929,17 @@ _readSequence(void)
 	READ_DONE();
 }
 
+static DynamicSeqScan *
+_readDynamicSeqScan(void)
+{
+	READ_LOCALS(DynamicSeqScan);
+
+	ReadCommonScan(&local_node->seqscan);
+	READ_NODE_FIELD(partOids);
+
+	READ_DONE();
+}
+
 /*
  * _readExternalScanInfo
  */
@@ -1968,6 +1979,9 @@ readNodeBinary(void)
 			case T_SeqScan:
 				return_value = _readSeqScan();
 				break;
+			case T_DynamicSeqScan:
+				return_value = _readDynamicSeqScan();
+				break;
 			case T_ExternalScanInfo:
 				return_value = _readExternalScanInfo();
 				break;
@@ -1977,11 +1991,20 @@ readNodeBinary(void)
 			case T_IndexOnlyScan:
 				return_value = _readIndexOnlyScan();
 				break;
+			case T_DynamicIndexScan:
+				return_value = _readDynamicIndexScan();
+				break;
 			case T_BitmapIndexScan:
 				return_value = _readBitmapIndexScan();
 				break;
+			case T_DynamicBitmapIndexScan:
+				return_value = _readDynamicBitmapIndexScan();
+				break;
 			case T_BitmapHeapScan:
 				return_value = _readBitmapHeapScan();
+				break;
+			case T_DynamicBitmapHeapScan:
+				return_value = _readDynamicBitmapHeapScan();
 				break;
 			case T_CteScan:
 				return_value = _readCteScan();
