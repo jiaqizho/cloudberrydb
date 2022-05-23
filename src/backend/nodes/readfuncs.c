@@ -1936,7 +1936,6 @@ _readSampleScan(void)
  */
 
 static void readIndexScanFields(IndexScan *local_node);
-static LogicalIndexInfo *readLogicalIndexInfo(void);
 
 static IndexScan *
 _readIndexScan(void)
@@ -1955,7 +1954,8 @@ _readDynamicIndexScan(void)
 	/* DynamicIndexScan has some content from IndexScan. */
 	readIndexScanFields(&local_node->indexscan);
 	READ_NODE_FIELD(partOids);
-	local_node->logicalIndexInfo = readLogicalIndexInfo();
+	READ_NODE_FIELD(part_prune_info);
+	READ_NODE_FIELD(join_prune_paramids);
 	READ_DONE();
 }
 static void
@@ -1972,24 +1972,6 @@ readIndexScanFields(IndexScan *local_node)
 	READ_NODE_FIELD(indexorderbyorig);
 	READ_NODE_FIELD(indexorderbyops);
 	READ_ENUM_FIELD(indexorderdir, ScanDirection);
-}
-
-static LogicalIndexInfo *
-readLogicalIndexInfo(void)
-{
-	READ_TEMP_LOCALS();
-	LogicalIndexInfo *local_node = palloc(sizeof(LogicalIndexInfo));
-	READ_OID_FIELD(logicalIndexOid);
-	READ_INT_FIELD(nColumns);
-	READ_ATTRNUMBER_ARRAY(indexKeys, local_node->nColumns);
-	READ_NODE_FIELD(indPred);
-	READ_NODE_FIELD(indExprs);
-	READ_BOOL_FIELD(indIsUnique);
-	READ_ENUM_FIELD(indType, LogicalIndexType);
-	READ_NODE_FIELD(partCons);
-	READ_NODE_FIELD(defaultLevels);
-	/* No READ_DONE, this is "embedded" in other structs */
-	return local_node;
 }
 
 /*
@@ -2041,11 +2023,11 @@ _readBitmapIndexScan(void)
 static DynamicBitmapIndexScan *
 _readDynamicBitmapIndexScan(void)
 {
-	READ_LOCALS(DynamicBitmapIndexScan);
+	READ_LOCALS_NO_FIELDS(DynamicBitmapIndexScan);
+
 	/* DynamicBitmapIndexScan has some content from BitmapIndexScan. */
 	readBitmapIndexScanFields(&local_node->biscan);
-	READ_NODE_FIELD(partOids);
-	local_node->logicalIndexInfo = readLogicalIndexInfo();
+
 	READ_DONE();
 }
 
@@ -2077,9 +2059,14 @@ static DynamicBitmapHeapScan *
 _readDynamicBitmapHeapScan(void)
 {
 	READ_LOCALS(DynamicBitmapHeapScan);
+
 	/* DynamicBitmapHeapScan has some content from BitmapHeapScan. */
 	readBitmapHeapScanFields(&local_node->bitmapheapscan);
+
 	READ_NODE_FIELD(partOids);
+	READ_NODE_FIELD(part_prune_info);
+	READ_NODE_FIELD(join_prune_paramids);
+
 	READ_DONE();
 }
 

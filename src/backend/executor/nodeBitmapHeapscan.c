@@ -793,7 +793,6 @@ ExecInitBitmapHeapScanForPartition(BitmapHeapScan *node, EState *estate, int efl
 								   Relation currentRelation)
 {
 	BitmapHeapScanState *scanstate;
-	int			io_concurrency;
 
 	/* check for unsupported flags */
 	Assert(!(eflags & (EXEC_FLAG_BACKWARD | EXEC_FLAG_MARK)));
