@@ -115,7 +115,7 @@ initNextTableToScan(DynamicSeqScanState *node)
 	Relation	lastScannedRel;
 	TupleDesc	partTupDesc;
 	TupleDesc	lastTupDesc;
-	AttrNumber *attMap;
+	AttrMap *attMap;
 	Oid		   *pid;
 	Relation	currentRelation;
 
@@ -146,14 +146,14 @@ initNextTableToScan(DynamicSeqScanState *node)
 	 * FIXME: should we use execute_attr_map_tuple instead? Seems like a
 	 * higher level abstraction that fits the bill
 	 */
-	attMap = convert_tuples_by_name_map_if_req(partTupDesc, lastTupDesc, "unused msg");
+	attMap = build_attrmap_by_name_if_req(partTupDesc, lastTupDesc);
 	table_close(lastScannedRel, AccessShareLock);
 
 	/* If attribute remapping is not necessary, then do not change the varattno */
 	if (attMap)
 	{
-		change_varattnos_of_a_varno((Node*)scanState->ps.plan->qual, attMap, node->scanrelid);
-		change_varattnos_of_a_varno((Node*)scanState->ps.plan->targetlist, attMap, node->scanrelid);
+		change_varattnos_of_a_varno((Node*)scanState->ps.plan->qual, attMap->attnums, node->scanrelid);
+		change_varattnos_of_a_varno((Node*)scanState->ps.plan->targetlist, attMap->attnums, node->scanrelid);
 
 		/*
 		 * Now that the varattno mapping has been changed, change the relation that
@@ -181,7 +181,7 @@ initNextTableToScan(DynamicSeqScanState *node)
 	}
 
 	if (attMap)
-		pfree(attMap);
+		free_attrmap(attMap);
 
 	node->seqScanState = ExecInitSeqScanForPartition(&plan->seqscan, estate,
 													 currentRelation);
