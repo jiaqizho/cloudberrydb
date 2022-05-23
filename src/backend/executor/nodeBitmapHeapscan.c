@@ -762,8 +762,38 @@ ExecEndBitmapHeapScan(BitmapHeapScanState *node)
 BitmapHeapScanState *
 ExecInitBitmapHeapScan(BitmapHeapScan *node, EState *estate, int eflags)
 {
-	BitmapHeapScanState *scanstate;
 	Relation	currentRelation;
+	BitmapHeapScanState *bhsState;
+
+	/* check for unsupported flags */
+	Assert(!(eflags & (EXEC_FLAG_BACKWARD | EXEC_FLAG_MARK)));
+
+	/*
+	 * open the scan relation
+	 */
+	currentRelation = ExecOpenScanRelation(estate, node->scan.scanrelid, eflags);
+
+	bhsState =  ExecInitBitmapHeapScanForPartition(node, estate, eflags,
+												   currentRelation);
+
+	/*
+	 * initialize child nodes
+	 *
+	 * We do this last because the child nodes will open indexscans on our
+	 * relation's indexes, and we want to be sure we have acquired a lock on
+	 * the relation first.
+	 */
+	outerPlanState(bhsState) = ExecInitNode(outerPlan(node), estate, eflags);
+
+	return bhsState;
+}
+
+BitmapHeapScanState *
+ExecInitBitmapHeapScanForPartition(BitmapHeapScan *node, EState *estate, int eflags,
+								   Relation currentRelation)
+{
+	BitmapHeapScanState *scanstate;
+	int			io_concurrency;
 
 	/* check for unsupported flags */
 	Assert(!(eflags & (EXEC_FLAG_BACKWARD | EXEC_FLAG_MARK)));
@@ -818,16 +848,6 @@ ExecInitBitmapHeapScan(BitmapHeapScan *node, EState *estate, int eflags)
 	 * create expression context for node
 	 */
 	ExecAssignExprContext(estate, &scanstate->ss.ps);
-
-	/*
-	 * open the scan relation
-	 */
-	currentRelation = ExecOpenScanRelation(estate, node->scan.scanrelid, eflags);
-
-	/*
-	 * initialize child nodes
-	 */
-	outerPlanState(scanstate) = ExecInitNode(outerPlan(node), estate, eflags);
 
 	/*
 	 * get the scan type from the relation descriptor.
