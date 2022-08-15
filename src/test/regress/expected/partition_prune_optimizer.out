@@ -3327,8 +3327,8 @@ select * from boolp where a = (select value from boolvalues where value);
                                            QUERY PLAN                                           
 ------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Hash Join (actual rows=0 loops=1)
-         Hash Cond: (boolvalues.value = boolp_f.a)
+   ->  Hash Join (never executed)
+         Hash Cond: (boolvalues.value = boolp.a)
          ->  Redistribute Motion 1:3  (slice2) (never executed)
                ->  Assert (actual rows=1 loops=1)
                      Assert Cond: ((row_number() OVER (?)) = 1)
@@ -3337,12 +3337,12 @@ select * from boolp where a = (select value from boolvalues where value);
                                  ->  Seq Scan on boolvalues (actual rows=1 loops=1)
                                        Filter: value
                                        Rows Removed by Filter: 1
-         ->  Hash (actual rows=0 loops=1)
+         ->  Hash (never executed)
                Buckets: 262144  Batches: 1  Memory Usage: 2048kB
-               ->  Broadcast Motion 3:3  (slice4; segments: 3) (actual rows=0 loops=1)
-                     ->  Append (actual rows=0 loops=1)
-                           ->  Seq Scan on boolp_f (actual rows=0 loops=1)
-                           ->  Seq Scan on boolp_t (actual rows=0 loops=1)
+               ->  Broadcast Motion 3:3  (slice4; segments: 3) (never executed)
+                     ->  Dynamic Seq Scan on boolp (never executed)
+                           Number of partitions to scan: 2 
+                           Partitions scanned:  Avg 2.0 x 3 workers.  Max 2 parts (seg0).
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -3351,8 +3351,8 @@ select * from boolp where a = (select value from boolvalues where not value);
                                            QUERY PLAN                                           
 ------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Hash Join (actual rows=0 loops=1)
-         Hash Cond: (boolvalues.value = boolp_f.a)
+   ->  Hash Join (never executed)
+         Hash Cond: (boolvalues.value = boolp.a)
          ->  Redistribute Motion 1:3  (slice2) (never executed)
                ->  Assert (actual rows=1 loops=1)
                      Assert Cond: ((row_number() OVER (?)) = 1)
@@ -3361,12 +3361,12 @@ select * from boolp where a = (select value from boolvalues where not value);
                                  ->  Seq Scan on boolvalues (actual rows=1 loops=1)
                                        Filter: (NOT value)
                                        Rows Removed by Filter: 1
-         ->  Hash (actual rows=0 loops=1)
+         ->  Hash (never executed)
                Buckets: 262144  Batches: 1  Memory Usage: 2048kB
-               ->  Broadcast Motion 3:3  (slice4; segments: 3) (actual rows=0 loops=1)
-                     ->  Append (actual rows=0 loops=1)
-                           ->  Seq Scan on boolp_f (actual rows=0 loops=1)
-                           ->  Seq Scan on boolp_t (actual rows=0 loops=1)
+               ->  Broadcast Motion 3:3  (slice4; segments: 3) (never executed)
+                     ->  Dynamic Seq Scan on boolp (never executed)
+                           Number of partitions to scan: 2 
+                           Partitions scanned:  Avg 2.0 x 3 workers.  Max 2 parts (seg0).
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
