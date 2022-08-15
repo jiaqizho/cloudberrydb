@@ -366,7 +366,6 @@ enum Edxltoken
 	EdxltokenCtidColId,
 	EdxltokenGpSegmentIdColId,
 	EdxltokenTupleOidColId,
-	EdxltokenUpdatePreservesOids,
 	EdxltokenInputSorted,
 	EdxltokenSplitUpdate,
 
@@ -465,7 +464,6 @@ enum Edxltoken
 	EdxltokenDoubleValue,
 
 	EdxltokenRelTemporary,
-	EdxltokenRelHasOids,
 
 	EdxltokenRelStorageType,
 	EdxltokenRelStorageHeap,
