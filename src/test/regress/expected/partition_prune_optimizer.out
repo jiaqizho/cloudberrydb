@@ -3322,7 +3322,7 @@ select * from boolp where a = (select value from boolvalues where value);
                                  ->  Seq Scan on boolvalues (actual rows=1 loops=1)
                                        Filter: value
                                        Rows Removed by Filter: 1
-         ->  Hash (actual rows=0 loops=1)
+         ->  Hash (never executed)
                Buckets: 262144  Batches: 1  Memory Usage: 2048kB
                ->  Broadcast Motion 3:3  (slice4; segments: 3) (actual rows=0 loops=1)
                      ->  Dynamic Seq Scan on boolp (actual rows=0 loops=1)
@@ -3346,7 +3346,7 @@ select * from boolp where a = (select value from boolvalues where not value);
                                  ->  Seq Scan on boolvalues (actual rows=1 loops=1)
                                        Filter: (NOT value)
                                        Rows Removed by Filter: 1
-         ->  Hash (actual rows=0 loops=1)
+         ->  Hash (never executed)
                Buckets: 262144  Batches: 1  Memory Usage: 2048kB
                ->  Broadcast Motion 3:3  (slice4; segments: 3) (actual rows=0 loops=1)
                      ->  Dynamic Seq Scan on boolp (actual rows=0 loops=1)
