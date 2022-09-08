@@ -285,8 +285,11 @@ COrderedAggPreprocessor::SplitPrjList(
 				mp, (cast_func->Mdname().GetMDName())->GetBuffer());
 			mdid_func->AddRef();
 			cast_func->GetResultTypeMdid()->AddRef();
+			// MERGE_FIXME: use the COERCE_EXPLICIT_CAST
+			// Is it necessary to keep `m_func_format` in `CScalarFunc`?
 			CScalarFunc *popCastScalarFunc = GPOS_NEW(mp) CScalarFunc(
-				mp, mdid_func, cast_func->GetResultTypeMdid(), -1, pstrFunc);
+				mp, mdid_func, cast_func->GetResultTypeMdid(), -1, pstrFunc, 
+				1);
 			CExpression *pexprCastScalarIdent = GPOS_NEW(mp)
 				CExpression(mp, popCastScalarFunc, pexprScalarIdentSum);
 			CExpressionArray *colref_array1 = GPOS_NEW(mp) CExpressionArray(mp);
