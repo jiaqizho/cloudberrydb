@@ -1991,15 +1991,6 @@ gpdb::RelPartIsInterior
 #endif
 
 bool
-gpdb::RelPartIsNone(Oid relid)
-{
-	// FIXME: this is left unused for now. But when it's used, we also need to
-	// check for whether relid is a partition of another table
-	pg_unreachable();
-	return !RelIsPartitioned(relid);
-}
-
-bool
 gpdb::HasSubclassSlow(Oid rel_oid)
 {
 	GP_WRAP_START;
@@ -2144,7 +2135,6 @@ gpdb::CreateForeignScanForExternalTable(Oid rel_oid, Index scanrelid,
 	return nullptr;
 }
 
-// GPDB_12_MERGE_FIXME: Change signature to take in Expr instead of Node
 TargetEntry *
 gpdb::FindFirstMatchingMemberInTargetList(Node *node, List *targetlist)
 {
@@ -2558,25 +2548,6 @@ gpdb::InjectFaultInOptTasks(const char *fault_name)
 	}
 	GP_WRAP_END;
 	return FaultInjectorTypeNotSpecified;
-}
-#endif
-
-/* GPDB_12_MERGE_FIXME: dead code now? */
-#if 0
-gpos::ULONG
-gpdb::CountLeafPartTables
-       (
-       Oid rel_oid
-       )
-{
-	GP_WRAP_START;
-	{
-		/* catalog tables: pg_partition, pg_partition_rules */
-		return countLeafPartTables(rel_oid);
-	}
-	GP_WRAP_END;
-
-	return 0;
 }
 #endif
 
