@@ -1,6 +1,8 @@
 set optimizer_trace_fallback=on;
 -- sanity check of system catalog
 SELECT attrelid, attname, attgenerated FROM pg_attribute WHERE attgenerated NOT IN ('', 's');
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
  attrelid | attname | attgenerated 
 ----------+---------+--------------
 (0 rows)
@@ -8,6 +10,8 @@ SELECT attrelid, attname, attgenerated FROM pg_attribute WHERE attgenerated NOT 
 CREATE TABLE gtest0 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (55) STORED);
 CREATE TABLE gtest1 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED);
 SELECT table_name, column_name, column_default, is_nullable, is_generated, generation_expression FROM information_schema.columns WHERE table_name LIKE 'gtest_' ORDER BY 1, 2;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
  table_name | column_name | column_default | is_nullable | is_generated | generation_expression 
 ------------+-------------+----------------+-------------+--------------+-----------------------
  gtest0     | a           |                | NO          | NEVER        | 
@@ -17,12 +21,36 @@ SELECT table_name, column_name, column_default, is_nullable, is_generated, gener
 (4 rows)
 
 SELECT table_name, column_name, dependent_column FROM information_schema.column_column_usage ORDER BY 1, 2, 3;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
  table_name | column_name | dependent_column 
 ------------+-------------+------------------
  gtest1     | a           | b
 (1 row)
 
 \d gtest1
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
                             Table "public.gtest1"
  Column |  Type   | Collation | Nullable |              Default               
 --------+---------+-----------+----------+------------------------------------
@@ -47,13 +75,6 @@ ERROR:  cannot use generated column "b" in column generation expression
 LINE 1: ...AYS AS (a * 2) STORED, c int GENERATED ALWAYS AS (b * 3) STO...
                                                              ^
 DETAIL:  A generated column cannot reference another generated column.
--- a whole-row var is a self-reference on steroids, so disallow that too
-CREATE TABLE gtest_err_2c (a int PRIMARY KEY,
-    b int GENERATED ALWAYS AS (num_nulls(gtest_err_2c)) STORED);
-ERROR:  cannot use whole-row variable in column generation expression
-LINE 2:     b int GENERATED ALWAYS AS (num_nulls(gtest_err_2c)) STOR...
-                                                 ^
-DETAIL:  This would cause the generated column to depend on its own value.
 -- invalid reference
 CREATE TABLE gtest_err_3 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (c * 2) STORED);
 ERROR:  column "c" does not exist
@@ -72,7 +93,6 @@ ERROR:  both identity and generation expression specified for column "b" of tabl
 LINE 1: ...t PRIMARY KEY, b int GENERATED ALWAYS AS identity GENERATED ...
                                                              ^
 -- reference to system column not allowed in generated column
--- (except tableoid, which we test below)
 CREATE TABLE gtest_err_6a (a int PRIMARY KEY, b bool GENERATED ALWAYS AS (xmin <> 37) STORED);
 ERROR:  cannot use system column "xmin" in column generation expression
 LINE 1: ...a (a int PRIMARY KEY, b bool GENERATED ALWAYS AS (xmin <> 37...
@@ -109,30 +129,17 @@ CREATE TABLE gtest_err_9b (a int GENERATED ALWAYS AS (b * 2) STORED, b int);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'b' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO gtest1 VALUES (1);
-INSERT INTO gtest1 VALUES (2, DEFAULT);  -- ok
+INSERT INTO gtest1 VALUES (2, DEFAULT);
 INSERT INTO gtest1 VALUES (3, 33);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
+ERROR:  cannot insert into column "b"
 DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1 VALUES (3, 33), (4, 44);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
-DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1 VALUES (3, DEFAULT), (4, 44);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
-DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1 VALUES (3, 33), (4, DEFAULT);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
-DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1 VALUES (3, DEFAULT), (4, DEFAULT);  -- ok
 SELECT * FROM gtest1 ORDER BY a;
  a | b 
 ---+---
  1 | 2
  2 | 4
- 3 | 6
- 4 | 8
-(4 rows)
+(2 rows)
 
-DELETE FROM gtest1 WHERE a >= 3;
 UPDATE gtest1 SET b = DEFAULT WHERE a = 1;
 UPDATE gtest1 SET b = 11 WHERE a = 1;  -- error
 ERROR:  column "b" can only be updated to DEFAULT
@@ -210,37 +217,9 @@ SELECT * FROM gtest1v;
  3 | 6
 (1 row)
 
-INSERT INTO gtest1v VALUES (4, 8);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
+INSERT INTO gtest1v VALUES (4, 8);  -- fails
+ERROR:  cannot insert into column "b"
 DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1v VALUES (5, DEFAULT);  -- ok
-INSERT INTO gtest1v VALUES (6, 66), (7, 77);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
-DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1v VALUES (6, DEFAULT), (7, 77);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
-DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1v VALUES (6, 66), (7, DEFAULT);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
-DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1v VALUES (6, DEFAULT), (7, DEFAULT);  -- ok
-ALTER VIEW gtest1v ALTER COLUMN b SET DEFAULT 100;
-INSERT INTO gtest1v VALUES (8, DEFAULT);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
-DETAIL:  Column "b" is a generated column.
-INSERT INTO gtest1v VALUES (8, DEFAULT), (9, DEFAULT);  -- error
-ERROR:  cannot insert a non-DEFAULT value into column "b"
-DETAIL:  Column "b" is a generated column.
-SELECT * FROM gtest1v;
- a | b  
----+----
- 3 |  6
- 5 | 10
- 6 | 12
- 7 | 14
-(4 rows)
-
-DELETE FROM gtest1v WHERE a >= 5;
 DROP VIEW gtest1v;
 -- CTEs
 WITH foo AS (SELECT * FROM gtest1) SELECT * FROM foo;
@@ -257,6 +236,26 @@ SELECT * FROM gtest1_1;
 (0 rows)
 
 \d gtest1_1
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
                            Table "public.gtest1_1"
  Column |  Type   | Collation | Nullable |              Default               
 --------+---------+-----------+----------+------------------------------------
@@ -272,78 +271,17 @@ SELECT * FROM gtest1_1;
 (1 row)
 
 SELECT * FROM gtest1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Inherited tables
  a | b 
 ---+---
  3 | 6
  4 | 8
 (2 rows)
 
-CREATE TABLE gtest_normal (a int, b int);
-CREATE TABLE gtest_normal_child (a int, b int GENERATED ALWAYS AS (a * 2) STORED) INHERITS (gtest_normal);
-NOTICE:  merging column "a" with inherited definition
-NOTICE:  merging column "b" with inherited definition
-\d gtest_normal_child
-                      Table "public.gtest_normal_child"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
- a      | integer |           |          | 
- b      | integer |           |          | generated always as (a * 2) stored
-Inherits: gtest_normal
-
-INSERT INTO gtest_normal (a) VALUES (1);
-INSERT INTO gtest_normal_child (a) VALUES (2);
-SELECT * FROM gtest_normal;
- a | b 
----+---
- 1 |  
- 2 | 4
-(2 rows)
-
-CREATE TABLE gtest_normal_child2 (a int, b int GENERATED ALWAYS AS (a * 3) STORED);
-ALTER TABLE gtest_normal_child2 INHERIT gtest_normal;
-INSERT INTO gtest_normal_child2 (a) VALUES (3);
-SELECT * FROM gtest_normal;
- a | b 
----+---
- 1 |  
- 2 | 4
- 3 | 9
-(3 rows)
-
--- test inheritance mismatches between parent and child
-CREATE TABLE gtestx (x int, b int GENERATED ALWAYS AS (a * 22) STORED) INHERITS (gtest1);  -- error
-NOTICE:  merging column "b" with inherited definition
-ERROR:  child column "b" specifies generation expression
-HINT:  Omit the generation expression in the definition of the child table column to inherit the generation expression from the parent table.
-CREATE TABLE gtestx (x int, b int DEFAULT 10) INHERITS (gtest1);  -- error
-NOTICE:  merging column "b" with inherited definition
-ERROR:  column "b" inherits from generated column but specifies default
-CREATE TABLE gtestx (x int, b int GENERATED ALWAYS AS IDENTITY) INHERITS (gtest1);  -- error
-NOTICE:  merging column "b" with inherited definition
-ERROR:  column "b" inherits from generated column but specifies identity
-CREATE TABLE gtestxx_1 (a int NOT NULL, b int);
-ALTER TABLE gtestxx_1 INHERIT gtest1;  -- error
-ERROR:  column "b" in child table must be a generated column
-CREATE TABLE gtestxx_2 (a int NOT NULL, b int GENERATED ALWAYS AS (a * 22) STORED);
-ALTER TABLE gtestxx_2 INHERIT gtest1;  -- error
-ERROR:  column "b" in child table has a conflicting generation expression
-CREATE TABLE gtestxx_3 (a int NOT NULL, b int GENERATED ALWAYS AS (a * 2) STORED);
-ALTER TABLE gtestxx_3 INHERIT gtest1;  -- ok
-CREATE TABLE gtestxx_4 (b int GENERATED ALWAYS AS (a * 2) STORED, a int NOT NULL);
-ALTER TABLE gtestxx_4 INHERIT gtest1;  -- ok
--- test multiple inheritance mismatches
+-- test inheritance mismatch
 CREATE TABLE gtesty (x int, b int);
 CREATE TABLE gtest1_2 () INHERITS (gtest1, gtesty);  -- error
-NOTICE:  merging multiple inherited definitions of column "b"
-ERROR:  inherited column "b" has a generation conflict
-DROP TABLE gtesty;
-CREATE TABLE gtesty (x int, b int GENERATED ALWAYS AS (x * 22) STORED);
-CREATE TABLE gtest1_2 () INHERITS (gtest1, gtesty);  -- error
-NOTICE:  merging multiple inherited definitions of column "b"
-ERROR:  column "b" inherits conflicting generation expressions
-DROP TABLE gtesty;
-CREATE TABLE gtesty (x int, b int DEFAULT 55);
-CREATE TABLE gtest1_2 () INHERITS (gtest0, gtesty);  -- error
 NOTICE:  merging multiple inherited definitions of column "b"
 ERROR:  inherited column "b" has a generation conflict
 DROP TABLE gtesty;
@@ -393,6 +331,8 @@ SELECT * FROM gtest3a ORDER BY a;
 -- COPY
 TRUNCATE gtest1;
 INSERT INTO gtest1 (a) VALUES (1), (2);
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Inherited tables
 COPY gtest1 TO stdout;
 1
 2
@@ -404,6 +344,8 @@ COPY gtest1 (a, b) FROM stdin;
 ERROR:  column "b" is a generated column
 DETAIL:  Generated columns cannot be used in COPY.
 SELECT * FROM gtest1 ORDER BY a;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Inherited tables
  a | b 
 ---+---
  1 | 2
@@ -442,18 +384,6 @@ SELECT * FROM gtest2;
  1 |  
 (1 row)
 
--- simple column reference for varlena types
-CREATE TABLE gtest_varlena (a varchar, b varchar GENERATED ALWAYS AS (a) STORED);
-INSERT INTO gtest_varlena (a) VALUES('01234567890123456789');
-INSERT INTO gtest_varlena (a) VALUES(NULL);
-SELECT * FROM gtest_varlena ORDER BY a;
-          a           |          b           
-----------------------+----------------------
- 01234567890123456789 | 01234567890123456789
-                      | 
-(2 rows)
-
-DROP TABLE gtest_varlena;
 -- composite types
 CREATE TYPE double_int as (a int, b int);
 CREATE TABLE gtest4 (
@@ -473,22 +403,42 @@ DROP TYPE double_int;
 -- using tableoid is allowed
 CREATE TABLE gtest_tableoid (
   a int PRIMARY KEY,
-  b bool GENERATED ALWAYS AS (tableoid = 'gtest_tableoid'::regclass) STORED
+  b bool GENERATED ALWAYS AS (tableoid <> 0) STORED
 );
 INSERT INTO gtest_tableoid VALUES (1), (2);
-ALTER TABLE gtest_tableoid ADD COLUMN
-  c regclass GENERATED ALWAYS AS (tableoid) STORED;
 SELECT * FROM gtest_tableoid;
- a | b |       c        
----+---+----------------
- 1 | t | gtest_tableoid
- 2 | t | gtest_tableoid
+ a | b 
+---+---
+ 1 | t
+ 2 | t
 (2 rows)
 
 -- drop column behavior
 CREATE TABLE gtest10 (a int PRIMARY KEY, b int, c int GENERATED ALWAYS AS (b * 2) STORED);
 ALTER TABLE gtest10 DROP COLUMN b;
 \d gtest10
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
               Table "public.gtest10"
  Column |  Type   | Collation | Nullable | Default 
 --------+---------+-----------+----------+---------
@@ -542,24 +492,24 @@ CREATE TABLE gtest20a (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STOR
 INSERT INTO gtest20a (a) VALUES (10);
 INSERT INTO gtest20a (a) VALUES (30);
 ALTER TABLE gtest20a ADD CHECK (b < 50);  -- fails on existing row
-ERROR:  check constraint "gtest20a_b_check" of relation "gtest20a" is violated by some row
+ERROR:  check constraint "gtest20a_b_check" is violated by some row
 CREATE TABLE gtest20b (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED);
 INSERT INTO gtest20b (a) VALUES (10);
 INSERT INTO gtest20b (a) VALUES (30);
 ALTER TABLE gtest20b ADD CONSTRAINT chk CHECK (b < 50) NOT VALID;
 ALTER TABLE gtest20b VALIDATE CONSTRAINT chk;  -- fails on existing row
-ERROR:  check constraint "chk" of relation "gtest20b" is violated by some row
+ERROR:  check constraint "chk" is violated by some row
 -- not-null constraints
 CREATE TABLE gtest21a (a int PRIMARY KEY, b int GENERATED ALWAYS AS (nullif(a, 0)) STORED NOT NULL);
 INSERT INTO gtest21a (a) VALUES (1);  -- ok
 INSERT INTO gtest21a (a) VALUES (0);  -- violates constraint
-ERROR:  null value in column "b" of relation "gtest21a" violates not-null constraint
+ERROR:  null value in column "b" violates not-null constraint
 DETAIL:  Failing row contains (0, null).
 CREATE TABLE gtest21b (a int PRIMARY KEY, b int GENERATED ALWAYS AS (nullif(a, 0)) STORED);
 ALTER TABLE gtest21b ALTER COLUMN b SET NOT NULL;
 INSERT INTO gtest21b (a) VALUES (1);  -- ok
 INSERT INTO gtest21b (a) VALUES (0);  -- violates constraint
-ERROR:  null value in column "b" of relation "gtest21b" violates not-null constraint
+ERROR:  null value in column "b" violates not-null constraint
 DETAIL:  Failing row contains (0, null).
 ALTER TABLE gtest21b ALTER COLUMN b DROP NOT NULL;
 INSERT INTO gtest21b (a) VALUES (0);  -- ok now
@@ -581,6 +531,28 @@ CREATE INDEX gtest22c_b_idx ON gtest22c (b);
 CREATE INDEX gtest22c_expr_idx ON gtest22c ((b * 3));
 CREATE INDEX gtest22c_pred_idx ON gtest22c (a) WHERE b > 0;
 \d gtest22c
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
                            Table "public.gtest22c"
  Column |  Type   | Collation | Nullable |              Default               
 --------+---------+-----------+----------+------------------------------------
@@ -600,7 +572,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM gtest22c WHERE b = 4;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Index Scan using gtest22c_b_idx on gtest22c
          Index Cond: (b = 4)
- Optimizer: Postgres query optimizer
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT * FROM gtest22c WHERE b = 4;
@@ -610,12 +582,12 @@ SELECT * FROM gtest22c WHERE b = 4;
 (1 row)
 
 EXPLAIN (COSTS OFF) SELECT * FROM gtest22c WHERE b * 3 = 6;
-                      QUERY PLAN                      
-------------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Scan using gtest22c_expr_idx on gtest22c
-         Index Cond: ((b * 3) = 6)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on gtest22c
+         Filter: ((b * 3) = 6)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT * FROM gtest22c WHERE b * 3 = 6;
@@ -625,13 +597,14 @@ SELECT * FROM gtest22c WHERE b * 3 = 6;
 (1 row)
 
 EXPLAIN (COSTS OFF) SELECT * FROM gtest22c WHERE a = 1 AND b > 0;
-                      QUERY PLAN                      
-------------------------------------------------------
+                    QUERY PLAN                     
+---------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
-   ->  Index Scan using gtest22c_pred_idx on gtest22c
-         Index Cond: (a = 1)
- Optimizer: Postgres query optimizer
-(4 rows)
+   ->  Index Scan using gtest22c_b_idx on gtest22c
+         Index Cond: (b > 0)
+         Filter: (a = 1)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(5 rows)
 
 SELECT * FROM gtest22c WHERE a = 1 AND b > 0;
  a | b 
@@ -650,6 +623,34 @@ CREATE TABLE gtest23x (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STOR
 ERROR:  invalid ON DELETE action for foreign key constraint containing generated column
 CREATE TABLE gtest23b (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED REFERENCES gtest23a (x));
 \d gtest23b
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
                            Table "public.gtest23b"
  Column |  Type   | Collation | Nullable |              Default               
 --------+---------+-----------+----------+------------------------------------
@@ -733,185 +734,82 @@ ERROR:  cannot use generated column "b" in column generation expression
 DETAIL:  A generated column cannot reference another generated column.
 ALTER TABLE gtest25 ADD COLUMN x int GENERATED ALWAYS AS (z * 4) STORED;  -- error
 ERROR:  column "z" does not exist
-ALTER TABLE gtest25 ADD COLUMN c int DEFAULT 42,
-  ADD COLUMN x int GENERATED ALWAYS AS (c * 4) STORED;
-ALTER TABLE gtest25 ADD COLUMN d int DEFAULT 101;
-ALTER TABLE gtest25 ALTER COLUMN d SET DATA TYPE float8,
-  ADD COLUMN y float8 GENERATED ALWAYS AS (d * 4) STORED;
-SELECT * FROM gtest25 ORDER BY a;
- a | b  | c  |  x  |  d  |  y  
----+----+----+-----+-----+-----
- 3 |  9 | 42 | 168 | 101 | 404
- 4 | 12 | 42 | 168 | 101 | 404
-(2 rows)
-
-\d gtest25
-                                         Table "public.gtest25"
- Column |       Type       | Collation | Nullable |                       Default                        
---------+------------------+-----------+----------+------------------------------------------------------
- a      | integer          |           | not null | 
- b      | integer          |           |          | generated always as (a * 3) stored
- c      | integer          |           |          | 42
- x      | integer          |           |          | generated always as (c * 4) stored
- d      | double precision |           |          | 101
- y      | double precision |           |          | generated always as (d * 4::double precision) stored
-Indexes:
-    "gtest25_pkey" PRIMARY KEY, btree (a)
-
 -- ALTER TABLE ... ALTER COLUMN
 CREATE TABLE gtest27 (
     a int,
-    b int,
-    x int GENERATED ALWAYS AS ((a + b) * 2) STORED
+    b int GENERATED ALWAYS AS (a * 2) STORED
 );
 ALTER TABLE gtest27 SET DISTRIBUTED RANDOMLY;
-INSERT INTO gtest27 (a, b) VALUES (3, 7), (4, 11);
+INSERT INTO gtest27 (a) VALUES (3), (4);
 ALTER TABLE gtest27 ALTER COLUMN a TYPE text;  -- error
 ERROR:  cannot alter type of a column used by a generated column
-DETAIL:  Column "a" is used by generated column "x".
-ALTER TABLE gtest27 ALTER COLUMN x TYPE numeric;
+DETAIL:  Column "a" is used by generated column "b".
+ALTER TABLE gtest27 ALTER COLUMN b TYPE numeric;
 \d gtest27
-                                Table "public.gtest27"
- Column |  Type   | Collation | Nullable |                  Default                   
---------+---------+-----------+----------+--------------------------------------------
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+                             Table "public.gtest27"
+ Column |  Type   | Collation | Nullable |               Default                
+--------+---------+-----------+----------+--------------------------------------
  a      | integer |           |          | 
- b      | integer |           |          | 
- x      | numeric |           |          | generated always as (((a + b) * 2)) stored
+ b      | numeric |           |          | generated always as ((a * 2)) stored
 
 SELECT * FROM gtest27;
- a | b  | x  
----+----+----
- 3 |  7 | 20
- 4 | 11 | 30
+ a | b 
+---+---
+ 3 | 6
+ 4 | 8
 (2 rows)
 
-ALTER TABLE gtest27 ALTER COLUMN x TYPE boolean USING x <> 0;  -- error
-ERROR:  generation expression for column "x" cannot be cast automatically to type boolean
-ALTER TABLE gtest27 ALTER COLUMN x DROP DEFAULT;  -- error
-ERROR:  column "x" of relation "gtest27" is a generated column
-HINT:  Use ALTER TABLE ... ALTER COLUMN ... DROP EXPRESSION instead.
--- It's possible to alter the column types this way:
-ALTER TABLE gtest27
-  DROP COLUMN x,
-  ALTER COLUMN a TYPE bigint,
-  ALTER COLUMN b TYPE bigint,
-  ADD COLUMN x bigint GENERATED ALWAYS AS ((a + b) * 2) STORED;
+ALTER TABLE gtest27 ALTER COLUMN b TYPE boolean USING b <> 0;  -- error
+ERROR:  generation expression for column "b" cannot be cast automatically to type boolean
+ALTER TABLE gtest27 ALTER COLUMN b DROP DEFAULT;  -- error
+ERROR:  column "b" of relation "gtest27" is a generated column
 \d gtest27
-                              Table "public.gtest27"
- Column |  Type  | Collation | Nullable |                 Default                  
---------+--------+-----------+----------+------------------------------------------
- a      | bigint |           |          | 
- b      | bigint |           |          | 
- x      | bigint |           |          | generated always as ((a + b) * 2) stored
-
--- Ideally you could just do this, but not today (and should x change type?):
-ALTER TABLE gtest27
-  ALTER COLUMN a TYPE float8,
-  ALTER COLUMN b TYPE float8;  -- error
-ERROR:  cannot alter type of a column used by a generated column
-DETAIL:  Column "a" is used by generated column "x".
-\d gtest27
-                              Table "public.gtest27"
- Column |  Type  | Collation | Nullable |                 Default                  
---------+--------+-----------+----------+------------------------------------------
- a      | bigint |           |          | 
- b      | bigint |           |          | 
- x      | bigint |           |          | generated always as ((a + b) * 2) stored
-
-SELECT * FROM gtest27;
- a | b  | x  
----+----+----
- 3 |  7 | 20
- 4 | 11 | 30
-(2 rows)
-
--- ALTER TABLE ... ALTER COLUMN ... DROP EXPRESSION
-CREATE TABLE gtest29 (
-    a int,
-    b int GENERATED ALWAYS AS (a * 2) STORED
-);
-INSERT INTO gtest29 (a) VALUES (3), (4);
-ALTER TABLE gtest29 ALTER COLUMN a DROP EXPRESSION;  -- error
-ERROR:  column "a" of relation "gtest29" is not a stored generated column
-ALTER TABLE gtest29 ALTER COLUMN a DROP EXPRESSION IF EXISTS;  -- notice
-NOTICE:  column "a" of relation "gtest29" is not a stored generated column, skipping
-ALTER TABLE gtest29 ALTER COLUMN b DROP EXPRESSION;
-INSERT INTO gtest29 (a) VALUES (5);
-INSERT INTO gtest29 (a, b) VALUES (6, 66);
-SELECT * FROM gtest29;
- a | b  
----+----
- 3 |  6
- 4 |  8
- 5 |   
- 6 | 66
-(4 rows)
-
-\d gtest29
-              Table "public.gtest29"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+                             Table "public.gtest27"
+ Column |  Type   | Collation | Nullable |               Default                
+--------+---------+-----------+----------+--------------------------------------
  a      | integer |           |          | 
- b      | integer |           |          | 
+ b      | numeric |           |          | generated always as ((a * 2)) stored
 
--- check that dependencies between columns have also been removed
-ALTER TABLE gtest29 DROP COLUMN a;  -- should not drop b
-\d gtest29
-              Table "public.gtest29"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- b      | integer |           |          | 
-
--- with inheritance
-CREATE TABLE gtest30 (
-    a int,
-    b int GENERATED ALWAYS AS (a * 2) STORED
-);
-CREATE TABLE gtest30_1 () INHERITS (gtest30);
-ALTER TABLE gtest30 ALTER COLUMN b DROP EXPRESSION;
-\d gtest30
-              Table "public.gtest30"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
-Number of child tables: 1 (Use \d+ to list them.)
-
-\d gtest30_1
-             Table "public.gtest30_1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
-Inherits: gtest30
-
-DROP TABLE gtest30 CASCADE;
-NOTICE:  drop cascades to table gtest30_1
-CREATE TABLE gtest30 (
-    a int,
-    b int GENERATED ALWAYS AS (a * 2) STORED
-);
-CREATE TABLE gtest30_1 () INHERITS (gtest30);
-ALTER TABLE ONLY gtest30 ALTER COLUMN b DROP EXPRESSION;  -- error
-ERROR:  ALTER TABLE / DROP EXPRESSION must be applied to child tables too
-\d gtest30
-                            Table "public.gtest30"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
- a      | integer |           |          | 
- b      | integer |           |          | generated always as (a * 2) stored
-Number of child tables: 1 (Use \d+ to list them.)
-
-\d gtest30_1
-                           Table "public.gtest30_1"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
- a      | integer |           |          | 
- b      | integer |           |          | generated always as (a * 2) stored
-Inherits: gtest30
-
-ALTER TABLE gtest30_1 ALTER COLUMN b DROP EXPRESSION;  -- error
-ERROR:  cannot drop generation expression from inherited column
 -- triggers
 CREATE TABLE gtest26 (
     a int PRIMARY KEY,
@@ -997,6 +895,8 @@ INFO:  gtest4: AFTER: new = (-2,-4,)  (seg0 127.0.1.1:7002 pid=179471)
 alter table gtest26 drop column distkey;
 NOTICE:  dropping a column that is part of the distribution policy forces a NULL distribution policy
 UPDATE gtest26 SET a = a * -2;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: UPDATE on a table with UPDATE triggers
 INFO:  gtest1: BEFORE: old = (-2,-4)  (seg0 127.0.1.1:7002 pid=179471)
 INFO:  gtest1: BEFORE: new = (4,)  (seg0 127.0.1.1:7002 pid=179471)
 INFO:  gtest3: AFTER: old = (-2,-4)  (seg0 127.0.1.1:7002 pid=179471)
@@ -1038,6 +938,8 @@ CREATE TRIGGER gtest11 BEFORE UPDATE OF b ON gtest26
   FOR EACH ROW
   EXECUTE PROCEDURE gtest_trigger_func3();
 UPDATE gtest26 SET a = 1 WHERE a = 0;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: UPDATE on a table with UPDATE triggers
 NOTICE:  OK
 DROP TRIGGER gtest11 ON gtest26;
 TRUNCATE gtest26;
@@ -1063,6 +965,8 @@ CREATE TRIGGER gtest12_03 BEFORE UPDATE ON gtest26
   EXECUTE PROCEDURE gtest_trigger_func();
 INSERT INTO gtest26 (a) VALUES (1);
 UPDATE gtest26 SET a = 11 WHERE a = 1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: UPDATE on a table with UPDATE triggers
 INFO:  gtest12_01: BEFORE: old = (1,2)
 INFO:  gtest12_01: BEFORE: new = (11,)
 INFO:  gtest12_03: BEFORE: old = (1,2)
@@ -1083,6 +987,26 @@ CREATE TABLE gtest28a (
 ALTER TABLE gtest28a DROP COLUMN a;
 CREATE TABLE gtest28b (LIKE gtest28a INCLUDING GENERATED);
 \d gtest28*
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
                            Table "public.gtest28a"
  Column |  Type   | Collation | Nullable |              Default               
 --------+---------+-----------+----------+------------------------------------
@@ -1091,6 +1015,24 @@ CREATE TABLE gtest28b (LIKE gtest28a INCLUDING GENERATED);
  x      | integer |           |          | generated always as (b * 2) stored
 Distributed randomly
 
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Non-default collation
                            Table "public.gtest28b"
  Column |  Type   | Collation | Nullable |              Default               
 --------+---------+-----------+----------+------------------------------------
