@@ -200,7 +200,6 @@
 		"gp_enable_refresh_fast_path",
 		"gp_enable_relsize_collection",
 		"gp_enable_slow_writer_testmode",
-		"gp_enable_sort_distinct",
 		"gp_enable_sort_limit",
 		"gp_encoding_check_locale_compatibility",
 		"gp_external_enable_exec",

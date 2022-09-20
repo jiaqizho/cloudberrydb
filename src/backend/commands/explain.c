@@ -3012,10 +3012,7 @@ show_sort_keys(SortState *sortstate, List *ancestors, ExplainState *es)
 	Sort	   *plan = (Sort *) sortstate->ss.ps.plan;
 	const char *SortKeystr;
 
-	if (sortstate->noduplicates)
-		SortKeystr = "Sort Key (Distinct)";
-	else
-		SortKeystr = "Sort Key";
+	SortKeystr = "Sort Key";
 
 	show_sort_group_keys((PlanState *) sortstate, SortKeystr,
 						 plan->numCols, 0, plan->sortColIdx,

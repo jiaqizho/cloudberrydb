@@ -1298,9 +1298,6 @@ _copySort(const Sort *from)
 	 */
 	CopySortFields(from, newnode);
 
-    /* CDB */
-	COPY_SCALAR_FIELD(noduplicates);
-
 	return newnode;
 }
 

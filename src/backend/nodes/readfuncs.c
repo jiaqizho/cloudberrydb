@@ -2388,9 +2388,6 @@ ReadSort(Sort *local_node)
 	READ_TEMP_LOCALS();
 
 	ReadCommonSort(local_node);
-
-	/* CDB */
-	READ_BOOL_FIELD(noduplicates);
 }
 
 /*
