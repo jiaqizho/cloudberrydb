@@ -8450,6 +8450,7 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 	node->returningLists = returningLists;
 	node->rowMarks = rowMarks;
 	node->epqParam = epqParam;
+	node->forceTupleRouting = false;
 
 	/*
 	 * For each result relation that is a foreign table, allow the FDW to

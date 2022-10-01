@@ -4304,6 +4304,15 @@ CTranslatorDXLToPlStmt::TranslateDXLDml(
 	{
 		isSplit = true; // AO tables are always use split updates
 	}
+	
+	if (md_rel->IsPartitioned())
+	{
+		dml->forceTupleRouting = true;
+	}
+	else
+	{
+		dml->forceTupleRouting = false;
+	}
 
 	if (IMDRelation::EreldistrMasterOnly != md_rel->GetRelDistribution())
 	{

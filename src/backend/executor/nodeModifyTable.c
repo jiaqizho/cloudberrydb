@@ -2483,7 +2483,8 @@ ExecPrepareTupleRouting(ModifyTableState *mtstate,
 	 * valid target for INSERTs.  This is required since a partitioned table
 	 * UPDATE to another partition becomes a DELETE+INSERT.
 	 */
-	partrel = ExecFindPartition(mtstate, targetRelInfo, proute, slot, estate);
+	if (partRelInfo)
+		partrel = ExecFindPartition(mtstate, targetRelInfo, proute, slot, estate);
 
 	/*
 	 * If we're capturing transition tuples, we might need to convert from the
@@ -2514,7 +2515,8 @@ ExecPrepareTupleRouting(ModifyTableState *mtstate,
 		slot = execute_attr_map_slot(map->attrMap, slot, new_slot);
 	}
 
-	*partRelInfo = partrel;
+	if (partRelInfo)
+		*partRelInfo = partrel;
 	return slot;
 }
 
@@ -2827,6 +2829,10 @@ ExecModifyTable(PlanState *pstate)
 								  estate, node->canSetTag, false /* splitUpdate */);
 				break;
 			case CMD_UPDATE:
+				/* Prepare for tuple routing if needed. */
+				if (castNode(ModifyTable, node->ps.plan)->forceTupleRouting) 
+					slot = ExecPrepareTupleRouting(node, estate, proute,
+												   resultRelInfo, slot, NULL);
 				if (!AttributeNumberIsValid(action_attno))
 				{
 					/* normal non-split UPDATE */
@@ -2889,6 +2895,9 @@ ExecModifyTable(PlanState *pstate)
 					ereport(ERROR, (errmsg("unknown action = %d", action)));
 				break;
 			case CMD_DELETE:
+				if (castNode(ModifyTable, node->ps.plan)->forceTupleRouting)
+					planSlot = ExecPrepareTupleRouting(node, estate, proute,
+												   resultRelInfo, slot, NULL);
 				slot = ExecDelete(node, resultRelInfo, tupleid, oldtuple,
 								  planSlot, &node->mt_epqstate, estate,
 								  segid,
