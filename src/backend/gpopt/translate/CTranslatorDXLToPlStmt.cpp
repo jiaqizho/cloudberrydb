@@ -2702,32 +2702,23 @@ CTranslatorDXLToPlStmt::TranslateDXLAgg(
 	 */
 	// Set the aggsplit for the agg node
 	ListCell *lc;
-	int idx = 0;
-	ForEach (lc, plan->targetlist)
+	INT aggsplit = 0;
+	foreach (lc, plan->targetlist)
 	{
 		TargetEntry *te = (TargetEntry *) lfirst(lc);
 		if (IsA(te->expr, Aggref))
 		{
 			Aggref *aggref = (Aggref *) te->expr;
-			// initialize the aggsplit once
-			if (idx == 0)
-				agg->aggsplit = aggref->aggsplit;
-			aggref->aggno = idx;
-			aggref->aggtransno = idx;
-			idx++;
+
+			aggsplit |= aggref->aggsplit;
+
+			if (AGGSPLIT_INTERMEDIATE == aggsplit)
+			{
+				break;
+			}
 		}
 	}
-	ForEach (lc, plan->qual)
-	{
-		Expr *expr = (Expr *) lfirst(lc);
-		if (IsA(expr, Aggref))
-		{
-			Aggref *aggref = (Aggref *) expr;
-			aggref->aggno = idx;
-			aggref->aggtransno = idx;
-			idx++;
-		}
-	}
+	agg->aggsplit = (AggSplit) aggsplit;
 
 	plan->lefttree = child_plan;
 
