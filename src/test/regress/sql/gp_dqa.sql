@@ -431,6 +431,8 @@ select count(distinct a) from t_issue_659;
 select count(distinct a) from t_issue_659;
 reset gp_eager_distinct_dedup;
 reset optimizer_force_three_stage_scalar_dqa;
+reset optimizer_enable_use_distribution_in_dqa;
+drop table t_issue_659;
 
 
 -- fix dqa bug when optimizer_force_multistage_agg is on
