@@ -3576,7 +3576,6 @@ ExecBuildAggTrans(AggState *aggstate, AggStatePerPhase phase,
 	ExprState  *state = makeNode(ExprState);
 	PlanState  *parent = &aggstate->ss.ps;
 	ExprEvalStep scratch = {0};
-	bool		isCombine = DO_AGGSPLIT_COMBINE(aggstate->aggsplit);
 	LastAttnumInfo deform = {0, 0, 0};
 
 	state->expr = (Expr *) aggstate;
@@ -3626,6 +3625,8 @@ ExecBuildAggTrans(AggState *aggstate, AggStatePerPhase phase,
 		ListCell   *bail;
 		if (!bms_is_member(transno, aggstate->aggs_used))
 			continue;
+
+		bool isCombine = DO_AGGSPLIT_COMBINE(pertrans->aggref->aggsplit);
 		/*
 		 * If filter present, emit. Do so before evaluating the input, to
 		 * avoid potentially unneeded computations, or even worse, unintended
