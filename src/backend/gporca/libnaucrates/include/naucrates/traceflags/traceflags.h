@@ -218,6 +218,9 @@ enum EOptTraceFlag
 	// Enable use the distribution key in DQA
 	EopttraceEnableUseDistributionInDQA = 103042,
 
+	// Discard HashJoin with RedistributeMotion nodes
+	EopttraceDiscardRedistributeHashJoin = 103044,
+
 	///////////////////////////////////////////////////////
 	///////////////////// statistics flags ////////////////
 	//////////////////////////////////////////////////////

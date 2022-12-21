@@ -403,7 +403,7 @@
 		"optimizer_enable_hashagg",
 		"optimizer_enable_hashjoin",
 		"optimizer_enable_hashjoin_redistribute_broadcast_children",
-		"optimizer_enable_nljoin",
+		"optimizer_discard_redistribute_hashjoin",
 		"optimizer_enable_indexjoin",
 		"optimizer_enable_indexonlyscan",
 		"optimizer_enable_indexscan",
