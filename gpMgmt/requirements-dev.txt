@@ -1,4 +1,4 @@
-gsutil<=4.47
+gsutil
 behave~=1.2.6
 coverage~=4.5
 more-itertools<8.1
@@ -37,3 +37,4 @@ pathlib2<=2.3.5
 cffi<=1.13.2
 scandir<=1.10.0
 pycparser<=2.19
+mock<=5.0.0
