@@ -747,6 +747,29 @@ gpdb::GetAttStats(Oid relid, AttrNumber attnum)
 	return nullptr;
 }
 
+List *
+gpdb::GetExtStats(Relation rel)
+{
+	GP_WRAP_START;
+	{
+		/* catalog tables: pg_statistic_ext */
+		return GetRelationExtStatistics(rel);
+	}
+	GP_WRAP_END;
+	return nullptr;
+}
+
+char *
+gpdb::GetExtStatsName(Oid statOid)
+{
+	GP_WRAP_START;
+	{
+		return GetExtStatisticsName(statOid);
+	}
+	GP_WRAP_END;
+	return nullptr;
+}
+
 Oid
 gpdb::GetCommutatorOp(Oid opno)
 {
@@ -1879,6 +1902,16 @@ gpdb::GetRelationIndexes(Relation relation)
 	}
 	GP_WRAP_END;
 	return NIL;
+}
+
+MVDependencies *
+gpdb::GetMVDependencies(Oid stat_oid)
+{
+	GP_WRAP_START;
+	{
+		return statext_dependencies_load(stat_oid);
+	}
+	GP_WRAP_END;
 }
 
 gpdb::RelationWrapper

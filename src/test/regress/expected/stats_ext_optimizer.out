@@ -645,7 +645,7 @@ SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY (a+1
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (a+1), (b+100)');
  estimated | actual 
 -----------+--------
-       125 |    221
+        50 |     50
 (1 row)
 
 CREATE STATISTICS s10 (ndistinct) ON (a+1), (b+100), (2*c) FROM ndistinct;
@@ -662,19 +662,19 @@ SELECT s.stxkind, d.stxdndistinct
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY (a+1), (b+100)');
  estimated | actual 
 -----------+--------
-       125 |    221
+        50 |     50
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY (a+1), (b+100), (2*c)');
  estimated | actual 
 -----------+--------
-       997 |   1000
+        50 |     50
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (a+1), (b+100)');
  estimated | actual 
 -----------+--------
-       125 |    221
+        50 |     50
 (1 row)
 
 DROP STATISTICS s10;
