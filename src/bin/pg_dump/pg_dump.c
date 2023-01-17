@@ -15734,6 +15734,7 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 	const char *aggmtransspace;
 	const char *agginitval;
 	const char *aggminitval;
+	bool		aggrepsafeexec;
 	const char *proparallel;
 	char		defaultfinalmodify;
 
@@ -15833,6 +15834,13 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 							 "'0' AS aggfinalmodify,\n"
 							 "'0' AS aggmfinalmodify\n");
 
+	if (fout->remoteVersion >= 140000)
+		appendPQExpBufferStr(query,
+								"aggrepsafeexec,\n");
+	else
+		appendPQExpBufferStr(query,
+								 "false AS aggrepsafeexec,\n");
+
 	appendPQExpBuffer(query,
 					  "FROM pg_catalog.pg_aggregate a, pg_catalog.pg_proc p "
 					  "WHERE a.aggfnoid = p.oid "
@@ -15864,6 +15872,7 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 	aggmtransspace = PQgetvalue(res, 0, PQfnumber(res, "aggmtransspace"));
 	agginitval = PQgetvalue(res, 0, i_agginitval);
 	aggminitval = PQgetvalue(res, 0, i_aggminitval);
+	aggrepsafeexec = (PQgetvalue(res, 0, PQfnumber(res, "aggrepsafeexec"))[0] == 't');
 	proparallel = PQgetvalue(res, 0, PQfnumber(res, "proparallel"));
 
 	if (fout->remoteVersion >= 80400)
@@ -15989,6 +15998,9 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 			}
 		}
 	}
+
+	if (aggrepsafeexec)
+		appendPQExpBuffer(details, ",\n    REPSAFE = true");
 
 	aggsortconvop = getFormattedOperatorName(aggsortop);
 	if (aggsortconvop)
