@@ -487,7 +487,6 @@ enum Edxltoken
 
 	EdxltokenPartKeys,
 	EdxltokenPartTypes,
-	EdxltokenNumLeafPartitions,
 
 	EdxltokenRelDistrPolicy,
 	EdxltokenRelDistrMasterOnly,
