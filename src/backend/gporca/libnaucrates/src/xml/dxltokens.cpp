@@ -674,6 +674,7 @@ CDXLTokens::Init(CMemoryPool *mp)
 
 		{EdxltokenGPDBAgg, GPOS_WSZ_LIT("GPDBAgg")},
 		{EdxltokenGPDBIsAggOrdered, GPOS_WSZ_LIT("IsOrdered")},
+		{EdxltokenGPDBIsAggRepSafe, GPOS_WSZ_LIT("IsRepSafe")},
 		{EdxltokenGPDBAggResultTypeId, GPOS_WSZ_LIT("ResultType")},
 		{EdxltokenGPDBAggIntermediateResultTypeId,
 		 GPOS_WSZ_LIT("IntermediateResultType")},
