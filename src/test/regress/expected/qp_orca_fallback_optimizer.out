@@ -56,7 +56,7 @@ explain update constr_tab set b = 10;
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Update on constr_tab  (cost=0.00..431.04 rows=1 width=1)
-   ->  Seq Scan on constr_tab constr_tab_1  (cost=0.00..431.00 rows=1 width=22)
+   ->  Seq Scan on constr_tab  (cost=0.00..431.00 rows=1 width=22)
  Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 

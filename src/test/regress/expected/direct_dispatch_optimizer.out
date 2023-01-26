@@ -1225,7 +1225,7 @@ explain (costs off) delete from srt_dd where name='ABA'::text;
                   QUERY PLAN                  
 ----------------------------------------------
  Delete on srt_dd
-   ->  Seq Scan on srt_dd srt_dd_1
+   ->  Seq Scan on srt_dd
          Filter: ((name)::text = 'ABA'::text)
  Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
