@@ -211,6 +211,7 @@ HeapTuple GetAttStats(Oid relid, AttrNumber attnum);
 List *GetExtStats(Relation rel);
 
 char *GetExtStatsName(Oid statOid);
+List *GetExtStatsKinds(Oid statOid);
 
 // does a function exist with the given oid
 bool FunctionExists(Oid oid);
@@ -528,6 +529,9 @@ List *GetRelationIndexes(Relation relation);
 void BuildRelationTriggers(Relation rel);
 
 PartitionKey GetRelationPartitionKey(Relation rel);
+
+MVNDistinct *GetMVNDistinct(Oid stat_oid);
+
 MVDependencies *GetMVDependencies(Oid stat_oid);
 
 // get relation with given oid
