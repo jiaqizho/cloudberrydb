@@ -1150,8 +1150,10 @@ WHERE
                                    Filter: (((hjtest_2.c * 5)) < 55)
                                    ->  Result
                                          Output: (hjtest_2.c * 5)
-                     ->  Result
-                           Output: 1
+                     ->  Materialize
+                           Output: (1)
+                           ->  Result
+                                 Output: 1
                      SubPlan 2
                        ->  Result
                              Output: (hjtest_2.c * 5)
@@ -1225,8 +1227,10 @@ WHERE
                                    Filter: (((hjtest_2.c * 5)) < 55)
                                    ->  Result
                                          Output: (hjtest_2.c * 5)
-                     ->  Result
-                           Output: 1
+                     ->  Materialize
+                           Output: (1)
+                           ->  Result
+                                 Output: 1
                      SubPlan 2
                        ->  Result
                              Output: (hjtest_2.c * 5)
