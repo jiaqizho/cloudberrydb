@@ -301,6 +301,13 @@ CConfigParamMapping::SConfigMappingElem CConfigParamMapping::m_elements[] = {
 	 false,	 // m_negate_param
 	 GPOS_WSZ_LIT(
 		 "Enable use the distribution key in DQA")},
+	{EopttraceDisableInnerHashJoin, &optimizer_enable_hashjoin,
+	 true,	// m_negate_param
+	 GPOS_WSZ_LIT("Explore hash join alternatives")},
+	{EopttraceDisableInnerNLJ, &optimizer_enable_nljoin,
+	 true,	// m_negate_param
+	 GPOS_WSZ_LIT("Enable nested loop join alternatives")},
+
 };
 
 //---------------------------------------------------------------------------
