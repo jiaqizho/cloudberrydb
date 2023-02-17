@@ -516,6 +516,7 @@ enum Edxltoken
 	EdxltokenIndexPartial,
 	EdxltokenIndexType,
 	EdxltokenIndexTypeBtree,
+	EdxltokenIndexTypeHash,
 	EdxltokenIndexTypeBitmap,
 	EdxltokenIndexTypeGist,
 	EdxltokenIndexTypeGin,
@@ -735,7 +736,6 @@ enum Edxltoken
 	EdxltokenVarTypeModList,
 
 	EdxltokenIndexTypeBrin,
-
 	EdxltokenSentinel
 };
 
