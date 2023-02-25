@@ -318,9 +318,9 @@ CTranslatorRelcacheToDXL::RetrieveRelCheckConstraints(CMemoryPool *mp, OID oid)
 //
 //---------------------------------------------------------------------------
 void
-CTranslatorRelcacheToDXL::CheckUnsupportedRelation(OID rel_oid)
+CTranslatorRelcacheToDXL::CheckUnsupportedRelation(Relation rel)
 {
-	if (!gpdb::RelIsPartitioned(rel_oid) && gpdb::HasSubclassSlow(rel_oid))
+	if (!rel->rd_partdesc && gpdb::HasSubclassSlow(rel->rd_id))
 	{
 		GPOS_RAISE(gpdxl::ExmaMD, gpdxl::ExmiMDObjUnsupported,
 				   GPOS_WSZ_LIT("Inherited tables"));
@@ -478,8 +478,6 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 	OID oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 	GPOS_ASSERT(InvalidOid != oid);
 
-	CheckUnsupportedRelation(oid);
-
 	gpdb::RelationWrapper rel = gpdb::GetRelation(oid);
 
 	if (!rel)
@@ -487,6 +485,8 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 		GPOS_RAISE(gpdxl::ExmaMD, gpdxl::ExmiMDCacheEntryNotFound,
 				   mdid->GetBuffer());
 	}
+
+	CheckUnsupportedRelation(rel.get());
 
 	if (nullptr != rel->rd_cdbpolicy &&
 		POLICYTYPE_ENTRY != rel->rd_cdbpolicy->ptype &&
@@ -552,7 +552,7 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 	is_partitioned = (nullptr != part_keys && 0 < part_keys->Size());
 
 	// get number of leaf partitions
-	if (gpdb::RelIsPartitioned(oid))
+	if (rel->rd_partdesc)
 	{
 		partition_oids = GPOS_NEW(mp) IMdIdArray(mp);
 
@@ -561,7 +561,8 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 			Oid oid = RelationGetPartitionDesc(rel.get(), true)->oids[i];
 			partition_oids->Append(GPOS_NEW(mp)
 									   CMDIdGPDB(IMDId::EmdidRel, oid));
-			if (gpdb::RelIsPartitioned(oid))
+			gpdb::RelationWrapper rel_part = gpdb::GetRelation(oid);
+			if (rel_part->rd_partdesc)
 			{
 				// Multi-level partitioned tables are unsupported - fall back
 				GPOS_RAISE(gpdxl::ExmaMD, gpdxl::ExmiMDObjUnsupported,
@@ -992,7 +993,7 @@ CTranslatorRelcacheToDXL::RetrieveIndex(CMemoryPool *mp,
 
 	// get child indexes
 	IMdIdArray *child_index_oids = nullptr;
-	if (gpdb::IndexIsPartitioned(index_oid))
+	if (index_rel->rd_rel->relkind == RELKIND_PARTITIONED_INDEX)
 	{
 		index_partitioned = true;
 		child_index_oids = RetrieveIndexPartitions(mp, index_oid);
@@ -2500,7 +2501,7 @@ CTranslatorRelcacheToDXL::RetrievePartKeysAndTypes(CMemoryPool *mp,
 	GPOS_ASSERT(nullptr != rel);
 
 	// FIXME: isn't it faster to check rel.rd_partkey?
-	if (!gpdb::RelIsPartitioned(oid))
+	if (!rel->rd_partdesc)
 	{
 		// not a partitioned table
 		*part_keys = nullptr;
