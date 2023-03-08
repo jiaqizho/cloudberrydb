@@ -290,7 +290,7 @@ COrderedAggPreprocessor::SplitPrjList(
 			// Is it necessary to keep `m_func_format` in `CScalarFunc`?
 			CScalarFunc *popCastScalarFunc = GPOS_NEW(mp) CScalarFunc(
 				mp, mdid_func, cast_func->GetResultTypeMdid(), -1, pstrFunc, 
-				1 /* Explicit Cast */);
+				1 /* Explicit Cast */, false /* funcvariadic */);
 			CExpression *pexprCastScalarIdent = GPOS_NEW(mp)
 				CExpression(mp, popCastScalarFunc, pexprScalarIdentSum);
 			CExpressionArray *colref_array1 = GPOS_NEW(mp) CExpressionArray(mp);

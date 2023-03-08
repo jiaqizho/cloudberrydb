@@ -394,6 +394,7 @@ enum Edxltoken
 
 	EdxltokenFuncId,
 	EdxltokenFuncRetSet,
+	EdxltokenFuncVariadic,
 
 
 	EdxltokenSortOpId,

@@ -1029,6 +1029,10 @@ CDXLOperatorFactory::MakeDXLFuncExpr(CDXLMemoryManager *dxl_memory_manager,
 												   EdxltokenFuncRetSet,
 												   EdxltokenScalarFuncExpr);
 
+	BOOL is_funcvariadic = ExtractConvertAttrValueToBool(
+		dxl_memory_manager, attrs, EdxltokenFuncVariadic,
+		EdxltokenScalarFuncExpr, true, false);
+
 	IMDId *mdid_return_type = ExtractConvertAttrValueToMdId(
 		dxl_memory_manager, attrs, EdxltokenTypeId, EdxltokenScalarFuncExpr);
 
@@ -1037,7 +1041,7 @@ CDXLOperatorFactory::MakeDXLFuncExpr(CDXLMemoryManager *dxl_memory_manager,
 		default_type_modifier);
 
 	return GPOS_NEW(mp) CDXLScalarFuncExpr(mp, mdid_func, mdid_return_type,
-										   type_modifier, is_retset, 0);
+										   type_modifier, is_retset, 0, is_funcvariadic);
 }
 
 //---------------------------------------------------------------------------

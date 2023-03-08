@@ -5609,7 +5609,7 @@ CTranslatorExprToDXL::PdxlnScFuncExpr(CExpression *pexprFunc)
 		CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLScalarFuncExpr(
 						   m_mp, mdid_func, mdid_return_type,
 						   popScFunc->TypeModifier(), pmdfunc->ReturnsSet(),
-						   popScFunc->FuncFormat()));
+						   popScFunc->FuncFormat(), popScFunc->IsFuncVariadic()));
 
 	// translate children
 	TranslateScalarChildren(pexprFunc, pdxlnFuncExpr);

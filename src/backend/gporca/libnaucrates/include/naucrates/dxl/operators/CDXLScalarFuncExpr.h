@@ -48,13 +48,17 @@ private:
 	// how to display function expr
 	const INT m_func_format;
 
+	//  true if in the function, variadic arguments have been
+	//  combined into an array last argument
+	BOOL m_funcvariadic;
+
 public:
 	CDXLScalarFuncExpr(const CDXLScalarFuncExpr &) = delete;
 
 	// ctor
 	CDXLScalarFuncExpr(CMemoryPool *mp, IMDId *mdid_func,
 					   IMDId *mdid_return_type, INT return_type_modifier,
-					   BOOL returns_set, INT func_format);
+					   BOOL returns_set, INT func_format, BOOL funcvariadic);
 
 	//dtor
 	~CDXLScalarFuncExpr() override;
@@ -78,6 +82,9 @@ public:
 
 	// how to display function expr
 	INT FuncFormat() const;
+
+	// Is the variadic flag set
+	BOOL IsFuncVariadic() const;
 
 	// serialize operator in DXL format
 	void SerializeToDXL(CXMLSerializer *xml_serializer,

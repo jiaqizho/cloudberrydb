@@ -59,6 +59,10 @@ protected:
 	// how to display function expr
 	INT m_func_format;
 
+	//  It is true if in the function, variadic arguments have been
+	//	combined into an array last argument
+	BOOL m_funcvariadic;
+
 private:
 public:
 	CScalarFunc(const CScalarFunc &) = delete;
@@ -67,7 +71,8 @@ public:
 
 	// ctor
 	CScalarFunc(CMemoryPool *mp, IMDId *mdid_func, IMDId *mdid_return_type,
-				INT return_type_modifier, const CWStringConst *pstrFunc, INT func_format);
+				INT return_type_modifier, const CWStringConst *pstrFunc, 
+				INT func_format, BOOL funcvariadic);
 
 	// dtor
 	~CScalarFunc() override;
@@ -156,7 +161,8 @@ public:
 	// how to display function expr
 	INT FuncFormat() const;
 
-
+	// Is variadic flag set
+	BOOL IsFuncVariadic() const;
 };	// class CScalarFunc
 
 }  // namespace gpopt
