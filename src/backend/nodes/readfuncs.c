@@ -1602,6 +1602,8 @@ _readDefElem(void)
  *	Stuff from plannodes.h.
  */
 
+static void readForeignScanFields(ForeignScan *local_node);
+
 /*
  * _readPlannedStmt
  */
@@ -2196,18 +2198,39 @@ _readWorkTableScan(void)
 	READ_DONE();
 }
 
+
+static void readForeignScanFields(ForeignScan *local_node);
+
 /*
  * _readForeignScan
  */
 static ForeignScan *
 _readForeignScan(void)
 {
-	READ_LOCALS(ForeignScan);
+	READ_LOCALS_NO_FIELDS(ForeignScan);
+	readForeignScanFields(local_node);
+	READ_DONE();
+}
+static DynamicForeignScan *
+_readDynamicForeignScan(void)
+{
+	READ_LOCALS(DynamicForeignScan);
+	/* DynamicForeignScan has some content from ForeignScan. */
+	readForeignScanFields(&local_node->foreignscan);
+	READ_NODE_FIELD(partOids);
+	READ_NODE_FIELD(part_prune_info);
+	READ_NODE_FIELD(join_prune_paramids);
+	READ_NODE_FIELD(fdw_private_list);
+	READ_DONE();
+}
+static void
+readForeignScanFields(ForeignScan *local_node)
+{
+	READ_TEMP_LOCALS();
 
 	ReadCommonScan(&local_node->scan);
 
 	READ_ENUM_FIELD(operation, CmdType);
-	READ_UINT_FIELD(resultRelation);
 	READ_OID_FIELD(fs_server);
 	READ_NODE_FIELD(fdw_exprs);
 	READ_NODE_FIELD(fdw_private);
@@ -2215,9 +2238,8 @@ _readForeignScan(void)
 	READ_NODE_FIELD(fdw_recheck_quals);
 	READ_BITMAPSET_FIELD(fs_relids);
 	READ_BOOL_FIELD(fsSystemCol);
-
-	READ_DONE();
 }
+
 
 #ifndef COMPILING_BINARY_FUNCS
 /*
@@ -3090,6 +3112,8 @@ parseNodeString(void)
 		return_value = _readWorkTableScan();
 	else if (MATCH("FOREIGNSCAN", 11))
 		return_value = _readForeignScan();
+	else if (MATCH("DYNAMICFOREIGNSCAN", 18))
+		return_value = _readDynamicForeignScan();
 	else if (MATCH("CUSTOMSCAN", 10))
 		return_value = _readCustomScan();
 	else if (MATCH("JOIN", 4))

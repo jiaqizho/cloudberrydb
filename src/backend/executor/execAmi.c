@@ -66,6 +66,7 @@
 #include "executor/nodeAssertOp.h"
 #include "executor/nodeDynamicSeqscan.h"
 #include "executor/nodeDynamicIndexscan.h"
+#include "executor/nodeDynamicForeignscan.h"
 #include "executor/nodeMotion.h"
 #include "executor/nodeSequence.h"
 #include "executor/nodeTableFunction.h"
@@ -295,6 +296,10 @@ ExecReScan(PlanState *node)
 			ExecReScanForeignScan((ForeignScanState *) node);
 			break;
 
+		case T_DynamicForeignScanState:
+			ExecReScanDynamicForeignScan((DynamicForeignScanState *) node);
+			break;
+
 		case T_CustomScanState:
 			ExecReScanCustomScan((CustomScanState *) node);
 			break;
@@ -445,6 +450,7 @@ ExecMarkPos(PlanState *node)
 			break;
 
 		case T_ForeignScanState:
+		case T_DynamicForeignScanState:
 			elog(ERROR, "Marking scan position for foreign relation is not supported");
 			break;
 
@@ -855,7 +861,11 @@ ExecSquelchNode(PlanState *node, bool force)
 				node->squelched = true;
 			}
 			break;
-
+		case T_DynamicForeignScanState:
+			/* TODO: Add logic to shutdown the dynamic foreign scan for cases of parallel
+			 * execution (currently unsupported in Orca)
+			 */
+			break;
 		case T_BitmapHeapScanState:
 			ExecSquelchBitmapHeapScan((BitmapHeapScanState *) node, force);
 			break;

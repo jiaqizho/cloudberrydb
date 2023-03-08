@@ -94,6 +94,7 @@ OBJS += nodeMotion.o \
 OBJS += nodeDynamicSeqscan.o \
         nodeDynamicIndexscan.o \
         nodeDynamicBitmapHeapscan.o \
-        nodeDynamicBitmapIndexscan.o
+        nodeDynamicBitmapIndexscan.o \
+        nodeDynamicForeignscan.o
 
 include $(top_srcdir)/src/backend/common.mk

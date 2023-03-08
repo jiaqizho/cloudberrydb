@@ -652,6 +652,8 @@ void GPDBMemoryContextDelete(MemoryContext context);
 
 List *GetRelChildIndexes(Oid reloid);
 
+Oid GetForeignServerId(Oid reloid);
+
 void GPDBLockRelationOid(Oid reloid, int lockmode);
 
 }  //namespace gpdb

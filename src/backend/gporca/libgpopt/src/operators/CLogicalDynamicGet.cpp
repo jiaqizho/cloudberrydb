@@ -57,13 +57,16 @@ CLogicalDynamicGet::CLogicalDynamicGet(
 	CMemoryPool *mp, const CName *pnameAlias, CTableDescriptor *ptabdesc,
 	ULONG ulPartIndex, CColRefArray *pdrgpcrOutput,
 	CColRef2dArray *pdrgpdrgpcrPart, IMdIdArray *partition_mdids,
-	CConstraint *partition_cnstrs_disj, BOOL static_pruned)
+	CConstraint *partition_cnstrs_disj, BOOL static_pruned,
+	IMdIdArray *foreign_server_mdids)
 	: CLogicalDynamicGetBase(mp, pnameAlias, ptabdesc, ulPartIndex,
 							 pdrgpcrOutput, pdrgpdrgpcrPart, partition_mdids),
 	  m_partition_cnstrs_disj(partition_cnstrs_disj),
-	  m_static_pruned(static_pruned)
+	  m_static_pruned(static_pruned),
+	  m_foreign_server_mdids(foreign_server_mdids)
 {
 	GPOS_ASSERT(static_pruned || (nullptr == partition_cnstrs_disj));
+	GPOS_ASSERT(nullptr != foreign_server_mdids);
 }
 
 
@@ -78,10 +81,13 @@ CLogicalDynamicGet::CLogicalDynamicGet(
 CLogicalDynamicGet::CLogicalDynamicGet(CMemoryPool *mp, const CName *pnameAlias,
 									   CTableDescriptor *ptabdesc,
 									   ULONG ulPartIndex,
-									   IMdIdArray *partition_mdids)
+									   IMdIdArray *partition_mdids,
+									   IMdIdArray *foreign_server_mdids)
 	: CLogicalDynamicGetBase(mp, pnameAlias, ptabdesc, ulPartIndex,
-							 partition_mdids)
+							 partition_mdids),
+	  m_foreign_server_mdids(foreign_server_mdids)
 {
+	GPOS_ASSERT(nullptr != foreign_server_mdids);
 }
 
 //---------------------------------------------------------------------------
@@ -95,6 +101,7 @@ CLogicalDynamicGet::CLogicalDynamicGet(CMemoryPool *mp, const CName *pnameAlias,
 CLogicalDynamicGet::~CLogicalDynamicGet()
 {
 	CRefCount::SafeRelease(m_partition_cnstrs_disj);
+	CRefCount::SafeRelease(m_foreign_server_mdids);
 }
 
 //---------------------------------------------------------------------------
@@ -170,9 +177,15 @@ CLogicalDynamicGet::PopCopyWithRemappedColumns(CMemoryPool *mp,
 				mp, colref_mapping, must_exist);
 	}
 
+	if (m_foreign_server_mdids)
+	{
+		m_foreign_server_mdids->AddRef();
+	}
+
 	return GPOS_NEW(mp) CLogicalDynamicGet(
 		mp, pnameAlias, m_ptabdesc, m_scan_id, pdrgpcrOutput, pdrgpdrgpcrPart,
-		m_partition_mdids, partition_cnstrs_disj, m_static_pruned);
+		m_partition_mdids, partition_cnstrs_disj, m_static_pruned,
+		m_foreign_server_mdids);
 }
 
 //---------------------------------------------------------------------------
@@ -215,6 +228,8 @@ CLogicalDynamicGet::PxfsCandidates(CMemoryPool *mp) const
 {
 	CXformSet *xform_set = GPOS_NEW(mp) CXformSet(mp);
 	(void) xform_set->ExchangeSet(CXform::ExfDynamicGet2DynamicTableScan);
+	(void) xform_set->ExchangeSet(
+		CXform::ExfExpandDynamicGetWithForeignPartitions);
 	return xform_set;
 }
 
@@ -248,6 +263,7 @@ CLogicalDynamicGet::OsPrint(IOstream &os) const
 		os << "Columns: [";
 		CUtils::OsPrintDrgPcr(os, m_pdrgpcrOutput);
 		os << "] Scan Id: " << m_scan_id;
+		os << " Parts to scan: " << m_partition_mdids->Size();
 	}
 
 	return os;
@@ -362,4 +378,18 @@ CLogicalDynamicGet::PstatsDeriveFilter(CMemoryPool *mp,
 	return result_stats;
 }
 
+// returns whether table contains foreign partitions
+BOOL
+CLogicalDynamicGet::ContainsForeignParts() const
+{
+	for (ULONG ul = 0; ul < m_foreign_server_mdids->Size(); ++ul)
+	{
+		IMDId *foreign_server_mdid = (*m_foreign_server_mdids)[ul];
+		if (foreign_server_mdid->IsValid())
+		{
+			return true;
+		}
+	}
+	return false;
+}
 // EOF

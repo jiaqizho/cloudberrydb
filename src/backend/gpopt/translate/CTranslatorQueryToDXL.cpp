@@ -795,6 +795,16 @@ CTranslatorQueryToDXL::TranslateInsertQueryToDXL()
 				   GPOS_WSZ_LIT("INSERT with constraints"));
 	}
 
+	BOOL contains_foreign_parts =
+		CTranslatorUtils::RelContainsForeignPartitions(md_rel, m_md_accessor);
+	if (contains_foreign_parts)
+	{
+		// Partitioned tables with external/foreign partitions
+		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+				   GPOS_WSZ_LIT(
+					   "Insert with External/foreign partition storage types"));
+	}
+
 	// make note of the operator classes used in the distribution key
 	NoteDistributionPolicyOpclasses(rte);
 
@@ -1228,6 +1238,15 @@ CTranslatorQueryToDXL::TranslateDeleteQueryToDXL()
 				   GPOS_WSZ_LIT("DML(delete) on partitioned tables"));
 	}
 
+	BOOL contains_foreign_parts =
+		CTranslatorUtils::RelContainsForeignPartitions(md_rel, m_md_accessor);
+	if (contains_foreign_parts)
+	{
+		// Partitioned tables with external/foreign partitions
+		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+				   GPOS_WSZ_LIT(
+					   "Delete with External/foreign partition storage types"));
+	}
 	// make note of the operator classes used in the distribution key
 	NoteDistributionPolicyOpclasses(rte);
 
@@ -1309,6 +1328,15 @@ CTranslatorQueryToDXL::TranslateUpdateQueryToDXL()
 				   GPOS_WSZ_LIT("DML(update) on partitioned tables"));
 	}
 
+	BOOL contains_foreign_parts =
+		CTranslatorUtils::RelContainsForeignPartitions(md_rel, m_md_accessor);
+	if (contains_foreign_parts)
+	{
+		// Partitioned tables with external/foreign partitions
+		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+				   GPOS_WSZ_LIT(
+					   "Update with External/foreign partition storage types"));
+	}
 	// make note of the operator classes used in the distribution key
 	NoteDistributionPolicyOpclasses(rte);
 
@@ -3408,22 +3436,6 @@ CTranslatorQueryToDXL::TranslateRTEToDXLLogicalGet(const RangeTblEntry *rte,
 
 	// make note of the operator classes used in the distribution key
 	NoteDistributionPolicyOpclasses(rte);
-
-	IMdIdArray *partition_mdids = md_rel->ChildPartitionMdids();
-	for (ULONG ul = 0; partition_mdids && ul < partition_mdids->Size(); ++ul)
-	{
-		IMDId *part_mdid = (*partition_mdids)[ul];
-		const IMDRelation *partrel = m_md_accessor->RetrieveRel(part_mdid);
-
-		if (partrel->RetrieveRelStorageType() ==
-			IMDRelation::ErelstorageForeign)
-		{
-			// Partitioned tables with external/foreign partitions
-			GPOS_RAISE(
-				gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
-				GPOS_WSZ_LIT("External/foreign partition storage types"));
-		}
-	}
 
 	return dxl_node;
 }

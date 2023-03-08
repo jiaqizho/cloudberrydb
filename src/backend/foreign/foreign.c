@@ -1175,7 +1175,7 @@ gp_foreign_server_id(PG_FUNCTION_ARGS)
  */
 
 ForeignScan *
-BuildForeignScan(Oid relid, Index scanrelid, List *qual, List *targetlist, Query *query, RangeTblEntry * rte)
+BuildForeignScan(Oid relid, Index scanrelid, List *qual, List *targetlist, Query *query, RangeTblEntry *rte)
 {
 	PlannerInfo		*root;
 	root = makeNode(PlannerInfo);
