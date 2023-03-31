@@ -1,0 +1,18 @@
+# Compiled Object files
+**/*.so
+**/*.o
+**/*.lai
+**/*.la
+**/*.a
+**/*.lib
+
+# OSX
+**/.DS_Store 
+Thumbs.db
+
+# Temp files dir
+.tmp/**
+build*/**
+
+# Executables
+*.out
