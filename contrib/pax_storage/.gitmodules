@@ -1,0 +1,3 @@
+[submodule "src/cpp/contrib/googletest"]
+	path = src/cpp/contrib/googletest
+	url = https://code.hashdata.xyz/cloudberry/googletest
