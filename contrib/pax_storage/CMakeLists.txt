@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 option(ENBALE_DEBUG "Enable debug" ON)
 
 # Build gtest options
-option(BUILD_GTEST "Build with google test" OFF)
+option(BUILD_GTEST "Build with google test" ON)
 
 # Compile options
 option(ENABLE_PAX_INDEPENDENT "Compile pax without CBDB context" ON)

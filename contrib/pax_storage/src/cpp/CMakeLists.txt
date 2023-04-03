@@ -1,5 +1,20 @@
 cmake_minimum_required (VERSION 3.11.0)
 
+if (BUILD_GTEST)
+
+# Build gtest and gmock 
+# A example which link gtest/gmock and include gtest/gmock headers:
+#
+# add_executable(test_target source...)
+# add_dependencies(test_target gtest)
+# include_directories(${gtest_SOURCE_DIR}/include)
+# target_link_libraries(test_target gtest)
+add_subdirectory(contrib/googletest)
+
+# Defined tests inside `BUILD_GTEST`
+
+endif(BUILD_GTEST)
+
 set(pax_comm_src
 	comm/local_wrappers.cc)
 
