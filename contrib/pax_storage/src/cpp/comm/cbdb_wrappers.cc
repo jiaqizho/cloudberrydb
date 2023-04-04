@@ -7,8 +7,6 @@ extern "C" {
 #include "utils/elog.h"
 }
 
-#endif
-
 namespace cbdb {
 //---------------------------------------------------------------------------
 //  @class:
@@ -128,3 +126,5 @@ void operator delete(void* ptr) {
 void operator delete[](void* ptr) {
     cbdb::Pfree(ptr);
 }
+
+#endif  // #ifndef PAX_INDEPENDENT_MODE

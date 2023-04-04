@@ -78,7 +78,7 @@ class MicroPartitionWriter {
     // returns the full file name(including directory path) used for write.
     // normally it's <tablespace_dir>/<database_id>/<file_name> for local files,
     // depends on the write options
-    virtual std::string FullFileName() const;
+    virtual std::string FullFileName() const = 0;
 
     // summary callback is invoked after the file is closed.
     // returns MicroPartitionWriter to enable chain call.
