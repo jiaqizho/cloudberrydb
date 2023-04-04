@@ -1,7 +1,13 @@
 #include <cstdlib>
 #include "comm/cbdb_wrappers.h"
 
+#ifdef PAX_INDEPENDENT_MODE
+
 namespace cbdb {
+
+    void ResourceOwnerRememberFile(ResourceOwner owner, int file) { }
+    void ResourceOwnerForgetFile(ResourceOwner owner, int file) { }
+
     void *MemCtxAlloc([[maybe_unused]] MemoryContext ctx, size_t size) {
         return malloc(size);
     }
@@ -38,3 +44,5 @@ void operator delete(void* ptr) {
 void operator delete[](void* ptr) {
     free(ptr);
 }
+
+#endif  // #ifdef PAX_INDEPENDENT_MODE
