@@ -4,10 +4,6 @@
 
 namespace pax {
 
-std::string MicroPartitionWriter::FullFileName() const {
-    return file_system_->BuildPath(writer_options_.file_name);
-}
-
 MicroPartitionWriter* MicroPartitionWriter::SetWriteSummaryCallback
     (std::function<void(const WriteSummary &summary)> &&callback) {
     summary_callback_ = std::move(callback);
