@@ -7,10 +7,12 @@
 extern "C" {
 #include "postgres.h" // NOLINT
 #include "utils/palloc.h"
+#include "utils/plancache.h"
 }
+
 #else
 
-struct MemoryContext {};
+#include "comm/local_warppers.h"
 
 #endif
 

@@ -11,18 +11,28 @@ if (BUILD_GTEST)
 # target_link_libraries(test_target gtest)
 add_subdirectory(contrib/googletest)
 
-# Defined tests inside `BUILD_GTEST`
+file(GLOB TEST_CASE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*/*_test.cc)
 
+add_executable(test_main ${TEST_CASE_SOURCES})
+add_dependencies(test_main gtest gtest_main)
+include_directories(${gtest_SOURCE_DIR}/include)
+target_link_libraries(test_main gtest gtest_main)
+
+target_include_directories(test_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_main pax_storage)
+    
 endif(BUILD_GTEST)
 
 set(pax_comm_src
-	comm/local_wrappers.cc)
+    comm/cbdb_wrappers.cc
+    comm/local_wrappers.cc)
 
 set(pax_exceptions_src
-	exceptions/CException.cc)
+    exceptions/CException.cc)
 
 set(pax_storage_src
-	storage/micro_partition.cc
+    storage/local_file_system.cc
+    storage/micro_partition.cc
     storage/pax.cc)
 
 add_library(pax_exceptions STATIC ${pax_exceptions_src})
