@@ -261,6 +261,7 @@ extern CmpType get_comparison_type(Oid oidOp);
 
 extern List *get_operator_opfamilies(Oid opno);
 extern List *get_index_opfamilies(Oid oidIndex);
+extern Oid default_partition_opfamily_for_type(Oid typeoid);
 
 extern int get_relnatts(Oid relid);
 
