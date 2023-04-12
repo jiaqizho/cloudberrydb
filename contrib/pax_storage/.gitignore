@@ -5,7 +5,8 @@
 **/*.la
 **/*.a
 **/*.lib
-
+# vs-code
+**/.vscode
 # OSX
 **/.DS_Store 
 Thumbs.db
