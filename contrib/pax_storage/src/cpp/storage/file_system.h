@@ -12,7 +12,7 @@ class File {
     virtual void Flush() = 0;
     virtual void Close() = 0;
 
-    virtual std::string GetPath() const = 0;
+    virtual const std::string& GetPath() const = 0;
 };
 
 class FileSystem {

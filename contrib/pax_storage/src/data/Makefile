@@ -2,15 +2,14 @@
 
 MODULE_big = pax
 OBJS = \
-	$(WIN32RES) \
-	paxam_handler.o
+	$(WIN32RES) 
 PG_CPPFLAGS = -I/usr/local/include
 PG_CXXFLAGS = -std=c++14
 
 EXTENSION = pax
 DATA = pax--1.0.sql
 PGFILEDESC = "pax - PAX table access method"
-SHLIB_LINK += -luuid 
+SHLIB_LINK += -luuid -lorc
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
