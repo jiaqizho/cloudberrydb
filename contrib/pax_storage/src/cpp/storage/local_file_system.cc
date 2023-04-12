@@ -4,8 +4,6 @@
 
 namespace pax {
 
-LocalFileSystem* LocalFileSystem::singleton_ = nullptr;
-
 ssize_t LocalFile::Read(void *ptr, size_t n) {
     return read(fd_, ptr, n);
 }
@@ -22,7 +20,7 @@ void LocalFile::Flush() {
     fsync(fd_);
 }
 
-std::string LocalFile::GetPath() const {
+const std::string& LocalFile::GetPath() const {
     return file_path_;
 }
 

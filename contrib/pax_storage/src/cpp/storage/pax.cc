@@ -22,4 +22,15 @@ size_t TableWriter::total_tuples() const {
     return total_tuples_;
 }
 
+void TableWriter::Open() {
+    if(writer_){
+        writer_->Create();
+    }
+}
+ void TableWriter::Close() {
+    if(writer_){
+        writer_->Close();
+    }
+ }
+
 }  // namespace pax
