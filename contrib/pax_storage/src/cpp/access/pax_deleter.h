@@ -11,6 +11,5 @@ class CPaxDeleter {
 
  private:
   Relation rel_;
-
 };  // class CPaxDeleter
 }  // namespace pax

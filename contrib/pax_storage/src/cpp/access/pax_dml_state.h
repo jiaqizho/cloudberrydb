@@ -1,16 +1,16 @@
 #pragma once
+
+#include <memory>
+
+#include "access/pax_deleter.h"
+#include "access/pax_inserter.h"
+#include "comm/local_wrappers.h"
+#include "comm/singleton.h"
+
 extern "C" {
 #include "postgres.h"  // NOLINT
 #include "utils/hsearch.h"
 }
-
-#include <memory>
-#include <mutex>
-
-#include "comm/local_wrappers.h"
-#include "comm/singleton.h"
-#include "pax_deleter.h"
-#include "pax_inserter.h"
 
 extern "C" {
 extern void pax_dml_state_reset_cb(void* _);
