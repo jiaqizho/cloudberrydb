@@ -71,19 +71,22 @@ class CAutoExceptionStack final {
 
 }  // namespace cbdb
 
-#define CBDB_WRAP_START                                                       \
-  sigjmp_buf local_sigjmp_buf;                                                \
-  {                                                                           \
-    CAutoExceptionStack aes(reinterpret_cast<void **>(&PG_exception_stack),   \
-                            reinterpret_cast<void **>(&error_context_stack)); \
-    if (0 == sigsetjmp(local_sigjmp_buf, 0)) {                                \
-    aes.SetLocalJmp(&local_sigjmp_buf)
+#define CBDB_WRAP_START                                             \
+  sigjmp_buf local_sigjmp_buf;                                    \
+  {                                                               \
+      CAutoExceptionStack aes(                                    \
+          reinterpret_cast<void **>(&PG_exception_stack),         \
+          reinterpret_cast<void **>(&error_context_stack));       \
+      if (0 == sigsetjmp(local_sigjmp_buf, 0))                    \
+      {                                                           \
+          aes.SetLocalJmp(&local_sigjmp_buf)
 
-#define CBDB_WRAP_END                                   \
-  }                                                     \
-  else {                                                \
-    CBDB_RAISE(cbdb::CException::ExType::ExTypeCError); \
-  }                                                     \
+#define CBDB_WRAP_END                                               \
+  }                                                               \
+  else                                                            \
+  {                                                               \
+      CBDB_RAISE(cbdb::CException::ExType::ExTypeCError);         \
+  }                                                               \
   }
 
 // override the default new/delete to use current memory context
@@ -97,7 +100,7 @@ extern void *operator new(std::size_t size, MemoryContext ctx);
 extern void *operator new[](std::size_t size, MemoryContext ctx);
 
 namespace cbdb {
-HTAB *HashCreate(const char *tabname, long nelem, const HASHCTL *info,
+HTAB *HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
                  int flags);
 void *HashSearch(HTAB *hashp, const void *keyPtr, HASHACTION action,
                  bool *foundPtr);
@@ -111,5 +114,9 @@ Oid RelationGetRelationId(Relation rel);
 
 void *PointerFromDatum(Datum d);
 int64 Int64FromDatum(Datum d);
+Datum DatumFromCString(const char *src, const size_t length);
+
+Datum DatumFromPointer(const void *p, int16 typlen);
+
 struct varlena *PgDeToastDatumPacked(struct varlena *datum);
 }  // namespace cbdb

@@ -18,9 +18,11 @@ class LocalFile final : public File {
   }
 
   ssize_t Read(void *ptr, size_t n) override;
+  ssize_t Read(void *ptr, size_t n, off_t offset) override;
   ssize_t Write(const void *ptr, size_t n) override;
   void Close() override;
   void Flush() override;
+  uint64_t GetSize() const override;
   const std::string &GetPath() const override;
 
  private:
@@ -30,7 +32,7 @@ class LocalFile final : public File {
 };
 
 class LocalFileSystem final : public FileSystem {
- friend class Singleton<LocalFileSystem>;
+  friend class Singleton<LocalFileSystem>;
  public:
   File *Open(const std::string &file_path) override;
   std::string BuildPath(const File *file) const override;

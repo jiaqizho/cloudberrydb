@@ -9,7 +9,7 @@ extern "C" {
 }
 
 namespace cbdb {
-HTAB *HashCreate(const char *tabname, long nelem, const HASHCTL *info,
+HTAB *HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
                  int flags);
 void *HashSearch(HTAB *hashp, const void *keyPtr, HASHACTION action,
                  bool *foundPtr);

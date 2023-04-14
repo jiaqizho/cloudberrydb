@@ -3,6 +3,7 @@
 #ifndef PAX_INDEPENDENT_MODE
 
 extern "C" {
+#include "postgres.h"  // NOLINT
 #include "access/genam.h"
 #include "access/heapam.h"
 #include "access/skey.h"
@@ -19,8 +20,7 @@ extern "C" {
 #include "commands/vacuum.h"
 #include "nodes/execnodes.h"
 #include "nodes/tidbitmap.h"
-#include "pgstat.h"
-#include "postgres.h"  // NOLINT
+#include "pgstat.h"    // NOLINT
 #include "utils/builtins.h"
 #include "utils/elog.h"
 #include "utils/fmgroids.h"
@@ -92,7 +92,7 @@ void operator delete(void *ptr) { cbdb::Pfree(ptr); }
 void operator delete[](void *ptr) { cbdb::Pfree(ptr); }
 
 #endif  // #ifndef PAX_INDEPENDENT_MODE
-HTAB *cbdb::HashCreate(const char *tabname, long nelem, const HASHCTL *info,
+HTAB *cbdb::HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
                        int flags) {
   CBDB_WRAP_START;
   { return hash_create(tabname, nelem, info, flags); }
@@ -144,6 +144,30 @@ int64 cbdb::Int64FromDatum(Datum d) {
   Datum d2 = d;
   CBDB_WRAP_START;
   { return DatumGetInt64(d2); }
+  CBDB_WRAP_END;
+  return 0;
+}
+
+Datum cbdb::DatumFromCString(const char *src, const size_t length) {
+  CBDB_WRAP_START;
+  {
+    text *result = reinterpret_cast<text *>(palloc(length + VARHDRSZ));
+    SET_VARSIZE(result, length + VARHDRSZ);
+    memcpy(VARDATA(result), src, length);
+    return PointerGetDatum(result);
+  }
+  CBDB_WRAP_END;
+  return 0;
+}
+
+Datum cbdb::DatumFromPointer(const void *p, int16 typlen) {
+  CBDB_WRAP_START;
+  {
+    char *resultptr;
+    resultptr = reinterpret_cast<char *>(palloc(typlen));
+    memcpy(resultptr, p, typlen);
+    return PointerGetDatum(resultptr);
+  }
   CBDB_WRAP_END;
   return 0;
 }
