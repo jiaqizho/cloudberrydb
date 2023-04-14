@@ -1,7 +1,7 @@
-#include "pax_access_handle.h"
+#include "access/pax_access_handle.h"
 
-#include "pax_access.h"
-#include "pax_dml_state.h"
+#include "access/pax_access.h"
+#include "access/pax_dml_state.h"
 
 extern "C" {
 #include "access/heapam.h"
@@ -17,7 +17,7 @@ extern "C" {
 #include "commands/vacuum.h"
 #include "nodes/execnodes.h"
 #include "nodes/tidbitmap.h"
-#include "pgstat.h"
+#include "pgstat.h"  // NOLINT
 #include "utils/memutils.h"
 #include "utils/rel.h"
 }
@@ -58,21 +58,6 @@ void pax_tuple_insert(Relation relation, TupleTableSlot *slot, CommandId cid,
 const TupleTableSlotOps *pax_slot_callbacks(Relation rel) {
   // FIXME: copy from aoco table.  do we need to provide ourself tuple format?
   return &TTSOpsVirtual;
-}
-
-static TableScanDesc pax_beginscan_extractcolumns(Relation rel,
-                                                  Snapshot snapshot,
-                                                  List *targetlist, List *qual,
-                                                  uint32 flags) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static TableScanDesc pax_beginscan_extractcolumns_bm(
-    Relation rel, Snapshot snapshot, List *targetlist, List *qual,
-    List *bitmapqualorig, uint32 flags) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
 }
 
 static void pax_rescan(TableScanDesc scan, ScanKey key, bool set_params,
@@ -175,8 +160,6 @@ static void pax_finish_bulk_insert(Relation relation, int options) {
                   errmsg("feature not supported on pax relations")));
 }
 
-
-
 static bool pax_fetch_row_version(Relation relation, ItemPointer tid,
                                   Snapshot snapshot, TupleTableSlot *slot) {
   ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -211,7 +194,7 @@ static void pax_relation_set_new_filenode(Relation rel,
                                           TransactionId *freezeXid,
                                           MultiXactId *minmulti) {
   *freezeXid = *minmulti = InvalidTransactionId;
-  //todo: add c call c++ wrapper
+  // todo: add c call c++ wrapper
   pax::CPaxAccess::PaxCreateAuxBlocks(rel, newrnode->relNode);
 }
 
@@ -328,8 +311,6 @@ static TableAmRoutine pax_column_methods = {
     .type = T_TableAmRoutine,
     .slot_callbacks = pax_slot_callbacks,
     .scan_begin = pax_beginscan,
-    .scan_begin_extractcolumns = pax_beginscan_extractcolumns,
-    .scan_begin_extractcolumns_bm = pax_beginscan_extractcolumns_bm,
     .scan_end = pax_endscan,
     .scan_rescan = pax_rescan,
     .scan_getnextslot = pax_getnextslot,
@@ -376,8 +357,7 @@ static TableAmRoutine pax_column_methods = {
     .scan_bitmap_next_block = pax_scan_bitmap_next_block,
     .scan_bitmap_next_tuple = pax_scan_bitmap_next_tuple,
     .scan_sample_next_block = pax_scan_sample_next_block,
-    .scan_sample_next_tuple = pax_scan_sample_next_tuple
-};
+    .scan_sample_next_tuple = pax_scan_sample_next_tuple};
 
 Datum pax_tableam_handler(PG_FUNCTION_ARGS) {
   PG_RETURN_POINTER(&pax_column_methods);
@@ -388,5 +368,4 @@ void _PG_init(void) {
   pax_dml_init_hook = pax_dml_init;
   pax_dml_finish_hook = pax_dml_finish;
 }
-
 }

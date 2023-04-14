@@ -1,11 +1,14 @@
-#include "orc_native_micro_partition.h"
+#include "storage/orc_native_micro_partition.h"
+
+#include <utility>
 
 #include "catalog/pax_aux_table.h"
+#include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/file_system.h"
 
 extern "C" {
-#include "postgres.h"
+#include "postgres.h"  // NOLINT
 }
 
 namespace pax {
@@ -18,15 +21,9 @@ void OrcNativeMicroPartitionWriter::Create() {
   File* file;
   std::string file_path;
   std::string block_id = cbdb::GenRandomBlockId();
-  const char* base_path = GetDatabasePath(writer_options_.relation->rd_node.dbNode,
-                                  writer_options_.relation->rd_node.spcNode);
-  file_path.append(std::string(DataDir));
-  file_path.append("/");
-  file_path.append(std::string(base_path));
-  file_path.append("/");
-  file_path.append(std::to_string(writer_options_.relation->rd_node.relNode));
-  file_path.append("_");
-  file_path.append(block_id);
+
+  file_path =
+      TableMetadata::BuildPaxFilePath(writer_options_.relation, block_id);
 
   file = file_system_->Open(std::move(file_path));
   Assert(file != nullptr);
@@ -77,9 +74,43 @@ const std::string OrcNativeMicroPartitionWriter::FullFileName() const {
 }
 
 void OrcNativeMicroPartitionWriter::AddMicroPartitionEntry() {
-  if(this->summary_callback_)
-  {
+  if (this->summary_callback_) {
     summary_callback_(summary_);
   }
 }
+
+OrcNativeMicroPartitionReader::OrcNativeMicroPartitionReader(
+    const FileSystemPtr& fs)
+    : MicroPartitionReader(fs) {}
+
+OrcNativeMicroPartitionReader::~OrcNativeMicroPartitionReader() {}
+
+void OrcNativeMicroPartitionReader::Open(const ReaderOptions& options) {
+  File* file = file_system_->Open(options.file_name);
+  Assert(file != nullptr);
+
+  reader_ = new OrcFileReader(file);
+}
+void OrcNativeMicroPartitionReader::Close() {
+  if (reader_) {
+    reader_->Close();
+    delete reader_;
+    reader_ = nullptr;
+  }
+}
+bool OrcNativeMicroPartitionReader::ReadTuple(CTupleSlot* slot) {
+  assert(reader_);
+  return reader_->ReadNextBatch(slot);
+}
+size_t OrcNativeMicroPartitionReader::Length() const {
+  // TODO(gongxun): get length from orc file
+  assert(false);
+  return 0;
+}
+size_t OrcNativeMicroPartitionReader::NumTuples() const {
+  // TODO(gongxun): get num tuples from orc file
+  assert(false);
+  return 0;
+}
+
 }  // namespace pax

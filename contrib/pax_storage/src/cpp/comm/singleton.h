@@ -1,7 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <mutex>
+#include <mutex> // NOLINT
+#include <utility>
 namespace pax {
 
 template <typename T>

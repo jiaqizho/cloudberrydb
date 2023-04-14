@@ -27,11 +27,11 @@ const std::string & MicroPartitionWriter::FileName() const {
 
 
 const MicroPartitionReader::ReaderOptions &MicroPartitionReader::options() const {
-    return *options_;
+    return options_;
 }
 
 const std::string &MicroPartitionReader::file_name() const {
-    return options_->file_name;
+    return options_.file_name;
 }
 
 }  // namespace pax

@@ -7,7 +7,7 @@
 #ifndef PAX_INDEPENDENT_MODE
 
 extern "C" {
-#include "postgres.h"
+#include "postgres.h"  // NOLINT
 #include "access/tupdesc.h"
 #include "executor/tuptable.h"
 #include "storage/relfilenode.h"
@@ -27,8 +27,16 @@ namespace pax {
 
 class CTupleSlot {
  public:
-  CTupleSlot(TupleTableSlot *slot) : slot_(slot) {}
+  explicit CTupleSlot(TupleTableSlot *slot) : slot_(slot) {}
   TupleTableSlot *GetTupleTableSlot() { return slot_; }
+
+  void ClearTuple() { slot_->tts_ops->clear(slot_); }
+
+  void StoreVirtualTuple() {
+    slot_->tts_flags &= ~TTS_FLAG_EMPTY;
+    slot_->tts_nvalid = slot_->tts_tupleDescriptor->natts;
+  }
+
   // todo convert TupleSlot To common column buffer? and then common column
   // buffer to orc/pax/parquet?
  private:
@@ -113,13 +121,19 @@ class MicroPartitionWriter {
   StatsCollector *collector_ = nullptr;
 };
 
+class MicroPartitionReader;
+using MicroPartitionReaderPtr = pax::MicroPartitionReader *;
+
 class MicroPartitionReader {
  public:
   struct ReaderOptions {
     // file name(excluding directory path) for read
     std::string file_name;
     // additioinal info to initialize a reader.
+    std::string block_id;
   };
+
+  explicit MicroPartitionReader(const FileSystemPtr &fs) : file_system_(fs) {}
 
   virtual ~MicroPartitionReader() = default;
 
@@ -135,7 +149,7 @@ class MicroPartitionReader {
   // NOTE: the ctid is stored in slot, mapping from block_id to micro partition
   // is also created during this stage, no matter the map relation is needed or
   // not. We may optimize to avoid creating the map relation later.
-  virtual CTupleSlot *ReadTuple(CTupleSlot *slot) = 0;
+  virtual bool ReadTuple(CTupleSlot *slot) = 0;
 
   virtual size_t Length() const = 0;
 
@@ -150,7 +164,8 @@ class MicroPartitionReader {
   virtual void SetFilter(Filter *filter) = 0;
 
  protected:
-  ReaderOptions *options_;
+  ReaderOptions options_;
+  FileSystem *file_system_ = nullptr;
 };
 
 }  // namespace pax

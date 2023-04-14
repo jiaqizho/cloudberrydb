@@ -28,9 +28,6 @@ class CPaxAccess {
   static void PaxTupleInsert(const Relation relation, TupleTableSlot *slot,
                              const CommandId cid, const int options,
                              const BulkInsertState bistate);
-
 };  // class CPaxAccess
 
 }  // namespace pax
-
-extern "C" {}
