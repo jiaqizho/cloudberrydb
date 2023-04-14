@@ -1,6 +1,8 @@
-#include "pax_aux_table.h"
+#include "catalog/pax_aux_table.h"
 
+#include "catalog/micro_partition_metadata.h"
 #include "comm/cbdb_wrappers.h"
+#include "catalog/table_metadata.h"
 
 const std::string cbdb::GenRandomBlockId() {
   CBDB_WRAP_START;
@@ -39,8 +41,8 @@ void cbdb::InsertPaxBlockEntry(Oid relid, const char *blockname,
   {
     rel = table_open(relid, RowExclusiveLock);
     natts = Natts_pg_pax_block_tables;
-    values = (Datum *)palloc(sizeof(Datum) * natts);
-    nulls = (bool *)palloc0(sizeof(bool) * natts);
+    values = reinterpret_cast<Datum *>(palloc(sizeof(Datum) * natts));
+    nulls = reinterpret_cast<bool *>(palloc0(sizeof(bool) * natts));
 
     Assert(blockname);
     namestrcpy(&ptblockname, blockname);
@@ -124,6 +126,80 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel,
       aux.objectSubId = 0;
       recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
     }
+  }
+  CBDB_WRAP_END;
+}
+
+void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
+    std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result,
+    const Relation relation, const Relation pg_blockfile_rel,
+    const Snapshot paxMetaDataSnapshot) {
+  TupleDesc pg_paxblock_dsc;
+  HeapTuple tuple;
+  SysScanDesc pax_scan;
+  Datum blockid, tup_count;
+  bool is_null;
+
+  CBDB_WRAP_START;
+  {
+    pg_paxblock_dsc = RelationGetDescr(pg_blockfile_rel);
+    pax_scan = systable_beginscan(pg_blockfile_rel, InvalidOid, false,
+                                  paxMetaDataSnapshot, 0, NULL);
+
+    while ((tuple = systable_getnext(pax_scan)) != NULL) {
+      blockid = heap_getattr(tuple, Anum_pg_pax_block_tables_ptblockname,
+                             pg_paxblock_dsc, &is_null);
+      if (is_null)
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+                        errmsg("got invalid segno value: NULL")));
+
+      std::string file_name = pax::TableMetadata::BuildPaxFilePath(
+          relation, DatumGetName(blockid)->data);
+
+      std::shared_ptr<pax::MicroPartitionMetadata> meta_info =
+          std::make_shared<pax::MicroPartitionMetadata>(
+              DatumGetName(blockid)->data, file_name);
+
+      tup_count = heap_getattr(tuple, Anum_pg_pax_block_tables_pttupcount,
+                               pg_paxblock_dsc, &is_null);
+      if (is_null)
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+                        errmsg("got invalid tupcount value: NULL")));
+      meta_info->setTupleCount(tup_count);
+
+      // TODO(gongxun): add more statistics info
+
+      result->push_back(meta_info);
+    }
+
+    systable_endscan(pax_scan);
+  }
+  CBDB_WRAP_END;
+}
+
+void cbdb::GetAllMicroPartitionMetadata(
+    const Relation parentrel, const Snapshot paxMetaDataSnapshot,
+    std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result) {
+  Relation pg_paxblock_rel;
+  Oid block_rel_id;
+
+  CBDB_WRAP_START;
+  {
+    GetPaxTablesEntryAttributes(parentrel->rd_id, &block_rel_id, NULL, NULL);
+
+    if (block_rel_id == InvalidOid)
+      elog(ERROR,
+           "could not find pg_paxblock_rel aux table for pax table \"%s\"",
+           RelationGetRelationName(parentrel));
+
+    Assert(RelationIsPax(parentrel));
+
+    pg_paxblock_rel = table_open(block_rel_id, AccessShareLock);
+
+    GetAllBlockFileInfo_PG_PaxBlock_Relation(result, parentrel, pg_paxblock_rel,
+                                             paxMetaDataSnapshot);
+
+    table_close(pg_paxblock_rel, AccessShareLock);
   }
   CBDB_WRAP_END;
 }

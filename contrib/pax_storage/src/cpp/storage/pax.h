@@ -1,6 +1,11 @@
 #pragma once
+#include <assert.h>
+
+#include <memory>
 #include <optional>
 
+#include "catalog/iterator.h"
+#include "catalog/micro_partition_metadata.h"
 #include "storage/micro_partition.h"
 
 namespace pax {
@@ -51,25 +56,69 @@ class TableWriter {
   size_t total_tuples_ = 0;
 };
 
-template <typename elements = MicroPartitionReader::ReaderOptions,
-          typename iterator_tag = std::bidirectional_iterator_tag>
 class TableReader {
  public:
-  explicit TableReader(std::iterator<iterator_tag, elements> iterator)
-      : iterator_(iterator) {}
+  explicit TableReader(
+      const MicroPartitionReaderPtr reader,
+      std::shared_ptr<IteratorBase<MicroPartitionMetadata>> iterator)
+      : iterator_(iterator), reader_(reader), is_empty_(true) {}
 
-  virtual void Open() {}
+  virtual void Open() {
+    if (HasNextFile()) {
+      OpenNextFile();
+      is_empty_ = false;
+    }
+  }
 
-  virtual void Close() {}
+  virtual void Close() {
+    assert(reader_);
+    reader_->Close();
+  }
 
   size_t num_tuples() const { return num_tuples_; }
 
-  virtual CTupleSlot *ReadTuple(CTupleSlot *slot) = 0;
+  virtual bool ReadTuple(CTupleSlot *slot) {
+    if (is_empty_) {
+      return false;
+    }
 
- protected:
+    slot->ClearTuple();
+    while (!reader_->ReadTuple(slot)) {
+      if (!HasNextFile()) {
+        return false;
+      }
+      NextFile();
+    }
+    slot->StoreVirtualTuple();
+    return true;
+  }
+
+  virtual bool HasNextFile() const { return iterator_->HasNext(); }
+
+  virtual void NextFile() {
+    if (reader_) {
+      reader_->Close();
+    }
+
+    if (!HasNextFile()) {
+      return;
+    }
+    OpenNextFile();
+  }
+
+ private:
+  void OpenNextFile() {
+    auto it = iterator_->Next();
+
+    MicroPartitionReader::ReaderOptions options;
+    options.block_id = it->getMicroPartitionId();
+    options.file_name = it->getFileName();
+    reader_->Open(options);
+  }
+  std::shared_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
   MicroPartitionReader *reader_ = nullptr;
-  std::iterator<iterator_tag, elements> iterator_;
   size_t num_tuples_ = 0;
+  bool is_empty_ = false;
 };
 
 }  // namespace pax

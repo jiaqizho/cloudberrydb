@@ -1,8 +1,11 @@
 #pragma once
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include "catalog/pax_aux_table.h"
+#include "catalog/micro_partition_metadata.h"
 extern "C" {
 #include "postgres.h"  // NOLINT
 #include "access/genam.h"
@@ -21,7 +24,7 @@ extern "C" {
 #include "commands/vacuum.h"
 #include "nodes/execnodes.h"
 #include "nodes/tidbitmap.h"
-#include "pgstat.h"
+#include "pgstat.h" // NOLINT
 #include "utils/builtins.h"
 #include "utils/elog.h"
 #include "utils/fmgroids.h"
@@ -48,4 +51,14 @@ void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
 void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount);
 
 void PaxCreateMicroPartitionTable(Relation rel, Oid relfilenode);
+
+void GetAllBlockFileInfo_PG_PaxBlock_Relation(
+    std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result,
+    const Relation relation, const Relation pg_blockfile_rel,
+    const Snapshot paxMetaDataSnapshot);
+
+void GetAllMicroPartitionMetadata(
+    const Relation parentrel, const Snapshot paxMetaDataSnapshot,
+    std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result);
+
 }  // namespace cbdb

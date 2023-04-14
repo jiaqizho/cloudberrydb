@@ -43,10 +43,11 @@ set(pax_access_src
 	access/pax_deleter.cc 
 	access/pax_dml_state.cc
 	access/pax_inserter.cc 
-	access/pax_scan_desc.cc)  
+	access/pax_scanner.cc)  
 set(pax_catalog_src
-    catalog/pax_aux_table.cc)
+    catalog/pax_aux_table.cc
+    catalog/table_metadata.cc)
 
 add_library(pax_storage SHARED ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
 target_include_directories(pax_storage PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "/home/gpadmin/workspace/cbdb/src/include")
-target_link_libraries(pax_storage PUBLIC uuid orc)  
+target_link_libraries(pax_storage PUBLIC uuid orc)

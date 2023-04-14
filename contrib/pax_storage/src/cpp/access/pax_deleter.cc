@@ -1,4 +1,4 @@
-#include "pax_deleter.h"
+#include "access/pax_deleter.h"
 
 namespace pax {
 CPaxDeleter::CPaxDeleter(Relation rel) : rel_(rel) {}
