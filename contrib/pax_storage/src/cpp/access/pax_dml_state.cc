@@ -1,4 +1,4 @@
-#include "pax_dml_state.h"
+#include "access/pax_dml_state.h"
 
 namespace pax {
 // class CPaxDmlStateLocal
@@ -31,14 +31,14 @@ void CPaxDmlStateLocal::FinishDmlState(const Relation rel,
   if (!state) return;
 
   if (state->deleter) {
-    // TODO: deleter finish
+    // TODO(gongxun): deleter finish
     delete state->deleter;
     state->deleter = nullptr;
-    //FIXME: it's update operation, maybe we should do something here
+    // FIXME: it's update operation, maybe we should do something here
   }
 
   if (state->inserter) {
-    // TODO: inserter finish
+    // TODO(gongxun): inserter finish
     state->inserter->FinishInsert();
     delete state->inserter;
     state->inserter = nullptr;
@@ -48,7 +48,7 @@ void CPaxDmlStateLocal::FinishDmlState(const Relation rel,
 CPaxInserter *CPaxDmlStateLocal::GetInserter(const Relation &rel) {
   PaxDmlState *state;
   state = FindDmlState(cbdb::RelationGetRelationId(rel));
-  // TODO: switch memory context??
+  // TODO(gongxun): switch memory context??
   if (state->inserter == nullptr) {
     state->inserter = new CPaxInserter(rel);
   }
@@ -58,7 +58,7 @@ CPaxInserter *CPaxDmlStateLocal::GetInserter(const Relation &rel) {
 CPaxDeleter *CPaxDmlStateLocal::GetDeleter(const Relation &rel) {
   PaxDmlState *state;
   state = FindDmlState(cbdb::RelationGetRelationId(rel));
-  // TODO: switch memory context??
+  // TODO(gongxun): switch memory context??
   if (state->deleter == nullptr) {
     state->deleter = new CPaxDeleter(rel);
   }
@@ -70,8 +70,8 @@ PaxDmlState *CPaxDmlStateLocal::EntryDmlState(const Oid &oid) {
   bool found;
   Assert(this->dml_descriptor_tab_);
 
-  state = (PaxDmlState *)cbdb::HashSearch(this->dml_descriptor_tab_, &oid,
-                                          HASH_ENTER, &found);
+  state = reinterpret_cast<PaxDmlState *>(
+      cbdb::HashSearch(this->dml_descriptor_tab_, &oid, HASH_ENTER, &found));
   state->inserter = nullptr;
   state->deleter = nullptr;
   Assert(!found);
@@ -83,8 +83,8 @@ PaxDmlState *CPaxDmlStateLocal::RemoveDmlState(const Oid &oid) {
   Assert(this->dml_descriptor_tab_);
 
   PaxDmlState *state;
-  state = (PaxDmlState *)cbdb::HashSearch(this->dml_descriptor_tab_, &oid,
-                                     HASH_REMOVE, NULL);
+  state = reinterpret_cast<PaxDmlState *>(
+      cbdb::HashSearch(this->dml_descriptor_tab_, &oid, HASH_REMOVE, NULL));
 
   if (!state) return NULL;
 
@@ -96,13 +96,13 @@ PaxDmlState *CPaxDmlStateLocal::RemoveDmlState(const Oid &oid) {
 
 PaxDmlState *CPaxDmlStateLocal::FindDmlState(const Oid &oid) {
   Assert(this->dml_descriptor_tab_);
-  
+
   if (this->last_used_state_ && this->last_used_state_->oid == oid)
     return last_used_state_;
 
   PaxDmlState *state;
-  state = (PaxDmlState *)cbdb::HashSearch(this->dml_descriptor_tab_, &oid, HASH_FIND,
-                                     NULL);
+  state = reinterpret_cast<PaxDmlState *>(
+      cbdb::HashSearch(this->dml_descriptor_tab_, &oid, HASH_FIND, NULL));
   Assert(state);
 
   this->last_used_state_ = state;

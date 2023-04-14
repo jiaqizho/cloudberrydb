@@ -1,6 +1,6 @@
-#include "pax_inserter.h"
-#include "catalog/pax_aux_table.h"
+#include "access/pax_inserter.h"
 
+#include "catalog/pax_aux_table.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
 #include "storage/local_file_system.h"
@@ -15,19 +15,19 @@ CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
   FileSystem *fs = Singleton<LocalFileSystem>::GetInstance();
   MicroPartitionWriter *micro_partition_writer =
       new OrcNativeMicroPartitionWriter(options, fs);
-    
-  micro_partition_writer->SetWriteSummaryCallback(std::bind(&CPaxInserter::AddMicroPartitionEntry, this, std::placeholders::_1));
+
+  micro_partition_writer->SetWriteSummaryCallback(std::bind(
+      &CPaxInserter::AddMicroPartitionEntry, this, std::placeholders::_1));
 
   writer_ = new TableWriter(micro_partition_writer);
   writer_->Open();
 }
 
-CPaxInserter::~CPaxInserter() {
-}
+CPaxInserter::~CPaxInserter() {}
 
 void CPaxInserter::InsertTuple(Relation relation, TupleTableSlot *slot,
-                                 CommandId cid, int options,
-                                 BulkInsertState bistate) {
+                               CommandId cid, int options,
+                               BulkInsertState bistate) {
   Assert(relation == rel_);
   slot->tts_tableOid = cbdb::RelationGetRelationId(relation);
   CTupleSlot cslot(slot);
@@ -40,10 +40,12 @@ void CPaxInserter::FinishInsert() {
   writer_ = nullptr;
 }
 
-void CPaxInserter::AddMicroPartitionEntry(const WriteSummary  &summary) {
+void CPaxInserter::AddMicroPartitionEntry(const WriteSummary &summary) {
   Oid pax_block_tables_rel_id;
-  cbdb::GetMicroPartitionEntryAttributes(rel_->rd_id, &pax_block_tables_rel_id, NULL, NULL);
-  cbdb::InsertPaxBlockEntry(pax_block_tables_rel_id, summary.block_id.c_str(), summary.num_tuples);
+  cbdb::GetMicroPartitionEntryAttributes(rel_->rd_id, &pax_block_tables_rel_id,
+                                         NULL, NULL);
+  cbdb::InsertPaxBlockEntry(pax_block_tables_rel_id, summary.block_id.c_str(),
+                            summary.num_tuples);
 }
 
 }  // namespace pax

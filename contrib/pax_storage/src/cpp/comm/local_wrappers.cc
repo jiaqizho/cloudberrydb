@@ -1,6 +1,6 @@
-#include <cstdlib>
+#include "comm/local_wrappers.h"
 
-#include "comm/cbdb_wrappers.h"
+#include <cstdlib>
 
 #ifdef PAX_INDEPENDENT_MODE
 
@@ -34,7 +34,7 @@ void operator delete(void *ptr) { free(ptr); }
 
 void operator delete[](void *ptr) { free(ptr); }
 
-HTAB *cbdb::HashCreate(const char *tabname, long nelem, const HASHCTL *info,
+HTAB *cbdb::HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
                        int flags) {
   return hash_create(tabname, nelem, info, flags);
 }
@@ -56,5 +56,5 @@ void cbdb::MemoryCtxRegisterResetCallback(MemoryContext context,
   MemoryContextRegisterResetCallback(context, cb);
 }
 
-Oid cbdb::RelationGetRelationId(Relation rel){return RelationGetRelid(rel)};
+Oid cbdb::RelationGetRelationId(Relation rel) { return RelationGetRelid(rel) }
 #endif  // #ifdef PAX_INDEPENDENT_MODE
