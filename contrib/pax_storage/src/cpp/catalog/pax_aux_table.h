@@ -50,7 +50,11 @@ void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
 
 void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount);
 
-void PaxCreateMicroPartitionTable(Relation rel, Oid relfilenode);
+void PaxCreateMicroPartitionTable(const Relation rel);
+
+void PaxTransactionalTruncateTable(const Oid blocksrelid);
+
+void PaxNonTransactionalTruncateTable(const Oid blocksrelid);
 
 void GetAllBlockFileInfo_PG_PaxBlock_Relation(
     std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result,
