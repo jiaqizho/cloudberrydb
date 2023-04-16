@@ -6,9 +6,14 @@
 #include "comm/cbdb_wrappers.h"
 
 namespace pax {
-void CPaxAccess::PaxCreateAuxBlocks(const Relation relation,
-                                    const Oid relfilenode) {
-  cbdb::PaxCreateMicroPartitionTable(relation, relfilenode);
+void CPaxAccess::PaxCreateAuxBlocks(const Relation relation) {
+  cbdb::PaxCreateMicroPartitionTable(relation);
+}
+void CPaxAccess::PaxTransactionalTruncateTable(const Oid blocksrelid) {
+  cbdb::PaxTransactionalTruncateTable(blocksrelid);
+}
+void CPaxAccess::PaxNonTransactionalTruncateTable(const Oid blocksrelid) {
+  cbdb::PaxNonTransactionalTruncateTable(blocksrelid);
 }
 void CPaxAccess::PaxTupleInsert(const Relation relation, TupleTableSlot *slot,
                                 const CommandId cid, const int options,

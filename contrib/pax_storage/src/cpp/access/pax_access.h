@@ -11,9 +11,9 @@ extern "C" {
 namespace pax {
 class CPaxAccess {
  public:
-  static void PaxCreateAuxBlocks(const Relation relation,
-                                 const Oid relfilenode);
-
+  static void PaxCreateAuxBlocks(const Relation relation);
+  static void PaxTransactionalTruncateTable(const Oid blocksrelid);
+  static void PaxNonTransactionalTruncateTable(const Oid blocksrelid);
   static TableScanDesc PaxBeginScan(const Relation relation,
                                     const Snapshot snapshot, const int nkeys,
                                     const struct ScanKeyData *key,

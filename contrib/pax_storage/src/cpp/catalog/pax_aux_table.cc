@@ -67,67 +67,90 @@ void cbdb::InsertPaxBlockEntry(Oid relid, const char *blockname,
   CBDB_WRAP_END;
 }
 
-void cbdb::PaxCreateMicroPartitionTable(const Relation rel,
-                                        const Oid relfilenode) {
+void cbdb::PaxCreateMicroPartitionTable(const Relation rel) {
   Relation pg_class_desc;
   char *blocks_relname;
   Oid blocks_relid;
   Oid relid;
   Oid blocks_namespaceId;
+  Oid rd_id;
   TupleDesc tupdesc;
 
-  CBDB_WRAP_START;
+  pg_class_desc = table_open(RelationRelationId, RowExclusiveLock);
+  rd_id = RelationGetRelid(rel);
+
+  // 1. create blocks table.
+  blocks_relname = psprintf("pg_pax_blocks_%u", rd_id);
+  blocks_namespaceId = PG_PAXAUX_NAMESPACE;
+  blocks_relid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId,
+                                      Anum_pg_class_oid, blocks_relname,
+                                      blocks_namespaceId);
+  tupdesc = CreateTemplateTupleDesc(2);
+  TupleDescInitEntry(tupdesc, (AttrNumber)1, "ptblockname", NAMEOID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)2, "pttupcount", INT4OID, -1, 0);
+  relid = heap_create_with_catalog(
+      blocks_relname, blocks_namespaceId, rel->rd_rel->reltablespace,
+      blocks_relid, InvalidOid, InvalidOid, rel->rd_rel->relowner,
+      HEAP_TABLE_AM_OID, tupdesc, NIL, 'r', rel->rd_rel->relpersistence,
+      rel->rd_rel->relisshared, RelationIsMapped(rel), ONCOMMIT_NOOP,
+      NULL,                         /* GP Policy */
+      (Datum)0, false,              /* use _user_acl */
+      true, true, InvalidOid, NULL, /* typeaddress */
+      false /* valid_opts */);
+
+  CommandCounterIncrement();
+
+  // 2. insert entry or update to pg_pax_tables.
+  InsertPaxTablesEntry(rel->rd_id, relid, "", 0);
+
+  CommandCounterIncrement();
+
+  table_close(pg_class_desc, NoLock);
+
+  // 3. record pg_depend, pg_pax_blocks_<xxx> depends relation.
   {
-    pg_class_desc = table_open(RelationRelationId, RowExclusiveLock);
+    ObjectAddress base;
+    ObjectAddress aux;
+    base.classId = RelationRelationId;
+    base.objectId = rel->rd_id;
+    base.objectSubId = 0;
+    aux.classId = RelationRelationId;
+    aux.objectId = relid;
+    aux.objectSubId = 0;
+    recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
 
-    // create blocks table
-    blocks_relname = psprintf("pg_pax_blocks_%d", relfilenode);
-    blocks_namespaceId = PG_PAXAUX_NAMESPACE;
-    blocks_relid =
-        GetNewOidForRelation(pg_class_desc, ClassOidIndexId, Anum_pg_class_oid,
-                             blocks_relname, blocks_namespaceId);
-
-    tupdesc = CreateTemplateTupleDesc(2);
-    TupleDescInitEntry(tupdesc, (AttrNumber)1, "ptblockname", NAMEOID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber)2, "pttupcount", INT4OID, -1, 0);
-    relid = heap_create_with_catalog(
-        blocks_relname, blocks_namespaceId, rel->rd_rel->reltablespace,
-        blocks_relid, InvalidOid, InvalidOid, rel->rd_rel->relowner,
-        HEAP_TABLE_AM_OID, tupdesc, NIL, 'r', rel->rd_rel->relpersistence,
-        rel->rd_rel->relisshared, RelationIsMapped(rel), ONCOMMIT_NOOP, NULL,
-        (Datum)0, false, true, true, InvalidOid, NULL, false);
-    CommandCounterIncrement();
-
-    // insert entry to pg_pax_tables
-    InsertPaxTablesEntry(rel->rd_id, relid, "", 0);
-
-    CommandCounterIncrement();
-
-    table_close(pg_class_desc, NoLock);
-
-    // record pg_depend, pg_pax_blocks_<xxx> depends relation
-    {
-      ObjectAddress base;
-      ObjectAddress aux;
-      base.classId = RelationRelationId;
-      base.objectId = rel->rd_id;
-      base.objectSubId = 0;
-      aux.classId = RelationRelationId;
-      aux.objectId = relid;
-      aux.objectSubId = 0;
-      recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
-
-      // pg_pax_tables single row depend
-      base.classId = RelationRelationId;
-      base.objectId = rel->rd_id;
-      base.objectSubId = 0;
-      aux.classId = PaxTablesRelationId;
-      aux.objectId = rel->rd_id;
-      aux.objectSubId = 0;
-      recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
-    }
+    // pg_pax_tables single row depend
+    base.classId = RelationRelationId;
+    base.objectId = rel->rd_id;
+    base.objectSubId = 0;
+    aux.classId = PaxTablesRelationId;
+    aux.objectId = rel->rd_id;
+    aux.objectSubId = 0;
+    recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
   }
-  CBDB_WRAP_END;
+}
+
+void cbdb::PaxTransactionalTruncateTable(const Oid blocksrelid) {
+  Relation blockrel;
+
+  Assert(blocksrelid != InvalidOid);
+  // truncate already exist pax block auxiliary table.
+  blockrel = relation_open(blocksrelid, AccessExclusiveLock);
+
+  /*TODO1 pending-delete operation should be applied here. */
+  RelationSetNewRelfilenode(blockrel, blockrel->rd_rel->relpersistence);
+  relation_close(blockrel, NoLock);
+}
+
+void cbdb::PaxNonTransactionalTruncateTable(const Oid blocksrelid) {
+  Relation blockrel;
+
+  Assert(blocksrelid != InvalidOid);
+  blockrel = relation_open(blocksrelid, AccessExclusiveLock);
+
+  // Immediate, non-rollbackable truncation is OK.
+  heap_truncate_one_rel(blockrel);
+  relation_close(blockrel, NoLock);
 }
 
 void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
