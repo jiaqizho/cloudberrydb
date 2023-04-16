@@ -193,14 +193,41 @@ static void pax_relation_set_new_filenode(Relation rel,
                                           char persistence,
                                           TransactionId *freezeXid,
                                           MultiXactId *minmulti) {
+  HeapTuple tupcache;
+  Oid blocksrelid;
   *freezeXid = *minmulti = InvalidTransactionId;
-  // todo: add c call c++ wrapper
-  pax::CPaxAccess::PaxCreateAuxBlocks(rel, newrnode->relNode);
+
+  elog(DEBUG1, "pax_relation_set_new_filenode:%d/%d/%d", newrnode->dbNode,
+       newrnode->spcNode, newrnode->relNode);
+
+  // create pg_pax_blocks_<pax_table_oid>
+  tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(rel));
+  if (HeapTupleIsValid(tupcache)) {
+    blocksrelid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
+    ReleaseSysCache(tupcache);
+    pax::CPaxAccess::PaxTransactionalTruncateTable(blocksrelid);
+  } else {
+    pax::CPaxAccess::PaxCreateAuxBlocks(rel);
+  }
 }
 
+// * non transactional truncate table case:
+// create table inside transactional block, and then truncate table inside transactional block.
+// create table outside transactional block, insert data and truncate table inside transactional block.
 static void pax_relation_nontransactional_truncate(Relation rel) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+  HeapTuple tupcache;
+  Oid blocksrelid;
+
+  elog(DEBUG1, "pax_relation_nontransactional_truncate:%d/%d/%d", rel->rd_node.dbNode,
+       rel->rd_node.spcNode, rel->rd_node.relNode);
+
+  tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(rel));
+  if (!HeapTupleIsValid(tupcache))
+      ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                      errmsg("relid with %d find no oid of the aux relation in pg_pax_tables.", rel->rd_id)));
+  blocksrelid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
+  ReleaseSysCache(tupcache);
+  pax::CPaxAccess::PaxNonTransactionalTruncateTable(blocksrelid);
 }
 
 static void pax_relation_copy_data(Relation rel, const RelFileNode *newrnode) {
