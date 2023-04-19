@@ -3,9 +3,6 @@
 #include <string>
 
 #include "exceptions/CException.h"
-
-#ifndef PAX_INDEPENDENT_MODE
-
 extern "C" {
 #include "postgres.h"  // NOLINT
 #include "utils/hsearch.h"
@@ -16,11 +13,12 @@ extern "C" {
 #include "utils/relcache.h"
 }
 
-#else
-
-#include "comm/local_warppers.h"
-
-#endif
+namespace cbdb {
+void *Palloc(size_t size);
+void *Palloc0(size_t size);
+void Pfree(void *ptr);
+void *MemCtxAlloc(MemoryContext ctx, size_t size);
+}  // namespace cbdb
 
 namespace cbdb {
 //---------------------------------------------------------------------------
@@ -71,6 +69,7 @@ class CAutoExceptionStack final {
 
 }  // namespace cbdb
 
+// clang-format off
 #define CBDB_WRAP_START                                             \
   sigjmp_buf local_sigjmp_buf;                                    \
   {                                                               \
@@ -88,6 +87,7 @@ class CAutoExceptionStack final {
       CBDB_RAISE(cbdb::CException::ExType::ExTypeCError);         \
   }                                                               \
   }
+// clang-format on
 
 // override the default new/delete to use current memory context
 extern void *operator new(std::size_t size);

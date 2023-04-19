@@ -19,25 +19,19 @@ OrcNativeMicroPartitionWriter::OrcNativeMicroPartitionWriter(
 
 void OrcNativeMicroPartitionWriter::Create() {
   File* file;
-  std::string file_path;
-  std::string block_id = cbdb::GenRandomBlockId();
-
-  file_path =
-      TableMetadata::BuildPaxFilePath(writer_options_.relation, block_id);
-
-  file = file_system_->Open(std::move(file_path));
+  file = file_system_->Open(writer_options_.file_name);
   Assert(file != nullptr);
 
   OrcFileWriter::OrcWriterOptions orc_options;
   orc_options.desc = writer_options_.desc;
+  orc_options.buffer_size = writer_options_.buffer_size;
   orc_options.batch_row_size = 1024;
   orc_options.stripe_size = 1024 * 1024;
 
   writer_ = new OrcFileWriter(file, orc_options);
 
-  block_id_ = block_id;
-  summary_.block_id = block_id;
-  summary_.file_name = file_path;
+  summary_.block_id = writer_options_.block_id;
+  summary_.file_name = writer_options_.file_name;
   summary_.file_size = 0;
   summary_.num_tuples = 0;
 }

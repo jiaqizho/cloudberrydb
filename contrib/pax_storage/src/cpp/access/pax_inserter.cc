@@ -1,6 +1,10 @@
 #include "access/pax_inserter.h"
 
+#include <string>
+#include <utility>
+
 #include "catalog/pax_aux_table.h"
+#include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
 #include "storage/local_file_system.h"
@@ -9,8 +13,14 @@
 namespace pax {
 CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
   MicroPartitionWriter::WriterOptions options;
-  options.relation = rel;
+  std::string file_path;
+
+  std::string block_id = cbdb::GenRandomBlockId();
+  file_path = TableMetadata::BuildPaxFilePath(rel, block_id);
+
   options.desc = rel->rd_att;
+  options.block_id = std::move(block_id);
+  options.file_name = std::move(file_path);
 
   FileSystem *fs = Singleton<LocalFileSystem>::GetInstance();
   MicroPartitionWriter *micro_partition_writer =
