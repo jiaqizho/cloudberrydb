@@ -1,10 +1,11 @@
 #pragma once
 
-#include "comm/pax_def.h"
-#include "storage/file_system.h"
-#include "storage/statistics.h"
+#include <stddef.h>
 
-#ifndef PAX_INDEPENDENT_MODE
+#include <functional>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 extern "C" {
 #include "postgres.h"  // NOLINT
@@ -12,16 +13,10 @@ extern "C" {
 #include "executor/tuptable.h"
 #include "storage/relfilenode.h"
 };
-#else
 
-using TupleTableSlot = void *;
-#endif
-#include <stddef.h>
-
-#include <functional>
-#include <stdexcept>
-#include <string>
-#include <vector>
+#include "comm/pax_def.h"
+#include "storage/file_system.h"
+#include "storage/statistics.h"
 
 namespace pax {
 
@@ -65,13 +60,12 @@ class MicroPartitionWriter {
  public:
   struct WriterOptions {
     std::string file_name;
-    Relation relation;
+    std::string block_id;
+    int buffer_size;
     TupleDesc desc;
     WriterOptions() = default;
     WriterOptions(const WriterOptions &options)
-        : file_name(options.file_name),
-          relation(options.relation),
-          desc(options.desc) {}
+        : file_name(options.file_name), desc(options.desc) {}
   };
 
   explicit MicroPartitionWriter(const WriterOptions &writer_options,

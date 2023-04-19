@@ -89,6 +89,7 @@ class TableReader {
       }
       NextFile();
     }
+    num_tuples_++;
     slot->StoreVirtualTuple();
     return true;
   }

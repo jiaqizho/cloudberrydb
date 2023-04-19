@@ -23,6 +23,7 @@ class OrcFileWriter {
   struct OrcWriterOptions {
     uint64_t stripe_size;
     uint32_t batch_row_size;
+    int buffer_size;
     TupleDesc desc;
   };
   explicit OrcFileWriter(File* file,

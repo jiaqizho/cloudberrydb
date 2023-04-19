@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.11.0)
 
 if (BUILD_GTEST)
+ADD_DEFINITIONS(-DRUN_GTEST)
 
 # Build gtest and gmock 
 # A example which link gtest/gmock and include gtest/gmock headers:
@@ -13,19 +14,16 @@ add_subdirectory(contrib/googletest)
 
 file(GLOB TEST_CASE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*/*_test.cc)
 
+link_directories($ENV{GPHOME}/lib)
 add_executable(test_main ${TEST_CASE_SOURCES})
 add_dependencies(test_main gtest gtest_main)
-include_directories(${gtest_SOURCE_DIR}/include)
-target_link_libraries(test_main gtest gtest_main)
-
-target_include_directories(test_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(test_main pax_storage)
+target_include_directories(test_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include)
+target_link_libraries(test_main gtest gtest_main postgres pax_storage)
     
 endif(BUILD_GTEST)
 
 set(pax_comm_src
-    comm/cbdb_wrappers.cc
-    comm/local_wrappers.cc)
+    comm/cbdb_wrappers.cc)
 
 set(pax_exceptions_src
     exceptions/CException.cc)
@@ -47,7 +45,11 @@ set(pax_access_src
 set(pax_catalog_src
     catalog/pax_aux_table.cc
     catalog/table_metadata.cc)
-
+    
+link_directories($ENV{GPHOME}/lib)
 add_library(pax_storage SHARED ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
-target_include_directories(pax_storage PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "/home/gpadmin/workspace/cbdb/src/include")
-target_link_libraries(pax_storage PUBLIC uuid orc)
+target_include_directories(pax_storage PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
+target_link_libraries(pax_storage PUBLIC uuid orc postgres)
+add_custom_command(TARGET pax_storage POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E
+                       copy_if_different $<TARGET_FILE:pax_storage> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
