@@ -4,7 +4,7 @@
 
 #include "access/pax_deleter.h"
 #include "access/pax_inserter.h"
-#include "comm/local_wrappers.h"
+#include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
 
 extern "C" {

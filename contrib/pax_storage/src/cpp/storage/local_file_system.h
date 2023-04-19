@@ -4,7 +4,6 @@
 #include <utility>
 
 #include "comm/cbdb_wrappers.h"
-#include "comm/pax_def.h"
 #include "comm/singleton.h"
 #include "storage/file_system.h"
 
