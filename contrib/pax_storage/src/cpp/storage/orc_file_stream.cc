@@ -53,11 +53,14 @@ std::unique_ptr<orc::OutputStream> MakeFileOutputStream(File *file) {
   return std::unique_ptr<orc::OutputStream>(new OrcFileOutputStream(file));
 }
 
-OrcFileWriter::OrcFileWriter(File *file,
-                             const OrcFileWriter::OrcWriterOptions &writer_options)
+OrcFileWriter::OrcFileWriter(
+    File *file, const OrcFileWriter::OrcWriterOptions &writer_options)
     : options_(writer_options),
       batch_row_index_(0),
-      buffer_(orc::DataBuffer<char>(*orc::getDefaultPool(), ORC_BUFFER_SIZE)),
+      buffer_(orc::DataBuffer<char>(*orc::getDefaultPool(),
+                                    writer_options.buffer_size > 0
+                                        ? writer_options.buffer_size
+                                        : ORC_BUFFER_SIZE)),
       buffer_offset_(0) {
   std::unique_ptr<orc::OutputStream> outStream =
       std::move(MakeFileOutputStream(file));
@@ -117,7 +120,7 @@ void OrcFileWriter::ParseTupleAndWrite(const TupleTableSlot *slot) {
       }
       fieldBatch->notNull[row] = false;
     }
-    int16 typlen = tupDesc->attrs[i].attlen;
+    int16_t typlen = tupDesc->attrs[i].attlen;
     bool typbyval = tupDesc->attrs[i].attbyval;
     switch (typlen) {
       case -1: {

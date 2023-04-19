@@ -1,44 +1,9 @@
 #include "comm/cbdb_wrappers.h"
 
-#ifndef PAX_INDEPENDENT_MODE
-
 extern "C" {
-#include "postgres.h"  // NOLINT
-#include "access/genam.h"
-#include "access/heapam.h"
-#include "access/skey.h"
-#include "access/table.h"
-#include "access/tableam.h"
-#include "catalog/dependency.h"
-#include "catalog/heap.h"
-#include "catalog/index.h"
-#include "catalog/indexing.h"
-#include "catalog/oid_dispatch.h"
-#include "catalog/pg_namespace.h"
-#include "catalog/pg_pax_tables.h"
-#include "cdb/cdbcustomam.h"
-#include "commands/vacuum.h"
-#include "nodes/execnodes.h"
-#include "nodes/tidbitmap.h"
-#include "pgstat.h"    // NOLINT
-#include "utils/builtins.h"
-#include "utils/elog.h"
-#include "utils/fmgroids.h"
-#include "utils/inval.h"
-#include "utils/lsyscache.h"
-#include "utils/memutils.h"
-#include "utils/rel.h"
-#include "utils/relcache.h"
-#include "utils/syscache.h"
-#include "uuid/uuid.h"
-}
+const char *progname;
+};
 
-namespace cbdb {
-void *Palloc(size_t size);
-void *Palloc0(size_t size);
-void Pfree(void *ptr);
-void *MemCtxAlloc(MemoryContext ctx, size_t size);
-}  // namespace cbdb
 
 void *cbdb::MemCtxAlloc(MemoryContext ctx, size_t size) {
   CBDB_WRAP_START;
@@ -52,6 +17,11 @@ void *cbdb::MemCtxAlloc(MemoryContext ctx, size_t size) {
 void *cbdb::Palloc(size_t size) {
   CBDB_WRAP_START;
   {
+#ifdef RUN_GTEST
+    if (TopMemoryContext == nullptr) {
+      MemoryContextInit();
+    }
+#endif
     { return palloc(size); }
   }
   CBDB_WRAP_END;
@@ -61,6 +31,11 @@ void *cbdb::Palloc(size_t size) {
 void *cbdb::Palloc0(size_t size) {
   CBDB_WRAP_START;
   {
+#ifdef RUN_GTEST
+    if (TopMemoryContext == nullptr) {
+      MemoryContextInit();
+    }
+#endif
     { return palloc0(size); }
   }
   CBDB_WRAP_END;
@@ -70,6 +45,9 @@ void *cbdb::Palloc0(size_t size) {
 void cbdb::Pfree(void *ptr) {
   CBDB_WRAP_START;
   {
+#ifdef RUN_GTEST
+    if (ptr == nullptr) return;
+#endif
     { pfree(ptr); }
   }
   CBDB_WRAP_END;
@@ -91,7 +69,6 @@ void operator delete(void *ptr) { cbdb::Pfree(ptr); }
 
 void operator delete[](void *ptr) { cbdb::Pfree(ptr); }
 
-#endif  // #ifndef PAX_INDEPENDENT_MODE
 HTAB *cbdb::HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
                        int flags) {
   CBDB_WRAP_START;
