@@ -14,13 +14,14 @@ namespace pax {
 CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
   MicroPartitionWriter::WriterOptions options;
   std::string file_path;
-
-  std::string block_id = cbdb::GenRandomBlockId();
+  std::string block_id;
+  block_id = cbdb::GenRandomBlockId();
   file_path = TableMetadata::BuildPaxFilePath(rel, block_id);
 
   options.desc = rel->rd_att;
   options.block_id = std::move(block_id);
   options.file_name = std::move(file_path);
+  options.buffer_size = 0;
 
   FileSystem *fs = Singleton<LocalFileSystem>::GetInstance();
   MicroPartitionWriter *micro_partition_writer =
