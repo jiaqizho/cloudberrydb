@@ -63,9 +63,6 @@ class MicroPartitionWriter {
     std::string block_id;
     int buffer_size;
     TupleDesc desc;
-    WriterOptions() = default;
-    WriterOptions(const WriterOptions &options)
-        : file_name(options.file_name), desc(options.desc) {}
   };
 
   explicit MicroPartitionWriter(const WriterOptions &writer_options,
