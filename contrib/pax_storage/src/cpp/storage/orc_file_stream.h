@@ -51,7 +51,7 @@ class OrcFileWriter {
 class OrcFileOutputStream : public orc::OutputStream {
  public:
   explicit OrcFileOutputStream(File* file)
-      : file_(std::move(file)), closed_(false) {}
+      : file_(std::move(file)), bytes_written_(0), closed_(false) {}
 
   ~OrcFileOutputStream() { close(); }
   uint64_t getLength() const override { return bytes_written_; }
@@ -66,6 +66,7 @@ class OrcFileOutputStream : public orc::OutputStream {
     actual_written_size = this->file_->Write(buf, length);
     // todo should check whether the actual size is equal to length
     assert(actual_written_size == length);
+    bytes_written_ += actual_written_size;
   }
 
   const std::string& getName() const override { return file_->GetPath(); }
