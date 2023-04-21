@@ -1,8 +1,8 @@
 #include "catalog/pax_aux_table.h"
 
 #include "catalog/micro_partition_metadata.h"
-#include "comm/cbdb_wrappers.h"
 #include "catalog/table_metadata.h"
+#include "comm/cbdb_wrappers.h"
 
 const std::string cbdb::GenRandomBlockId() {
   CBDB_WRAP_START;
@@ -29,8 +29,8 @@ void cbdb::GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
   CBDB_WRAP_END;
 }
 
-void cbdb::InsertPaxBlockEntry(Oid relid, const char *blockname,
-                               int pttupcount) {
+void cbdb::InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
+                               int ptblocksize) {
   Relation rel;
   HeapTuple tuple;
   NameData ptblockname;
@@ -49,8 +49,13 @@ void cbdb::InsertPaxBlockEntry(Oid relid, const char *blockname,
 
     values[Anum_pg_pax_block_tables_ptblockname - 1] =
         NameGetDatum(&ptblockname);
-    values[Anum_pg_pax_block_tables_pttupcount - 1] = Int32GetDatum(pttupcount);
+    nulls[Anum_pg_pax_block_tables_ptblockname - 1] = false;
 
+    values[Anum_pg_pax_block_tables_pttupcount - 1] = Int32GetDatum(pttupcount);
+    nulls[Anum_pg_pax_block_tables_pttupcount - 1] = false;
+    values[Anum_pg_pax_block_tables_ptblocksize - 1] =
+        Int32GetDatum(ptblocksize);
+    nulls[Anum_pg_pax_block_tables_ptblocksize - 1] = false;
     tuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
     // insert a new tuple
@@ -83,11 +88,15 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel) {
   blocks_relname = psprintf("pg_pax_blocks_%u", rd_id);
   blocks_namespaceId = PG_PAXAUX_NAMESPACE;
   blocks_relid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId,
-                                      Anum_pg_class_oid, blocks_relname,
-                                      blocks_namespaceId);
-  tupdesc = CreateTemplateTupleDesc(2);
-  TupleDescInitEntry(tupdesc, (AttrNumber)1, "ptblockname", NAMEOID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)2, "pttupcount", INT4OID, -1, 0);
+                                      Anum_pg_class_oid,  // new line
+                                      blocks_relname, blocks_namespaceId);
+  tupdesc = CreateTemplateTupleDesc(Natts_pg_pax_block_tables);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblockname,
+                     "ptblockname", NAMEOID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_pttupcount,
+                     "pttupcount", INT4OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblocksize,
+                     "ptblocksize", INT4OID, -1, 0);
   relid = heap_create_with_catalog(
       blocks_relname, blocks_namespaceId, rel->rd_rel->reltablespace,
       blocks_relid, InvalidOid, InvalidOid, rel->rd_rel->relowner,
@@ -152,9 +161,8 @@ void cbdb::PaxNonTransactionalTruncateTable(const Oid blocksrelid) {
   heap_truncate_one_rel(blockrel);
   relation_close(blockrel, NoLock);
 }
-
 void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
-    std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result,
+    std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result,
     const Relation relation, const Relation pg_blockfile_rel,
     const Snapshot paxMetaDataSnapshot) {
   TupleDesc pg_paxblock_dsc;
@@ -202,7 +210,7 @@ void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
 
 void cbdb::GetAllMicroPartitionMetadata(
     const Relation parentrel, const Snapshot paxMetaDataSnapshot,
-    std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result) {
+    std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result) {
   Relation pg_paxblock_rel;
   Oid block_rel_id;
 

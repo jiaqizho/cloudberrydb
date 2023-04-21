@@ -56,7 +56,7 @@ void CPaxInserter::AddMicroPartitionEntry(const WriteSummary &summary) {
   cbdb::GetMicroPartitionEntryAttributes(rel_->rd_id, &pax_block_tables_rel_id,
                                          NULL, NULL);
   cbdb::InsertPaxBlockEntry(pax_block_tables_rel_id, summary.block_id.c_str(),
-                            summary.num_tuples);
+                            summary.num_tuples, summary.file_size);
 }
 
 }  // namespace pax

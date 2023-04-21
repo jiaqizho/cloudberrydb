@@ -38,8 +38,9 @@ void OrcNativeMicroPartitionWriter::Create() {
 
 void OrcNativeMicroPartitionWriter::Close() {
   if (writer_) {
-    AddMicroPartitionEntry();
     writer_->Close();
+    summary_.file_size = writer_->WriteSize();
+    AddMicroPartitionEntry();
     delete writer_;
     writer_ = nullptr;
   }
