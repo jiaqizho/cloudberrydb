@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "catalog/pax_aux_table.h"
 #include "catalog/micro_partition_metadata.h"
+#include "catalog/pax_aux_table.h"
 extern "C" {
 #include "postgres.h"  // NOLINT
 #include "access/genam.h"
@@ -24,7 +24,7 @@ extern "C" {
 #include "commands/vacuum.h"
 #include "nodes/execnodes.h"
 #include "nodes/tidbitmap.h"
-#include "pgstat.h" // NOLINT
+#include "pgstat.h"    // NOLINT
 #include "utils/builtins.h"
 #include "utils/elog.h"
 #include "utils/fmgroids.h"
@@ -39,16 +39,20 @@ extern "C" {
 
 #define Anum_pg_pax_block_tables_ptblockname 1
 #define Anum_pg_pax_block_tables_pttupcount 2
-#define Natts_pg_pax_block_tables 2
+#define Anum_pg_pax_block_tables_ptblocksize 3
+#define Natts_pg_pax_block_tables 3
 
 namespace cbdb {
+using MicroPartitionMetadataPtr = std::shared_ptr<pax::MicroPartitionMetadata>;
+
 const std::string GenRandomBlockId();
 
 void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
                                       NameData *compresstype,
                                       int *compresslevel);
 
-void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount);
+void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
+                         int ptblocksize);
 
 void PaxCreateMicroPartitionTable(const Relation rel);
 
@@ -57,12 +61,12 @@ void PaxTransactionalTruncateTable(const Oid blocksrelid);
 void PaxNonTransactionalTruncateTable(const Oid blocksrelid);
 
 void GetAllBlockFileInfo_PG_PaxBlock_Relation(
-    std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result,
+    std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result,
     const Relation relation, const Relation pg_blockfile_rel,
     const Snapshot paxMetaDataSnapshot);
 
 void GetAllMicroPartitionMetadata(
     const Relation parentrel, const Snapshot paxMetaDataSnapshot,
-    std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>> result);
+    std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result);
 
 }  // namespace cbdb
