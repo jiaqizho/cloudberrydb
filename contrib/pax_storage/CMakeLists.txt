@@ -2,8 +2,38 @@ project(Pax)
 cmake_minimum_required (VERSION 3.11.0)
 set(CMAKE_CXX_STANDARD 14)
 
+find_program(
+  PG_CONFIG pg_config
+  HINTS ${PG_PATH}
+  PATH_SUFFIXES bin
+  DOC "The path to the pg_config of the CBDB version to compile against")
+
+if(NOT PG_CONFIG)
+  message(FATAL_ERROR "Unable to find 'pg_config'")
+endif()
+
+# Function to call pg_config and extract values.
+function(GET_PG_CONFIG var)
+  set(_temp)
+
+  # Only call pg_config if the variable didn't already have a value.
+  if(NOT ${var})
+    execute_process(
+      COMMAND ${PG_CONFIG} ${ARGN}
+      OUTPUT_VARIABLE _temp
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
+
+  set(${var}
+    ${_temp}
+    PARENT_SCOPE)
+endfunction()
+
+# Get CBDB configuration from pg_config
+get_pg_config(PG_INCLUDEDIR --includedir)
+
 # TODO check exists if this is needed
-set(CBDB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../src/include)
+set(CBDB_INCLUDE_DIR ${PG_INCLUDEDIR}/postgresql/server)
 
 # TODO: support build thirdparty library
 
