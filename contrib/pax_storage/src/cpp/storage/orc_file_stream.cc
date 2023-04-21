@@ -69,7 +69,7 @@ OrcFileWriter::OrcFileWriter(
   std::unique_ptr<orc::Type> schema(orc::Type::buildTypeFromString(ddl));
 
   orc::WriterOptions options;
-  options.setRowIndexStride(0).setColumnsUseBloomFilter({});
+  options.setRowIndexStride(0).setCompression(orc::CompressionKind_NONE);
 
   std::unique_ptr<orc::Writer> writer =
       orc::createWriter(*schema, outStream.get(), options);
