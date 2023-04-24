@@ -1,7 +1,13 @@
 #include "access/pax_dml_state.h"
+#include "access/pax_deleter.h"
+#include "access/pax_inserter.h"
 
 namespace pax {
 // class CPaxDmlStateLocal
+
+void CPaxDmlStateLocal::DmlStateResetCallback(void *_) {
+  pax::CPaxDmlStateLocal::instance()->reset();
+}
 
 void CPaxDmlStateLocal::InitDmlState(const Relation rel,
                                      const CmdType operation) {
