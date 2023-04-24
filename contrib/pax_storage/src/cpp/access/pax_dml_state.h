@@ -2,8 +2,6 @@
 
 #include <memory>
 
-#include "access/pax_deleter.h"
-#include "access/pax_inserter.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
 
@@ -17,13 +15,15 @@ extern void pax_dml_state_reset_cb(void* _);
 }
 
 namespace pax {
+class CPaxInserter;
+class CPaxDeleter;
 struct PaxDmlState {
   Oid oid;
   CPaxInserter* inserter;
   CPaxDeleter* deleter;
 };
 
-class CPaxDmlStateLocal {
+class CPaxDmlStateLocal final {
   friend class Singleton<CPaxDmlStateLocal>;
 
  public:
@@ -31,7 +31,7 @@ class CPaxDmlStateLocal {
     return Singleton<CPaxDmlStateLocal>::GetInstance();
   }
 
-  ~CPaxDmlStateLocal() {}
+  ~CPaxDmlStateLocal() = default;
 
   void InitDmlState(const Relation rel, const CmdType operation);
   void FinishDmlState(const Relation rel, const CmdType operation);
@@ -50,8 +50,10 @@ class CPaxDmlStateLocal {
     dml_descriptor_tab_ = nullptr;
     last_used_state_ = nullptr;
     state_ctx_ = nullptr;
-    cb_ = {.func = pax_dml_state_reset_cb, .arg = NULL};
+    cb_ = {.func = DmlStateResetCallback, .arg = NULL};
   }
+  static void DmlStateResetCallback(void*);
+
   PaxDmlState* EntryDmlState(const Oid& oid);
   PaxDmlState* FindDmlState(const Oid& oid);
   PaxDmlState* RemoveDmlState(const Oid& oid);

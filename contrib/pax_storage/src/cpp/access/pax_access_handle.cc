@@ -23,195 +23,133 @@ extern "C" {
 #include "utils/syscache.h"
 }
 
-extern "C" {
-
-PG_MODULE_MAGIC;
-PG_FUNCTION_INFO_V1(pax_tableam_handler);
-
-#define RelationIsPax(rel)  AMOidIsPax((rel)->rd_rel->relam)
+#define RelationIsPax(rel) AMOidIsPax((rel)->rd_rel->relam)
 
 bool AMOidIsPax(Oid amOid) {
-  HeapTuple  tuple;
+  HeapTuple tuple;
   Form_pg_am form;
   bool is_pax;
 
-  tuple = SearchSysCache1(AUTHOID, ObjectIdGetDatum(amOid));
+  tuple = SearchSysCache1(AMOID, ObjectIdGetDatum(amOid));
   if (!HeapTupleIsValid(tuple))
     elog(ERROR, "cache lookup failed for pg_am.oid = %u", amOid);
 
-  form = (Form_pg_am) GETSTRUCT(tuple);
-  is_pax = strcmp(NameStr(form->amname), "pax");
+  form = (Form_pg_am)GETSTRUCT(tuple);
+  is_pax = strcmp(NameStr(form->amname), "pax") == 0;
   ReleaseSysCache(tuple);
 
   return is_pax;
 }
 
-void pax_dml_state_reset_cb(void *_) {
-  pax::CPaxDmlStateLocal::instance()->reset();
-}
-
-TableScanDesc pax_beginscan(Relation relation, Snapshot snapshot, int nkeys,
-                            struct ScanKeyData *key,
-                            ParallelTableScanDesc pscan, uint32 flags) {
-  // todo: PAX_TRY {} PAX_CATCH {}
-  return pax::CPaxAccess::PaxBeginScan(relation, snapshot, nkeys, key, pscan,
-                                       flags);
-}
-
-void pax_endscan(TableScanDesc scan) {
-  // todo PAX_TRY{} PAX_CATCH {}
-  pax::CPaxAccess::PaxEndScan(scan);
-}
-
-bool pax_getnextslot(TableScanDesc scan, ScanDirection direction,
-                     TupleTableSlot *slot) {
-  return pax::CPaxAccess::PaxGetNextSlot(scan, direction, slot);
-}
-
-void pax_tuple_insert(Relation relation, TupleTableSlot *slot, CommandId cid,
-                      int options, BulkInsertState bistate) {
-  // todo C CALL C++ WRAPPER
-  pax::CPaxAccess::PaxTupleInsert(relation, slot, cid, options, bistate);
-}
-
-const TupleTableSlotOps *pax_slot_callbacks(Relation rel) {
-  // FIXME: copy from aoco table.  do we need to provide ourself tuple format?
+namespace pax {
+const TupleTableSlotOps *PaxAccessMethod::SlotCallbacks(Relation rel) {
   return &TTSOpsVirtual;
 }
 
-static void pax_rescan(TableScanDesc scan, ScanKey key, bool set_params,
-                       bool allow_strat, bool allow_sync, bool allow_pagemode) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+Size PaxAccessMethod::ParallelscanEstimate(Relation rel) {
+  NOT_IMPLEMENTED_YET;
+  return 0;
 }
 
-static Size pax_parallelscan_estimate(Relation rel) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+Size PaxAccessMethod::ParallelscanInitialize(Relation rel,
+                                             ParallelTableScanDesc pscan) {
+  NOT_IMPLEMENTED_YET;
+  return 0;
 }
 
-static Size pax_parallelscan_initialize(Relation rel,
-                                        ParallelTableScanDesc pscan) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::ParallelscanReinitialize(Relation rel,
+                                               ParallelTableScanDesc pscan) {
+  NOT_IMPLEMENTED_YET;
 }
 
-static void pax_parallelscan_reinitialize(Relation rel,
-                                          ParallelTableScanDesc pscan) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+struct IndexFetchTableData *PaxAccessMethod::IndexFetchBegin(Relation rel) {
+  NOT_SUPPORTED_YET;
+  return nullptr;
 }
 
-static IndexFetchTableData *pax_index_fetch_begin(Relation rel) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::IndexFetchEnd(IndexFetchTableData *scan) {
+  NOT_SUPPORTED_YET;
 }
 
-static void pax_index_fetch_reset(IndexFetchTableData *scan) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::IndexFetchReset(IndexFetchTableData *scan) {
+  NOT_SUPPORTED_YET;
 }
 
-static void pax_index_fetch_end(IndexFetchTableData *scan) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+bool PaxAccessMethod::IndexFetchTuple(struct IndexFetchTableData *scan,
+                                      ItemPointer tid, Snapshot snapshot,
+                                      TupleTableSlot *slot, bool *call_again,
+                                      bool *all_dead) {
+  NOT_SUPPORTED_YET;
+  return false;
 }
 
-static bool pax_index_fetch_tuple(struct IndexFetchTableData *scan,
-                                  ItemPointer tid, Snapshot snapshot,
-                                  TupleTableSlot *slot, bool *call_again,
-                                  bool *all_dead) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::TupleInsertSpeculative(Relation relation,
+                                             TupleTableSlot *slot,
+                                             CommandId cid, int options,
+                                             BulkInsertState bistate,
+                                             uint32 specToken) {
+  NOT_IMPLEMENTED_YET;
 }
 
-static void pax_tuple_insert_speculative(Relation relation,
-                                         TupleTableSlot *slot, CommandId cid,
-                                         int options, BulkInsertState bistate,
-                                         uint32 specToken) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::TupleCompleteSpeculative(Relation relation,
+                                               TupleTableSlot *slot,
+                                               uint32 specToken,
+                                               bool succeeded) {
+  NOT_IMPLEMENTED_YET;
 }
 
-static void pax_tuple_complete_speculative(Relation relation,
-                                           TupleTableSlot *slot,
-                                           uint32 specToken, bool succeeded) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
+                                  int ntuples, CommandId cid, int options,
+                                  BulkInsertState bistate) {
+  NOT_IMPLEMENTED_YET;
 }
 
-static void pax_multi_insert(Relation relation, TupleTableSlot **slots,
-                             int ntuples, CommandId cid, int options,
-                             BulkInsertState bistate) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+TM_Result PaxAccessMethod::TupleLock(Relation relation, ItemPointer tid,
+                                     Snapshot snapshot, TupleTableSlot *slot,
+                                     CommandId cid, LockTupleMode mode,
+                                     LockWaitPolicy wait_policy, uint8 flags,
+                                     TM_FailureData *tmfd) {
+  NOT_IMPLEMENTED_YET;
+  return TM_Ok;
 }
 
-static TM_Result pax_tuple_delete(Relation relation, ItemPointer tid,
-                                  CommandId cid, Snapshot snapshot,
-                                  Snapshot crosscheck, bool wait,
-                                  TM_FailureData *tmfd, bool changingPart) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
+  NOT_IMPLEMENTED_YET;
 }
 
-static TM_Result pax_tuple_update(Relation relation, ItemPointer otid,
-                                  TupleTableSlot *slot, CommandId cid,
-                                  Snapshot snapshot, Snapshot crosscheck,
-                                  bool wait, TM_FailureData *tmfd,
-                                  LockTupleMode *lockmode,
-                                  bool *update_indexes) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+bool PaxAccessMethod::TupleFetchRowVersion(Relation relation, ItemPointer tid,
+                                           Snapshot snapshot,
+                                           TupleTableSlot *slot) {
+  NOT_IMPLEMENTED_YET;
+  return false;
 }
 
-static TM_Result pax_tuple_lock(Relation relation, ItemPointer tid,
-                                Snapshot snapshot, TupleTableSlot *slot,
-                                CommandId cid, LockTupleMode mode,
-                                LockWaitPolicy wait_policy, uint8 flags,
-                                TM_FailureData *tmfd) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+bool PaxAccessMethod::TupleTidValid(TableScanDesc scan, ItemPointer tid) {
+  NOT_IMPLEMENTED_YET;
+  return false;
 }
 
-static void pax_finish_bulk_insert(Relation relation, int options) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::TupleGetLatestTid(TableScanDesc sscan, ItemPointer tid) {
+  NOT_SUPPORTED_YET;
 }
 
-static bool pax_fetch_row_version(Relation relation, ItemPointer tid,
-                                  Snapshot snapshot, TupleTableSlot *slot) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+bool PaxAccessMethod::TupleSatisfiesSnapshot(Relation rel, TupleTableSlot *slot,
+                                             Snapshot snapshot) {
+  NOT_IMPLEMENTED_YET;
+  return true;
 }
 
-static void pax_get_latest_tid(TableScanDesc sscan, ItemPointer tid) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+TransactionId PaxAccessMethod::IndexDeleteTuples(Relation rel,
+                                                 TM_IndexDeleteOp *delstate) {
+  NOT_SUPPORTED_YET;
+  return 0;
 }
 
-static bool pax_tuple_tid_valid(TableScanDesc scan, ItemPointer tid) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static bool pax_tuple_satisfies_snapshot(Relation rel, TupleTableSlot *slot,
-                                         Snapshot snapshot) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static TransactionId pax_index_delete_tuples(Relation rel,
-                                             TM_IndexDeleteOp *delstate) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static void pax_relation_set_new_filenode(Relation rel,
-                                          const RelFileNode *newrnode,
-                                          char persistence,
-                                          TransactionId *freezeXid,
-                                          MultiXactId *minmulti) {
+void PaxAccessMethod::RelationSetNewFilenode(Relation rel,
+                                             const RelFileNode *newrnode,
+                                             char persistence,
+                                             TransactionId *freezeXid,
+                                             MultiXactId *minmulti) {
   HeapTuple tupcache;
   Oid blocksrelid;
   *freezeXid = *minmulti = InvalidTransactionId;
@@ -231,121 +169,83 @@ static void pax_relation_set_new_filenode(Relation rel,
 }
 
 // * non transactional truncate table case:
-// create table inside transactional block, and then truncate table inside transactional block.
-// create table outside transactional block, insert data and truncate table inside transactional block.
-static void pax_relation_nontransactional_truncate(Relation rel) {
+// create table inside transactional block, and then truncate table inside
+// transactional block. create table outside transactional block, insert data
+// and truncate table inside transactional block.
+void PaxAccessMethod::RelationNontransactionalTruncate(Relation rel) {
   HeapTuple tupcache;
   Oid blocksrelid;
 
-  elog(DEBUG1, "pax_relation_nontransactional_truncate:%d/%d/%d", rel->rd_node.dbNode,
-       rel->rd_node.spcNode, rel->rd_node.relNode);
+  elog(DEBUG1, "pax_relation_nontransactional_truncate:%d/%d/%d",
+       rel->rd_node.dbNode, rel->rd_node.spcNode, rel->rd_node.relNode);
 
   tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(rel));
   if (!HeapTupleIsValid(tupcache))
-      ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                      errmsg("relid with %d find no oid of the aux relation in pg_pax_tables.", rel->rd_id)));
+    ereport(
+        ERROR,
+        (errcode(ERRCODE_UNDEFINED_SCHEMA),
+         errmsg(
+             "relid with %d find no oid of the aux relation in pg_pax_tables.",
+             rel->rd_id)));
   blocksrelid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
   ReleaseSysCache(tupcache);
   pax::CPaxAccess::PaxNonTransactionalTruncateTable(blocksrelid);
 }
 
-static void pax_relation_copy_data(Relation rel, const RelFileNode *newrnode) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::RelationCopyData(Relation rel,
+                                       const RelFileNode *newrnode) {
+  NOT_IMPLEMENTED_YET;
 }
 
-static void pax_relation_copy_for_cluster(
+void PaxAccessMethod::RelationCopyForCluster(
     Relation OldHeap, Relation NewHeap, Relation OldIndex, bool use_sort,
     TransactionId OldestXmin, TransactionId *xid_cutoff,
     MultiXactId *multi_cutoff, double *num_tuples, double *tups_vacuumed,
     double *tups_recently_dead) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+  NOT_IMPLEMENTED_YET;
 }
 
-static void pax_vacuum_rel(Relation onerel, VacuumParams *params,
-                           BufferAccessStrategy bstrategy) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::RelationVacuum(Relation onerel, VacuumParams *params,
+                                     BufferAccessStrategy bstrategy) {
+  NOT_IMPLEMENTED_YET;
 }
 
-static bool pax_scan_analyze_next_block(TableScanDesc scan, BlockNumber blockno,
-                                        BufferAccessStrategy bstrategy) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber forkNumber) {
+  NOT_IMPLEMENTED_YET;
+  return 0;
 }
 
-static bool pax_scan_analyze_next_tuple(TableScanDesc scan,
-                                        TransactionId OldestXmin,
-                                        double *liverows, double *deadrows,
-                                        TupleTableSlot *slot) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static double pax_index_build_range_scan(
-    Relation heapRelation, Relation indexRelation, IndexInfo *indexInfo,
-    bool allow_sync, bool anyvisible, bool progress, BlockNumber start_blockno,
-    BlockNumber numblocks, IndexBuildCallback callback, void *callback_state,
-    TableScanDesc scan) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static void pax_index_validate_scan(Relation heapRelation,
-                                    Relation indexRelation,
-                                    IndexInfo *indexInfo, Snapshot snapshot,
-                                    ValidateIndexState *state) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static uint64 pax_relation_size(Relation rel, ForkNumber forkNumber) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static bool pax_relation_needs_toast_table(Relation rel) {
+bool PaxAccessMethod::RelationNeedsToastTable(Relation rel) {
   // PAX never used the toasting, don't create the toast table from Cloudberry 7
   return false;
 }
 
-static void pax_estimate_rel_size(Relation rel, int32 *attr_widths,
-                                  BlockNumber *pages, double *tuples,
-                                  double *allvisfrac) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::EstimateRelSize(Relation rel, int32 *attr_widths,
+                                      BlockNumber *pages, double *tuples,
+                                      double *allvisfrac) {
+  NOT_IMPLEMENTED_YET;
 }
 
-static bool pax_scan_bitmap_next_block(TableScanDesc scan,
-                                       TBMIterateResult *tbmres) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+double PaxAccessMethod::IndexBuildRangeScan(
+    Relation heapRelation, Relation indexRelation, IndexInfo *indexInfo,
+    bool allow_sync, bool anyvisible, bool progress, BlockNumber start_blockno,
+    BlockNumber numblocks, IndexBuildCallback callback, void *callback_state,
+    TableScanDesc scan) {
+  NOT_SUPPORTED_YET;
+  return 0.0;
 }
 
-static bool pax_scan_bitmap_next_tuple(TableScanDesc scan,
-                                       TBMIterateResult *tbmres,
-                                       TupleTableSlot *slot) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
+void PaxAccessMethod::IndexValidateScan(Relation heapRelation,
+                                        Relation indexRelation,
+                                        IndexInfo *indexInfo, Snapshot snapshot,
+                                        ValidateIndexState *state) {
+  NOT_IMPLEMENTED_YET;
 }
-
-static bool pax_scan_sample_next_block(TableScanDesc scan,
-                                       SampleScanState *scanstate) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
-
-static bool pax_scan_sample_next_tuple(TableScanDesc scan,
-                                       SampleScanState *scanstate,
-                                       TupleTableSlot *slot) {
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                  errmsg("feature not supported on pax relations")));
-}
+}  // namespace pax
 
 static void pax_dml_init(Relation rel, CmdType operation) {
   if (RelationIsPax(rel))
-      pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
+    pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
 }
 
 static void pax_dml_fini(Relation rel, CmdType operation) {
@@ -353,59 +253,64 @@ static void pax_dml_fini(Relation rel, CmdType operation) {
     pax::CPaxDmlStateLocal::instance()->FinishDmlState(rel, operation);
 }
 
+extern "C" {
+
 static TableAmRoutine pax_column_methods = {
     .type = T_TableAmRoutine,
-    .slot_callbacks = pax_slot_callbacks,
-    .scan_begin = pax_beginscan,
-    .scan_end = pax_endscan,
-    .scan_rescan = pax_rescan,
-    .scan_getnextslot = pax_getnextslot,
+    .slot_callbacks = pax::PaxAccessMethod::SlotCallbacks,
+    .scan_begin = pax::CCPaxAccessMethod::ScanBegin,
+    .scan_end = pax::CCPaxAccessMethod::ScanEnd,
+    .scan_rescan = pax::CCPaxAccessMethod::ScanRescan,
+    .scan_getnextslot = pax::CCPaxAccessMethod::ScanGetnextslot,
 
-    .parallelscan_estimate = pax_parallelscan_estimate,
-    .parallelscan_initialize = pax_parallelscan_initialize,
-    .parallelscan_reinitialize = pax_parallelscan_reinitialize,
+    .parallelscan_estimate = pax::PaxAccessMethod::ParallelscanEstimate,
+    .parallelscan_initialize = pax::PaxAccessMethod::ParallelscanInitialize,
+    .parallelscan_reinitialize = pax::PaxAccessMethod::ParallelscanReinitialize,
 
-    .index_fetch_begin = pax_index_fetch_begin,
-    .index_fetch_reset = pax_index_fetch_reset,
-    .index_fetch_end = pax_index_fetch_end,
-    .index_fetch_tuple = pax_index_fetch_tuple,
+    .index_fetch_begin = pax::PaxAccessMethod::IndexFetchBegin,
+    .index_fetch_reset = pax::PaxAccessMethod::IndexFetchReset,
+    .index_fetch_end = pax::PaxAccessMethod::IndexFetchEnd,
+    .index_fetch_tuple = pax::PaxAccessMethod::IndexFetchTuple,
 
-    .tuple_fetch_row_version = pax_fetch_row_version,
-    .tuple_tid_valid = pax_tuple_tid_valid,
-    .tuple_get_latest_tid = pax_get_latest_tid,
-    .tuple_satisfies_snapshot = pax_tuple_satisfies_snapshot,
-    .index_delete_tuples = pax_index_delete_tuples,
+    .tuple_fetch_row_version = pax::PaxAccessMethod::TupleFetchRowVersion,
+    .tuple_tid_valid = pax::PaxAccessMethod::TupleTidValid,
+    .tuple_get_latest_tid = pax::PaxAccessMethod::TupleGetLatestTid,
+    .tuple_satisfies_snapshot = pax::PaxAccessMethod::TupleSatisfiesSnapshot,
+    .index_delete_tuples = pax::PaxAccessMethod::IndexDeleteTuples,
 
-    .tuple_insert = pax_tuple_insert,
-    .tuple_insert_speculative = pax_tuple_insert_speculative,
-    .tuple_complete_speculative = pax_tuple_complete_speculative,
-    .multi_insert = pax_multi_insert,
-    .tuple_delete = pax_tuple_delete,
-    .tuple_update = pax_tuple_update,
-    .tuple_lock = pax_tuple_lock,
-    .finish_bulk_insert = pax_finish_bulk_insert,
+    .tuple_insert = pax::CCPaxAccessMethod::TupleInsert,
+    .tuple_insert_speculative = pax::PaxAccessMethod::TupleInsertSpeculative,
+    .tuple_complete_speculative =
+        pax::PaxAccessMethod::TupleCompleteSpeculative,
+    .multi_insert = pax::PaxAccessMethod::MultiInsert,
+    .tuple_delete = pax::CCPaxAccessMethod::TupleDelete,
+    .tuple_update = pax::CCPaxAccessMethod::TupleUpdate,
+    .tuple_lock = pax::PaxAccessMethod::TupleLock,
+    .finish_bulk_insert = pax::PaxAccessMethod::FinishBulkInsert,
 
-    .relation_set_new_filenode = pax_relation_set_new_filenode,
+    .relation_set_new_filenode = pax::PaxAccessMethod::RelationSetNewFilenode,
     .relation_nontransactional_truncate =
-        pax_relation_nontransactional_truncate,
-    .relation_copy_data = pax_relation_copy_data,
-    .relation_copy_for_cluster = pax_relation_copy_for_cluster,
-    .relation_vacuum = pax_vacuum_rel,
-    .scan_analyze_next_block = pax_scan_analyze_next_block,
-    .scan_analyze_next_tuple = pax_scan_analyze_next_tuple,
-    .index_build_range_scan = pax_index_build_range_scan,
-    .index_validate_scan = pax_index_validate_scan,
+        pax::PaxAccessMethod::RelationNontransactionalTruncate,
+    .relation_copy_data = pax::PaxAccessMethod::RelationCopyData,
+    .relation_copy_for_cluster = pax::PaxAccessMethod::RelationCopyForCluster,
+    .relation_vacuum = pax::PaxAccessMethod::RelationVacuum,
+    .scan_analyze_next_block = pax::CCPaxAccessMethod::ScanAnalyzeNextBlock,
+    .scan_analyze_next_tuple = pax::CCPaxAccessMethod::ScanAnalyzeNextTuple,
+    .index_build_range_scan = pax::PaxAccessMethod::IndexBuildRangeScan,
+    .index_validate_scan = pax::PaxAccessMethod::IndexValidateScan,
 
-    .relation_size = pax_relation_size,
-    .relation_needs_toast_table = pax_relation_needs_toast_table,
+    .relation_size = pax::PaxAccessMethod::RelationSize,
+    .relation_needs_toast_table = pax::PaxAccessMethod::RelationNeedsToastTable,
 
-    .relation_estimate_size = pax_estimate_rel_size,
-    .scan_bitmap_next_block = pax_scan_bitmap_next_block,
-    .scan_bitmap_next_tuple = pax_scan_bitmap_next_tuple,
-    .scan_sample_next_block = pax_scan_sample_next_block,
-    .scan_sample_next_tuple = pax_scan_sample_next_tuple,
+    .relation_estimate_size = pax::PaxAccessMethod::EstimateRelSize,
+    .scan_bitmap_next_block = pax::CCPaxAccessMethod::ScanBitmapNextBlock,
+    .scan_bitmap_next_tuple = pax::CCPaxAccessMethod::ScanBitmapNextTuple,
+    .scan_sample_next_block = pax::CCPaxAccessMethod::ScanSampleNextBlock,
+    .scan_sample_next_tuple = pax::CCPaxAccessMethod::ScanSampleNextTuple,
 };
 
+PG_MODULE_MAGIC;
+PG_FUNCTION_INFO_V1(pax_tableam_handler);
 Datum pax_tableam_handler(PG_FUNCTION_ARGS) {
   PG_RETURN_POINTER(&pax_column_methods);
 }
@@ -415,4 +320,4 @@ void _PG_init(void) {
   ext_dml_finish_hook = pax_dml_fini;
 }
 
-} // extern "C"
+}  //  extern "C"
