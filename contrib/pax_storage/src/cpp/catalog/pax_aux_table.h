@@ -20,7 +20,6 @@ extern "C" {
 #include "catalog/oid_dispatch.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_pax_tables.h"
-#include "cdb/cdbcustomam.h"
 #include "commands/vacuum.h"
 #include "nodes/execnodes.h"
 #include "nodes/tidbitmap.h"
