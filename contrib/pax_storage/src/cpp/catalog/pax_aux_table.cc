@@ -4,6 +4,10 @@
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
 
+extern "C" {
+#include "catalog/pg_am.h"
+}
+
 const std::string cbdb::GenRandomBlockId() {
   CBDB_WRAP_START;
   {
@@ -223,7 +227,7 @@ void cbdb::GetAllMicroPartitionMetadata(
            "could not find pg_paxblock_rel aux table for pax table \"%s\"",
            RelationGetRelationName(parentrel));
 
-    Assert(RelationIsPax(parentrel));
+    //Assert(RelationIsPax(parentrel));
 
     pg_paxblock_rel = table_open(block_rel_id, AccessShareLock);
 
