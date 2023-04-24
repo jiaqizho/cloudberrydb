@@ -11,21 +11,40 @@ extern "C" {
 #include "catalog/heap.h"
 #include "catalog/index.h"
 #include "catalog/oid_dispatch.h"
+#include "catalog/pg_am.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_pax_tables.h"
-#include "cdb/cdbcustomam.h"
 #include "commands/vacuum.h"
 #include "nodes/execnodes.h"
 #include "nodes/tidbitmap.h"
 #include "pgstat.h"  // NOLINT
 #include "utils/memutils.h"
 #include "utils/rel.h"
+#include "utils/syscache.h"
 }
 
 extern "C" {
 
 PG_MODULE_MAGIC;
 PG_FUNCTION_INFO_V1(pax_tableam_handler);
+
+#define RelationIsPax(rel)  AMOidIsPax((rel)->rd_rel->relam)
+
+bool AMOidIsPax(Oid amOid) {
+  HeapTuple  tuple;
+  Form_pg_am form;
+  bool is_pax;
+
+  tuple = SearchSysCache1(AUTHOID, ObjectIdGetDatum(amOid));
+  if (!HeapTupleIsValid(tuple))
+    elog(ERROR, "cache lookup failed for pg_am.oid = %u", amOid);
+
+  form = (Form_pg_am) GETSTRUCT(tuple);
+  is_pax = strcmp(NameStr(form->amname), "pax");
+  ReleaseSysCache(tuple);
+
+  return is_pax;
+}
 
 void pax_dml_state_reset_cb(void *_) {
   pax::CPaxDmlStateLocal::instance()->reset();
@@ -325,13 +344,13 @@ static bool pax_scan_sample_next_tuple(TableScanDesc scan,
 }
 
 static void pax_dml_init(Relation rel, CmdType operation) {
-  // todo C CALL C++ WRAPPER
-  pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
-  // todo
+  if (RelationIsPax(rel))
+      pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
 }
 
-static void pax_dml_finish(Relation rel, CmdType operation) {
-  pax::CPaxDmlStateLocal::instance()->FinishDmlState(rel, operation);
+static void pax_dml_fini(Relation rel, CmdType operation) {
+  if (RelationIsPax(rel))
+    pax::CPaxDmlStateLocal::instance()->FinishDmlState(rel, operation);
 }
 
 static TableAmRoutine pax_column_methods = {
@@ -384,15 +403,16 @@ static TableAmRoutine pax_column_methods = {
     .scan_bitmap_next_block = pax_scan_bitmap_next_block,
     .scan_bitmap_next_tuple = pax_scan_bitmap_next_tuple,
     .scan_sample_next_block = pax_scan_sample_next_block,
-    .scan_sample_next_tuple = pax_scan_sample_next_tuple};
+    .scan_sample_next_tuple = pax_scan_sample_next_tuple,
+};
 
 Datum pax_tableam_handler(PG_FUNCTION_ARGS) {
   PG_RETURN_POINTER(&pax_column_methods);
 }
 
 void _PG_init(void) {
-  // todo should add pre_dml_init_hook?
-  pax_dml_init_hook = pax_dml_init;
-  pax_dml_finish_hook = pax_dml_finish;
+  ext_dml_init_hook = pax_dml_init;
+  ext_dml_finish_hook = pax_dml_fini;
 }
-}
+
+} // extern "C"
