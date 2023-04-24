@@ -6,7 +6,7 @@
 namespace pax {
 
 template <typename T>
-class Singleton {
+class Singleton final {
  public:
   template <typename... ArgTypes>
   static T* GetInstance(ArgTypes&&... args) {
@@ -20,7 +20,7 @@ class Singleton {
     return instance_.get();
   }
 
-  static void destory() {
+  static inline void destory() {
     if (instance_) {
       instance_.reset();
     }
