@@ -2,8 +2,10 @@
 
 #include "access/pax_access.h"
 #include "access/pax_dml_state.h"
+#include "catalog/pax_aux_table.h"
 
 extern "C" {
+#include "access/genam.h"
 #include "access/heapam.h"
 #include "access/skey.h"
 #include "access/tableam.h"
@@ -18,6 +20,7 @@ extern "C" {
 #include "nodes/execnodes.h"
 #include "nodes/tidbitmap.h"
 #include "pgstat.h"  // NOLINT
+#include "storage/bufmgr.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
@@ -211,8 +214,40 @@ void PaxAccessMethod::RelationVacuum(Relation onerel, VacuumParams *params,
 }
 
 uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber forkNumber) {
-  NOT_IMPLEMENTED_YET;
-  return 0;
+  Oid paxAuxOid;
+  Relation paxAuxRel;
+  TupleDesc auxTupDesc;
+  HeapTuple auxTup;
+  SysScanDesc auxScan;
+  uint64 paxSize = 0;
+
+  if (forkNumber != MAIN_FORKNUM)
+    return 0;
+
+  // Get the oid of pg_pax_blocks_xxx from pg_pax_tables
+  GetPaxTablesEntryAttributes(rel->rd_id, &paxAuxOid, NULL, NULL);
+
+  // Scan pg_pax_blocks_xxx to calculate size of micro partition
+  paxAuxRel = heap_open(paxAuxOid, AccessShareLock);
+  auxTupDesc = RelationGetDescr(paxAuxRel);
+
+  auxScan = systable_beginscan(paxAuxRel, InvalidOid, false, NULL, 0, NULL);
+  while (HeapTupleIsValid(auxTup = systable_getnext(auxScan))) {
+    bool isnull = false;
+    // TODO(chenhongjie): Exactly what is needed and being obtained is
+    // compressed size. Later, when the aux table supports size attributes
+    // before/after compression, we need to distinguish two attributes by names.
+    Datum tupDatum = heap_getattr(auxTup, Anum_pg_pax_block_tables_ptblocksize,
+                                  auxTupDesc, &isnull);
+
+    Assert(!isnull);
+    paxSize += DatumGetUInt32(tupDatum);
+  }
+
+  systable_endscan(auxScan);
+  heap_close(paxAuxRel, AccessShareLock);
+
+  return paxSize;
 }
 
 bool PaxAccessMethod::RelationNeedsToastTable(Relation rel) {
@@ -220,10 +255,65 @@ bool PaxAccessMethod::RelationNeedsToastTable(Relation rel) {
   return false;
 }
 
+// Similar to the case of AO and AOCS tables, PAX table has auxiliary tables,
+// size can be read directly from the auxiliary table, and there is not much
+// space for optimization in estimating relsize. So this function is implemented
+// in the same way as pax_relation_size().
 void PaxAccessMethod::EstimateRelSize(Relation rel, int32 *attr_widths,
                                       BlockNumber *pages, double *tuples,
                                       double *allvisfrac) {
-  NOT_IMPLEMENTED_YET;
+  Oid paxAuxOid;
+  Relation paxAuxRel;
+  TupleDesc auxTupDesc;
+  HeapTuple auxTup;
+  SysScanDesc auxScan;
+  uint32 totalTuples = 0;
+  uint64 paxSize = 0;
+
+  // Even an empty table takes at least one page,
+  // but number of tuples for an empty table could be 0.
+  *tuples = 0;
+  *pages = 1;
+  // index-only scan is not supported in PAX
+  *allvisfrac = 0;
+
+  // Get the oid of pg_pax_blocks_xxx from pg_pax_tables
+  GetPaxTablesEntryAttributes(rel->rd_id, &paxAuxOid, NULL, NULL);
+
+  // Scan pg_pax_blocks_xxx to get attributes
+  paxAuxRel = heap_open(paxAuxOid, AccessShareLock);
+  auxTupDesc = RelationGetDescr(paxAuxRel);
+
+  auxScan = systable_beginscan(paxAuxRel, InvalidOid, false, NULL, 0, NULL);
+  while (HeapTupleIsValid(auxTup = systable_getnext(auxScan))) {
+    Datum pttupcountDatum;
+    Datum ptblocksizeDatum;
+    bool isnull = false;
+
+    pttupcountDatum = heap_getattr(auxTup, Anum_pg_pax_block_tables_pttupcount,
+                                   auxTupDesc, &isnull);
+    Assert(!isnull);
+    totalTuples += DatumGetUInt32(pttupcountDatum);
+
+    isnull = false;
+    // TODO(chenhongjie): Exactly what we want to get here is uncompressed size,
+    // but what we're getting is compressed size. Later, when the aux table
+    // supports size attributes before/after compression, this needs to
+    // be corrected.
+    ptblocksizeDatum = heap_getattr(
+        auxTup, Anum_pg_pax_block_tables_ptblocksize, auxTupDesc, &isnull);
+
+    Assert(!isnull);
+    paxSize += DatumGetUInt32(ptblocksizeDatum);
+  }
+
+  systable_endscan(auxScan);
+  heap_close(paxAuxRel, AccessShareLock);
+
+  *tuples = static_cast<double>(totalTuples);
+  *pages = RelationGuessNumberOfBlocksFromSize(paxSize);
+
+  return;
 }
 
 double PaxAccessMethod::IndexBuildRangeScan(
@@ -320,4 +410,4 @@ void _PG_init(void) {
   ext_dml_finish_hook = pax_dml_fini;
 }
 
-}  //  extern "C"
+}  // extern "C"
