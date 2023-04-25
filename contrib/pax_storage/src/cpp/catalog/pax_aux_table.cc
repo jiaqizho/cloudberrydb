@@ -99,6 +99,7 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel) {
                      "ptblockname", NAMEOID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_pttupcount,
                      "pttupcount", INT4OID, -1, 0);
+  // TODO(chenhongjie): uncompressed and compressed ptblocksize are needed.
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblocksize,
                      "ptblocksize", INT4OID, -1, 0);
   relid = heap_create_with_catalog(
