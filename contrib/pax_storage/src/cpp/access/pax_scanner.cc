@@ -28,6 +28,11 @@ PaxScanDesc* CPaxScannner::CreateTableScanDesc(
   return desc;
 }
 
+void CPaxScannner::ScanTableReScan(PaxScanDesc* desc) {
+  Assert(desc->scanner->reader_ != nullptr);
+  desc->scanner->reader_->ReOpen();
+}
+
 CPaxScannner::CPaxScannner(const TableScanDesc scan_desc,
                            const ScanKeyData* key)
     : scan_desc_(scan_desc), key_(key) {

@@ -53,4 +53,10 @@ bool CPaxAccess::PaxGetNextSlot(TableScanDesc scan,
   Assert(desc->scanner != nullptr);
   return desc->scanner->GetNextSlot(direction, slot);
 }
+
+void CPaxAccess::PaxRescan(TableScanDesc scan) {
+  PaxScanDesc *desc = reinterpret_cast<PaxScanDesc *>(scan);
+  Assert(desc != nullptr && desc->scanner != nullptr);
+  desc->scanner->ScanTableReScan(desc);
+}
 }  // namespace pax
