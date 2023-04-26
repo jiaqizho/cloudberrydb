@@ -22,6 +22,8 @@ class CPaxAccess {
 
   static void PaxEndScan(TableScanDesc scan);
 
+  static void PaxRescan(TableScanDesc scan);
+
   static bool PaxGetNextSlot(TableScanDesc scan, const ScanDirection direction,
                              TupleTableSlot *slot);
 

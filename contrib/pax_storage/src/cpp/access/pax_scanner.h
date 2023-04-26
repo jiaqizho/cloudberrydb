@@ -23,6 +23,8 @@ class CPaxScannner {
 
   ~CPaxScannner() {}
 
+  void ScanTableReScan(PaxScanDesc* desc);
+
   bool GetNextSlot(const ScanDirection direction, TupleTableSlot* slot);
 
  private:
