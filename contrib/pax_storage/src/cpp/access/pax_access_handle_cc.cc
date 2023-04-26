@@ -20,7 +20,7 @@ void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
 void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
                                    bool set_params, bool allow_strat,
                                    bool allow_sync, bool allow_pagemode) {
-  NOT_IMPLEMENTED_YET;
+  pax::CPaxAccess::PaxRescan(scan);
 }
 
 bool CCPaxAccessMethod::ScanGetnextslot(TableScanDesc scan,
