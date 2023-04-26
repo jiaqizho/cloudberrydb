@@ -972,8 +972,8 @@ CREATE TABLE inverse (cidr inet);
 INSERT INTO inverse values ('192.168.100.199');
 explain SELECT 1 FROM inverse WHERE NOT (cidr <<= ANY(SELECT * FROM inverse));
 SELECT 1 FROM inverse WHERE NOT (cidr <<= ANY(SELECT * FROM inverse));
--- check motion is added to inner relation when performing a NL Left Outer Join
--- between relations which are distributed on columns of different data types
+-- check motion is added when performing a NL Left Outer Join between relations
+-- when the join condition columns belong to different opfamily
 create table foo_nestloop (a varchar(5),b varchar(5)) distributed by (a);
 create table bar_nestloop (p char(5),q char(5)) distributed by (p);
 insert into foo_nestloop values ('1 ','1 '),('2  ','2  '),('3   ','3   ');
@@ -987,8 +987,8 @@ explain select foo_nestloop.* from foo_nestloop left join bar_nestloop on foo_ne
 select foo_nestloop.* from foo_nestloop left join bar_nestloop on foo_nestloop.a=bar_nestloop.q order by foo_nestloop.a;
 explain select foo_nestloop.* from foo_nestloop left join bar_nestloop on foo_nestloop.a=bar_nestloop.p and foo_nestloop.b=bar_nestloop.q;
 select foo_nestloop.* from foo_nestloop left join bar_nestloop on foo_nestloop.a=bar_nestloop.p and foo_nestloop.b=bar_nestloop.q order by foo_nestloop.a;
--- check motion is added when performing a NL Inner Join
--- between relations which are distributed on columns of different data types
+-- check motion is added when performing a NL Inner Join between relations when
+-- the join condition columns belong to different opfamily
 explain select foo_nestloop.* from foo_nestloop inner join bar_nestloop on foo_nestloop.a=bar_nestloop.p;
 select foo_nestloop.* from foo_nestloop inner join bar_nestloop on foo_nestloop.a=bar_nestloop.p order by foo_nestloop.a;
 explain select foo_nestloop.* from foo_nestloop inner join bar_nestloop on foo_nestloop.a=bar_nestloop.q;
