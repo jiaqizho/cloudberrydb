@@ -96,6 +96,7 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
   std::shared_ptr<MicroPartitionMetadata> &Next() override {
     return micro_partitions_->at(index++);
   };
+  void Seek(int offset, IteratorSeekPosType whence) {}
 
  private:
   uint32_t index;

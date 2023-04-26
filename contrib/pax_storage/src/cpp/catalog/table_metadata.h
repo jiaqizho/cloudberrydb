@@ -70,6 +70,12 @@ class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
            current_index_ < micro_partitions_->size();
   }
 
+  std::size_t getCurrentIndex() {
+    return current_index_;
+  }
+
+  void Seek(int offset, IteratorSeekPosType whence);
+
   std::shared_ptr<MicroPartitionMetadata>& Next() override {
     return micro_partitions_->at(current_index_++);
   }
