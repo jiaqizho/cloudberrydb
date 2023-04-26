@@ -70,6 +70,12 @@ class TableReader {
     }
   }
 
+  virtual void ReOpen() {
+    Close();
+    iterator_->Seek(0, pax::ITER_SEEK_POS_BEGIN);
+    Open();
+  }
+
   virtual void Close() {
     assert(reader_);
     reader_->Close();
