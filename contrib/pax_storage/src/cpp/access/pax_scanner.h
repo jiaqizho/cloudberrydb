@@ -1,13 +1,8 @@
 #pragma once
 
+#include "comm/cbdb_api.h"
+
 #include "storage/pax.h"
-extern "C" {
-#include "postgres.h"  // NOLINT
-#include "access/relscan.h"
-#include "access/sdir.h"
-#include "utils/relcache.h"
-#include "utils/snapshot.h"
-}
 
 namespace pax {
 struct PaxScanDesc;

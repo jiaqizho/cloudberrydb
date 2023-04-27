@@ -1,14 +1,10 @@
 #include "storage/orc_file_stream.h"
 
+#include "comm/cbdb_api.h"
+
 #include <string>
 
 #include "comm/cbdb_wrappers.h"
-
-extern "C" {
-#include "catalog/pg_attribute.h"
-#include "executor/tuptable.h"
-#include "postgres.h"  // NOLINT
-}
 
 namespace pax {
 
@@ -126,7 +122,7 @@ void OrcFileWriter::ParseTupleAndWrite(const TupleTableSlot *slot) {
       case -1: {
         orc::StringVectorBatch *strBatch =
             dynamic_cast<orc::StringVectorBatch *>(structBatch->fields[i]);
-        assert(strBatch);
+        Assert(strBatch);
         if (fieldBatch->notNull[row]) {
           struct varlena *vl =
               (struct varlena *)cbdb::PointerFromDatum(values[i]);
@@ -154,14 +150,14 @@ void OrcFileWriter::ParseTupleAndWrite(const TupleTableSlot *slot) {
         if (typlen <= 8 && typbyval) {
           orc::LongVectorBatch *longBatch =
               dynamic_cast<orc::LongVectorBatch *>(structBatch->fields[i]);
-          assert(longBatch);
+          Assert(longBatch);
           if (fieldBatch->notNull[row]) {
             longBatch->data[row] = cbdb::Int64FromDatum(values[i]);
           }
         } else {
           orc::StringVectorBatch *strBatch =
               dynamic_cast<orc::StringVectorBatch *>(structBatch->fields[i]);
-          assert(strBatch);
+          Assert(strBatch);
           if (fieldBatch->notNull[row]) {
             if (buffer_.size() < buffer_offset_ + typlen) {
               buffer_.resize(buffer_.size() * 2);
@@ -190,7 +186,7 @@ OrcFileReader::OrcFileReader(File *file) {
   orc::RowReaderOptions rowOptions;
   reader_ = orc::createReader(std::move(inStream), options);
   row_reader_ = reader_->createRowReader(rowOptions);
-  assert(row_reader_);
+  Assert(row_reader_);
 
   // TODO(gongxun): support multiple stripe
   batch_ = row_reader_->createRowBatch(1);
@@ -222,7 +218,7 @@ void OrcFileReader::readTupleFromBatchVector(Datum *datum, bool *isnull, int i,
   orc::StructVectorBatch *structBatch =
       dynamic_cast<orc::StructVectorBatch *>(batch_.get());
   if (structBatch->fields[i]->hasNulls) {
-    assert(structBatch->fields[i]->numElements > row);
+    Assert(structBatch->fields[i]->numElements > row);
     if (structBatch->fields[i]->notNull[row]) {
       *isnull = false;
     } else {
@@ -235,7 +231,7 @@ void OrcFileReader::readTupleFromBatchVector(Datum *datum, bool *isnull, int i,
     case -1: {
       orc::StringVectorBatch *strBatch =
           dynamic_cast<orc::StringVectorBatch *>(structBatch->fields[i]);
-      assert(strBatch);
+      Assert(strBatch);
 
       datum[0] =
           cbdb::DatumFromCString(strBatch->data[row], strBatch->length[row]);
@@ -247,15 +243,15 @@ void OrcFileReader::readTupleFromBatchVector(Datum *datum, bool *isnull, int i,
         if (typbyvl) {
           orc::LongVectorBatch *longBatch =
               dynamic_cast<orc::LongVectorBatch *>(structBatch->fields[i]);
-          assert(longBatch);
+          Assert(longBatch);
           datum[0] = Int64GetDatum(longBatch->data[row]);
           break;
         }
       } else {
         orc::StringVectorBatch *strBatch =
             dynamic_cast<orc::StringVectorBatch *>(structBatch->fields[i]);
-        assert(strBatch);
-        assert(strBatch->length[row] == typlen);
+        Assert(strBatch);
+        Assert(strBatch->length[row] == typlen);
         // TODO(gongxun): need optimize, avoid memory alloc and memory copy.
         datum[0] = cbdb::DatumFromPointer(strBatch->data[row], typlen);
       }

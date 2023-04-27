@@ -1,4 +1,7 @@
 #pragma once
+
+#include "comm/cbdb_api.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -6,12 +9,6 @@
 #include "catalog/iterator.h"
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/pax_aux_table.h"
-
-extern "C" {
-#include "postgres.h"  // NOLINT
-#include "utils/relcache.h"
-#include "utils/snapshot.h"
-}
 
 namespace pax {
 class TableMetadata {

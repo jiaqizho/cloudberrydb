@@ -1,8 +1,6 @@
 #pragma once
 
-extern "C" {
-#include "utils/relcache.h"
-}
+#include "comm/cbdb_api.h"
 
 namespace pax {
 class CPaxDeleter {
