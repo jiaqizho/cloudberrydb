@@ -1,18 +1,11 @@
 #pragma once
 
+#include "comm/cbdb_api.h"
+
 #include <memory>
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
-
-extern "C" {
-#include "postgres.h"  // NOLINT
-#include "utils/hsearch.h"
-}
-
-extern "C" {
-extern void pax_dml_state_reset_cb(void* _);
-}
 
 namespace pax {
 class CPaxInserter;

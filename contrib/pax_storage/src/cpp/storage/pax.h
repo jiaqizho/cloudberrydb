@@ -1,5 +1,4 @@
 #pragma once
-#include <assert.h>
 
 #include <memory>
 #include <optional>
@@ -77,7 +76,7 @@ class TableReader {
   }
 
   virtual void Close() {
-    assert(reader_);
+    Assert(reader_);
     reader_->Close();
   }
 

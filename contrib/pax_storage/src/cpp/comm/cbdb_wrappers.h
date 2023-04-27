@@ -1,17 +1,11 @@
 #pragma once
+
+#include "comm/cbdb_api.h"
+
 #include <cstddef>
 #include <string>
 
 #include "exceptions/CException.h"
-extern "C" {
-#include "postgres.h"  // NOLINT
-#include "utils/hsearch.h"
-#include "utils/memutils.h"
-#include "utils/palloc.h"
-#include "utils/plancache.h"
-#include "utils/rel.h"
-#include "utils/relcache.h"
-}
 
 namespace cbdb {
 void *Palloc(size_t size);

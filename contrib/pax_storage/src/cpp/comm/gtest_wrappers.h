@@ -6,6 +6,4 @@
 #undef ngettext
 #undef dngettext
 #include <gtest/gtest.h>
-extern "C" {
-#include "c.h"  // NOLINT
-}
+#include "comm/cbdb_api.h"

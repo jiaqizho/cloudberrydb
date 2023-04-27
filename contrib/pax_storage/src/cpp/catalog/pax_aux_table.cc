@@ -1,12 +1,12 @@
 #include "catalog/pax_aux_table.h"
 
+#include "comm/cbdb_api.h"
+
+#include <uuid/uuid.h>
+
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
-
-extern "C" {
-#include "catalog/pg_am.h"
-}
 
 const std::string cbdb::GenRandomBlockId() {
   CBDB_WRAP_START;
@@ -78,22 +78,22 @@ void cbdb::InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
 
 void cbdb::PaxCreateMicroPartitionTable(const Relation rel) {
   Relation pg_class_desc;
-  char *blocks_relname;
-  Oid blocks_relid;
+  char auxRelname[32];
   Oid relid;
-  Oid blocks_namespaceId;
-  Oid rd_id;
+  Oid auxRelid;
+  Oid auxNamespaceId;
+  Oid paxRelid;
   TupleDesc tupdesc;
 
   pg_class_desc = table_open(RelationRelationId, RowExclusiveLock);
-  rd_id = RelationGetRelid(rel);
+  paxRelid = RelationGetRelid(rel);
 
   // 1. create blocks table.
-  blocks_relname = psprintf("pg_pax_blocks_%u", rd_id);
-  blocks_namespaceId = PG_PAXAUX_NAMESPACE;
-  blocks_relid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId,
-                                      Anum_pg_class_oid,  // new line
-                                      blocks_relname, blocks_namespaceId);
+  snprintf(auxRelname, sizeof(auxRelname), "pg_pax_blocks_%u", paxRelid);
+  auxNamespaceId = PG_PAXAUX_NAMESPACE;
+  auxRelid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId,
+                                  Anum_pg_class_oid,  // new line
+                                  auxRelname, auxNamespaceId);
   tupdesc = CreateTemplateTupleDesc(Natts_pg_pax_block_tables);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblockname,
                      "ptblockname", NAMEOID, -1, 0);
@@ -103,69 +103,43 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel) {
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblocksize,
                      "ptblocksize", INT4OID, -1, 0);
   relid = heap_create_with_catalog(
-      blocks_relname, blocks_namespaceId, rel->rd_rel->reltablespace,
-      blocks_relid, InvalidOid, InvalidOid, rel->rd_rel->relowner,
-      HEAP_TABLE_AM_OID, tupdesc, NIL, 'r', rel->rd_rel->relpersistence,
+      auxRelname, auxNamespaceId, rel->rd_rel->reltablespace, auxRelid,
+      InvalidOid, InvalidOid, rel->rd_rel->relowner, HEAP_TABLE_AM_OID, tupdesc,
+      NIL, RELKIND_RELATION, rel->rd_rel->relpersistence,
       rel->rd_rel->relisshared, RelationIsMapped(rel), ONCOMMIT_NOOP,
       NULL,                         /* GP Policy */
       (Datum)0, false,              /* use _user_acl */
       true, true, InvalidOid, NULL, /* typeaddress */
       false /* valid_opts */);
-
-  CommandCounterIncrement();
-
-  // 2. insert entry or update to pg_pax_tables.
-  InsertPaxTablesEntry(rel->rd_id, relid, "", 0);
-
-  CommandCounterIncrement();
-
+  Assert(relid == auxRelid);
   table_close(pg_class_desc, NoLock);
+
+  // 2. insert entry into pg_pax_tables.
+  InsertPaxTablesEntry(paxRelid, auxRelid, "", 0);
 
   // 3. record pg_depend, pg_pax_blocks_<xxx> depends relation.
   {
     ObjectAddress base;
     ObjectAddress aux;
     base.classId = RelationRelationId;
-    base.objectId = rel->rd_id;
+    base.objectId = paxRelid;
     base.objectSubId = 0;
     aux.classId = RelationRelationId;
-    aux.objectId = relid;
+    aux.objectId = auxRelid;
     aux.objectSubId = 0;
     recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
 
     // pg_pax_tables single row depend
     base.classId = RelationRelationId;
-    base.objectId = rel->rd_id;
+    base.objectId = paxRelid;
     base.objectSubId = 0;
     aux.classId = PaxTablesRelationId;
-    aux.objectId = rel->rd_id;
+    aux.objectId = paxRelid;
     aux.objectSubId = 0;
     recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
   }
 }
 
-void cbdb::PaxTransactionalTruncateTable(const Oid blocksrelid) {
-  Relation blockrel;
-
-  Assert(blocksrelid != InvalidOid);
-  // truncate already exist pax block auxiliary table.
-  blockrel = relation_open(blocksrelid, AccessExclusiveLock);
-
-  /*TODO1 pending-delete operation should be applied here. */
-  RelationSetNewRelfilenode(blockrel, blockrel->rd_rel->relpersistence);
-  relation_close(blockrel, NoLock);
-}
-
-void cbdb::PaxNonTransactionalTruncateTable(const Oid blocksrelid) {
-  Relation blockrel;
-
-  Assert(blocksrelid != InvalidOid);
-  blockrel = relation_open(blocksrelid, AccessExclusiveLock);
-
-  // Immediate, non-rollbackable truncation is OK.
-  heap_truncate_one_rel(blockrel);
-  relation_close(blockrel, NoLock);
-}
 void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
     std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result,
     const Relation relation, const Relation pg_blockfile_rel,

@@ -1,18 +1,13 @@
 #pragma once
+#include "comm/cbdb_api.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 
-// TODO(gongxun): use our c++ custom assert
-#include "assert.h"  // NOLINT
 #include "orc/OrcFile.hh"
 #include "storage/file_system.h"
 #include "storage/micro_partition.h"
-
-extern "C" {
-#include "access/tupdesc.h"
-#include "executor/tuptable.h"
-}
 
 // todo: maybe should support in guc
 #define ORC_BUFFER_SIZE 1024 * 1024
@@ -65,7 +60,7 @@ class OrcFileOutputStream : public orc::OutputStream {
     size_t actual_written_size = 0;
     actual_written_size = this->file_->Write(buf, length);
     // todo should check whether the actual size is equal to length
-    assert(actual_written_size == length);
+    Assert(actual_written_size == length);
     bytes_written_ += actual_written_size;
   }
 
@@ -128,7 +123,7 @@ class OrcFileInputStream : public orc::InputStream {
     size_t actual_read_size = 0;
     actual_read_size = this->file_->Read(buf, length, offset);
     // todo  whether should check whether the actual size is equal to length
-    assert(actual_read_size == length);
+    Assert(actual_read_size == length);
   }
 
   const std::string& getName() const override { return file_->GetPath(); };

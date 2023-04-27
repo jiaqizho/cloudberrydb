@@ -1,19 +1,11 @@
 #pragma once
 
-extern "C" {
-#include "postgres.h"  // NOLINT
-#include "access/heapam.h"
-#include "access/relscan.h"
-#include "access/sdir.h"
-#include "utils/snapshot.h"
-}
+#include "comm/cbdb_api.h"
 
 namespace pax {
 class CPaxAccess {
  public:
   static void PaxCreateAuxBlocks(const Relation relation);
-  static void PaxTransactionalTruncateTable(const Oid blocksrelid);
-  static void PaxNonTransactionalTruncateTable(const Oid blocksrelid);
   static TableScanDesc PaxBeginScan(const Relation relation,
                                     const Snapshot snapshot, const int nkeys,
                                     const struct ScanKeyData *key,
