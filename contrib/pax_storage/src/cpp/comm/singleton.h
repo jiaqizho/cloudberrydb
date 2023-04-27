@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <mutex> // NOLINT
+#include <mutex>
 #include <utility>
 namespace pax {
 

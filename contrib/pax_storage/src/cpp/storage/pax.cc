@@ -1,5 +1,3 @@
-
-
 #include "storage/pax.h"
 
 namespace pax {

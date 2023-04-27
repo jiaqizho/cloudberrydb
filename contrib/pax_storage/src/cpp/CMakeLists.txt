@@ -38,7 +38,6 @@ set(pax_storage_src
 set(pax_access_src
     access/pax_access.cc
     access/pax_access_handle.cc
-    access/pax_access_handle_cc.cc
     access/pax_deleter.cc
     access/pax_dml_state.cc
     access/pax_inserter.cc

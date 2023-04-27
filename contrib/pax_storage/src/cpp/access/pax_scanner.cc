@@ -5,10 +5,6 @@
 #include "storage/micro_partition.h"
 #include "storage/orc_native_micro_partition.h"
 #include "storage/pax.h"
-extern "C" {
-#include "postgres.h"  // NOLINT
-#include "utils/snapshot.h"
-}
 
 namespace pax {
 
