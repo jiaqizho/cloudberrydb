@@ -9,6 +9,3 @@ AS 'MODULE_PATHNAME', 'pax_tableam_handler'
 LANGUAGE C STABLE STRICT;
 
 CREATE ACCESS METHOD pax TYPE table HANDLER pg_catalog.pax_tableam_handler;
-
-CREATE SCHEMA pax_namespace;
-CREATE TABLE pax_namespace.pax_block_table(relid Oid, block_name Name, block_size int, num_rows int);

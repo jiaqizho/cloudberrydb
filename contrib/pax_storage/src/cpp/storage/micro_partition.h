@@ -1,18 +1,12 @@
 #pragma once
 
-#include <stddef.h>
+#include "comm/cbdb_api.h"
 
 #include <functional>
+#include <stddef.h>
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-extern "C" {
-#include "postgres.h"  // NOLINT
-#include "access/tupdesc.h"
-#include "executor/tuptable.h"
-#include "storage/relfilenode.h"
-};
 
 #include "comm/pax_def.h"
 #include "storage/file_system.h"

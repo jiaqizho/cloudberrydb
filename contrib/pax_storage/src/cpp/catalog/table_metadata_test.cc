@@ -18,7 +18,6 @@ class TableMetadataTest : public ::testing::Test {
   void TearDown() override {}
 };
 
-
 TEST_F(TableMetadataTest, new_iterator) {
   std::string block_id = "block_id";
   std::string file_name = "file_name";

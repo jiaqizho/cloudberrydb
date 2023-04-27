@@ -4,27 +4,14 @@
 #include "access/pax_dml_state.h"
 #include "catalog/pax_aux_table.h"
 
-extern "C" {
-#include "access/genam.h"
-#include "access/heapam.h"
-#include "access/skey.h"
-#include "access/tableam.h"
-#include "catalog/dependency.h"
-#include "catalog/heap.h"
-#include "catalog/index.h"
-#include "catalog/oid_dispatch.h"
-#include "catalog/pg_am.h"
-#include "catalog/pg_namespace.h"
-#include "catalog/pg_pax_tables.h"
-#include "commands/vacuum.h"
-#include "nodes/execnodes.h"
-#include "nodes/tidbitmap.h"
-#include "pgstat.h"  // NOLINT
-#include "storage/bufmgr.h"
-#include "utils/memutils.h"
-#include "utils/rel.h"
-#include "utils/syscache.h"
-}
+#define NOT_IMPLEMENTED_YET                        \
+  ereport(ERROR,                                   \
+          (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
+           errmsg("not implemented yet on pax relations: %s", __func__)))
+
+#define NOT_SUPPORTED_YET                                 \
+  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
+                  errmsg("not supported on pax relations: %s", __func__)))
 
 #define RelationIsPax(rel) AMOidIsPax((rel)->rd_rel->relam)
 
@@ -44,8 +31,118 @@ bool AMOidIsPax(Oid amOid) {
   return is_pax;
 }
 
+// access methods that are implemented in C++
 namespace pax {
-const TupleTableSlotOps *PaxAccessMethod::SlotCallbacks(Relation rel) {
+
+TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
+                                           int nkeys, struct ScanKeyData *key,
+                                           ParallelTableScanDesc pscan,
+                                           uint32 flags) {
+  // todo: PAX_TRY {} PAX_CATCH {}
+  return pax::CPaxAccess::PaxBeginScan(relation, snapshot, nkeys, key, pscan,
+                                       flags);
+}
+
+void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
+  // todo PAX_TRY{} PAX_CATCH {}
+  pax::CPaxAccess::PaxEndScan(scan);
+}
+
+void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
+                                   bool set_params, bool allow_strat,
+                                   bool allow_sync, bool allow_pagemode) {
+  NOT_IMPLEMENTED_YET;
+}
+
+bool CCPaxAccessMethod::ScanGetnextslot(TableScanDesc scan,
+                                        ScanDirection direction,
+                                        TupleTableSlot *slot) {
+  return pax::CPaxAccess::PaxGetNextSlot(scan, direction, slot);
+}
+
+void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
+                                    CommandId cid, int options,
+                                    BulkInsertState bistate) {
+  // todo C CALL C++ WRAPPER
+  pax::CPaxAccess::PaxTupleInsert(relation, slot, cid, options, bistate);
+}
+
+TM_Result CCPaxAccessMethod::TupleDelete(Relation relation, ItemPointer tid,
+                                         CommandId cid, Snapshot snapshot,
+                                         Snapshot crosscheck, bool wait,
+                                         TM_FailureData *tmfd,
+                                         bool changingPart) {
+  NOT_IMPLEMENTED_YET;
+  return TM_Ok;
+}
+
+TM_Result CCPaxAccessMethod::TupleUpdate(Relation relation, ItemPointer otid,
+                                         TupleTableSlot *slot, CommandId cid,
+                                         Snapshot snapshot, Snapshot crosscheck,
+                                         bool wait, TM_FailureData *tmfd,
+                                         LockTupleMode *lockmode,
+                                         bool *update_indexes) {
+  NOT_IMPLEMENTED_YET;
+  return TM_Ok;
+}
+
+bool CCPaxAccessMethod::ScanAnalyzeNextBlock(TableScanDesc scan,
+                                             BlockNumber blockno,
+                                             BufferAccessStrategy bstrategy) {
+  NOT_IMPLEMENTED_YET;
+  return false;
+}
+
+bool CCPaxAccessMethod::ScanAnalyzeNextTuple(TableScanDesc scan,
+                                             TransactionId OldestXmin,
+                                             double *liverows, double *deadrows,
+                                             TupleTableSlot *slot) {
+  NOT_IMPLEMENTED_YET;
+  return false;
+}
+
+bool CCPaxAccessMethod::ScanBitmapNextBlock(TableScanDesc scan,
+                                            TBMIterateResult *tbmres) {
+  NOT_IMPLEMENTED_YET;
+  return false;
+}
+
+bool CCPaxAccessMethod::ScanBitmapNextTuple(TableScanDesc scan,
+                                            TBMIterateResult *tbmres,
+                                            TupleTableSlot *slot) {
+  NOT_IMPLEMENTED_YET;
+  return false;
+}
+
+bool CCPaxAccessMethod::ScanSampleNextBlock(TableScanDesc scan,
+                                            SampleScanState *scanstate) {
+  NOT_IMPLEMENTED_YET;
+  return false;
+}
+
+bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
+                                            SampleScanState *scanstate,
+                                            TupleTableSlot *slot) {
+  NOT_IMPLEMENTED_YET;
+  return false;
+}
+
+void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
+  if (RelationIsPax(rel))
+    pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
+}
+
+void CCPaxAccessMethod::ExtDmlFini(Relation rel, CmdType operation) {
+  if (RelationIsPax(rel))
+    pax::CPaxDmlStateLocal::instance()->FinishDmlState(rel, operation);
+}
+
+}  // namespace pax
+// END of C++ implementation
+
+// access methods that are implemented in C
+namespace pax {
+const TupleTableSlotOps *PaxAccessMethod::SlotCallbacks(Relation rel) noexcept {
   return &TTSOpsVirtual;
 }
 
@@ -154,45 +251,57 @@ void PaxAccessMethod::RelationSetNewFilenode(Relation rel,
                                              TransactionId *freezeXid,
                                              MultiXactId *minmulti) {
   HeapTuple tupcache;
-  Oid blocksrelid;
-  *freezeXid = *minmulti = InvalidTransactionId;
 
   elog(DEBUG1, "pax_relation_set_new_filenode:%d/%d/%d", newrnode->dbNode,
        newrnode->spcNode, newrnode->relNode);
 
-  // create pg_pax_blocks_<pax_table_oid>
+  *freezeXid = *minmulti = InvalidTransactionId;
   tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(rel));
   if (HeapTupleIsValid(tupcache)) {
-    blocksrelid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
+    Relation auxRel;
+    Oid auxRelid;
+    auxRelid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
     ReleaseSysCache(tupcache);
-    pax::CPaxAccess::PaxTransactionalTruncateTable(blocksrelid);
+
+    Assert(OidIsValid(auxRelid));
+    // truncate already exist pax block auxiliary table.
+    auxRel = relation_open(auxRelid, AccessExclusiveLock);
+
+    /*TODO1 pending-delete operation should be applied here. */
+    RelationSetNewRelfilenode(auxRel, auxRel->rd_rel->relpersistence);
+    relation_close(auxRel, NoLock);
   } else {
+    // create pg_pax_blocks_<pax_table_oid>
     pax::CPaxAccess::PaxCreateAuxBlocks(rel);
   }
 }
 
 // * non transactional truncate table case:
-// create table inside transactional block, and then truncate table inside
-// transactional block. create table outside transactional block, insert data
+// 1. create table inside transactional block, and then truncate table inside
+// transactional block.
+// 2.create table outside transactional block, insert data
 // and truncate table inside transactional block.
 void PaxAccessMethod::RelationNontransactionalTruncate(Relation rel) {
   HeapTuple tupcache;
-  Oid blocksrelid;
+  Relation auxRel;
+  Oid auxRelid;
 
-  elog(DEBUG1, "pax_relation_nontransactional_truncate:%d/%d/%d",
+  elog(DEBUG1, "pax_relation_nontransactional_truncate:%u/%u/%u",
        rel->rd_node.dbNode, rel->rd_node.spcNode, rel->rd_node.relNode);
 
   tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(rel));
   if (!HeapTupleIsValid(tupcache))
-    ereport(
-        ERROR,
-        (errcode(ERRCODE_UNDEFINED_SCHEMA),
-         errmsg(
-             "relid with %d find no oid of the aux relation in pg_pax_tables.",
-             rel->rd_id)));
-  blocksrelid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
+    ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                    errmsg("cache lookup failed with relid=%u for aux relation "
+                           "in pg_pax_tables.",
+                           RelationGetRelid(rel))));
+  auxRelid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
   ReleaseSysCache(tupcache);
-  pax::CPaxAccess::PaxNonTransactionalTruncateTable(blocksrelid);
+
+  Assert(OidIsValid(auxRelid));
+  auxRel = relation_open(auxRelid, AccessExclusiveLock);
+  heap_truncate_one_rel(auxRel);
+  relation_close(auxRel, NoLock);
 }
 
 void PaxAccessMethod::RelationCopyData(Relation rel,
@@ -221,8 +330,7 @@ uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber forkNumber) {
   SysScanDesc auxScan;
   uint64 paxSize = 0;
 
-  if (forkNumber != MAIN_FORKNUM)
-    return 0;
+  if (forkNumber != MAIN_FORKNUM) return 0;
 
   // Get the oid of pg_pax_blocks_xxx from pg_pax_tables
   GetPaxTablesEntryAttributes(rel->rd_id, &paxAuxOid, NULL, NULL);
@@ -332,20 +440,11 @@ void PaxAccessMethod::IndexValidateScan(Relation heapRelation,
   NOT_IMPLEMENTED_YET;
 }
 }  // namespace pax
-
-static void pax_dml_init(Relation rel, CmdType operation) {
-  if (RelationIsPax(rel))
-    pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
-}
-
-static void pax_dml_fini(Relation rel, CmdType operation) {
-  if (RelationIsPax(rel))
-    pax::CPaxDmlStateLocal::instance()->FinishDmlState(rel, operation);
-}
+// END of C implementation
 
 extern "C" {
 
-static TableAmRoutine pax_column_methods = {
+static const TableAmRoutine pax_column_methods = {
     .type = T_TableAmRoutine,
     .slot_callbacks = pax::PaxAccessMethod::SlotCallbacks,
     .scan_begin = pax::CCPaxAccessMethod::ScanBegin,
@@ -406,8 +505,8 @@ Datum pax_tableam_handler(PG_FUNCTION_ARGS) {
 }
 
 void _PG_init(void) {
-  ext_dml_init_hook = pax_dml_init;
-  ext_dml_finish_hook = pax_dml_fini;
+  ext_dml_init_hook = pax::CCPaxAccessMethod::ExtDmlInit;
+  ext_dml_finish_hook = pax::CCPaxAccessMethod::ExtDmlFini;
 }
 
 }  // extern "C"

@@ -1,15 +1,13 @@
 #include "storage/orc_native_micro_partition.h"
 
+#include "comm/cbdb_api.h"
+
 #include <utility>
 
 #include "catalog/pax_aux_table.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/file_system.h"
-
-extern "C" {
-#include "postgres.h"  // NOLINT
-}
 
 namespace pax {
 
@@ -94,17 +92,17 @@ void OrcNativeMicroPartitionReader::Close() {
   }
 }
 bool OrcNativeMicroPartitionReader::ReadTuple(CTupleSlot* slot) {
-  assert(reader_);
+  Assert(reader_);
   return reader_->ReadNextBatch(slot);
 }
 size_t OrcNativeMicroPartitionReader::Length() const {
   // TODO(gongxun): get length from orc file
-  assert(false);
+  Assert(false);
   return 0;
 }
 size_t OrcNativeMicroPartitionReader::NumTuples() const {
   // TODO(gongxun): get num tuples from orc file
-  assert(false);
+  Assert(false);
   return 0;
 }
 
