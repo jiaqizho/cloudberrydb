@@ -1,27 +1,11 @@
 #pragma once
 
-extern "C" {
-#include "postgres.h" //  NOLINT
-
-#include "access/heapam.h"
-#include "access/tableam.h"
-#include "storage/block.h"
-#include "utils/elog.h"
-}
-
-#define NOT_IMPLEMENTED_YET                        \
-  ereport(ERROR,                                   \
-          (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
-           errmsg("not implemented yet on pax relations: %s", __func__)))
-
-#define NOT_SUPPORTED_YET                                 \
-  ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
-                  errmsg("not supported on pax relations: %s", __func__)))
+#include "comm/cbdb_api.h"
 
 namespace pax {
 class PaxAccessMethod final {
  public:
-  static const TupleTableSlotOps *SlotCallbacks(Relation rel);
+  static const TupleTableSlotOps *SlotCallbacks(Relation rel) noexcept;
 
   static void ScanSetTidrange(TableScanDesc scan, ItemPointer mintid,
                               ItemPointer maxtid);
@@ -139,6 +123,10 @@ class CCPaxAccessMethod final {
   static bool ScanSampleNextTuple(TableScanDesc scan,
                                   SampleScanState *scanstate,
                                   TupleTableSlot *slot);
+
+  // DML init/fini hooks
+  static void ExtDmlInit(Relation rel, CmdType operation);
+  static void ExtDmlFini(Relation rel, CmdType operation);
 };
 
 }  // namespace pax

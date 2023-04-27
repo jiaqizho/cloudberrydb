@@ -4,7 +4,6 @@ extern "C" {
 const char *progname;
 };
 
-
 void *cbdb::MemCtxAlloc(MemoryContext ctx, size_t size) {
   CBDB_WRAP_START;
   {

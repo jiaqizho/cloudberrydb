@@ -62,7 +62,7 @@ TEST_F(LocalFileSystemTest, write_read) {
   char buff[10] = {0};
   auto read_size = file_ptr->Read(buff, 3);
   ASSERT_EQ(3, read_size);
-  ASSERT_TRUE(strncmp("abc", buff, 3) == 0);  // NOLINT
+  ASSERT_EQ(strncmp("abc", buff, 3), 0);
 }
 
 }  // namespace pax::tests
