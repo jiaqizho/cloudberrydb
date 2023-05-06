@@ -2,6 +2,7 @@
 
 #include "access/pax_access.h"
 #include "access/pax_dml_state.h"
+#include "access/pax_scanner.h"
 #include "catalog/pax_aux_table.h"
 
 #define NOT_IMPLEMENTED_YET                        \
@@ -14,6 +15,9 @@
                   errmsg("not supported on pax relations: %s", __func__)))
 
 #define RelationIsPax(rel) AMOidIsPax((rel)->rd_rel->relam)
+
+extern "C" BlockNumber system_nextsampleblock(SampleScanState *node,
+                                              BlockNumber nblocks);
 
 bool AMOidIsPax(Oid amOid) {
   HeapTuple tuple;
@@ -89,16 +93,39 @@ TM_Result CCPaxAccessMethod::TupleUpdate(Relation relation, ItemPointer otid,
 bool CCPaxAccessMethod::ScanAnalyzeNextBlock(TableScanDesc scan,
                                              BlockNumber blockno,
                                              BufferAccessStrategy bstrategy) {
-  NOT_IMPLEMENTED_YET;
-  return false;
+  PaxScanDesc *paxscan = reinterpret_cast<PaxScanDesc *>(scan);
+  paxscan->targetTupleId = blockno;
+
+  return true;
 }
 
 bool CCPaxAccessMethod::ScanAnalyzeNextTuple(TableScanDesc scan,
                                              TransactionId OldestXmin,
                                              double *liverows, double *deadrows,
                                              TupleTableSlot *slot) {
-  NOT_IMPLEMENTED_YET;
-  return false;
+  PaxScanDesc *paxscan = reinterpret_cast<PaxScanDesc *>(scan);
+  bool ret = false;
+
+  Assert(*deadrows == 0);  // not dead rows in pax latest snapshot
+
+  // skip several tuples if they are not sampling target.
+  ret = paxscan->scanner->SeekTuple(paxscan->targetTupleId,
+                                    &(paxscan->nextTupleId));
+
+  if (!ret) {
+    return false;
+  }
+
+  ret = ScanGetnextslot(scan, ForwardScanDirection, slot);
+  paxscan->nextTupleId++;
+  if (ret) {
+    *liverows += 1;
+  }
+
+  // Unlike heap table, latest pax snapshot does not contain deadrows,
+  // so `false` value of ret indicate that no more tuple to fetch,
+  // and just return directly.
+  return ret;
 }
 
 bool CCPaxAccessMethod::ScanBitmapNextBlock(TableScanDesc scan,
@@ -116,15 +143,48 @@ bool CCPaxAccessMethod::ScanBitmapNextTuple(TableScanDesc scan,
 
 bool CCPaxAccessMethod::ScanSampleNextBlock(TableScanDesc scan,
                                             SampleScanState *scanstate) {
-  NOT_IMPLEMENTED_YET;
-  return false;
+  PaxScanDesc *paxscan = reinterpret_cast<PaxScanDesc *>(scan);
+  TsmRoutine *tsm = scanstate->tsmroutine;
+  BlockNumber blockno = 0;
+  BlockNumber pages = 0;
+  double totaltuples = 0;
+  int32 attrwidths = 0;
+  double allvisfrac = 0;
+
+  if (paxscan->totalTuples == 0) {
+    PaxAccessMethod::EstimateRelSize(scan->rs_rd, &attrwidths, &pages, &totaltuples, &allvisfrac);
+    paxscan->totalTuples = totaltuples;
+  }
+
+  if (tsm->NextSampleBlock)
+    blockno = tsm->NextSampleBlock(scanstate, paxscan->totalTuples);
+  else
+    blockno = system_nextsampleblock(scanstate, paxscan->totalTuples);
+
+  if (!BlockNumberIsValid(blockno))
+    return false;
+
+  paxscan->fetchTupleId = blockno;
+  return true;
 }
 
 bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
                                             SampleScanState *scanstate,
                                             TupleTableSlot *slot) {
-  NOT_IMPLEMENTED_YET;
-  return false;
+  PaxScanDesc *paxscan = reinterpret_cast<PaxScanDesc *>(scan);
+  bool ret = false;
+
+  // skip several tuples if they are not sampling target.
+  ret = paxscan->scanner->SeekTuple(paxscan->fetchTupleId,
+                                    &(paxscan->nextTupleId));
+
+  if (!ret)
+    return false;
+
+  ret = ScanGetnextslot(scan, ForwardScanDirection, slot);
+  paxscan->nextTupleId++;
+
+  return ret;
 }
 
 void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {

@@ -100,6 +100,15 @@ size_t OrcNativeMicroPartitionReader::Length() const {
   Assert(false);
   return 0;
 }
+
+void OrcNativeMicroPartitionReader::Seek(size_t offset) {
+  reader_->SeekToRow(offset);
+}
+
+uint64_t OrcNativeMicroPartitionReader::Offset() const {
+  return reader_->Offset();
+}
+
 size_t OrcNativeMicroPartitionReader::NumTuples() const {
   // TODO(gongxun): get num tuples from orc file
   Assert(false);
