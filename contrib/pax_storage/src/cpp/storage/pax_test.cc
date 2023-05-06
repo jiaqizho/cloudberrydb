@@ -92,11 +92,31 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
                               meta_info_list.end());
   }
   void Init() override{};
-  bool HasNext() override { return index < micro_partitions_->size(); };
+  bool HasNext() const override { return index < micro_partitions_->size(); };
+
+  std::shared_ptr<MicroPartitionMetadata>& Current() const override {
+    return micro_partitions_->at(index);
+  }
+
+  virtual bool Empty() const { return micro_partitions_->empty(); }
+  virtual uint32_t Size() const { return micro_partitions_->size(); }
+  virtual void Seek(int offset, IteratorSeekPosType whence) {
+    switch (whence) {
+      case BEGIN:
+        index = offset;
+        break;
+      case CURRENT:
+        index += offset;
+        break;
+      case END:
+        index = micro_partitions_->size() - offset;
+        break;
+    }
+  }
+
   std::shared_ptr<MicroPartitionMetadata> &Next() override {
-    return micro_partitions_->at(index++);
+    return micro_partitions_->at(++index);
   };
-  void Seek(int offset, IteratorSeekPosType whence) {}
 
  private:
   uint32_t index;
