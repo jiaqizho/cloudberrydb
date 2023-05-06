@@ -2,6 +2,7 @@
 
 #include "comm/cbdb_api.h"
 
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
@@ -62,19 +63,26 @@ class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
     return std::shared_ptr<Iterator>(new Iterator(micro_partitions));
   }
   void Init() override {}
-  bool HasNext() override {
-    return !micro_partitions_->empty() &&
-           current_index_ < micro_partitions_->size();
+
+  std::size_t getCurrentIndex() const { return current_index_; }
+
+  inline bool Empty() const override { return micro_partitions_->empty(); }
+
+  inline uint32_t Size() const override { return micro_partitions_->size(); }
+
+  bool HasNext() const override {
+    return current_index_ + 1 < micro_partitions_->size();
   }
 
-  std::size_t getCurrentIndex() {
-    return current_index_;
-  }
-
-  void Seek(int offset, IteratorSeekPosType whence);
+  void Seek(int offset, IteratorSeekPosType whence) override;
 
   std::shared_ptr<MicroPartitionMetadata>& Next() override {
-    return micro_partitions_->at(current_index_++);
+    assert(current_index_ >= 0 && current_index_ + 1 < micro_partitions_->size());
+    return micro_partitions_->at(++current_index_);
+  }
+
+  std::shared_ptr<MicroPartitionMetadata>& Current() const override {
+    return micro_partitions_->at(current_index_);
   }
 
   ~Iterator() { micro_partitions_->clear(); }

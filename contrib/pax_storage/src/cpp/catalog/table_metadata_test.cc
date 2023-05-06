@@ -36,9 +36,11 @@ TEST_F(TableMetadataTest, new_iterator) {
   std::shared_ptr<pax::TableMetadata::Iterator> iterator =
       pax::TableMetadata::Iterator::Create(micro_partitions);
 
-  ASSERT_TRUE(iterator->HasNext());
+  ASSERT_FALSE(iterator->Empty());
+  ASSERT_EQ(iterator->Size(), 1);
+  ASSERT_FALSE(iterator->HasNext());
 
-  std::shared_ptr<pax::MicroPartitionMetadata> meta_info = iterator->Next();
+  std::shared_ptr<pax::MicroPartitionMetadata> meta_info = iterator->Current();
   ASSERT_EQ(meta_info->getFileName(), file_name);
   ASSERT_EQ(meta_info->getTupleCount(), 1);
   ASSERT_EQ(meta_info->getFileSize(), MPARTITION_FILE_SIZE);
@@ -66,49 +68,49 @@ TEST_F(TableMetadataTest, seek_iterator) {
   ASSERT_EQ(micro_partitions->size(), MPARTITION_FILE_NUM);
 
 
-  // *SEEK ITER_SEEK_POS_BEGIN  cases *
+  // *SEEK pax::BEGIN  cases *
   // case seek from begin
-  iterator->Seek(SEEK_BEGIN_POS, pax::ITER_SEEK_POS_BEGIN);
+  iterator->Seek(SEEK_BEGIN_POS, pax::BEGIN);
   ASSERT_EQ(iterator->getCurrentIndex(), SEEK_BEGIN_POS);
 
   // case seek from begin exceed max bound.
-  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_POS*10, pax::ITER_SEEK_POS_BEGIN), "");
+  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_POS*10, pax::BEGIN), "");
 
   // case seek from begin exceed min bound.
-  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_NEG*10, pax::ITER_SEEK_POS_BEGIN), "");
+  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_NEG*10, pax::BEGIN), "");
 
 
-  // *SEEK ITER_SEEK_POS_CUR  cases *
+  // *SEEK pax::CURRENT  cases *
   // case seek from middle
-  iterator->Seek(SEEK_BEGIN_POS, pax::ITER_SEEK_POS_BEGIN);
-  iterator->Seek(MPARTITION_FILE_NUM/2, pax::ITER_SEEK_POS_BEGIN);
-  iterator->Seek(SEEK_OFFSET_POS, pax::ITER_SEEK_POS_CUR);
+  iterator->Seek(SEEK_BEGIN_POS, pax::BEGIN);
+  iterator->Seek(MPARTITION_FILE_NUM/2, pax::BEGIN);
+  iterator->Seek(SEEK_OFFSET_POS, pax::CURRENT);
   ASSERT_EQ(iterator->getCurrentIndex(), MPARTITION_FILE_NUM/2 + SEEK_OFFSET_POS);
-  iterator->Seek(SEEK_OFFSET_NEG, pax::ITER_SEEK_POS_CUR);
+  iterator->Seek(SEEK_OFFSET_NEG, pax::CURRENT);
   ASSERT_EQ(iterator->getCurrentIndex(), MPARTITION_FILE_NUM/2);
 
   // case seek from middle excceds max bound
-  iterator->Seek(SEEK_BEGIN_POS, pax::ITER_SEEK_POS_BEGIN);
-  iterator->Seek(MPARTITION_FILE_NUM/2, pax::ITER_SEEK_POS_BEGIN);
-  iterator->Seek(SEEK_OFFSET_EXCEED_POS, pax::ITER_SEEK_POS_CUR);
+  iterator->Seek(SEEK_BEGIN_POS, pax::BEGIN);
+  iterator->Seek(MPARTITION_FILE_NUM/2, pax::BEGIN);
+  iterator->Seek(SEEK_OFFSET_EXCEED_POS, pax::CURRENT);
   ASSERT_EQ(iterator->getCurrentIndex(), MPARTITION_FILE_NUM-1);
 
   // case seek from middle excceds min bound
-  iterator->Seek(SEEK_BEGIN_POS, pax::ITER_SEEK_POS_BEGIN);
-  iterator->Seek(MPARTITION_FILE_NUM/2, pax::ITER_SEEK_POS_BEGIN);
-  iterator->Seek(SEEK_OFFSET_EXCEED_NEG, pax::ITER_SEEK_POS_CUR);
+  iterator->Seek(SEEK_BEGIN_POS, pax::BEGIN);
+  iterator->Seek(MPARTITION_FILE_NUM/2, pax::BEGIN);
+  iterator->Seek(SEEK_OFFSET_EXCEED_NEG, pax::CURRENT);
   ASSERT_EQ(iterator->getCurrentIndex(), SEEK_BEGIN_POS);
 
 
-  // *SEEK ITER_SEEK_POS_END  cases *
+  // *SEEK pax::END  cases *
   // case seek from end
-  iterator->Seek(SEEK_OFFSET_POS, pax::ITER_SEEK_POS_END);
+  iterator->Seek(SEEK_OFFSET_POS, pax::END);
   ASSERT_EQ(iterator->getCurrentIndex(), MPARTITION_FILE_NUM - 1 - SEEK_OFFSET_POS);
 
   // case seek from middle excceds max bound
-  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_POS*10, pax::ITER_SEEK_POS_END), "");
+  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_POS*10, pax::END), "");
 
   // case seek from end excceds min bound
-  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_NEG*10, pax::ITER_SEEK_POS_END), "");
+  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_NEG*10, pax::END), "");
 }
 }  // namespace pax::tests

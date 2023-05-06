@@ -91,6 +91,10 @@ class OrcFileReader {
   ~OrcFileReader();
   bool ReadNextBatch(CTupleSlot* slot);
 
+  void SeekToRow(int offset) { row_reader_->seekToRow(offset); }
+
+  uint64_t Offset() const { return row_reader_->getRowNumber(); }
+
   void Close() {}
 
  private:
