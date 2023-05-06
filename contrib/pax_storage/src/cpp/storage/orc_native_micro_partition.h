@@ -50,6 +50,10 @@ class OrcNativeMicroPartitionReader : public MicroPartitionReader {
 
   bool ReadTuple(CTupleSlot* slot) override;
 
+  void Seek(size_t offset) override;
+
+  uint64_t Offset() const override;
+
   size_t Length() const override;
 
   size_t NumTuples() const override;
