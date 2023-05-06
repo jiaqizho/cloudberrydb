@@ -17,20 +17,20 @@ void TableMetadata::Iterator::Seek(int offset, IteratorSeekPosType whence) {
   Assert(offset >= 0 - max_mpartition_offset &&
          offset <= max_mpartition_offset);
   switch (whence) {
-    case ITER_SEEK_POS_BEGIN:
+    case BEGIN:
       current_idx = offset;
       break;
-    case ITER_SEEK_POS_CUR:
+    case CURRENT:
       current_idx += offset;
       break;
-    case ITER_SEEK_POS_END:
+    case END:
       current_idx = max_mpartition_offset - offset;
       break;
     default:
       ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
-                      errmsg("TableMetadata Iterator seek error, no such kind "
-                             "micro partition seek type: %d.",
-                             whence)));
+                      errmsg("TableMetadata Iterator seek error, no such "
+                              "kind micro partition seek type: %d.",
+                              whence)));
   }
   // TODO(Tony) : Not sure the error handling when current_index_ exceeds
   // micropartition file size range case which should be handled, temporary
@@ -42,4 +42,5 @@ void TableMetadata::Iterator::Seek(int offset, IteratorSeekPosType whence) {
   else
     current_index_ = current_idx;
 }
+
 }  // namespace pax

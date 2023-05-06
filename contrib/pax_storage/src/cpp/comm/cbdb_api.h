@@ -8,6 +8,7 @@ extern "C" {
 #include "access/relscan.h"
 #include "access/sdir.h"
 #include "access/tableam.h"
+#include "access/tsmapi.h"
 #include "access/tupdesc.h"
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
