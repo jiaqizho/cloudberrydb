@@ -29,4 +29,8 @@ extern "C" {
 #include "utils/relcache.h"
 #include "utils/snapshot.h"
 #include "utils/syscache.h"
+
+// no header file in cbdb
+extern BlockNumber system_nextsampleblock(SampleScanState *node,
+                                          BlockNumber nblocks);
 }
