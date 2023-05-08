@@ -1,8 +1,5 @@
 #include "access/pax_dml_state.h"
 
-#include "access/pax_deleter.h"
-#include "access/pax_inserter.h"
-
 namespace pax {
 // class CPaxDmlStateLocal
 
