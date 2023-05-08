@@ -6,10 +6,10 @@
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
+#include "access/pax_inserter.h"
+#include "access/pax_deleter.h"
 
 namespace pax {
-class CPaxInserter;
-class CPaxDeleter;
 struct PaxDmlState {
   Oid oid;
   CPaxInserter* inserter;
