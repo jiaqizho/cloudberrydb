@@ -57,15 +57,11 @@ class PaxAccessMethod final {
                                      BulkInsertState bistate, uint32 specToken);
   static void TupleCompleteSpeculative(Relation relation, TupleTableSlot *slot,
                                        uint32 specToken, bool succeeded);
-  static void MultiInsert(Relation relation, TupleTableSlot **slots,
-                          int ntuples, CommandId cid, int options,
-                          BulkInsertState bistate);
   static TM_Result TupleLock(Relation relation, ItemPointer tid,
                              Snapshot snapshot, TupleTableSlot *slot,
                              CommandId cid, LockTupleMode mode,
                              LockWaitPolicy wait_policy, uint8 flags,
                              TM_FailureData *tmfd);
-  static void FinishBulkInsert(Relation relation, int options);
 
   static void RelationCopyData(Relation rel, const RelFileNode *newrnode);
   static void RelationCopyForCluster(Relation OldHeap, Relation NewHeap,
@@ -134,6 +130,12 @@ class CCPaxAccessMethod final {
   static bool ScanSampleNextTuple(TableScanDesc scan,
                                   SampleScanState *scanstate,
                                   TupleTableSlot *slot);
+
+  static void MultiInsert(Relation relation, TupleTableSlot **slots,
+                                  int ntuples, CommandId cid, int options,
+                                  BulkInsertState bistate);
+
+  static void FinishBulkInsert(Relation relation, int options);
 
   // DML init/fini hooks
   static void ExtDmlInit(Relation rel, CmdType operation);
