@@ -2,8 +2,11 @@
 
 #include "comm/cbdb_api.h"
 
-namespace pax {
+namespace paxc {
 class PaxAccessMethod final {
+ private:
+  PaxAccessMethod() = default;
+
  public:
   static const TupleTableSlotOps *SlotCallbacks(Relation rel) noexcept;
 
@@ -87,7 +90,13 @@ class PaxAccessMethod final {
   static bytea *Amoptions(Datum reloptions, char relkind, bool validate);
 };
 
+}  // namespace paxc
+
+namespace pax {
 class CCPaxAccessMethod final {
+ private:
+  CCPaxAccessMethod() = default;
+
  public:
   static TableScanDesc ScanBegin(Relation rel, Snapshot snapshot, int nkeys,
                                  struct ScanKeyData *key,
@@ -131,11 +140,12 @@ class CCPaxAccessMethod final {
   static void ExtDmlFini(Relation rel, CmdType operation);
 };
 
+}  // namespace pax
+
+// plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
   int32 vl_len_; /* varlena header (do not touch directly!) */
   char storage_format[16];
   char compresstype[16];
   int compresslevel;
 };
-
-}  // namespace pax
