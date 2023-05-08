@@ -198,6 +198,25 @@ bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
   return ret;
 }
 
+void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
+                                  int ntuples, CommandId cid, int options,
+                                  BulkInsertState bistate) {
+  CPaxInserter *inserter = pax::CPaxDmlStateLocal::instance()->GetInserter(relation);
+  Assert(inserter != nullptr);
+  // TODO(Tony): implement bulk insert as AO/HEAP does with tuples iteration, which
+  // needs to be futher optmized by using new feature like Parallelization or Vectorization.
+  for (int i = 0; i < ntuples; i++) {
+    inserter->InsertTuple(relation, slots[i], cid, options, bistate);
+  }
+}
+
+void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
+  // Implement Pax dml cleanup for case "create table xxx1 as select * from xxx2",
+  // which would not call ExtDmlFini callback function and relies on FinishBulkInsert
+  // callback function to cleanup its dml state.
+  pax::CPaxDmlStateLocal::instance()->FinishDmlState(relation, CMD_INSERT);
+}
+
 void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
   if (RelationIsPax(rel))
     pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
@@ -269,12 +288,6 @@ void PaxAccessMethod::TupleCompleteSpeculative(Relation relation,
   NOT_IMPLEMENTED_YET;
 }
 
-void PaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
-                                  int ntuples, CommandId cid, int options,
-                                  BulkInsertState bistate) {
-  NOT_IMPLEMENTED_YET;
-}
-
 TM_Result PaxAccessMethod::TupleLock(Relation relation, ItemPointer tid,
                                      Snapshot snapshot, TupleTableSlot *slot,
                                      CommandId cid, LockTupleMode mode,
@@ -282,10 +295,6 @@ TM_Result PaxAccessMethod::TupleLock(Relation relation, ItemPointer tid,
                                      TM_FailureData *tmfd) {
   NOT_IMPLEMENTED_YET;
   return TM_Ok;
-}
-
-void PaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
-  NOT_IMPLEMENTED_YET;
 }
 
 bool PaxAccessMethod::TupleFetchRowVersion(Relation relation, ItemPointer tid,
@@ -567,11 +576,11 @@ static const TableAmRoutine pax_column_methods = {
     .tuple_insert_speculative = paxc::PaxAccessMethod::TupleInsertSpeculative,
     .tuple_complete_speculative =
         paxc::PaxAccessMethod::TupleCompleteSpeculative,
-    .multi_insert = paxc::PaxAccessMethod::MultiInsert,
+    .multi_insert = pax::CCPaxAccessMethod::MultiInsert,
     .tuple_delete = pax::CCPaxAccessMethod::TupleDelete,
     .tuple_update = pax::CCPaxAccessMethod::TupleUpdate,
     .tuple_lock = paxc::PaxAccessMethod::TupleLock,
-    .finish_bulk_insert = paxc::PaxAccessMethod::FinishBulkInsert,
+    .finish_bulk_insert = pax::CCPaxAccessMethod::FinishBulkInsert,
 
     .relation_set_new_filenode = paxc::PaxAccessMethod::RelationSetNewFilenode,
     .relation_nontransactional_truncate =
