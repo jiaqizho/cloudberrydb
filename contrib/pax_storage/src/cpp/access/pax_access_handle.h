@@ -83,6 +83,8 @@ class PaxAccessMethod final {
   static void IndexValidateScan(Relation heapRelation, Relation indexRelation,
                                 IndexInfo *indexInfo, Snapshot snapshot,
                                 ValidateIndexState *state);
+
+  static bytea *Amoptions(Datum reloptions, char relkind, bool validate);
 };
 
 class CCPaxAccessMethod final {
@@ -127,6 +129,13 @@ class CCPaxAccessMethod final {
   // DML init/fini hooks
   static void ExtDmlInit(Relation rel, CmdType operation);
   static void ExtDmlFini(Relation rel, CmdType operation);
+};
+
+struct PaxOptions {
+  int32 vl_len_; /* varlena header (do not touch directly!) */
+  char storage_format[16];
+  char compresstype[16];
+  int compresslevel;
 };
 
 }  // namespace pax
