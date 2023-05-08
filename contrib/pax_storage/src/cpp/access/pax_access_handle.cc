@@ -22,9 +22,6 @@
 
 #define RelationIsPax(rel) AMOidIsPax((rel)->rd_rel->relam)
 
-extern "C" BlockNumber system_nextsampleblock(SampleScanState *node,
-                                              BlockNumber nblocks);
-
 bool AMOidIsPax(Oid amOid) {
   HeapTuple tuple;
   Form_pg_am form;
@@ -44,12 +41,10 @@ bool AMOidIsPax(Oid amOid) {
 // reloptions structure and variables.
 static relopt_kind self_relopt_kind;
 static const relopt_parse_elt self_relopt_tab[] = {
-    {"compresslevel", RELOPT_TYPE_INT,
-     offsetof(pax::PaxOptions, compresslevel)},
-    {"compresstype", RELOPT_TYPE_STRING,
-     offsetof(pax::PaxOptions, compresstype)},
+    {"compresslevel", RELOPT_TYPE_INT, offsetof(PaxOptions, compresslevel)},
+    {"compresstype", RELOPT_TYPE_STRING, offsetof(PaxOptions, compresstype)},
     {"storage_format", RELOPT_TYPE_STRING,
-     offsetof(pax::PaxOptions, storage_format)},
+     offsetof(PaxOptions, storage_format)},
 };
 
 // access methods that are implemented in C++
@@ -169,7 +164,8 @@ bool CCPaxAccessMethod::ScanSampleNextBlock(TableScanDesc scan,
   double allvisfrac = 0;
 
   if (paxscan->totalTuples == 0) {
-    PaxAccessMethod::EstimateRelSize(scan->rs_rd, &attrwidths, &pages, &totaltuples, &allvisfrac);
+    paxc::PaxAccessMethod::EstimateRelSize(scan->rs_rd, &attrwidths, &pages,
+                                           &totaltuples, &allvisfrac);
     paxscan->totalTuples = totaltuples;
   }
 
@@ -178,8 +174,7 @@ bool CCPaxAccessMethod::ScanSampleNextBlock(TableScanDesc scan,
   else
     blockno = system_nextsampleblock(scanstate, paxscan->totalTuples);
 
-  if (!BlockNumberIsValid(blockno))
-    return false;
+  if (!BlockNumberIsValid(blockno)) return false;
 
   paxscan->fetchTupleId = blockno;
   return true;
@@ -195,8 +190,7 @@ bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
   ret = paxscan->scanner->SeekTuple(paxscan->fetchTupleId,
                                     &(paxscan->nextTupleId));
 
-  if (!ret)
-    return false;
+  if (!ret) return false;
 
   ret = ScanGetnextslot(scan, ForwardScanDirection, slot);
   paxscan->nextTupleId++;
@@ -218,7 +212,7 @@ void CCPaxAccessMethod::ExtDmlFini(Relation rel, CmdType operation) {
 // END of C++ implementation
 
 // access methods that are implemented in C
-namespace pax {
+namespace paxc {
 const TupleTableSlotOps *PaxAccessMethod::SlotCallbacks(Relation rel) noexcept {
   return &TTSOpsVirtual;
 }
@@ -540,65 +534,67 @@ bytea *PaxAccessMethod::Amoptions(Datum reloptions, char relkind,
 }
 #undef PAX_COPY_OPT
 
-}  // namespace pax
+}  // namespace paxc
 // END of C implementation
 
 extern "C" {
 
 static const TableAmRoutine pax_column_methods = {
     .type = T_TableAmRoutine,
-    .slot_callbacks = pax::PaxAccessMethod::SlotCallbacks,
+    .slot_callbacks = paxc::PaxAccessMethod::SlotCallbacks,
     .scan_begin = pax::CCPaxAccessMethod::ScanBegin,
     .scan_end = pax::CCPaxAccessMethod::ScanEnd,
     .scan_rescan = pax::CCPaxAccessMethod::ScanRescan,
     .scan_getnextslot = pax::CCPaxAccessMethod::ScanGetnextslot,
 
-    .parallelscan_estimate = pax::PaxAccessMethod::ParallelscanEstimate,
-    .parallelscan_initialize = pax::PaxAccessMethod::ParallelscanInitialize,
-    .parallelscan_reinitialize = pax::PaxAccessMethod::ParallelscanReinitialize,
+    .parallelscan_estimate = paxc::PaxAccessMethod::ParallelscanEstimate,
+    .parallelscan_initialize = paxc::PaxAccessMethod::ParallelscanInitialize,
+    .parallelscan_reinitialize =
+        paxc::PaxAccessMethod::ParallelscanReinitialize,
 
-    .index_fetch_begin = pax::PaxAccessMethod::IndexFetchBegin,
-    .index_fetch_reset = pax::PaxAccessMethod::IndexFetchReset,
-    .index_fetch_end = pax::PaxAccessMethod::IndexFetchEnd,
-    .index_fetch_tuple = pax::PaxAccessMethod::IndexFetchTuple,
+    .index_fetch_begin = paxc::PaxAccessMethod::IndexFetchBegin,
+    .index_fetch_reset = paxc::PaxAccessMethod::IndexFetchReset,
+    .index_fetch_end = paxc::PaxAccessMethod::IndexFetchEnd,
+    .index_fetch_tuple = paxc::PaxAccessMethod::IndexFetchTuple,
 
-    .tuple_fetch_row_version = pax::PaxAccessMethod::TupleFetchRowVersion,
-    .tuple_tid_valid = pax::PaxAccessMethod::TupleTidValid,
-    .tuple_get_latest_tid = pax::PaxAccessMethod::TupleGetLatestTid,
-    .tuple_satisfies_snapshot = pax::PaxAccessMethod::TupleSatisfiesSnapshot,
-    .index_delete_tuples = pax::PaxAccessMethod::IndexDeleteTuples,
+    .tuple_fetch_row_version = paxc::PaxAccessMethod::TupleFetchRowVersion,
+    .tuple_tid_valid = paxc::PaxAccessMethod::TupleTidValid,
+    .tuple_get_latest_tid = paxc::PaxAccessMethod::TupleGetLatestTid,
+    .tuple_satisfies_snapshot = paxc::PaxAccessMethod::TupleSatisfiesSnapshot,
+    .index_delete_tuples = paxc::PaxAccessMethod::IndexDeleteTuples,
 
     .tuple_insert = pax::CCPaxAccessMethod::TupleInsert,
-    .tuple_insert_speculative = pax::PaxAccessMethod::TupleInsertSpeculative,
+    .tuple_insert_speculative = paxc::PaxAccessMethod::TupleInsertSpeculative,
     .tuple_complete_speculative =
-        pax::PaxAccessMethod::TupleCompleteSpeculative,
-    .multi_insert = pax::PaxAccessMethod::MultiInsert,
+        paxc::PaxAccessMethod::TupleCompleteSpeculative,
+    .multi_insert = paxc::PaxAccessMethod::MultiInsert,
     .tuple_delete = pax::CCPaxAccessMethod::TupleDelete,
     .tuple_update = pax::CCPaxAccessMethod::TupleUpdate,
-    .tuple_lock = pax::PaxAccessMethod::TupleLock,
-    .finish_bulk_insert = pax::PaxAccessMethod::FinishBulkInsert,
+    .tuple_lock = paxc::PaxAccessMethod::TupleLock,
+    .finish_bulk_insert = paxc::PaxAccessMethod::FinishBulkInsert,
 
-    .relation_set_new_filenode = pax::PaxAccessMethod::RelationSetNewFilenode,
+    .relation_set_new_filenode = paxc::PaxAccessMethod::RelationSetNewFilenode,
     .relation_nontransactional_truncate =
-        pax::PaxAccessMethod::RelationNontransactionalTruncate,
-    .relation_copy_data = pax::PaxAccessMethod::RelationCopyData,
-    .relation_copy_for_cluster = pax::PaxAccessMethod::RelationCopyForCluster,
-    .relation_vacuum = pax::PaxAccessMethod::RelationVacuum,
+        paxc::PaxAccessMethod::RelationNontransactionalTruncate,
+    .relation_copy_data = paxc::PaxAccessMethod::RelationCopyData,
+    .relation_copy_for_cluster = paxc::PaxAccessMethod::RelationCopyForCluster,
+    .relation_vacuum = paxc::PaxAccessMethod::RelationVacuum,
     .scan_analyze_next_block = pax::CCPaxAccessMethod::ScanAnalyzeNextBlock,
     .scan_analyze_next_tuple = pax::CCPaxAccessMethod::ScanAnalyzeNextTuple,
-    .index_build_range_scan = pax::PaxAccessMethod::IndexBuildRangeScan,
-    .index_validate_scan = pax::PaxAccessMethod::IndexValidateScan,
+    .index_build_range_scan = paxc::PaxAccessMethod::IndexBuildRangeScan,
+    .index_validate_scan = paxc::PaxAccessMethod::IndexValidateScan,
 
-    .relation_size = pax::PaxAccessMethod::RelationSize,
-    .relation_needs_toast_table = pax::PaxAccessMethod::RelationNeedsToastTable,
+    .relation_size = paxc::PaxAccessMethod::RelationSize,
+    .relation_needs_toast_table =
+        paxc::PaxAccessMethod::RelationNeedsToastTable,
 
-    .relation_estimate_size = pax::PaxAccessMethod::EstimateRelSize,
+    .relation_estimate_size = paxc::PaxAccessMethod::EstimateRelSize,
     .scan_bitmap_next_block = pax::CCPaxAccessMethod::ScanBitmapNextBlock,
     .scan_bitmap_next_tuple = pax::CCPaxAccessMethod::ScanBitmapNextTuple,
     .scan_sample_next_block = pax::CCPaxAccessMethod::ScanSampleNextBlock,
     .scan_sample_next_tuple = pax::CCPaxAccessMethod::ScanSampleNextTuple,
 
-    .amoptions = pax::PaxAccessMethod::Amoptions,
+    .amoptions = paxc::PaxAccessMethod::Amoptions,
 };
 
 PG_MODULE_MAGIC;
