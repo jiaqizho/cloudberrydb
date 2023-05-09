@@ -2433,6 +2433,7 @@ CTranslatorQueryToDXL::CheckNoDuplicateAliasGroupingColumn(List *target_list,
 	if (gpdb::ListLength(processed_list) < 1)
 	{
 		// no duplicates if no duplicates found in target list
+		bitset->Release();
 		return;
 	}
 
@@ -2469,6 +2470,7 @@ CTranslatorQueryToDXL::CheckNoDuplicateAliasGroupingColumn(List *target_list,
 			}
 		}
 	}
+	bitset->Release();
 }
 
 //---------------------------------------------------------------------------
