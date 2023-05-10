@@ -5,23 +5,34 @@
 #include "storage/pax.h"
 
 namespace pax {
-struct PaxScanDesc;
 
-class CPaxScannner {
+class PaxScanDesc {
  public:
-  static PaxScanDesc* CreateTableScanDesc(const Relation relation,
-                                          const Snapshot snapshot,
-                                          const int nkeys,
-                                          const struct ScanKeyData* key,
-                                          const ParallelTableScanDesc pscan,
-                                          const uint32 flags);
+  static TableScanDesc BeginScan(const Relation relation,
+                                 const Snapshot snapshot, const int nkeys,
+                                 const struct ScanKeyData *key,
+                                 const ParallelTableScanDesc pscan,
+                                 const uint32 flags);
 
-  ~CPaxScannner() {}
+  static void ReScan(TableScanDesc scan, ScanKey key, bool set_params,
+                     bool allow_strat, bool allow_sync, bool allow_pagemode);
+  static void EndScan(TableScanDesc scan);
 
-  void ScanTableReScan(PaxScanDesc* desc);
+  static bool ScanGetNextSlot(TableScanDesc scan, const ScanDirection direction,
+                              TupleTableSlot *slot);
 
-  bool GetNextSlot(const ScanDirection direction, TupleTableSlot* slot);
+  static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno,
+                                   BufferAccessStrategy bstrategy);
+  static bool ScanAnalyzeNextTuple(TableScanDesc scan, TransactionId OldestXmin,
+                                   double *liverows, double *deadrows,
+                                   TupleTableSlot *slot);
 
+  static bool ScanSampleNextBlock(TableScanDesc scan,
+                                  SampleScanState *scanstate);
+
+  static bool ScanSampleNextTuple(TableScanDesc scan,
+                                  SampleScanState *scanstate,
+                                  TupleTableSlot *slot);
   //
   bool SeekMicroPartitionOffset(int offset, IteratorSeekPosType whence) {
     return reader_->SeekMicroPartitionOffset(offset, whence);
@@ -43,26 +54,27 @@ class CPaxScannner {
     return reader_->SeekTuple(targettupleid, nexttupleid);
   }
 
+  ~PaxScanDesc();
+
  private:
-  CPaxScannner(const TableScanDesc scan_desc, const ScanKeyData* key);
-  CPaxScannner() = delete;
+  PaxScanDesc() = default;
+  static inline PaxScanDesc *to_desc(TableScanDesc scan) {
+    PaxScanDesc *desc = reinterpret_cast<PaxScanDesc *>(scan);
+    Assert(&desc->rs_base == scan);
+    return desc;
+  }
 
-  TableReader* reader_;
-  TableScanDesc scan_desc_;
-  const ScanKeyData* key_;
-};  // class CPaxScanner
-
-struct PaxScanDesc {
   TableScanDescData rs_base;
-  CPaxScannner* scanner;
+  const ScanKeyData *key_;
+  TableReader *reader_;
 
   // TODO(chenhongjie): Only used by `scan analyze` and `scan sample`
-  uint64_t nextTupleId;
+  uint64_t nextTupleId = 0;
   // TODO(chenhongjie): Only used by `scan analyze`
-  uint64_t targetTupleId;
+  uint64_t targetTupleId = 0;
   // TODO(chenhongjie): Only used by `scan sample`
-  uint64_t fetchTupleId;
-  uint64_t totalTuples;
-};
+  uint64_t fetchTupleId = 0;
+  uint64_t totalTuples = 0;
+};  // class PaxScanDesc
 
 }  // namespace pax
