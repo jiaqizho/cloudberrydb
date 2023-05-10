@@ -3,7 +3,7 @@
 #include "catalog/table_metadata.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
-#include "storage/orc_native_micro_partition.h"
+#include "storage/orc/orc.h"
 #include "storage/pax.h"
 
 namespace pax {
@@ -38,7 +38,7 @@ CPaxScannner::CPaxScannner(const TableScanDesc scan_desc,
   FileSystemPtr file_system = Singleton<LocalFileSystem>::GetInstance();
 
   MicroPartitionReaderPtr micro_partition_reader =
-      new OrcNativeMicroPartitionReader(file_system);
+      new OrcIteratorReader(file_system);
 
   reader_ = new TableReader(micro_partition_reader, meta_info->NewIterator());
 

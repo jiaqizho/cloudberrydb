@@ -26,13 +26,4 @@ const std::string &MicroPartitionWriter::FileName() const {
   return writer_options_.file_name;
 }
 
-const MicroPartitionReader::ReaderOptions &MicroPartitionReader::options()
-    const {
-  return options_;
-}
-
-const std::string &MicroPartitionReader::file_name() const {
-  return options_.file_name;
-}
-
 }  // namespace pax

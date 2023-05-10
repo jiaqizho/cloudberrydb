@@ -8,18 +8,22 @@ namespace pax {
 
 ssize_t LocalFile::Read(void *ptr, size_t n) { return read(fd_, ptr, n); }
 
-ssize_t LocalFile::Read(void *ptr, size_t n, off_t offset) {
+ssize_t LocalFile::Write(const void *ptr, size_t n) {
+  return write(fd_, ptr, n);
+}
+
+ssize_t LocalFile::PRead(void *ptr, size_t n, size_t offset) {
   return pread(fd_, ptr, n, offset);
 }
 
-ssize_t LocalFile::Write(const void *ptr, size_t n) {
-  return write(fd_, ptr, n);
+ssize_t LocalFile::PWrite(const void *ptr, size_t n, size_t offset) {
+  return pwrite(fd_, ptr, n, offset);
 }
 
 void LocalFile::Close() { close(fd_); }
 
 // TODO(gongxun): add error handling
-uint64_t LocalFile::GetSize() const {
+size_t LocalFile::FileLength() const {
   struct stat fileStat;
   if (fstat(fd_, &fileStat) == -1) {
     throw "can't stat file:" + file_path_;

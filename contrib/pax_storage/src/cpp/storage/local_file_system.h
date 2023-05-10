@@ -17,11 +17,12 @@ class LocalFile final : public File {
   }
 
   ssize_t Read(void *ptr, size_t n) override;
-  ssize_t Read(void *ptr, size_t n, off_t offset) override;
   ssize_t Write(const void *ptr, size_t n) override;
+  ssize_t PWrite(const void *buf, size_t count, size_t offset) override;
+  ssize_t PRead(void *buf, size_t count, size_t offset) override;
+  size_t FileLength() const override;
   void Close() override;
   void Flush() override;
-  uint64_t GetSize() const override;
   const std::string &GetPath() const override;
 
  private:
