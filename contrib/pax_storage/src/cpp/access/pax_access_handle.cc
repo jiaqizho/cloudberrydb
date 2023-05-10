@@ -1,5 +1,5 @@
 #include "access/pax_access_handle.h"
-
+#include "comm/cbdb_api.h"
 #include "access/pax_access.h"
 #include "access/pax_dml_state.h"
 #include "access/pax_scanner.h"
@@ -603,7 +603,7 @@ static const TableAmRoutine pax_column_methods = {
     .scan_sample_next_block = pax::CCPaxAccessMethod::ScanSampleNextBlock,
     .scan_sample_next_tuple = pax::CCPaxAccessMethod::ScanSampleNextTuple,
 
-    .amoptions = paxc::PaxAccessMethod::Amoptions,
+    .amoptions = paxc::PaxAccessMethod::Amoptions
 };
 
 PG_MODULE_MAGIC;

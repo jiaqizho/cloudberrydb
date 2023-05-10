@@ -61,20 +61,26 @@ class CAutoExceptionStack final {
   void SetLocalJmp(void *local_jump) { *m_global_exception_stack = local_jump; }
 };  // class CAutoExceptionStack
 
+void *MemCtxAlloc(MemoryContext ctx, size_t size);
+void *Palloc(size_t size);
+void *Palloc0(size_t size);
+void *RePalloc(void *ptr, size_t size);
+void Pfree(void *ptr);
+
 }  // namespace cbdb
 
 // clang-format off
-#define CBDB_WRAP_START                                             \
+#define CBDB_WRAP_START                                           \
   sigjmp_buf local_sigjmp_buf;                                    \
   {                                                               \
-      CAutoExceptionStack aes(                                    \
+      cbdb::CAutoExceptionStack aes(                              \
           reinterpret_cast<void **>(&PG_exception_stack),         \
           reinterpret_cast<void **>(&error_context_stack));       \
       if (0 == sigsetjmp(local_sigjmp_buf, 0))                    \
       {                                                           \
           aes.SetLocalJmp(&local_sigjmp_buf)
 
-#define CBDB_WRAP_END                                               \
+#define CBDB_WRAP_END                                             \
   }                                                               \
   else                                                            \
   {                                                               \
@@ -107,6 +113,7 @@ void MemoryCtxRegisterResetCallback(MemoryContext context,
 Oid RelationGetRelationId(Relation rel);
 
 void *PointerFromDatum(Datum d);
+int32 Int32FromDatum(Datum d);
 int64 Int64FromDatum(Datum d);
 Datum DatumFromCString(const char *src, const size_t length);
 

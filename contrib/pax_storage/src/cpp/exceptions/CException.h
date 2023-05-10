@@ -1,5 +1,6 @@
 #pragma once
-
+#include <sstream>
+#include <string>
 namespace cbdb {
 class CException {
  public:
@@ -10,6 +11,11 @@ class CException {
     ExTypeOOM,
     ExTypeIOError,
     ExTypeCError,
+    ExTypeLogicError,
+    ExTypeInvalidMemoryOperation,
+    ExTypeSchemaNotMatch,
+    ExTypeInvalidORCFormat,
+    ExTypeOutOfRange
   };
 
   explicit CException(ExType extype)
@@ -23,6 +29,12 @@ class CException {
   int Lineno() const { return m_lineno; }
 
   ExType EType() const { return m_extype; }
+
+  std::string What() const {
+    std::ostringstream buffer;
+    buffer << m_filename << ":" << m_lineno << " " << exception_names[m_extype];
+    return buffer.str();
+  }
 
   static void Raise(CException ex) __attribute__((__noreturn__));
   static void Raise(ExType extype) __attribute__((__noreturn__));
@@ -63,6 +75,10 @@ class CErrorHandler {
 }  // namespace cbdb
 
 #define CBDB_RAISE(...) cbdb::CException::Raise(__FILE__, __LINE__, __VA_ARGS__)
+#define CBDB_CHECK(check, ...) \
+  if (!(check)) {              \
+    CBDB_RAISE(__VA_ARGS__);   \
+  }
 
 // being of a try block w/o explicit handler
 #define CBDB_TRY                           \

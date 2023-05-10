@@ -9,7 +9,7 @@ PG_CXXFLAGS = -std=c++14
 EXTENSION = pax
 DATA = pax--1.0.sql
 PGFILEDESC = "pax - PAX table access method"
-SHLIB_LINK += -luuid -lorc
+SHLIB_LINK += -luuid
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

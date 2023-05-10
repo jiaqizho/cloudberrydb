@@ -15,5 +15,9 @@ Thumbs.db
 .tmp/**
 build*/**
 
+# pb
+**/*.pb.h
+**/*.pb.cc
+
 # Executables
 *.out
