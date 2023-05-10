@@ -55,13 +55,12 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
                                            ParallelTableScanDesc pscan,
                                            uint32 flags) {
   // todo: PAX_TRY {} PAX_CATCH {}
-  return pax::CPaxAccess::PaxBeginScan(relation, snapshot, nkeys, key, pscan,
-                                       flags);
+  return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags);
 }
 
 void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
   // todo PAX_TRY{} PAX_CATCH {}
-  pax::CPaxAccess::PaxEndScan(scan);
+  PaxScanDesc::EndScan(scan);
 }
 
 void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
@@ -70,10 +69,10 @@ void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
   NOT_IMPLEMENTED_YET;
 }
 
-bool CCPaxAccessMethod::ScanGetnextslot(TableScanDesc scan,
+bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
                                         ScanDirection direction,
                                         TupleTableSlot *slot) {
-  return pax::CPaxAccess::PaxGetNextSlot(scan, direction, slot);
+  return PaxScanDesc::ScanGetNextSlot(scan, direction, slot);
 }
 
 void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
@@ -105,39 +104,15 @@ TM_Result CCPaxAccessMethod::TupleUpdate(Relation relation, ItemPointer otid,
 bool CCPaxAccessMethod::ScanAnalyzeNextBlock(TableScanDesc scan,
                                              BlockNumber blockno,
                                              BufferAccessStrategy bstrategy) {
-  PaxScanDesc *paxscan = reinterpret_cast<PaxScanDesc *>(scan);
-  paxscan->targetTupleId = blockno;
-
-  return true;
+  return PaxScanDesc::ScanAnalyzeNextBlock(scan, blockno, bstrategy);
 }
 
 bool CCPaxAccessMethod::ScanAnalyzeNextTuple(TableScanDesc scan,
                                              TransactionId OldestXmin,
                                              double *liverows, double *deadrows,
                                              TupleTableSlot *slot) {
-  PaxScanDesc *paxscan = reinterpret_cast<PaxScanDesc *>(scan);
-  bool ret = false;
-
-  Assert(*deadrows == 0);  // not dead rows in pax latest snapshot
-
-  // skip several tuples if they are not sampling target.
-  ret = paxscan->scanner->SeekTuple(paxscan->targetTupleId,
-                                    &(paxscan->nextTupleId));
-
-  if (!ret) {
-    return false;
-  }
-
-  ret = ScanGetnextslot(scan, ForwardScanDirection, slot);
-  paxscan->nextTupleId++;
-  if (ret) {
-    *liverows += 1;
-  }
-
-  // Unlike heap table, latest pax snapshot does not contain deadrows,
-  // so `false` value of ret indicate that no more tuple to fetch,
-  // and just return directly.
-  return ret;
+  return PaxScanDesc::ScanAnalyzeNextTuple(scan, OldestXmin, liverows, deadrows,
+                                           slot);
 }
 
 bool CCPaxAccessMethod::ScanBitmapNextBlock(TableScanDesc scan,
@@ -155,47 +130,13 @@ bool CCPaxAccessMethod::ScanBitmapNextTuple(TableScanDesc scan,
 
 bool CCPaxAccessMethod::ScanSampleNextBlock(TableScanDesc scan,
                                             SampleScanState *scanstate) {
-  PaxScanDesc *paxscan = reinterpret_cast<PaxScanDesc *>(scan);
-  TsmRoutine *tsm = scanstate->tsmroutine;
-  BlockNumber blockno = 0;
-  BlockNumber pages = 0;
-  double totaltuples = 0;
-  int32 attrwidths = 0;
-  double allvisfrac = 0;
-
-  if (paxscan->totalTuples == 0) {
-    paxc::PaxAccessMethod::EstimateRelSize(scan->rs_rd, &attrwidths, &pages,
-                                           &totaltuples, &allvisfrac);
-    paxscan->totalTuples = totaltuples;
-  }
-
-  if (tsm->NextSampleBlock)
-    blockno = tsm->NextSampleBlock(scanstate, paxscan->totalTuples);
-  else
-    blockno = system_nextsampleblock(scanstate, paxscan->totalTuples);
-
-  if (!BlockNumberIsValid(blockno)) return false;
-
-  paxscan->fetchTupleId = blockno;
-  return true;
+  return PaxScanDesc::ScanSampleNextBlock(scan, scanstate);
 }
 
 bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
                                             SampleScanState *scanstate,
                                             TupleTableSlot *slot) {
-  PaxScanDesc *paxscan = reinterpret_cast<PaxScanDesc *>(scan);
-  bool ret = false;
-
-  // skip several tuples if they are not sampling target.
-  ret = paxscan->scanner->SeekTuple(paxscan->fetchTupleId,
-                                    &(paxscan->nextTupleId));
-
-  if (!ret) return false;
-
-  ret = ScanGetnextslot(scan, ForwardScanDirection, slot);
-  paxscan->nextTupleId++;
-
-  return ret;
+  return PaxScanDesc::ScanSampleNextTuple(scan, scanstate, slot);
 }
 
 void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
@@ -554,7 +495,7 @@ static const TableAmRoutine pax_column_methods = {
     .scan_begin = pax::CCPaxAccessMethod::ScanBegin,
     .scan_end = pax::CCPaxAccessMethod::ScanEnd,
     .scan_rescan = pax::CCPaxAccessMethod::ScanRescan,
-    .scan_getnextslot = pax::CCPaxAccessMethod::ScanGetnextslot,
+    .scan_getnextslot = pax::CCPaxAccessMethod::ScanGetNextSlot,
 
     .parallelscan_estimate = paxc::PaxAccessMethod::ParallelscanEstimate,
     .parallelscan_initialize = paxc::PaxAccessMethod::ParallelscanInitialize,

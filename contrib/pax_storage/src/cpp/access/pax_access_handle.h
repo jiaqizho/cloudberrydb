@@ -101,7 +101,7 @@ class CCPaxAccessMethod final {
   static void ScanRescan(TableScanDesc scan, struct ScanKeyData *key,
                          bool set_params, bool allow_strat, bool allow_sync,
                          bool allow_pagemode);
-  static bool ScanGetnextslot(TableScanDesc scan, ScanDirection direction,
+  static bool ScanGetNextSlot(TableScanDesc scan, ScanDirection direction,
                               TupleTableSlot *slot);
 
   /* Manipulations of physical tuples. */

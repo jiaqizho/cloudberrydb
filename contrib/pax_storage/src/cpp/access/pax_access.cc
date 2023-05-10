@@ -20,37 +20,4 @@ void CPaxAccess::PaxTupleInsert(const Relation relation, TupleTableSlot *slot,
   inserter->InsertTuple(relation, slot, cid, options, bistate);
 }
 
-TableScanDesc CPaxAccess::PaxBeginScan(const Relation relation,
-                                       const Snapshot snapshot, const int nkeys,
-                                       const struct ScanKeyData *key,
-                                       const ParallelTableScanDesc pscan,
-                                       const uint32 flags) {
-  // TODO(gongxun): Initial for table scan and return TableScanDesc later
-  PaxScanDesc *desc;
-  desc = CPaxScannner::CreateTableScanDesc(relation, snapshot, nkeys, key,
-                                           pscan, flags);
-
-  return reinterpret_cast<TableScanDesc>(desc);
-}
-
-void CPaxAccess::PaxEndScan(TableScanDesc scan) {
-  PaxScanDesc *desc = reinterpret_cast<PaxScanDesc *>(scan);
-  Assert(desc->scanner != nullptr);
-  delete desc->scanner;
-  delete desc;
-}
-
-bool CPaxAccess::PaxGetNextSlot(TableScanDesc scan,
-                                const ScanDirection direction,
-                                TupleTableSlot *slot) {
-  PaxScanDesc *desc = reinterpret_cast<PaxScanDesc *>(scan);
-  Assert(desc->scanner != nullptr);
-  return desc->scanner->GetNextSlot(direction, slot);
-}
-
-void CPaxAccess::PaxRescan(TableScanDesc scan) {
-  PaxScanDesc *desc = reinterpret_cast<PaxScanDesc *>(scan);
-  Assert(desc != nullptr && desc->scanner != nullptr);
-  desc->scanner->ScanTableReScan(desc);
-}
 }  // namespace pax
