@@ -1,12 +1,14 @@
 #include "storage/pax.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "comm/gtest_wrappers.h"
+#include "exceptions/CException.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
-#include "storage/orc_native_micro_partition.h"
+#include "storage/orc/orc.h"
 
 namespace pax::tests {
 const char *pax_file_name = "./test.pax";
@@ -66,7 +68,7 @@ CTupleSlot *CreateFakeCTupleSlot(bool with_value) {
   tuple_slot = pax::tests::MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
 
   if (with_value) {
-    bool *fake_is_null = new bool[2];
+    bool *fake_is_null = new bool[COLUMN_NUMS];
 
     fake_is_null[0] = false;
     fake_is_null[1] = false;
@@ -128,10 +130,9 @@ class PaxWriterTest : public ::testing::Test {
  public:
   void SetUp() override {}
 
-  void TearDown() override { std::remove(pax_file_name); }
-
- protected:
-  // port from postgresql
+  void TearDown() override {
+    std::remove(pax_file_name);
+  }
 };
 
 TEST_F(PaxWriterTest, WriteAndReadTuple) {
@@ -142,8 +143,10 @@ TEST_F(PaxWriterTest, WriteAndReadTuple) {
   options.buffer_size = 64 * 1024;
 
   pax::FileSystem *fs = pax::Singleton<pax::LocalFileSystem>::GetInstance();
+
   MicroPartitionWriter *micro_partition_writer =
-      new OrcNativeMicroPartitionWriter(options, fs);
+      OrcWriter::CreateWriter(fs, std::move(options));
+
   micro_partition_writer->SetWriteSummaryCallback(
       [](const pax::WriteSummary &summary) {});
 
@@ -160,7 +163,7 @@ TEST_F(PaxWriterTest, WriteAndReadTuple) {
   FileSystemPtr file_system = Singleton<LocalFileSystem>::GetInstance();
 
   MicroPartitionReaderPtr micro_partition_reader =
-      new OrcNativeMicroPartitionReader(file_system);
+      new OrcIteratorReader(file_system);
 
   std::vector<std::shared_ptr<MicroPartitionMetadata>> meta_info_list;
   std::shared_ptr<MicroPartitionMetadata> meta_info_ptr =
@@ -176,12 +179,12 @@ TEST_F(PaxWriterTest, WriteAndReadTuple) {
   reader = new TableReader(micro_partition_reader, meta_info_iterator);
   reader->Open();
 
-  CTupleSlot *rslot = CreateFakeCTupleSlot(false);
+  CTupleSlot *rslot = CreateFakeCTupleSlot(true);
 
   reader->ReadTuple(rslot);
 
-  ASSERT_EQ(1, DatumGetInt32(rslot->GetTupleTableSlot()->tts_values[0]));
-  ASSERT_EQ(2, DatumGetInt32(rslot->GetTupleTableSlot()->tts_values[1]));
+  ASSERT_EQ(1, cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[0]));
+  ASSERT_EQ(2, cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[1]));
 }
 
 }  // namespace pax::tests
