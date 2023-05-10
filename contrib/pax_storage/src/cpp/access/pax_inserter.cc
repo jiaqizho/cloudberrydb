@@ -8,7 +8,7 @@
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
 #include "storage/local_file_system.h"
-#include "storage/orc_native_micro_partition.h"
+#include "storage/orc/orc.h"
 
 namespace pax {
 CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
@@ -18,14 +18,15 @@ CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
   block_id = cbdb::GenRandomBlockId();
   file_path = TableMetadata::BuildPaxFilePath(rel, block_id);
 
+  FileSystem *fs = Singleton<LocalFileSystem>::GetInstance();
+
   options.desc = rel->rd_att;
   options.block_id = std::move(block_id);
   options.file_name = std::move(file_path);
   options.buffer_size = 0;
 
-  FileSystem *fs = Singleton<LocalFileSystem>::GetInstance();
   MicroPartitionWriter *micro_partition_writer =
-      new OrcNativeMicroPartitionWriter(options, fs);
+      OrcWriter::CreateWriter(fs, std::move(options));
 
   micro_partition_writer->SetWriteSummaryCallback(std::bind(
       &CPaxInserter::AddMicroPartitionEntry, this, std::placeholders::_1));

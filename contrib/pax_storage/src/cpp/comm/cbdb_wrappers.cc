@@ -2,7 +2,7 @@
 
 extern "C" {
 const char *progname;
-};
+}
 
 void *cbdb::MemCtxAlloc(MemoryContext ctx, size_t size) {
   CBDB_WRAP_START;
@@ -14,6 +14,11 @@ void *cbdb::MemCtxAlloc(MemoryContext ctx, size_t size) {
 }
 
 void *cbdb::Palloc(size_t size) {
+#ifdef RUN_GTEST
+  if (CurrentMemoryContext == nullptr) {
+    MemoryContextInit();
+  }
+#endif
   CBDB_WRAP_START;
   {
 #ifdef RUN_GTEST
@@ -28,6 +33,11 @@ void *cbdb::Palloc(size_t size) {
 }
 
 void *cbdb::Palloc0(size_t size) {
+#ifdef RUN_GTEST
+  if (CurrentMemoryContext == nullptr) {
+    MemoryContextInit();
+  }
+#endif
   CBDB_WRAP_START;
   {
 #ifdef RUN_GTEST
@@ -41,14 +51,21 @@ void *cbdb::Palloc0(size_t size) {
   return nullptr;
 }
 
-void cbdb::Pfree(void *ptr) {
+void *cbdb::RePalloc(void *ptr, size_t size) {
   CBDB_WRAP_START;
-  {
+  { return repalloc(ptr, size); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
+void cbdb::Pfree(void *ptr) {
 #ifdef RUN_GTEST
-    if (ptr == nullptr) return;
-#endif
-    { pfree(ptr); }
+  if (ptr == nullptr) {
+    return;
   }
+#endif
+  CBDB_WRAP_START;
+  { pfree(ptr); }
   CBDB_WRAP_END;
 }
 
@@ -116,6 +133,14 @@ void *cbdb::PointerFromDatum(Datum d) {
   return nullptr;
 }
 
+int32 cbdb::Int32FromDatum(Datum d) {
+  Datum d2 = d;
+  CBDB_WRAP_START;
+  { return DatumGetInt32(d2); }
+  CBDB_WRAP_END;
+  return 0;
+}
+
 int64 cbdb::Int64FromDatum(Datum d) {
   Datum d2 = d;
   CBDB_WRAP_START;
@@ -129,6 +154,8 @@ Datum cbdb::DatumFromCString(const char *src, const size_t length) {
   {
     text *result = reinterpret_cast<text *>(palloc(length + VARHDRSZ));
     SET_VARSIZE(result, length + VARHDRSZ);
+    // TODO(jiaqizho): may not need memcpy here.
+    //  the memory in cpp won't freed
     memcpy(VARDATA(result), src, length);
     return PointerGetDatum(result);
   }
