@@ -10,18 +10,14 @@ void TableWriter::WriteTuple(CTupleSlot *slot) {
 
   if (strategy_ && strategy_->ShouldSplit(writer_, num_tuples_)) {
     writer_->Close();
-    writer_->Create();
     num_tuples_ = 0;
   }
 }
 
 size_t TableWriter::total_tuples() const { return total_tuples_; }
 
-void TableWriter::Open() {
-  if (writer_) {
-    writer_->Create();
-  }
-}
+void TableWriter::Open() {}
+
 void TableWriter::Close() {
   if (writer_) {
     writer_->Close();

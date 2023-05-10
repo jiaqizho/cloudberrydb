@@ -2,8 +2,9 @@
 
 #include "comm/cbdb_api.h"
 
-#include <functional>
 #include <stddef.h>
+
+#include <functional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -16,7 +17,7 @@ namespace pax {
 
 class CTupleSlot {
  public:
-  explicit CTupleSlot(TupleTableSlot *slot) : slot_(slot) {}
+  explicit CTupleSlot(TupleTableSlot *tuple_slot) : slot_(tuple_slot) {}
   TupleTableSlot *GetTupleTableSlot() { return slot_; }
 
   void ClearTuple() { slot_->tts_ops->clear(slot_); }
@@ -26,8 +27,10 @@ class CTupleSlot {
     slot_->tts_nvalid = slot_->tts_tupleDescriptor->natts;
   }
 
-  // todo convert TupleSlot To common column buffer? and then common column
-  // buffer to orc/pax/parquet?
+  TupleDesc GetTupleDesc() const { return slot_->tts_tupleDescriptor; }
+
+  TupleTableSlot *GetTupleTableSlot() const { return slot_; }
+
  private:
   TupleTableSlot *slot_;
 };
@@ -59,18 +62,17 @@ class MicroPartitionWriter {
     TupleDesc desc;
   };
 
-  explicit MicroPartitionWriter(const WriterOptions &writer_options,
-                                FileSystem *fs)
-      : writer_options_(writer_options), file_system_(fs) {}
+  explicit MicroPartitionWriter(const WriterOptions &writer_options)
+      : writer_options_(writer_options) {}
 
   virtual ~MicroPartitionWriter() = default;
-
-  // if options.file_name is empty, generate new file name
-  virtual void Create() = 0;
 
   // close the current write file. Create may be called after Close
   // to write a new micro partition.
   virtual void Close() = 0;
+
+  // immediately, flush memory data into file system
+  virtual void Flush() = 0;
 
   // estimated size of the writing size, used to determine
   // whether to switch to another micro partition.
@@ -101,7 +103,7 @@ class MicroPartitionWriter {
 
  protected:
   std::function<void(const WriteSummary &summary)> summary_callback_;
-  WriterOptions writer_options_;
+  const WriterOptions &writer_options_;
   FileSystem *file_system_ = nullptr;
   StatsCollector *collector_ = nullptr;
 };
@@ -118,7 +120,9 @@ class MicroPartitionReader {
     std::string block_id;
   };
 
-  explicit MicroPartitionReader(const FileSystemPtr &fs) : file_system_(fs) {}
+  explicit MicroPartitionReader(const FileSystemPtr fs) : file_system_(fs) {}
+
+  MicroPartitionReader() : file_system_(nullptr) {}
 
   virtual ~MicroPartitionReader() = default;
 
@@ -138,23 +142,15 @@ class MicroPartitionReader {
 
   virtual void Seek(size_t offset) = 0;
 
-  virtual uint64_t Offset() const = 0;
+  virtual uint64 Offset() const = 0;
 
   virtual size_t Length() const = 0;
-
-  // total number of tuples in this micro partition
-  virtual size_t NumTuples() const = 0;
-
-  const ReaderOptions &options() const;
-
-  virtual const std::string &file_name() const;
 
   using Filter = Vector<uint16_t>;
   virtual void SetFilter(Filter *filter) = 0;
 
  protected:
-  ReaderOptions options_;
-  FileSystem *file_system_ = nullptr;
+  const FileSystemPtr file_system_ = nullptr;
 };
 
 }  // namespace pax
