@@ -11,6 +11,15 @@ class CPaxInserter {
   explicit CPaxInserter(Relation rel);
   virtual ~CPaxInserter();
 
+  static void TupleInsert(Relation relation, TupleTableSlot *slot,
+                          CommandId cid, int options, BulkInsertState bistate);
+
+  static void MultiInsert(Relation relation, TupleTableSlot **slots,
+                          int ntuples, CommandId cid, int options,
+                          BulkInsertState bistate);
+
+  static void FinishBulkInsert(Relation relation, int options);
+
   void InsertTuple(Relation relation, TupleTableSlot *slot, CommandId cid,
                    int options, BulkInsertState bistate);
   void FinishInsert();
