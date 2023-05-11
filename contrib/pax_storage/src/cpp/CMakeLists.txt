@@ -42,8 +42,6 @@ add_library (orc_protobuf INTERFACE)
 add_library (orc::protobuf ALIAS orc_protobuf)
 add_library (orc_protoc INTERFACE)
 add_library (orc::protoc ALIAS orc_protoc)
-set_property(TARGET orc_protobuf PROPERTY POSITION_INDEPENDENT_CODE ON)
-set_property(TARGET orc_protoc PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 if (ORC_PREFER_STATIC_PROTOBUF AND ${PROTOBUF_STATIC_LIB})
   target_link_libraries (orc_protobuf INTERFACE ${PROTOBUF_STATIC_LIB})
