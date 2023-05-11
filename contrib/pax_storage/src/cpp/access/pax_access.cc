@@ -11,13 +11,5 @@ namespace pax {
 void CPaxAccess::PaxCreateAuxBlocks(const Relation relation) {
   cbdb::PaxCreateMicroPartitionTable(relation);
 }
-void CPaxAccess::PaxTupleInsert(const Relation relation, TupleTableSlot *slot,
-                                const CommandId cid, const int options,
-                                const BulkInsertState bistate) {
-  CPaxInserter *inserter = CPaxDmlStateLocal::instance()->GetInserter(relation);
-  Assert(inserter != nullptr);
-
-  inserter->InsertTuple(relation, slot, cid, options, bistate);
-}
 
 }  // namespace pax

@@ -1,9 +1,12 @@
 #include "access/pax_access_handle.h"
+
 #include "comm/cbdb_api.h"
+
 #include "access/pax_access.h"
 #include "access/pax_dml_state.h"
 #include "access/pax_scanner.h"
 #include "catalog/pax_aux_table.h"
+#include "exceptions/CException.h"
 
 #define NOT_IMPLEMENTED_YET                        \
   ereport(ERROR,                                   \
@@ -21,6 +24,58 @@
 #define PAX_DEFAULT_COMPRESSTYPE AO_DEFAULT_COMPRESSTYPE
 
 #define RelationIsPax(rel) AMOidIsPax((rel)->rd_rel->relam)
+
+// CBDB_TRY();
+// {
+//   // C++ implementation code
+// }
+// CBDB_CATCH_MATCH(std::exception &exp); // optional
+// {
+//    // specific exception handler
+//    error_message.Append("error message: %s", error_message.message());
+// }
+// CBDB_CATCH_DEFAULT();
+// CBDB_END_TRY();
+//
+// CBDB_CATCH_MATCH() is optional and can have several match pattern.
+
+// being of a try block w/o explicit handler
+#define CBDB_TRY()                               \
+  do {                                           \
+    bool internal_cbdb_try_throw_error_ = false; \
+    cbdb::ErrorMessage error_message;            \
+    try {
+// begin of a catch block
+#define CBDB_CATCH_MATCH(exception_decl) \
+  }                                      \
+  catch (exception_decl) {               \
+    internal_cbdb_try_throw_error_ = true;
+
+// catch c++ exception and rethrow ERROR to C code
+// only used by the outer c++ code called by C
+#define CBDB_CATCH_DEFAULT() \
+  }                          \
+  catch (...) {              \
+    internal_cbdb_try_throw_error_ = true;
+
+// like PG_FINALLY
+#define CBDB_FINALLY(...) \
+  }                       \
+  {                       \
+    do {                  \
+      __VA_ARGS__;        \
+    } while (0);
+
+// end of a try-catch block
+#define CBDB_END_TRY()                                     \
+  }                                                        \
+  if (internal_cbdb_try_throw_error_) {                    \
+    if (error_message.length() == 0)                       \
+      error_message.Append("ERROR: %s", __func__);         \
+    ereport(ERROR, errmsg("%s", error_message.message())); \
+  }                                                        \
+  }                                                        \
+  while (0)
 
 bool AMOidIsPax(Oid amOid) {
   HeapTuple tuple;
@@ -54,13 +109,24 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
                                            int nkeys, struct ScanKeyData *key,
                                            ParallelTableScanDesc pscan,
                                            uint32 flags) {
-  // todo: PAX_TRY {} PAX_CATCH {}
-  return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags);
+  CBDB_TRY();
+  {
+    return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags);
+  }
+  CBDB_CATCH_DEFAULT();
+  CBDB_END_TRY();
+
+  pg_unreachable();
 }
 
 void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
-  // todo PAX_TRY{} PAX_CATCH {}
-  PaxScanDesc::EndScan(scan);
+  CBDB_TRY();
+  { PaxScanDesc::EndScan(scan); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({
+      // FIXME: destroy PaxScanDesc?
+  });
+  CBDB_END_TRY();
 }
 
 void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
@@ -72,14 +138,27 @@ void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
 bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
                                         ScanDirection direction,
                                         TupleTableSlot *slot) {
-  return PaxScanDesc::ScanGetNextSlot(scan, direction, slot);
+  CBDB_TRY();
+  { return PaxScanDesc::ScanGetNextSlot(scan, direction, slot); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({
+      // FIXME: destroy PaxScanDesc?
+  });
+  CBDB_END_TRY();
+
+  pg_unreachable();
 }
 
 void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
                                     CommandId cid, int options,
                                     BulkInsertState bistate) {
-  // todo C CALL C++ WRAPPER
-  pax::CPaxAccess::PaxTupleInsert(relation, slot, cid, options, bistate);
+  CBDB_TRY();
+  { CPaxInserter::TupleInsert(relation, slot, cid, options, bistate); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({
+      // FIXME: destroy CPaxInserter?
+  });
+  CBDB_END_TRY();
 }
 
 TM_Result CCPaxAccessMethod::TupleDelete(Relation relation, ItemPointer tid,
@@ -140,22 +219,30 @@ bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
 }
 
 void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
-                                  int ntuples, CommandId cid, int options,
-                                  BulkInsertState bistate) {
-  CPaxInserter *inserter = pax::CPaxDmlStateLocal::instance()->GetInserter(relation);
-  Assert(inserter != nullptr);
-  // TODO(Tony): implement bulk insert as AO/HEAP does with tuples iteration, which
-  // needs to be futher optmized by using new feature like Parallelization or Vectorization.
-  for (int i = 0; i < ntuples; i++) {
-    inserter->InsertTuple(relation, slots[i], cid, options, bistate);
+                                    int ntuples, CommandId cid, int options,
+                                    BulkInsertState bistate) {
+  CBDB_TRY();
+  {
+    CPaxInserter::MultiInsert(relation, slots, ntuples, cid, options, bistate);
   }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({
+      // FIXME: destroy CPaxInserter?
+  });
+  CBDB_END_TRY();
 }
 
 void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
-  // Implement Pax dml cleanup for case "create table xxx1 as select * from xxx2",
-  // which would not call ExtDmlFini callback function and relies on FinishBulkInsert
-  // callback function to cleanup its dml state.
-  pax::CPaxDmlStateLocal::instance()->FinishDmlState(relation, CMD_INSERT);
+  // Implement Pax dml cleanup for case "create table xxx1 as select * from
+  // xxx2", which would not call ExtDmlFini callback function and relies on
+  // FinishBulkInsert callback function to cleanup its dml state.
+  CBDB_TRY();
+  { pax::CPaxInserter::FinishBulkInsert(relation, options); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({
+      // FIXME: destroy CPaxInserter?
+  });
+  CBDB_END_TRY();
 }
 
 void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
@@ -544,7 +631,7 @@ static const TableAmRoutine pax_column_methods = {
     .scan_sample_next_block = pax::CCPaxAccessMethod::ScanSampleNextBlock,
     .scan_sample_next_tuple = pax::CCPaxAccessMethod::ScanSampleNextTuple,
 
-    .amoptions = paxc::PaxAccessMethod::Amoptions
+    .amoptions = paxc::PaxAccessMethod::Amoptions,
 };
 
 PG_MODULE_MAGIC;
