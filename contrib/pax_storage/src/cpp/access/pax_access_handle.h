@@ -132,8 +132,8 @@ class CCPaxAccessMethod final {
                                   TupleTableSlot *slot);
 
   static void MultiInsert(Relation relation, TupleTableSlot **slots,
-                                  int ntuples, CommandId cid, int options,
-                                  BulkInsertState bistate);
+                          int ntuples, CommandId cid, int options,
+                          BulkInsertState bistate);
 
   static void FinishBulkInsert(Relation relation, int options);
 

@@ -10,7 +10,7 @@
 
 namespace pax {
 
-class TableWriter {
+class TableWriter final {
  public:
   class FileSplitStrategy {
    public:
@@ -56,7 +56,7 @@ class TableWriter {
   size_t total_tuples_ = 0;
 };
 
-class TableReader {
+class TableReader final {
  public:
   explicit TableReader(
       const MicroPartitionReaderPtr reader,
