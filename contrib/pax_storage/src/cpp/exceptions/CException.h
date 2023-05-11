@@ -2,6 +2,21 @@
 #include <sstream>
 #include <string>
 namespace cbdb {
+// error message buffer
+class ErrorMessage final {
+ public:
+  ErrorMessage();
+  ErrorMessage(const ErrorMessage &message);
+  void Append(const char *format, ...) noexcept;
+  void AppendV(const char *format, va_list ap) noexcept;
+  const char *message() const noexcept { return &message_[0]; }
+  int length() const noexcept { return index_; }
+
+ private:
+  int index_ = 0;
+  char message_[128];
+};
+
 class CException {
  public:
   enum ExType {
@@ -79,34 +94,3 @@ class CErrorHandler {
   if (!(check)) {              \
     CBDB_RAISE(__VA_ARGS__);   \
   }
-
-// being of a try block w/o explicit handler
-#define CBDB_TRY                           \
-  do {                                     \
-    cbdb::CErrorHandler *err_hdl__ = NULL; \
-    try {                                  \
-// begin of a try block
-#define CBDB_TRY_HDL(perrhdl)                 \
-  do {                                        \
-    cbdb::CErrorHandler *err_hdl__ = perrhdl; \
-    try {                                     \
-// begin of a catch block
-#define CBDB_CATCH_EX(exc)                          \
-  }                                                 \
-  catch (cbdb::CException & exc) {                  \
-    if (NULL != err_hdl__) err_hdl__->Process(exc); \
-  }
-
-// catch c++ exception and rethrow ERROR to C code
-// only used by the outer c++ code called by C
-#define CBDB_CATCH_DEFAULT() \
-  catch (...) {              \
-    PG_RETHROW()
-
-// end of a catch block
-#define CBDB_CATCH_END \
-  }                    \
-  }                    \
-  while (0)
-
-#define CBDB_MATCH_EX(ex, extype) (ex.EType() == extype)
