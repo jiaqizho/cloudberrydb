@@ -26,7 +26,9 @@ void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
 void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
                          int ptblocksize);
 
-void PaxCreateMicroPartitionTable(const Relation rel);
+void PaxCreateMicroPartitionTable(const Relation rel,
+                                  const RelFileNode *newrnode,
+                                  char persistence);
 
 void GetAllBlockFileInfo_PG_PaxBlock_Relation(
     std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result,

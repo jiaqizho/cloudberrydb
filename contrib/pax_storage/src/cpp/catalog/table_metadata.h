@@ -10,6 +10,7 @@
 #include "catalog/iterator.h"
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/pax_aux_table.h"
+#include "comm/paxc_utils.h"
 
 namespace pax {
 class TableMetadata {
@@ -31,7 +32,8 @@ class TableMetadata {
     file_path.append(std::string(base_path));
     file_path.append("/");
     file_path.append(std::to_string(relation->rd_node.relNode));
-    file_path.append("_");
+    file_path.append(PAX_MICROPARTITION_DIR_POSTFIX);
+    file_path.append("/");
     file_path.append(block_id);
     return file_path;
   }
