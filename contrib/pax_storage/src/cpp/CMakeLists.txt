@@ -94,7 +94,8 @@ target_link_libraries(test_main gtest gtest_main postgres pax_storage)
 endif(BUILD_GTEST)
 
 set(pax_comm_src
-    comm/cbdb_wrappers.cc)
+    comm/cbdb_wrappers.cc
+    comm/paxc_utils.cc)
 
 set(pax_exceptions_src
     exceptions/CException.cc)
@@ -109,7 +110,6 @@ set(pax_storage_src
     storage/orc/orc.cc)
 
 set(pax_access_src
-    access/pax_access.cc
     access/pax_access_handle.cc
     access/pax_deleter.cc
     access/pax_dml_state.cc
