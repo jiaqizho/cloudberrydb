@@ -7,6 +7,7 @@
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
+#include "comm/paxc_utils.h"
 
 const std::string cbdb::GenRandomBlockId() {
   CBDB_WRAP_START;
@@ -76,14 +77,18 @@ void cbdb::InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
   CBDB_WRAP_END;
 }
 
-void cbdb::PaxCreateMicroPartitionTable(const Relation rel) {
+void cbdb::PaxCreateMicroPartitionTable(const Relation rel,
+                                        const RelFileNode *newrnode,
+                                        char persistence) {
   Relation pg_class_desc;
+  SMgrRelation srel;
   char auxRelname[32];
   Oid relid;
   Oid auxRelid;
   Oid auxNamespaceId;
   Oid paxRelid;
   TupleDesc tupdesc;
+  char *relpath = NULL;
 
   pg_class_desc = table_open(RelationRelationId, RowExclusiveLock);
   paxRelid = RelationGetRelid(rel);
@@ -138,6 +143,16 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel) {
     aux.objectSubId = 0;
     recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
   }
+
+  // 4. create pg_pax_table micropartition file path following pg convention, for example base/dbid/{blocks_relid}_pax.
+  relpath = paxc::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend);
+  Assert(relpath[0] != '\0');
+  MakePGDirectory(relpath);
+
+  // 5. create pg_pax_table relfilenode file and dbid directory under path base/.
+  srel = RelationCreateStorage(*newrnode, persistence, SMGR_MD);
+  smgrclose(srel);
+  pfree(relpath);
 }
 
 void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(

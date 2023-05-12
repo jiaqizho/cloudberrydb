@@ -2,11 +2,11 @@
 
 #include "comm/cbdb_api.h"
 
-#include "access/pax_access.h"
 #include "access/pax_dml_state.h"
 #include "access/pax_scanner.h"
 #include "catalog/pax_aux_table.h"
 #include "exceptions/CException.h"
+#include "comm/paxc_utils.h"
 
 #define NOT_IMPLEMENTED_YET                        \
   ereport(ERROR,                                   \
@@ -380,7 +380,7 @@ void PaxAccessMethod::RelationSetNewFilenode(Relation rel,
     relation_close(auxRel, NoLock);
   } else {
     // create pg_pax_blocks_<pax_table_oid>
-    pax::CPaxAccess::PaxCreateAuxBlocks(rel);
+    cbdb::PaxCreateMicroPartitionTable(rel, newrnode, persistence);
   }
 }
 
@@ -414,7 +414,49 @@ void PaxAccessMethod::RelationNontransactionalTruncate(Relation rel) {
 
 void PaxAccessMethod::RelationCopyData(Relation rel,
                                        const RelFileNode *newrnode) {
-  NOT_IMPLEMENTED_YET;
+  SMgrRelation srel;
+  char *srcPath;
+  char *dstPath;
+  char srcFilePath[PAX_MICROPARTITION_NAME_LENGTH];
+  char dstFilePath[PAX_MICROPARTITION_NAME_LENGTH];
+  List *fileList = NIL;
+  ListCell *listCell;
+
+  srcPath = paxc::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend);
+
+  // get micropatition file source folder filename list for copying.
+  fileList = paxc::ListDirectory(srcPath);
+  if (!fileList || !list_length(fileList))
+    return;
+
+  // create pg_pax_table relfilenode file and dbid directory under path pg_tblspc/.
+  srel = RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, SMGR_MD);
+  smgrclose(srel);
+
+  dstPath = paxc::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
+  if (srcPath[0] == '\0' || strlen(srcPath) >= PAX_MICROPARTITION_NAME_LENGTH ||
+      dstPath[0] == '\0' || strlen(dstPath) >= PAX_MICROPARTITION_NAME_LENGTH)
+    ereport(ERROR, (errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
+                   errmsg("MircoPartition file name length mismatch limits.")));
+
+  // create micropartition file destination folder for copying.
+  if (MakePGDirectory(dstPath) != 0)
+    ereport(ERROR,
+                (errcode_for_file_access(),
+                errmsg("RelationCopyData could not create destination directory \"%s\": %m for copying", dstPath)));
+
+  foreach(listCell, fileList) {
+    char *filePath = reinterpret_cast<char *>(lfirst(listCell));
+    snprintf(srcFilePath, sizeof(srcFilePath), "%s/%s", srcPath, filePath);
+    snprintf(dstFilePath, sizeof(dstFilePath), "%s/%s", dstPath, filePath);
+    paxc::CopyFile(srcFilePath, dstFilePath);
+  }
+
+  // TODO(Tony) : here need to implement pending delete srcPath after set new tablespace.
+
+  pfree(srcPath);
+  pfree(dstPath);
+  list_free_deep(fileList);
 }
 
 void PaxAccessMethod::RelationCopyForCluster(
