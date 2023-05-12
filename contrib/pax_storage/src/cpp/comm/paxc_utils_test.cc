@@ -1,6 +1,8 @@
 #include "comm/paxc_utils.h"
 #include "comm/gtest_wrappers.h"
 
+extern int gp_debug_linger;
+
 namespace pax::tests {
 #define PAX_TEST_CMD_LENGTH 2048
 #define PAX_TEST_LIST_FILE_NUM 128
@@ -15,7 +17,9 @@ static const char *pax_file_pathempty = "";
 
 class TablePaxUtilsTest : public ::testing::Test {
  public:
-  void SetUp() override {}
+  void SetUp() override {
+    gp_debug_linger = 0;
+  }
 
   void TearDown() override {}
 };
