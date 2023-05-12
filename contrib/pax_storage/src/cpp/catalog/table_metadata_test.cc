@@ -2,6 +2,8 @@
 
 #include "comm/gtest_wrappers.h"
 
+extern int gp_debug_linger;
+
 namespace pax::tests {
 #define MPARTITION_FILE_SIZE 100
 #define MPARTITION_FILE_NUM 100
@@ -13,7 +15,9 @@ namespace pax::tests {
 
 class TableMetadataTest : public ::testing::Test {
  public:
-  void SetUp() override {}
+  void SetUp() override {
+    gp_debug_linger = 0;
+  }
 
   void TearDown() override {}
 };
