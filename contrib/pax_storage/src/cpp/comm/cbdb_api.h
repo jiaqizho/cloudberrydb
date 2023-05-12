@@ -1,6 +1,9 @@
-#pragma once
+#ifndef SRC_CPP_COMM_CBDB_API_H_
+#define SRC_CPP_COMM_CBDB_API_H_
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 #include "postgres.h"  //  NOLINT
 
 #include "access/genam.h"
@@ -33,4 +36,13 @@ extern "C" {
 // no header file in cbdb
 extern BlockNumber system_nextsampleblock(SampleScanState *node,
                                           BlockNumber nblocks);
+#ifdef __cplusplus
 }
+#endif
+
+#define PAX_TABLE_AM_OID (BITMAP_AM_OID + 1)
+#define PAX_AMNAME "pax"
+#define PAX_AM_HANDLER_OID 7600
+#define PAX_AM_HANDLER_NAME "pax_tableam_handler"
+
+#endif  // SRC_CPP_COMM_CBDB_API_H_
