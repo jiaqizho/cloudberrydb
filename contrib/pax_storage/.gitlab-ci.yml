@@ -1,0 +1,69 @@
+stages:
+  - build
+
+.global_variables: &global_variables
+  # Runner instance name, passed to Terraform
+  TF_VAR_instance_name: "cbdb-test-pipeline-${CI_PIPELINE_ID}-job-${CI_JOB_ID}"
+  TF_VAR_qingcloud_access_key: "key"
+  TF_VAR_qingcloud_secret_key: "secret"
+  # Custom clone path on runner instance 
+  GIT_SUBMODULE_STRATEGY: "normal" 
+  GIT_DEPTH: 0 
+  CI_USER: root 
+  # For internal deploy
+  ARTIFACTORY_USERNAME: "admin"
+  ARTIFACTORY_PASSWORD: "token"
+  AWS_ACCESS_KEY_ID: "${TF_VAR_qingcloud_access_key}"
+  AWS_SECRET_ACCESS_KEY: "${TF_VAR_qingcloud_secret_key}"
+  # cbdb project dir
+  CBDB_PROJECT_DIR: "/code/gpdb_src"
+  # For artifacts
+  BUCKET_INTERMEDIATE: "http://artifactory.hashdata.xyz/artifactory/hashdata-repository/intermediate-artifacts"
+  # For pax storage project
+  GPDB_PAX_SRC_PATH: "$CBDB_PROJECT_DIR/contrib/pax_storage"
+
+.build_script: &build_script
+  script: |
+    git clone -b feature-pax https://buildbot:Passw0rd@code.hashdata.xyz/cloudberry/cbdb.git $CBDB_PROJECT_DIR
+    git clone https://buildbot:Passw0rd@code.hashdata.xyz/cloudberry/pax_storage.git $GPDB_PAX_SRC_PATH
+    cd /code/gpdb_src
+    git submodule update --init --recursive
+    cd /code
+    echo "${CI_PIPELINE_ID}" > ${CBDB_PROJECT_DIR}/BUILD_NUMBER
+    bash ${CBDB_PROJECT_DIR}/hd-ci/compile_cbdb.bash
+    bash ${GPDB_PAX_SRC_PATH}/hd-ci/compile_pax.bash
+    cp ${CBDB_PROJECT_DIR}/cbdb-artifacts.txt ${CI_PROJECT_DIR}/cbdb-artifacts.txt
+    touch /code/CI_STATUS
+
+.build_artifacts: &build_artifacts
+  artifacts:
+    name: "artifacts"
+    paths:
+      - ${CI_PROJECT_DIR}/cbdb-artifacts.txt
+    reports:
+      dotenv: ${CI_PROJECT_DIR}/cbdb-artifacts.txt
+
+.cbdb_test_rules: &cbdb_test_rules
+  rules:
+    - if: $build_commit_tag
+      when: always
+    - if: '$RUN_NIGHTLY_BUILD == "true"'
+      when: always
+    - if: '$RUN_TEST_BUILD == "true"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "pipeline"'
+      when: manual
+      allow_failure: true
+    - when: manual
+
+x86_64:build:
+  stage: build
+  variables:
+    <<: *global_variables
+  <<: *build_script
+  <<: *build_artifacts
+  <<: *cbdb_test_rules
+  timeout: 8 hours
+  retry:
+    max: 2
+    when: always
