@@ -452,3 +452,107 @@ drop table multiagg2;
 reset optimizer_force_multistage_agg;
 reset optimizer_enable_use_distribution_in_dqa;
 drop table t_issue_659;
+
+-- DQA with Agg(Intermediate Agg)
+set enable_hashagg=on;
+set enable_groupagg=off;
+
+create table dqa_f3(a int, b int, c int, d int, e int ) distributed by (a);
+insert into dqa_f3 select i % 17, i % 5 , i % 3, i %10, i % 7 from generate_series(1,1000) i;
+analyze dqa_f3;
+
+/*
+ * Test distinct or group by column is distributed key
+ *
+ * 1. If the input's locus matches the DISTINCT, but not GROUP BY:
+ *
+ *  HashAggregate
+ *     -> Redistribute (according to GROUP BY)
+ *         -> HashAggregate (to eliminate duplicates)
+ *             -> input (hashed by GROUP BY + DISTINCT)
+ *
+ * 2. If the input's locus matches the GROUP BY(don't care DISTINCT any more):
+ *
+ *  HashAggregate (to aggregate)
+ *     -> HashAggregate (to eliminate duplicates)
+ *           -> input (hashed by GROUP BY)
+ *
+ */
+explain (verbose on, costs off)select sum(Distinct a), count(b), sum(c) from dqa_f3 group by e;
+select sum(Distinct a), count(b), sum(c) from dqa_f3 group by e;
+
+explain (verbose on, costs off) select sum(Distinct e), count(b), sum(c) from dqa_f3 group by a;
+select sum(Distinct e), count(b), sum(c) from dqa_f3 group by a;
+
+/*
+ *  Test both distinct and group by column are not distributed key 
+ *
+ *  HashAgg (to aggregate)
+ *     -> HashAgg (to eliminate duplicates)
+ *          -> Redistribute (according to GROUP BY)
+ *               -> Streaming HashAgg (to eliminate duplicates)
+ *                    -> input
+ *
+ */
+explain (verbose on, costs off) select sum(Distinct c), count(a), sum(d) from dqa_f3 group by b;
+select sum(Distinct c), count(a), sum(d) from dqa_f3 group by b;
+
+explain (verbose on, costs off) select sum(Distinct c), count(a), sum(d) from dqa_f3 group by b order by b;
+select sum(Distinct c), count(a), sum(d) from dqa_f3 group by b order by b;
+
+explain (verbose on, costs off) select distinct sum(Distinct c), count(a), sum(d) from dqa_f3 group by b;
+select distinct sum(Distinct c), count(a), sum(d) from dqa_f3 group by b;
+
+explain (verbose on, costs off) select sum(Distinct c), count(a), sum(d) from dqa_f3 group by b having avg(e) > 3;
+select sum(Distinct c), count(a), sum(d) from dqa_f3 group by b having avg(e) > 3;
+
+explain (verbose on, costs off)
+select sum(Distinct sub.c), count(a), sum(d)
+            from dqa_f3 left join(select x, coalesce(y, 5) as c from dqa_f2) as sub
+            on sub.x = dqa_f3.e group by b;
+select sum(Distinct sub.c), count(a), sum(d)
+            from dqa_f3 left join(select x, coalesce(y, 5) as c from dqa_f2) as sub
+            on sub.x = dqa_f3.e group by b;
+
+-- Test gp_enable_agg_distinct_pruning is off on this branch
+set gp_enable_agg_distinct_pruning = off;
+explain (verbose on, costs off) select sum(Distinct c), count(a), sum(d) from dqa_f3 group by b;
+select sum(Distinct c), count(a), sum(d) from dqa_f3 group by b;
+reset gp_enable_agg_distinct_pruning;
+
+/*
+ * Test multistage through Gather Motion(grouplocus cannot hashed or not exist)
+ *
+ *  Finalize Aggregate
+ *     -> Gather Motion
+ *          -> Partial Aggregate
+ *              -> HashAggregate, to remove duplicates
+ *                  -> Redistribute Motion (according to DISTINCT arg)
+ *                      -> Streaming HashAgg (to eliminate duplicates)
+ *                          -> input
+ */
+explain (verbose on, costs off) select sum(Distinct b), count(c), sum(a) from dqa_f3;
+select sum(Distinct b), count(c), sum(a) from dqa_f3;
+
+explain (verbose on, costs off) select distinct sum(Distinct b), count(c), sum(a) from dqa_f3;
+select distinct sum(Distinct b), count(c), sum(a) from dqa_f3;
+
+explain (verbose on, costs off) select sum(Distinct b), count(c) filter(where c > 1), sum(a) from dqa_f3;
+select sum(Distinct b), count(c) filter(where c > 1), sum(a) from dqa_f3;
+
+drop table dqa_f3;
+
+-- Test some corner case of dqa ex.NULL
+create table dqa_f4(a int, b int, c int);
+insert into dqa_f4 values(null, null, null);
+insert into dqa_f4 values(1, 1, 1);
+insert into dqa_f4 values(2, 2, 2);
+
+select count(distinct a), count(distinct b) from dqa_f4 group by c;
+
+set optimizer_enable_multiple_distinct_aggs=on;
+explain (verbose on, costs off) select count(distinct a), count(distinct b) from dqa_f4 group by c;
+select count(distinct a), count(distinct b) from dqa_f4 group by c;
+reset optimizer_enable_multiple_distinct_aggs;
+
+drop table dqa_f4;
