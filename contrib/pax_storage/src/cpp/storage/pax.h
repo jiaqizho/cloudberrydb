@@ -77,6 +77,9 @@ class TableReader final {
   }
 
   virtual void Close() {
+    if (is_empty_) {
+      return;
+    }
     Assert(reader_);
     reader_->Close();
   }
