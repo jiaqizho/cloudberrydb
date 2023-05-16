@@ -30,6 +30,11 @@ namespace pax {
 
 class OrcWriter : public MicroPartitionWriter {
  public:
+  ~OrcWriter() {
+    delete pax_columns_;
+    delete file_;
+  }
+
   void Flush() override;
 
   void WriteTuple(CTupleSlot *slot) override;
@@ -87,13 +92,15 @@ class OrcWriter : public MicroPartitionWriter {
     return CreateWriter(file_, std::move(types), options);
   }
 
+#ifndef RUN_GTEST
+ protected:  // NOLINT
+#endif
   static MicroPartitionWriter *CreateWriter(
       File *file, const std::vector<orc::proto::Type_Kind> column_types,
       const MicroPartitionWriter::WriterOptions options) {
     return new OrcWriter(options, column_types, file);
   }
 
- protected:
   // after create a new writer or old stripe have been flushed
   // stripe_info_ in memory should reinit
   void InitStripe();
@@ -109,8 +116,6 @@ class OrcWriter : public MicroPartitionWriter {
 
   virtual std::pair<char *, int> ParseCStringValue(TupleTableSlot *tuple_slot,
                                                    size_t index);
-
-  ~OrcWriter() { delete pax_columns_; }
 
  protected:
   PaxColumns *pax_columns_;
@@ -140,6 +145,8 @@ class OrcReader : public MicroPartitionReader {
     uint64 stripe_footer_start_;
   };
 
+  ~OrcReader() { delete file_; }
+
   StripeInformation *GetStripeInfo(size_t index) const;
 
   PaxColumns *ReadStripe(size_t index);
@@ -164,8 +171,11 @@ class OrcReader : public MicroPartitionReader {
     return new OrcReader(file);
   }
 
- protected:
-  // there is an optimization here, in standard ORC, A single ORC file will read
+#ifndef RUN_GTEST
+ protected:  // NOLINT
+#endif
+             // there is an optimization here, in standard ORC, A single ORC
+             // file will read
   // follow these step:
   // - read postscript size
   // - read post script
