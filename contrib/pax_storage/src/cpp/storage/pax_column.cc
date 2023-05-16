@@ -130,8 +130,11 @@ void PaxNonFixedColumn::Set(std::vector<DataBuffer<char> *> *data) {
 }
 
 void PaxNonFixedColumn::Append(char *buffer, size_t size) {
-  DataBuffer<char> *data_buffer = new DataBuffer<char>(buffer, size, false);
+  // TODO(jiaqizho): consider use DataBuffer<char> replace std::vector<DataBuffer<char> *>
+  // Cause we can't direct hold the ptr which from tuple
+  DataBuffer<char> *data_buffer = new DataBuffer<char>(nullptr, size, false, true);
 
+  data_buffer->Write(buffer, size);
   data_buffer->Brush(size);
   data_->emplace_back(data_buffer);
 }
@@ -182,8 +185,8 @@ PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types) : PaxColumn() {
     switch (type) {
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
         auto *pax_non_fixed_column = new PaxNonFixedColumn();
-        // current memory will be freed with tuple slot.
-        pax_non_fixed_column->SetMemTakeOver(false);
+        // current memory will copy from tuple, so should take over it
+        pax_non_fixed_column->SetMemTakeOver(true);
         columns_.emplace_back(pax_non_fixed_column);
         break;
       }
