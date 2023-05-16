@@ -203,7 +203,6 @@ TEST_F(OrcTest, WriteTuple) {
   writer->Close();
 
   DeleteCTupleSlot(tuple_slot);
-  delete file_ptr;
   delete writer;
 }
 
@@ -225,7 +224,6 @@ TEST_F(OrcTest, OpenOrc) {
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
@@ -237,7 +235,6 @@ TEST_F(OrcTest, OpenOrc) {
   reader->Close();
 
   DeleteCTupleSlot(tuple_slot);
-  delete file_ptr;
   delete writer;
   delete reader;
 }
@@ -256,14 +253,19 @@ TEST_F(OrcTest, WriteReadStripes) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
+  // file_ptr in orc writer will be freed when writer do destruct
+  // current OrcWriter::CreateWriter only for test
   auto *writer = OrcWriter::CreateWriter(file_ptr, types, writer_options);
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
+  // file_ptr in orc reader will be freed when reader do destruct
+  // should not direct used OrcReader in TableReader(use OrcIteratorReader
+  // instead)
+  //
   auto *reader =
       reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
 
@@ -274,7 +276,6 @@ TEST_F(OrcTest, WriteReadStripes) {
 
   delete columns;
   DeleteCTupleSlot(tuple_slot);
-  delete file_ptr;
   delete writer;
   delete reader;
 }
@@ -297,7 +298,6 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   writer->WriteTuple(tuple_slot);
   writer->WriteTuple(tuple_slot);
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
@@ -335,7 +335,6 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
 
   delete columns_stripe;
   DeleteCTupleSlot(tuple_slot);
-  delete file_ptr;
   delete writer;
   delete reader;
 }
@@ -361,7 +360,6 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
@@ -379,7 +377,6 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
   delete columns2;
 
   DeleteCTupleSlot(tuple_slot);
-  delete file_ptr;
   delete writer;
   delete reader;
 }
@@ -404,7 +401,6 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
 
   // close without any data
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
@@ -415,7 +411,6 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
   OrcTest::VerifySingleStripe(columns);
   reader->Close();
 
-  delete file_ptr;
   delete writer;
   delete reader;
 }
@@ -438,7 +433,6 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   writer->Flush();
   // direct close
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
@@ -447,7 +441,6 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   EXPECT_EQ(0, reader->GetNumberOfStripes());
   reader->Close();
 
-  delete file_ptr;
   delete writer;
   delete reader;
 }
@@ -475,7 +468,6 @@ TEST_F(OrcTest, ReadTuple) {
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
@@ -498,7 +490,6 @@ TEST_F(OrcTest, ReadTuple) {
 
   DeleteCTupleSlot(tuple_slot_empty);
   DeleteCTupleSlot(tuple_slot);
-  delete file_ptr;
   delete writer;
   delete reader;
 }
@@ -549,7 +540,6 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   }
 
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
@@ -565,7 +555,6 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   reader->Close();
 
   DeleteCTupleSlot(ctuple_slot);
-  delete file_ptr;
   delete writer;
   delete reader;
 }
@@ -615,7 +604,6 @@ TEST_F(OrcTest, ReadWithSeek) {
     writer->WriteTuple(ctuple_slot);
   }
   writer->Close();
-  delete file_ptr;
 
   file_ptr = local_fs->Open(file_name);
 
@@ -673,7 +661,66 @@ TEST_F(OrcTest, ReadWithSeek) {
   reader->Close();
 
   DeleteCTupleSlot(ctuple_slot);
-  delete file_ptr;
+  delete writer;
+  delete reader;
+}
+
+TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
+  char column_buff_origin[COLUMN_SIZE];
+  char column_buff_reset[COLUMN_SIZE];
+
+  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
+  auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto *file_ptr = local_fs->Open(file_name);
+  EXPECT_NE(nullptr, file_ptr);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+  MicroPartitionWriter::WriterOptions writer_options;
+
+  auto *writer = OrcWriter::CreateWriter(file_ptr, types, writer_options);
+
+  writer->WriteTuple(tuple_slot);
+
+  // using the same tuple slot with different data
+  cbdb::Pfree(
+      cbdb::PointerFromDatum(tuple_slot->GetTupleTableSlot()->tts_values[0]));
+  memset(&column_buff_reset, 0, COLUMN_SIZE);
+  tuple_slot->GetTupleTableSlot()->tts_values[0] =
+      cbdb::DatumFromCString(column_buff_reset, COLUMN_SIZE);
+
+  writer->WriteTuple(tuple_slot);
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name);
+
+  auto *reader =
+      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+
+  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  auto *columns = reader->ReadStripe(0);
+
+  EXPECT_EQ(COLUMN_NUMS, columns->GetColumns());
+  auto *column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
+
+  GenFakeBuffer(column_buff_origin, COLUMN_SIZE);
+
+  EXPECT_EQ(2, column1->GetRows());
+  auto *column1_vector = column1->GetDataBuffers();
+  EXPECT_EQ(2, column1_vector->size());
+  EXPECT_EQ(0, std::memcmp((*column1_vector)[0]->GetBuffer(),
+                           column_buff_origin, COLUMN_SIZE));
+  EXPECT_EQ(0, std::memcmp((*column1_vector)[1]->GetBuffer(), column_buff_reset,
+                           COLUMN_SIZE));
+
+  reader->Close();
+
+  delete columns;
+  DeleteCTupleSlot(tuple_slot);
   delete writer;
   delete reader;
 }
