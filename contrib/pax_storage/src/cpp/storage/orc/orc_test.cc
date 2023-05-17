@@ -155,6 +155,10 @@ class OrcTest : public ::testing::Test {
 
   void VerifySingleStripe(PaxColumns *columns) {
     char column_buff[COLUMN_SIZE];
+    struct varlena *vl = nullptr;
+    struct varlena *tunpacked = nullptr;
+    int read_len = -1;
+    char *read_data = nullptr;
 
     GenFakeBuffer(column_buff, COLUMN_SIZE);
 
@@ -165,14 +169,39 @@ class OrcTest : public ::testing::Test {
 
     EXPECT_EQ(1, column1->GetRows());
     auto *column1_vector = column1->GetDataBuffers();
+    char *column1_buffer = (*column1_vector)[0]->GetBuffer();
     EXPECT_EQ(1, column1_vector->size());
-    EXPECT_EQ(0, std::memcmp((*column1_vector)[0]->GetBuffer(), column_buff,
+    EXPECT_EQ(0, std::memcmp(column1_buffer + VARHDRSZ, column_buff,
                              COLUMN_SIZE));
+
+    vl = (struct varlena *)DatumGetPointer(column1_buffer);
+    tunpacked = pg_detoast_datum_packed(vl);
+    EXPECT_EQ((Pointer)vl, (Pointer)tunpacked);
+
+    read_len = VARSIZE(tunpacked);
+    read_data = VARDATA_ANY(tunpacked);
+    // read_len is COLUMN_SIZE + VARHDRSZ
+    // because DatumFromCString set it
+    EXPECT_EQ(read_len, COLUMN_SIZE + VARHDRSZ);
+    EXPECT_EQ(0, std::memcmp(read_data, column_buff, COLUMN_SIZE));
+    // read_data should pass the pointer rather than memcpy
+    EXPECT_EQ(read_data, column1_buffer + VARHDRSZ);
+
     EXPECT_EQ(1, column2->GetRows());
     auto *column2_vector = column2->GetDataBuffers();
+    char *column2_buffer = (*column2_vector)[0]->GetBuffer();
     EXPECT_EQ(1, column2_vector->size());
-    EXPECT_EQ(0, std::memcmp((*column2_vector)[0]->GetBuffer(), column_buff,
+    EXPECT_EQ(0, std::memcmp((*column2_vector)[0]->GetBuffer()  + VARHDRSZ, column_buff,
                              COLUMN_SIZE));
+    vl = (struct varlena *)DatumGetPointer(column2_buffer);
+    tunpacked = pg_detoast_datum_packed(vl);
+    EXPECT_EQ((Pointer)vl, (Pointer)tunpacked);
+
+    read_len = VARSIZE(tunpacked);
+    read_data = VARDATA_ANY(tunpacked);
+    EXPECT_EQ(read_len, COLUMN_SIZE + VARHDRSZ);
+    EXPECT_EQ(0, std::memcmp(read_data, column_buff, COLUMN_SIZE));
+    EXPECT_EQ(read_data, column2_buffer + VARHDRSZ);
 
     auto *column3_buffer = column3->GetDataBuffer();
     EXPECT_EQ(1, column3_buffer->GetSize());
@@ -308,10 +337,9 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   auto *columns_stripe = reader->ReadStripe(0);
 
   reader->Close();
-  char column_buff[COLUMN_SIZE * 2];
+  char column_buff[COLUMN_SIZE];
 
   GenFakeBuffer(column_buff, COLUMN_SIZE);
-  GenFakeBuffer(column_buff + COLUMN_SIZE, COLUMN_SIZE);
 
   EXPECT_EQ(COLUMN_NUMS, columns_stripe->GetColumns());
   PaxNonFixedColumn *column1 =
@@ -321,16 +349,16 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   EXPECT_EQ(2, column1->GetRows());
   auto *column1_vector = column1->GetDataBuffers();
   EXPECT_EQ(2, column1_vector->size());
-  EXPECT_EQ(0, std::memcmp((*column1_vector)[0]->GetBuffer(), column_buff,
+  EXPECT_EQ(0, std::memcmp((*column1_vector)[0]->GetBuffer() + VARHDRSZ, column_buff,
                            COLUMN_SIZE));
-  EXPECT_EQ(0, std::memcmp((*column1_vector)[1]->GetBuffer(), column_buff,
+  EXPECT_EQ(0, std::memcmp((*column1_vector)[1]->GetBuffer() + VARHDRSZ, column_buff,
                            COLUMN_SIZE));
   EXPECT_EQ(2, column2->GetRows());
   auto *column2_vector = column1->GetDataBuffers();
   EXPECT_EQ(2, column2_vector->size());
-  EXPECT_EQ(0, std::memcmp((*column2_vector)[0]->GetBuffer(), column_buff,
+  EXPECT_EQ(0, std::memcmp((*column2_vector)[0]->GetBuffer() + VARHDRSZ, column_buff,
                            COLUMN_SIZE));
-  EXPECT_EQ(0, std::memcmp((*column2_vector)[1]->GetBuffer(), column_buff,
+  EXPECT_EQ(0, std::memcmp((*column2_vector)[1]->GetBuffer() + VARHDRSZ, column_buff,
                            COLUMN_SIZE));
 
   delete columns_stripe;
@@ -480,11 +508,12 @@ TEST_F(OrcTest, ReadTuple) {
   struct varlena *vl = (struct varlena *)DatumGetPointer(
       tuple_slot_empty->GetTupleTableSlot()->tts_values[0]);
   struct varlena *tunpacked = pg_detoast_datum_packed(vl);
+  EXPECT_EQ((Pointer)vl, (Pointer)tunpacked);
 
-  int read_len = VARSIZE_ANY_EXHDR(tunpacked);
+  int read_len = VARSIZE(tunpacked);
   char *read_data = VARDATA_ANY(tunpacked);
 
-  EXPECT_EQ(read_len, COLUMN_SIZE);
+  EXPECT_EQ(read_len, COLUMN_SIZE + VARHDRSZ);
   EXPECT_EQ(0, std::memcmp(read_data, column_buff, COLUMN_SIZE));
   reader->Close();
 
