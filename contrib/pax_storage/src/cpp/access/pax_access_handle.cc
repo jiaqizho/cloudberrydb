@@ -378,6 +378,9 @@ void PaxAccessMethod::RelationSetNewFilenode(Relation rel,
     /*TODO1 pending-delete operation should be applied here. */
     RelationSetNewRelfilenode(auxRel, auxRel->rd_rel->relpersistence);
     relation_close(auxRel, NoLock);
+
+    // Create micro-partition file directory for truncate case.
+    paxc::CreateMicroPartitionFileDirectory(newrnode, rel->rd_backend, persistence);
   } else {
     // create pg_pax_blocks_<pax_table_oid>
     cbdb::PaxCreateMicroPartitionTable(rel, newrnode, persistence);

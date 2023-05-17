@@ -153,5 +153,30 @@ char* BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend) {
   pfree(relpath);
   return paxrelpath;
 }
+
+// CreateMicroPartitionFileDirectory: function used to create directory to store MicroPartition table files.
+// parameter rel IN pax table relation information.
+// parameter rd_backend IN rd_backend id.
+// parameter persistence IN flag to indicate storage persistency.
+// return void.
+void CreateMicroPartitionFileDirectory(const RelFileNode *rel,
+                                       const BackendId rd_backend,
+                                       char persistence) {
+  char *relpath = NULL;
+  SMgrRelation srel;
+
+  // Create pax table micropartition file path following pg convention,
+  // for example base/{database_oid}/{blocks_relid}_pax.
+  relpath = paxc::BuildPaxDirectoryPath(*rel, rd_backend);
+  Assert(relpath[0] != '\0');
+  MakePGDirectory(relpath);
+
+  // Create pax table relfilenode file and database directory under path base/,
+  // The relfilenode created here is to be compatible with PG normal process logic
+  // instead of being used by pax storage.
+  srel = RelationCreateStorage(*rel, persistence, SMGR_MD);
+  smgrclose(srel);
+  pfree(relpath);
+}
 }  // namespace paxc
 

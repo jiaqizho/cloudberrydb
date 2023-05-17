@@ -81,14 +81,12 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel,
                                         const RelFileNode *newrnode,
                                         char persistence) {
   Relation pg_class_desc;
-  SMgrRelation srel;
   char auxRelname[32];
   Oid relid;
   Oid auxRelid;
   Oid auxNamespaceId;
   Oid paxRelid;
   TupleDesc tupdesc;
-  char *relpath = NULL;
 
   pg_class_desc = table_open(RelationRelationId, RowExclusiveLock);
   paxRelid = RelationGetRelid(rel);
@@ -144,15 +142,8 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel,
     recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
   }
 
-  // 4. create pg_pax_table micropartition file path following pg convention, for example base/dbid/{blocks_relid}_pax.
-  relpath = paxc::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend);
-  Assert(relpath[0] != '\0');
-  MakePGDirectory(relpath);
-
-  // 5. create pg_pax_table relfilenode file and dbid directory under path base/.
-  srel = RelationCreateStorage(*newrnode, persistence, SMGR_MD);
-  smgrclose(srel);
-  pfree(relpath);
+  // 4. create micro-partition file directory
+  paxc::CreateMicroPartitionFileDirectory(newrnode, rel->rd_backend, persistence);
 }
 
 void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
