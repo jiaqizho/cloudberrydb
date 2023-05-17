@@ -149,13 +149,12 @@ int64 cbdb::Int64FromDatum(Datum d) {
   return 0;
 }
 
+#ifdef RUN_GTEST
 Datum cbdb::DatumFromCString(const char *src, const size_t length) {
   CBDB_WRAP_START;
   {
     text *result = reinterpret_cast<text *>(palloc(length + VARHDRSZ));
     SET_VARSIZE(result, length + VARHDRSZ);
-    // TODO(jiaqizho): may not need memcpy here.
-    //  the memory in cpp won't freed
     memcpy(VARDATA(result), src, length);
     return PointerGetDatum(result);
   }
@@ -174,6 +173,7 @@ Datum cbdb::DatumFromPointer(const void *p, int16 typlen) {
   CBDB_WRAP_END;
   return 0;
 }
+#endif
 
 struct varlena *cbdb::PgDeToastDatumPacked(struct varlena *datum) {
   CBDB_WRAP_START;

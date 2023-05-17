@@ -90,8 +90,20 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
 
     switch (type_len) {
       case -1: {
-        std::pair<char *, int> value_raw = ParseCStringValue(table_slot, i);
-        (*pax_columns_)[i]->Append(value_raw.first, value_raw.second);
+        struct varlena *vl = nullptr;
+        int len = -1;
+        CBDB_WRAP_START;
+        {
+          vl = (struct varlena *)DatumGetPointer(table_slot->tts_values[i]);
+
+          // not support compress
+          Assert((Pointer)pg_detoast_datum_packed(vl) == (Pointer)vl);
+          len = VARSIZE_ANY_EXHDR(vl) + VARHDRSZ;
+        }
+        CBDB_WRAP_END;
+        Assert(len != -1);
+
+        (*pax_columns_)[i]->Append(reinterpret_cast<char *>(vl), len);
         break;
       }
       case 4: {
@@ -285,26 +297,6 @@ void OrcWriter::WritePostscript(BufferedOutputStream *buffer_mem_stream) {
 
   char ps_len = static_cast<char>(buffer_mem_stream->EndBufferOutRecord());
   buffer_mem_stream->DirectWrite(&ps_len, sizeof(unsigned char));
-}
-
-std::pair<char *, int> OrcWriter::ParseCStringValue(TupleTableSlot *tuple_slot,
-                                                    size_t index) {
-  CBDB_WRAP_START;
-  {
-    struct varlena *vl =
-        (struct varlena *)DatumGetPointer(tuple_slot->tts_values[index]);
-    struct varlena *tunpacked = pg_detoast_datum_packed(vl);
-
-    if ((Pointer)tunpacked != (Pointer)vl) cbdb::Pfree(tunpacked);
-
-    int len = VARSIZE_ANY_EXHDR(tunpacked);
-    char *data = VARDATA_ANY(tunpacked);
-
-    return {data, len};
-  }
-  CBDB_WRAP_END;
-
-  return {nullptr, 0};
 }
 
 OrcReader::OrcReader(File *file) : MicroPartitionReader(), file_(file) {
@@ -579,8 +571,7 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
     std::tie(buffer, buffer_len) = column->GetBuffer(current_row_index_);
     switch (column->GetPaxColumnTypeInMem()) {
       case TYPE_NON_FIXED: {
-        slot->tts_values[tts_index++] =
-            cbdb::DatumFromCString(buffer, buffer_len);
+        slot->tts_values[tts_index++] = PointerGetDatum(buffer);
         break;
       }
       case TYPE_FIXED: {
