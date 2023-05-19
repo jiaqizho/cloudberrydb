@@ -133,6 +133,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
 
   Assert(pax_columns_->GetColumns() != 0);
   number_of_row = (*pax_columns_)[0]->GetRows();
+  stripe_rows_ = number_of_row;
 
   // No need add stripe if nothing in memeory
   if (number_of_row == 0) {
@@ -197,8 +198,6 @@ void OrcWriter::Close() {
   size_t file_offset = current_offset_;
   bool not_empty_stripe = false;
   DataBuffer<char> *data_buffer;
-
-  stripe_rows_ += column_types_.size();
 
   not_empty_stripe = WriteStripe(&buffer_mem_stream);
   if (!not_empty_stripe) {
@@ -606,9 +605,11 @@ void OrcReader::Seek(size_t offset) {
   current_offset_ = offset;
 
   while (current_stripe_index_ < stripe_nums) {
-    working_pax_columns_ = ReadStripe(current_stripe_index_++);
-    row_nums = (*working_pax_columns_)[0]->GetRows();
+    StripeInformation *stripe_info = GetStripeInfo(current_stripe_index_++);
+    defer({delete stripe_info;});
+    row_nums = stripe_info->numbers_of_row_;
     if (row_nums >= offset) {
+      working_pax_columns_ = ReadStripe(current_stripe_index_ - 1);
       current_row_index_ = offset;
       offset = 0;
       break;
