@@ -105,38 +105,54 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
 template class PaxCommColumn<char>;
 template class PaxCommColumn<int32>;
 
-PaxNonFixedColumn::PaxNonFixedColumn() : PaxColumn() {
-  data_ = new std::vector<DataBuffer<char> *>();
+PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity) : PaxColumn() {
+  data_ = new DataBuffer<char>(capacity * sizeof(char) * 100);
+  lengths_ = new DataBuffer<int64>(capacity * sizeof(char));
 }
+
+PaxNonFixedColumn::PaxNonFixedColumn() : PaxNonFixedColumn(DEFAULT_CAPACITY) {}
 
 PaxNonFixedColumn::~PaxNonFixedColumn() {
-  for (auto *data_buffer : *data_) {
-    data_buffer->SetMemTakeOver(mem_take_over_);
-    delete data_buffer;
-  }
-  delete data_;
+  if (data_) delete data_;
+  if (lengths_) delete lengths_;
 }
 
-void PaxNonFixedColumn::Set(std::vector<DataBuffer<char> *> *data) {
-  if (data_) {
-    for (auto *data_buffer : *data_) {
-      data_buffer->SetMemTakeOver(mem_take_over_);
-      delete data_buffer;
-    }
-    delete data_;
-  }
+void PaxNonFixedColumn::Set(DataBuffer<char> *data,
+                            DataBuffer<int64> *lengths) {
+  if (data_) delete data_;
+  if (lengths_) delete lengths_;
 
   data_ = data;
+  lengths_ = lengths;
+  offsets_.clear();
+  for (size_t i = 0; i < lengths_->GetSize(); i++) {
+    offsets_.emplace_back(i == 0 ? 0 : offsets_[i - 1] + (*lengths_)[i - 1]);
+  }
 }
 
 void PaxNonFixedColumn::Append(char *buffer, size_t size) {
-  // TODO(jiaqizho): consider use DataBuffer<char> replace std::vector<DataBuffer<char> *>
-  // Cause we can't direct hold the ptr which from tuple
-  DataBuffer<char> *data_buffer = new DataBuffer<char>(nullptr, size, false, true);
+  while (data_->Available() < size) {
+    data_->ReSize(data_->Capacity() * 2);
+  }
 
-  data_buffer->Write(buffer, size);
-  data_buffer->Brush(size);
-  data_->emplace_back(data_buffer);
+  if (lengths_->Available() == 0) {
+    lengths_->ReSize(lengths_->Capacity() * 2);
+  }
+
+  data_->Write(buffer, size);
+  data_->Brush(size);
+  lengths_->Write(reinterpret_cast<int64 *>(&size), sizeof(int64));
+  lengths_->Brush(sizeof(int64));
+
+  offsets_.emplace_back(offsets_.empty()
+                            ? 0
+                            : offsets_[offsets_.size() - 1] +
+                                  (*lengths_)[offsets_.size() - 1]);
+  Assert(offsets_.size() == lengths_->GetSize());
+}
+
+DataBuffer<int64> *PaxNonFixedColumn::GetLengthBuffer() const {
+  return lengths_;
 }
 
 PaxColumnTypeInMem PaxNonFixedColumn::GetPaxColumnTypeInMem() const {
@@ -146,37 +162,35 @@ PaxColumnTypeInMem PaxNonFixedColumn::GetPaxColumnTypeInMem() const {
 void PaxNonFixedColumn::Clear() {
   PaxColumn::Clear();
 
-  for (auto *data_buffer : *data_) {
-    data_buffer->SetMemTakeOver(mem_take_over_);
-    delete data_buffer;
-  }
-  delete data_;
-  data_ = new std::vector<DataBuffer<char> *>();
-}
+  data_->BrushBackAll();
+  lengths_->BrushBackAll();
 
-std::vector<DataBuffer<char> *> *PaxNonFixedColumn::GetDataBuffers() {
-  return data_;
+  offsets_.clear();
 }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer() {
-  // should not direct call this function
-  CBDB_RAISE(cbdb::CException::ExType::ExTypeAssert);
+  return std::make_pair(data_->GetBuffer(), data_->Used());
 }
 
-size_t PaxNonFixedColumn::GetRows() const { return data_->size(); }
+size_t PaxNonFixedColumn::GetRows() const { return lengths_->GetSize(); }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
   if (position >= GetRows()) {
     CBDB_RAISE(cbdb::CException::ExType::ExTypeOutOfRange);
   }
-  auto *data_buffer = (*data_)[position];
-  return std::make_pair(data_buffer->GetBuffer(), data_buffer->Used());
+
+  return std::make_pair(data_->GetBuffer() + offsets_[position],
+                        (*lengths_)[position]);
 }
 
-bool PaxNonFixedColumn::IsMemTakeOver() const { return mem_take_over_; }
+bool PaxNonFixedColumn::IsMemTakeOver() const {
+  Assert(data_->IsMemTakeOver() == lengths_->IsMemTakeOver());
+  return data_->IsMemTakeOver();
+}
 
 void PaxNonFixedColumn::SetMemTakeOver(bool take_over) {
-  mem_take_over_ = take_over;
+  data_->SetMemTakeOver(take_over);
+  lengths_->SetMemTakeOver(take_over);
 }
 
 PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types) : PaxColumn() {
@@ -280,10 +294,7 @@ size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
         pre_calc_func(orc::proto::Stream_Kind_LENGTH, column_size,
                       lengths_size);
 
-        auto length_data = 0;
-        for (size_t i = 0; i < column_size; i++) {
-          length_data += column->GetBuffer(i).second;
-        }
+        auto length_data = column->GetBuffer().second;
         buffer_len += length_data;
 
         pre_calc_func(orc::proto::Stream_Kind_DATA, column_size, length_data);
@@ -309,7 +320,6 @@ size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
 
 void PaxColumns::CombineDataBuffer() {
   char *buffer = nullptr;
-  const char *data = nullptr;
   size_t buffer_len = 0;
 
   Assert(data_->Capacity() != 0);
@@ -317,28 +327,17 @@ void PaxColumns::CombineDataBuffer() {
   for (auto *column : columns_) {
     switch (column->GetPaxColumnTypeInMem()) {
       case TYPE_NON_FIXED: {
-        size_t column_size = column->GetRows();
-        auto *length_data_buffer =
-            new DataBuffer<int64>(column_size * sizeof(int64));
+        PaxNonFixedColumn *no_fixed_column =
+            reinterpret_cast<PaxNonFixedColumn *>(column);
+        auto length_data_buffer = no_fixed_column->GetLengthBuffer();
 
-        defer({ delete length_data_buffer; });
-
-        auto *length_ptr = data_->GetAvailableBuffer();
-        data_->Brush(length_data_buffer->Capacity());
-
-        for (size_t i = 0; i < column_size; i++) {
-          std::tie(data, buffer_len) = column->GetBuffer(i);
-          length_data_buffer->Write(reinterpret_cast<int64 *>(&buffer_len),
-                                    sizeof(int64));
-          length_data_buffer->Brush(sizeof(int64));
-
-          data_->Write(data, buffer_len);
-          data_->Brush(buffer_len);
-        }
-
-        Assert(length_data_buffer->Used() == length_data_buffer->Capacity());
-        memcpy(length_ptr, length_data_buffer->GetBuffer(),
+        memcpy(data_->GetAvailableBuffer(), length_data_buffer->GetBuffer(),
                length_data_buffer->Used());
+        data_->Brush(length_data_buffer->Used());
+
+        std::tie(buffer, buffer_len) = column->GetBuffer();
+        data_->Write(buffer, buffer_len);
+        data_->Brush(buffer_len);
 
         break;
       }

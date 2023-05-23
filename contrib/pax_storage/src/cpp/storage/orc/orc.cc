@@ -420,48 +420,58 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
   for (auto &orc_type : column_types_) {
     switch (orc_type) {
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
+        uint32 column_lens_size = 0;
+        uint64 column_lens_len = 0;
+        uint64 total_column_len = 0;
+        DataBuffer<int64> *column_len_buffer = nullptr;
+        DataBuffer<char> *column_data_buffer = nullptr;
+        PaxNonFixedColumn *pax_column = nullptr;
+
         const orc::proto::Stream &len_stream =
             stripe_footer.streams(streams_index++);
-        uint32 column_lens_size = static_cast<uint32>(len_stream.column());
-        uint64 column_lens_len = static_cast<uint64>(len_stream.length());
-
-        auto *column_len_buffer = new DataBuffer<int64>(
-            reinterpret_cast<int64 *>(data_buffer->GetAvailableBuffer()),
-            column_lens_len, false, false);
-
-        defer({ delete column_len_buffer; });
-        column_len_buffer->BrushAll();
-        data_buffer->Brush(column_lens_len);
-        std::vector<DataBuffer<char> *> *data_vector =
-            new std::vector<DataBuffer<char> *>();
-        for (size_t i = 0; i < column_len_buffer->GetSize(); i++) {
-          auto *column_row_data =
-              new DataBuffer<char>(data_buffer->GetAvailableBuffer(),
-                                   (*column_len_buffer)[i], false, false);
-          column_row_data->BrushAll();
-          data_buffer->Brush((*column_len_buffer)[i]);
-          data_vector->emplace_back(column_row_data);
-        }
-
         const orc::proto::Stream &data_stream =
             stripe_footer.streams(streams_index++);
-        uint32 column_data_size = static_cast<uint32>(data_stream.column());
 
-        Assert(column_data_size == column_lens_size);
+        column_lens_size = static_cast<uint32>(len_stream.column());
+        column_lens_len = static_cast<uint64>(len_stream.length());
 
-        auto *pax_column = new PaxNonFixedColumn();
+        column_len_buffer = new DataBuffer<int64>(
+            reinterpret_cast<int64 *>(data_buffer->GetAvailableBuffer()),
+            column_lens_len, false, false);
+        column_len_buffer->BrushAll();
+        data_buffer->Brush(column_lens_len);
+
+        for (size_t i = 0; i < column_len_buffer->GetSize(); i++) {
+          total_column_len += (*column_len_buffer)[i];
+        }
+
+        column_data_buffer = new DataBuffer<char>(
+            data_buffer->GetAvailableBuffer(), total_column_len, false, false);
+        column_data_buffer->BrushAll();
+        data_buffer->Brush(total_column_len);
+
+        Assert(static_cast<uint32>(data_stream.column()) == column_lens_size);
+
+        pax_column = new PaxNonFixedColumn(0);
+
         // current memory will be freed in pax_columns->data_
+        pax_column->Set(column_data_buffer, column_len_buffer);
         pax_column->SetMemTakeOver(false);
-        pax_column->Set(data_vector);
         pax_columns->Append(pax_column);
         break;
       }
       case (orc::proto::Type_Kind::Type_Kind_INT): {
         const orc::proto::Stream &data_stream =
             stripe_footer.streams(streams_index++);
-        uint32 column_data_size = static_cast<uint32>(data_stream.column());
-        uint64 column_data_len = static_cast<uint64>(data_stream.length());
-        auto *column_data_buffer = new DataBuffer<int32>(
+        uint32 column_data_size = 0;
+        uint64 column_data_len = 0;
+        DataBuffer<int32> *column_data_buffer = nullptr;
+        PaxCommColumn<int32> *pax_column = nullptr;
+
+        column_data_size = static_cast<uint32>(data_stream.column());
+        column_data_len = static_cast<uint64>(data_stream.length());
+
+        column_data_buffer = new DataBuffer<int32>(
             reinterpret_cast<int *>(data_buffer->GetAvailableBuffer()),
             column_data_len, false, false);
 
@@ -469,7 +479,7 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
         data_buffer->Brush(column_data_len);
 
         Assert(column_data_size == column_data_buffer->GetSize());
-        PaxCommColumn<int32> *pax_column = new PaxCommColumn<int32>();
+        pax_column = new PaxCommColumn<int32>(0);
         pax_column->Set(column_data_buffer);
         pax_columns->Append(pax_column);
         break;
@@ -606,7 +616,7 @@ void OrcReader::Seek(size_t offset) {
 
   while (current_stripe_index_ < stripe_nums) {
     StripeInformation *stripe_info = GetStripeInfo(current_stripe_index_++);
-    defer({delete stripe_info;});
+    defer({ delete stripe_info; });
     row_nums = stripe_info->numbers_of_row_;
     if (row_nums >= offset) {
       working_pax_columns_ = ReadStripe(current_stripe_index_ - 1);
