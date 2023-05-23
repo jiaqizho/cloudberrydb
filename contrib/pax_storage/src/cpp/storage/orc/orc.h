@@ -174,8 +174,9 @@ class OrcReader : public MicroPartitionReader {
 #ifndef RUN_GTEST
  protected:  // NOLINT
 #endif
-             // there is an optimization here, in standard ORC, A single ORC
-             // file will read
+
+  // there is an optimization here, in standard ORC, A single ORC
+  // file will read
   // follow these step:
   // - read postscript size
   // - read post script
