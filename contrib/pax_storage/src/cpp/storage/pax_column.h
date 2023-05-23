@@ -103,11 +103,13 @@ extern template class PaxCommColumn<int32>;
 
 class PaxNonFixedColumn : public PaxColumn {
  public:
+  explicit PaxNonFixedColumn(uint64 capacity);
+
   PaxNonFixedColumn();
 
   ~PaxNonFixedColumn();
 
-  void Set(std::vector<DataBuffer<char> *> *data);
+  void Set(DataBuffer<char> *data, DataBuffer<int64> *lengths);
 
   void Append(char *buffer, size_t size) override;
 
@@ -121,17 +123,22 @@ class PaxNonFixedColumn : public PaxColumn {
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 
+  DataBuffer<int64> *GetLengthBuffer() const;
+
   bool IsMemTakeOver() const;
 
   void SetMemTakeOver(bool take_over);
 #ifndef RUN_GTEST
  protected:  // NOLINT
 #endif
-  std::vector<DataBuffer<char> *> *GetDataBuffers();
 
  protected:
-  bool mem_take_over_ = true;
-  std::vector<DataBuffer<char> *> *data_;
+  DataBuffer<char> *data_;
+
+  // orc needs to serialize int64 array
+  DataBuffer<int64> *lengths_;
+  std::vector<uint64> offsets_;
+  uint64 capacity_;
 };
 
 // PaxColumns are similar to the kind_struct in orc
