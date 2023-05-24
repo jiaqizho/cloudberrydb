@@ -2,17 +2,14 @@
 
 #!/usr/bin/env bash
 set -exo pipefail
-GPDB_SRC_PATH="/code/gpdb_src"
-GPDB_INSTALL_PATH="/usr/local/cloudberry-db-devel"
-GPDB_PAX_SRC_PATH="$GPDB_SRC_PATH/contrib/pax_storage"
-GPDB_PAX_GTEST_SRC_PATH="$GPDB_PAX_SRC_PATH/src/cpp/contrib/googletest"
-GPDB_PAX_GTEST_SRC_BIN="$GPDB_PAX_SRC_PATH/build/src/cpp/test_main"
+CBDB_INSTALL_PATH="/usr/local/cloudberry-db-devel"
+CBDB_PAX_SRC_PATH="/code/gpdb_pax_src"
+GPDB_PAX_UNIT_TEST_BIN="$CBDB_PAX_SRC_PATH/build/src/cpp/test_main"
 
 compile_pax() {
-	git clone https://buildbot:Passw0rd@code.hashdata.xyz/cloudberry/googletest.git $GPDB_PAX_GTEST_SRC_PATH
-	source $GPDB_INSTALL_PATH/greenplum_path.sh
-	mkdir -p $GPDB_PAX_SRC_PATH/build
-	pushd $GPDB_PAX_SRC_PATH/build
+	source $CBDB_INSTALL_PATH/greenplum_path.sh
+	mkdir -p $CBDB_PAX_SRC_PATH/build
+	pushd $CBDB_PAX_SRC_PATH/build
 	cmake ..
 	make
 	popd
@@ -29,7 +26,7 @@ function compile_cmake() {
 }
 
 function run_unit() {
-	$GPDB_PAX_GTEST_SRC_BIN
+	$GPDB_PAX_UNIT_TEST_BIN
 }
 
 main() {
