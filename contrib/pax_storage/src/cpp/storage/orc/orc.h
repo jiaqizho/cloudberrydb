@@ -114,9 +114,6 @@ class OrcWriter : public MicroPartitionWriter {
   OrcWriter(const MicroPartitionWriter::WriterOptions &orc_writer_options,
             const std::vector<orc::proto::Type_Kind> column_types, File *file);
 
-  virtual std::pair<char *, int> ParseCStringValue(TupleTableSlot *tuple_slot,
-                                                   size_t index);
-
  protected:
   PaxColumns *pax_columns_;
   const std::vector<orc::proto::Type_Kind> column_types_;
