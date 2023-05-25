@@ -7,34 +7,17 @@
 #include "catalog/pax_aux_table.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
-#include "comm/singleton.h"
-#include "storage/local_file_system.h"
-#include "storage/orc/orc.h"
+#include "storage/strategy.h"
 
 namespace pax {
 
 CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
-  MicroPartitionWriter::WriterOptions options;
-  std::string file_path;
-  std::string block_id;
-  block_id = cbdb::GenRandomBlockId();
-  file_path = TableMetadata::BuildPaxFilePath(rel, block_id);
-
-  FileSystem *fs = Singleton<LocalFileSystem>::GetInstance();
-
-  options.desc = rel->rd_att;
-  options.block_id = std::move(block_id);
-  options.file_name = std::move(file_path);
-  options.buffer_size = 0;
-
-  MicroPartitionWriter *micro_partition_writer =
-      OrcWriter::CreateWriter(fs, std::move(options));
-
-  micro_partition_writer->SetWriteSummaryCallback(std::bind(
-      &CPaxInserter::AddMicroPartitionEntry, this, std::placeholders::_1));
-
-  writer_ = new TableWriter(micro_partition_writer);
-  writer_->Open();
+  writer_ = new TableWriter(rel);
+  writer_
+      ->SetWriteSummaryCallback(std::bind(&CPaxInserter::AddMicroPartitionEntry,
+                                          this, std::placeholders::_1))
+      ->SetFileSplitStrategy(new PaxDefaultSplitStrategy())
+      ->Open();
 }
 
 CPaxInserter::~CPaxInserter() {}

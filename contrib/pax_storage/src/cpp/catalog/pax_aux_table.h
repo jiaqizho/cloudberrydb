@@ -17,8 +17,6 @@
 namespace cbdb {
 using MicroPartitionMetadataPtr = std::shared_ptr<pax::MicroPartitionMetadata>;
 
-const std::string GenRandomBlockId();
-
 void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
                                       NameData *compresstype,
                                       int *compresslevel);
