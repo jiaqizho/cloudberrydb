@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -7,39 +8,19 @@
 #include "catalog/iterator.h"
 #include "catalog/micro_partition_metadata.h"
 #include "storage/micro_partition.h"
+#include "storage/strategy.h"
 
 namespace pax {
 
-class TableWriter final {
+class TableWriter {
  public:
-  class FileSplitStrategy {
-   public:
-    virtual ~FileSplitStrategy() {}
+  using WriteSummaryCallback = MicroPartitionWriter::WriteSummaryCallback;
 
-    virtual bool ShouldSplit(MicroPartitionWriter *writer,
-                             size_t num_tuples) = 0;
-  };
-  using FileSplitStrategyPtr = FileSplitStrategy *;
+  explicit TableWriter(const Relation relation);
 
- public:
-  TableWriter(const MicroPartitionWriterPtr writer,
-              const FileSplitStrategyPtr strategy)
-      : writer_(writer), strategy_(strategy) {}
+  virtual ~TableWriter();
 
-  explicit TableWriter(const MicroPartitionWriterPtr writer)
-      : TableWriter(writer, nullptr) {}
-
-  virtual ~TableWriter() {
-    if (writer_) {
-      delete writer_;
-      writer_ = nullptr;
-    }
-
-    if (strategy_) {
-      delete strategy_;
-      strategy_ = nullptr;
-    }
-  }
+  virtual const FileSplitStrategy *GetFileSplitStrategy() const;
 
   virtual void WriteTuple(CTupleSlot *slot);
 
@@ -47,11 +28,23 @@ class TableWriter final {
 
   virtual void Close();
 
-  size_t total_tuples() const;
+  size_t GetTotalTupleNumbers() const;
+
+  TableWriter *SetWriteSummaryCallback(WriteSummaryCallback callback);
+
+  TableWriter *SetFileSplitStrategy(const FileSplitStrategy *strategy);
 
  protected:
+  const std::string GenRandomBlockId();
+
+  virtual std::string GenFilePath(const std::string &block_id);
+
+ protected:
+  const Relation relation_;
   MicroPartitionWriterPtr writer_;
-  FileSplitStrategy *strategy_;
+  const FileSplitStrategy *strategy_;
+  WriteSummaryCallback summary_callback_;
+
   size_t num_tuples_ = 0;
   size_t total_tuples_ = 0;
 };

@@ -58,7 +58,6 @@ class MicroPartitionWriter {
   struct WriterOptions {
     std::string file_name;
     std::string block_id;
-    int buffer_size;
     TupleDesc desc;
   };
 
@@ -88,10 +87,12 @@ class MicroPartitionWriter {
   // depends on the write options
   virtual const std::string FullFileName() const = 0;
 
+  using WriteSummaryCallback = std::function<void(const WriteSummary &summary)>;
+
   // summary callback is invoked after the file is closed.
   // returns MicroPartitionWriter to enable chain call.
   virtual MicroPartitionWriter *SetWriteSummaryCallback(
-      std::function<void(const WriteSummary &summary)> &&callback);
+      WriteSummaryCallback callback);
 
   virtual MicroPartitionWriter *SetStatsCollector(StatsCollector *collector);
 
@@ -102,7 +103,7 @@ class MicroPartitionWriter {
   const std::string &FileName() const;
 
  protected:
-  std::function<void(const WriteSummary &summary)> summary_callback_;
+  WriteSummaryCallback summary_callback_;
   const WriterOptions &writer_options_;
   FileSystem *file_system_ = nullptr;
   StatsCollector *collector_ = nullptr;

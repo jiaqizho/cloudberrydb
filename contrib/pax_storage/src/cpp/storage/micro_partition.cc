@@ -5,8 +5,8 @@
 namespace pax {
 
 MicroPartitionWriter *MicroPartitionWriter::SetWriteSummaryCallback(
-    std::function<void(const WriteSummary &summary)> &&callback) {
-  summary_callback_ = std::move(callback);
+    WriteSummaryCallback callback) {
+  summary_callback_ = callback;
   return this;
 }
 

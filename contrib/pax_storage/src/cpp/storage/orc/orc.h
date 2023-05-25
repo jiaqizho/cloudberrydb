@@ -83,6 +83,7 @@ class OrcWriter : public MicroPartitionWriter {
     }
     return type_kinds;
   }
+
   // TODO(jiaqizho): split into orc_factory.h
   static MicroPartitionWriter *CreateWriter(
       FileSystem *fs, const MicroPartitionWriter::WriterOptions options) {

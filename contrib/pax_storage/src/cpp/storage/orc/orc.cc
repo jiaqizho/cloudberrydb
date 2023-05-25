@@ -222,7 +222,9 @@ void OrcWriter::Close() {
   }
 }
 
-size_t OrcWriter::EstimatedSize() const { return 0; }
+size_t OrcWriter::EstimatedSize() const {
+  return pax_columns_->EstimatedSize();
+}
 
 const std::string OrcWriter::FullFileName() const { return ""; }
 
@@ -455,7 +457,8 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
         pax_column = new PaxNonFixedColumn(0);
 
         // current memory will be freed in pax_columns->data_
-        pax_column->Set(column_data_buffer, column_len_buffer);
+        pax_column->Set(column_data_buffer, column_len_buffer,
+                        total_column_len);
         pax_column->SetMemTakeOver(false);
         pax_columns->Append(pax_column);
         break;
