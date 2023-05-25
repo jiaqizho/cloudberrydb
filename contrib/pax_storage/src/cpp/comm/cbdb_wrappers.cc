@@ -14,11 +14,6 @@ void *cbdb::MemCtxAlloc(MemoryContext ctx, size_t size) {
 }
 
 void *cbdb::Palloc(size_t size) {
-#ifdef RUN_GTEST
-  if (CurrentMemoryContext == nullptr) {
-    MemoryContextInit();
-  }
-#endif
   CBDB_WRAP_START;
   {
 #ifdef RUN_GTEST
@@ -33,11 +28,6 @@ void *cbdb::Palloc(size_t size) {
 }
 
 void *cbdb::Palloc0(size_t size) {
-#ifdef RUN_GTEST
-  if (CurrentMemoryContext == nullptr) {
-    MemoryContextInit();
-  }
-#endif
   CBDB_WRAP_START;
   {
 #ifdef RUN_GTEST

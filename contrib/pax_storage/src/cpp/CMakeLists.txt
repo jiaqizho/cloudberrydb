@@ -106,6 +106,7 @@ set(pax_storage_src
     storage/pax.cc
     storage/pax_buffer.cc
     storage/pax_column.cc
+    storage/strategy.cc
     storage/orc/protobuf_stream.cc
     storage/orc/orc.cc)
 
