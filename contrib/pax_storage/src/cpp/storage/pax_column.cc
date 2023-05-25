@@ -89,6 +89,11 @@ size_t PaxCommColumn<T>::GetRows() const {
 }
 
 template <typename T>
+size_t PaxCommColumn<T>::EstimatedSize() const {
+  return data_->Used();
+}
+
+template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer() {
   return std::make_pair(data_->Buffer().Start(), data_->Used());
 }
@@ -105,7 +110,8 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
 template class PaxCommColumn<char>;
 template class PaxCommColumn<int32>;
 
-PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity) : PaxColumn() {
+PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity)
+    : PaxColumn(), estimated_size_(0) {
   data_ = new DataBuffer<char>(capacity * sizeof(char) * 100);
   lengths_ = new DataBuffer<int64>(capacity * sizeof(char));
 }
@@ -117,11 +123,12 @@ PaxNonFixedColumn::~PaxNonFixedColumn() {
   if (lengths_) delete lengths_;
 }
 
-void PaxNonFixedColumn::Set(DataBuffer<char> *data,
-                            DataBuffer<int64> *lengths) {
+void PaxNonFixedColumn::Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
+                            size_t total_size) {
   if (data_) delete data_;
   if (lengths_) delete lengths_;
 
+  estimated_size_ = total_size;
   data_ = data;
   lengths_ = lengths;
   offsets_.clear();
@@ -139,6 +146,7 @@ void PaxNonFixedColumn::Append(char *buffer, size_t size) {
     lengths_->ReSize(lengths_->Capacity() * 2);
   }
 
+  estimated_size_ += size;
   data_->Write(buffer, size);
   data_->Brush(size);
   lengths_->Write(reinterpret_cast<int64 *>(&size), sizeof(int64));
@@ -173,6 +181,8 @@ std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer() {
 }
 
 size_t PaxNonFixedColumn::GetRows() const { return lengths_->GetSize(); }
+
+size_t PaxNonFixedColumn::EstimatedSize() const { return estimated_size_; }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
   if (position >= GetRows()) {
@@ -249,6 +259,14 @@ void PaxColumns::Set(DataBuffer<char> *data) {
 
 size_t PaxColumns::GetRows() const {
   CBDB_RAISE(cbdb::CException::ExType::ExTypeLogicError);
+}
+
+size_t PaxColumns::EstimatedSize() const {
+  size_t total_size = 0;
+  for (auto *column : columns_) {
+    total_size += column->EstimatedSize();
+  }
+  return total_size;
 }
 
 size_t PaxColumns::GetColumns() const { return columns_.size(); }

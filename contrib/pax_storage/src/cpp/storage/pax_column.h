@@ -50,6 +50,9 @@ class PaxColumn {
   // Contain null filed or not
   virtual bool HasNull();
 
+  // Estimated memory size from current column
+  virtual size_t EstimatedSize() const = 0;
+
  protected:
   // TODO(jiaqizho): support not null implements
   std::vector<bool> non_null_;
@@ -84,6 +87,8 @@ class PaxCommColumn : public PaxColumn {
 
   void Clear() override;
 
+  size_t EstimatedSize() const override;
+
   std::pair<char *, size_t> GetBuffer() override;
 #ifndef RUN_GTEST
  protected:  // NOLINT
@@ -109,7 +114,8 @@ class PaxNonFixedColumn : public PaxColumn {
 
   ~PaxNonFixedColumn();
 
-  void Set(DataBuffer<char> *data, DataBuffer<int64> *lengths);
+  void Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
+           size_t total_size);
 
   void Append(char *buffer, size_t size) override;
 
@@ -120,6 +126,8 @@ class PaxNonFixedColumn : public PaxColumn {
   std::pair<char *, size_t> GetBuffer() override;
 
   size_t GetRows() const override;
+
+  size_t EstimatedSize() const override;
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 
@@ -133,6 +141,7 @@ class PaxNonFixedColumn : public PaxColumn {
 #endif
 
  protected:
+  size_t estimated_size_;
   DataBuffer<char> *data_;
 
   // orc needs to serialize int64 array
@@ -163,6 +172,8 @@ class PaxColumns : public PaxColumn {
   void Set(DataBuffer<char> *data);
 
   size_t GetRows() const override;
+
+  size_t EstimatedSize() const override;
 
   // Get number of column in columns
   virtual size_t GetColumns() const;

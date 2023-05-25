@@ -93,10 +93,17 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
     micro_partitions_->insert(micro_partitions_->end(), meta_info_list.begin(),
                               meta_info_list.end());
   }
-  void Init() override{};
-  bool HasNext() const override { return index < micro_partitions_->size(); };
 
-  std::shared_ptr<MicroPartitionMetadata>& Current() const override {
+  void Init() override {}
+
+  bool HasNext() const override {
+    if (micro_partitions_->size() == 0) {
+      return false;
+    }
+    return index < micro_partitions_->size() - 1;
+  }
+
+  std::shared_ptr<MicroPartitionMetadata> &Current() const override {
     return micro_partitions_->at(index);
   }
 
@@ -118,7 +125,7 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
 
   std::shared_ptr<MicroPartitionMetadata> &Next() override {
     return micro_partitions_->at(++index);
-  };
+  }
 
  private:
   uint32_t index;
@@ -126,36 +133,47 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
       micro_partitions_;
 };
 
-class PaxWriterTest : public ::testing::Test {
+class MockWriter : public TableWriter {
  public:
-  void SetUp() override {}
+  MockWriter(const Relation relation, WriteSummaryCallback callback)
+      : TableWriter(relation) {
+    SetWriteSummaryCallback(callback);
+    SetFileSplitStrategy(new PaxDefaultSplitStrategy());
+  }
 
-  void TearDown() override {
-    std::remove(pax_file_name);
+ protected:
+  std::string GenFilePath(const std::string &block_id) override {
+    (void)block_id;
+    return pax_file_name;
   }
 };
 
-TEST_F(PaxWriterTest, WriteAndReadTuple) {
-  pax::MicroPartitionWriter::WriterOptions options;
-  options.file_name = pax_file_name;
+class PaxWriterTest : public ::testing::Test {
+ public:
+  void SetUp() override { Singleton<LocalFileSystem>::GetInstance(); }
+
+  void TearDown() override { std::remove(pax_file_name); }
+};
+
+TEST_F(PaxWriterTest, WriteReadTuple) {
   CTupleSlot *slot = CreateFakeCTupleSlot(true);
-  options.desc = slot->GetTupleTableSlot()->tts_tupleDescriptor;
-  options.buffer_size = 64 * 1024;
 
-  pax::FileSystem *fs = pax::Singleton<pax::LocalFileSystem>::GetInstance();
+  Relation relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
+  relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
+  bool callback_called = false;
 
-  MicroPartitionWriter *micro_partition_writer =
-      OrcWriter::CreateWriter(fs, std::move(options));
+  TableWriter::WriteSummaryCallback callback =
+      [&callback_called](const WriteSummary &summary) {
+        callback_called = true;
+      };
 
-  micro_partition_writer->SetWriteSummaryCallback(
-      [](const pax::WriteSummary &summary) {});
-
-  TableWriter *writer = new TableWriter(micro_partition_writer);
+  TableWriter *writer = new MockWriter(relation, callback);
   writer->Open();
 
   writer->WriteTuple(slot);
-  ASSERT_EQ(1, writer->total_tuples());
+  ASSERT_EQ(1, writer->GetTotalTupleNumbers());
   writer->Close();
+  ASSERT_TRUE(callback_called);
 
   cbdb::Pfree(slot->GetTupleTableSlot());
   delete writer;
@@ -185,6 +203,90 @@ TEST_F(PaxWriterTest, WriteAndReadTuple) {
 
   ASSERT_EQ(1, cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[0]));
   ASSERT_EQ(2, cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[1]));
+  delete relation;
+  delete reader;
+}
+
+class MockWriterSplit : public MockWriter {
+ public:
+  MockWriterSplit(const Relation relation, WriteSummaryCallback callback)
+      : MockWriter(relation, callback) {}
+
+ protected:
+  std::string GenFilePath(const std::string &block_id) override {
+    static int count = 0;
+    return pax_file_name + std::to_string(count++);
+  }
+};
+
+TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
+  CTupleSlot *slot = CreateFakeCTupleSlot(true);
+  Relation relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
+
+  relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
+  bool callback_called = false;
+
+  TableWriter::WriteSummaryCallback callback =
+      [&callback_called](const WriteSummary &summary) {
+        callback_called = true;
+      };
+
+  TableWriter *writer = new MockWriterSplit(relation, callback);
+  writer->Open();
+
+  ASSERT_NE(-1, writer->GetFileSplitStrategy()->SplitTupleNumbers());
+  auto split_size = writer->GetFileSplitStrategy()->SplitTupleNumbers();
+
+  for (size_t i = 0; i < split_size + 1; i++) writer->WriteTuple(slot);
+  ASSERT_EQ(split_size + 1, writer->GetTotalTupleNumbers());
+  writer->Close();
+  ASSERT_TRUE(callback_called);
+
+  cbdb::Pfree(slot->GetTupleTableSlot());
+  delete writer;
+
+  FileSystemPtr file_system = Singleton<LocalFileSystem>::GetInstance();
+
+  MicroPartitionReaderPtr micro_partition_reader =
+      new OrcIteratorReader(file_system);
+
+  std::vector<std::shared_ptr<MicroPartitionMetadata>> meta_info_list;
+  std::shared_ptr<MicroPartitionMetadata> meta_info_ptr1 =
+      std::make_shared<MicroPartitionMetadata>(
+          pax_file_name, pax_file_name + std::to_string(0));
+
+  std::shared_ptr<MicroPartitionMetadata> meta_info_ptr2 =
+      std::make_shared<MicroPartitionMetadata>(
+          pax_file_name, pax_file_name + std::to_string(1));
+
+  meta_info_list.push_back(meta_info_ptr1);
+  meta_info_list.push_back(meta_info_ptr2);
+
+  std::shared_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
+      std::shared_ptr<IteratorBase<MicroPartitionMetadata>>(
+          new MockReaderInterator(meta_info_list));
+
+  TableReader *reader;
+  reader = new TableReader(micro_partition_reader, meta_info_iterator);
+  reader->Open();
+
+  CTupleSlot *rslot = CreateFakeCTupleSlot(true);
+
+  for (size_t i = 0; i < split_size + 1; i++) {
+    ASSERT_TRUE(reader->ReadTuple(rslot));
+    ASSERT_EQ(1,
+              cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[0]));
+    ASSERT_EQ(2,
+              cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[1]));
+  }
+  ASSERT_FALSE(reader->ReadTuple(rslot));
+  reader->Close();
+
+  delete reader;
+  delete relation;
+
+  std::remove((pax_file_name + std::to_string(0)).c_str());
+  std::remove((pax_file_name + std::to_string(1)).c_str());
 }
 
 }  // namespace pax::tests

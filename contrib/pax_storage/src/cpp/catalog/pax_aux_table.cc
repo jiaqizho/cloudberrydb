@@ -9,20 +9,6 @@
 #include "comm/cbdb_wrappers.h"
 #include "comm/paxc_utils.h"
 
-const std::string cbdb::GenRandomBlockId() {
-  CBDB_WRAP_START;
-  {
-    uuid_t uuid;
-    uuid_generate(uuid);
-    char str[36] = {0};
-    uuid_unparse(uuid, str);
-    std::string uuid_str = str;
-    return uuid_str;
-  }
-  CBDB_WRAP_END;
-  return nullptr;
-}
-
 void cbdb::GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
                                             NameData *compresstype,
                                             int *compresslevel) {

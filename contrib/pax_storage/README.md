@@ -90,3 +90,80 @@ TEST_F(Example, test) {
   a.c; // access private variables
 }
 ```
+
+### exception && try catch
+
+There are two way to throw a exception
+1. `CBDB_RAISE(ExType)`: direct throw
+2. `CBDB_CHECK(check_exp, ExType)`: check failed, then throw
+
+About try catch, you need to know 
+  1. Expected exceptions, catcher can handle it.
+    - Do not `rethrow` it
+    - Should do `try...catch` to handle it
+    - Better not to write logic in `try...catch`, but use the return value to cover the logic
+    - like: network problem...
+  2. Unexpected exceptions
+    - Thinking should we add `try...catch` to handle it?
+      - have some global resources must do `try...catch` to release it
+        - memory in top memory context or session memory context
+        - opened fd
+        - static resources
+      - do not have any global resources
+        - just throw it without `try...catch`
+    - like: logic error, out of range error...
+
+example here:
+1. Expected exceptions
+
+```
+void RequestResources(bool should_retry) {
+  RequestTempArgs args;
+
+  // have some alloc in it
+  InitRequestTempArgs(&args); 
+
+  try {
+    DoHttpRequest();
+  } catch {
+    // free the resource and retry 
+    DestroyRequestTempArgs(&args);
+    if (should_retry) {
+      RequestResources(false);
+    }
+  }
+}
+
+```
+
+2. Unexpected exceptions with global resources
+
+```
+static ReadContext *context;
+
+void InitReadContext() {
+  context = palloc(TopMemoryContext, sizeof(ReadContext));
+}
+
+void ReadResources() {
+  Assert(context);
+  try {
+    ReadResource(context);
+  } catch {
+    // should destroy global resource
+    // otherwise, will got resource leak in InitReadContext()
+    DestroyReadContext(context);
+    throw CurrentException();
+  }
+}
+```
+
+3. Unexpected exceptions without global resources
+
+```
+void ParseResource(Resource * res, size_t offset) {
+  // direct throw without any try...catch
+  CBDB_CHECK(offset > res->size(), ExTypeOutOfRange);
+  ... // normal logic
+}
+```
