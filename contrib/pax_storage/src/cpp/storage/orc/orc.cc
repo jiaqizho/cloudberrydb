@@ -632,7 +632,11 @@ void OrcReader::Seek(size_t offset) {
   }
 
   if (offset != 0) {
-    // TODO(jiaqizho): consider log current reading status?
+    elog(
+        WARNING,
+        "Current seek out of range. stripe nums is %ld, current stripe index "
+        "is %ld, current row nums: %ld, origin offset: %ld, remain offset: %ld",
+        stripe_nums, current_stripe_index_, row_nums, current_offset_, offset);
     ResetCurrentReading();
     CBDB_RAISE(cbdb::CException::ExType::ExTypeOutOfRange);
   }
