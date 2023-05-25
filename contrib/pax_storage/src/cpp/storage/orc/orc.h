@@ -196,11 +196,16 @@ class OrcReader : public MicroPartitionReader {
   // Clean up reading status
   void ResetCurrentReading();
 
+  // Optional, when reused buffer is not set, new memory will be generated for
+  // ReadTuple
+  void SetReadBuffer(DataBuffer<char> *data_buffer) override;
+
  protected:
   std::vector<orc::proto::Type_Kind> column_types_;
   File *file_;
 
-  PaxColumns *working_pax_columns_ = nullptr;
+  DataBuffer<char> *reused_buffer_;
+  PaxColumns *working_pax_columns_;
   size_t current_stripe_index_ = 0;
   size_t current_row_index_ = 0;
   uint64 current_offset_ = 0;
@@ -232,9 +237,12 @@ class OrcIteratorReader : public MicroPartitionReader {
 
   void SetFilter(Filter *filter) override { reader_->SetFilter(filter); }
 
+  void SetReadBuffer(DataBuffer<char> *data_buffer) override;
+
  private:
   std::string block_id_;
   MicroPartitionReader *reader_;
+  DataBuffer<char> *reused_buffer_;
 };
 
 };  // namespace pax

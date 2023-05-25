@@ -300,7 +300,11 @@ void OrcWriter::WritePostscript(BufferedOutputStream *buffer_mem_stream) {
   buffer_mem_stream->DirectWrite(&ps_len, sizeof(unsigned char));
 }
 
-OrcReader::OrcReader(File *file) : MicroPartitionReader(), file_(file) {
+OrcReader::OrcReader(File *file)
+    : MicroPartitionReader(),
+      file_(file),
+      reused_buffer_(nullptr),
+      working_pax_columns_(nullptr) {
   size_t file_length = file_->FileLength();
   uint64 post_script_len = 0;
 
@@ -392,12 +396,23 @@ void OrcReader::ReadPostScript(size_t file_len, uint64 post_script_len) {
 PaxColumns *OrcReader::ReadStripe(size_t index) {
   StripeInformation *stripe_info = GetStripeInfo(index);
   PaxColumns *pax_columns = new PaxColumns();
-  auto *data_buffer = new DataBuffer<char>(stripe_info->footer_length_);
-  size_t stripe_footer_offset =
-      stripe_info->data_length_ + stripe_info->index_length_;
+  DataBuffer<char> *data_buffer = nullptr;
+  size_t stripe_footer_offset = 0;
   orc::proto::StripeFooter stripe_footer;
   size_t streams_index = 0;
   size_t streams_size = 0;
+
+  if (reused_buffer_) {
+    while (reused_buffer_->Capacity() < stripe_info->footer_length_) {
+      reused_buffer_->ReSize(reused_buffer_->Capacity() / 2 * 3);
+    }
+    data_buffer = new DataBuffer<char>(
+        reused_buffer_->GetBuffer(), reused_buffer_->Capacity(), false, false);
+
+  } else {
+    data_buffer = new DataBuffer<char>(stripe_info->footer_length_);
+  }
+  stripe_footer_offset = stripe_info->data_length_ + stripe_info->index_length_;
 
   pax_columns->Set(data_buffer);
 
@@ -642,12 +657,21 @@ void OrcReader::Seek(size_t offset) {
   }
 }
 
+void OrcReader::SetReadBuffer(DataBuffer<char> *reused_buffer) {
+  Assert(!reused_buffer_);
+  CBDB_CHECK(reused_buffer->IsMemTakeOver(),
+             cbdb::CException::ExType::ExTypeLogicError);
+  reused_buffer->BrushBackAll();
+
+  reused_buffer_ = reused_buffer;
+}
+
 size_t OrcReader::Length() const { return 0; }
 
 void OrcReader::SetFilter(Filter *filter) {}
 
 OrcIteratorReader::OrcIteratorReader(const FileSystemPtr &fs)
-    : MicroPartitionReader(fs), reader_(nullptr) {}
+    : MicroPartitionReader(fs), reader_(nullptr), reused_buffer_(nullptr) {}
 
 OrcIteratorReader::~OrcIteratorReader() {}
 
@@ -659,6 +683,9 @@ void OrcIteratorReader::Open(const ReaderOptions &options) {
 
   reader_ = OrcReader::CreateReader(file);
   reader_->Open(options);
+  if (reused_buffer_) {
+    reader_->SetReadBuffer(reused_buffer_);
+  }
 }
 
 void OrcIteratorReader::Close() {
@@ -687,6 +714,11 @@ size_t OrcIteratorReader::Length() const {
   // TODO(gongxun): get length from orc file
   Assert(false);
   return 0;
+}
+
+void OrcIteratorReader::SetReadBuffer(DataBuffer<char> *reused_buffer) {
+  Assert(!reused_buffer_);
+  reused_buffer_ = reused_buffer;
 }
 
 }  // namespace pax

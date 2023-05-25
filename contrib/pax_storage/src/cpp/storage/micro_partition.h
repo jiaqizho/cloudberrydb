@@ -11,6 +11,7 @@
 
 #include "comm/pax_def.h"
 #include "storage/file_system.h"
+#include "storage/pax_buffer.h"
 #include "storage/statistics.h"
 
 namespace pax {
@@ -146,6 +147,8 @@ class MicroPartitionReader {
   virtual uint64 Offset() const = 0;
 
   virtual size_t Length() const = 0;
+
+  virtual void SetReadBuffer(DataBuffer<char> *data_buffer) = 0;
 
   using Filter = Vector<uint16_t>;
   virtual void SetFilter(Filter *filter) = 0;

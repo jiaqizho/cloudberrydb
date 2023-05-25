@@ -60,6 +60,8 @@ class PaxScanDesc {
   const ScanKeyData *key_;
   TableReader *reader_;
 
+  DataBuffer<char> *reused_buffer;
+
   // TODO(chenhongjie): Only used by `scan analyze` and `scan sample`
   uint64_t nextTupleId = 0;
   // TODO(chenhongjie): Only used by `scan analyze`
