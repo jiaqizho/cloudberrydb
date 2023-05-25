@@ -6,6 +6,7 @@
 #include "storage/micro_partition.h"
 #include "storage/orc/orc.h"
 #include "storage/pax.h"
+#include "storage/pax_buffer.h"
 
 namespace pax {
 
@@ -31,6 +32,7 @@ TableScanDesc PaxScanDesc::BeginScan(const Relation relation,
   desc->rs_base.rs_flags = flags;
   desc->rs_base.rs_parallel = pscan;
   desc->key_ = key;
+  desc->reused_buffer = new DataBuffer<char>(32 * 1024 * 1024);  // 32mb
 
   // build reader
   TableMetadata *meta_info;
@@ -40,6 +42,7 @@ TableScanDesc PaxScanDesc::BeginScan(const Relation relation,
 
   MicroPartitionReader *micro_partition_reader =
       new OrcIteratorReader(file_system);
+  micro_partition_reader->SetReadBuffer(desc->reused_buffer);
 
   desc->reader_ =
       new TableReader(micro_partition_reader, meta_info->NewIterator());
@@ -53,6 +56,7 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
 
   Assert(desc->reader_);
   desc->reader_->Close();
+  delete desc->reused_buffer;
   delete desc->reader_;
   delete desc;
 }
