@@ -100,18 +100,6 @@ class TableReader final {
     return iterator_->Current()->getMicroPartitionId();
   }
 
-  bool SeekMicroPartitionOffset(int offset, IteratorSeekPosType whence) {
-    Close();
-    iterator_->Seek(offset, whence);
-    OpenFile();
-    return true;
-  }
-
-  bool SeekCurrentMicroPartitionTupleOffset(int tuple_offset) {
-    reader_->Seek(tuple_offset);
-    return true;
-  }
-
   uint32_t GetMicroPartitionNumber() const { return iterator_->Size(); }
 
   uint32_t GetCurrentMicroPartitionTupleNumber() {
@@ -121,37 +109,40 @@ class TableReader final {
   uint32_t GetCurrentMicroPartitionTupleOffset() { return reader_->Offset(); }
 
   bool SeekTuple(const uint64_t targettupleid, uint64_t *nexttupleid) {
+    uint64_t remain_num = 0;
     if (targettupleid < *nexttupleid) {
       return false;
     }
 
-    uint64_t remain_num = targettupleid - *nexttupleid + 1;
+    remain_num = targettupleid - *nexttupleid + 1;
     if (remain_num <= (GetCurrentMicroPartitionTupleNumber() -
                        GetCurrentMicroPartitionTupleOffset())) {
       *nexttupleid = targettupleid;
-      return SeekCurrentMicroPartitionTupleOffset(
+      SeekCurrentMicroPartitionTupleOffset(
           GetCurrentMicroPartitionTupleOffset() + remain_num);
+      return true;
     }
 
     do {
       remain_num -= (GetCurrentMicroPartitionTupleNumber() -
                      GetCurrentMicroPartitionTupleOffset());
       if (HasNextFile()) {
-        // skip and not open micro partition file
-        iterator_->Next();
+        NextFile();
       } else {
         return false;
       }
     } while (remain_num > GetCurrentMicroPartitionTupleNumber());
 
-    // found the target block and skip to the target tuple
-    Close();
-    OpenFile();
     *nexttupleid = targettupleid;
-    return SeekCurrentMicroPartitionTupleOffset(remain_num);
+    SeekCurrentMicroPartitionTupleOffset(remain_num);
+    return true;
   }
 
  private:
+  void SeekCurrentMicroPartitionTupleOffset(int tuple_offset) {
+    reader_->Seek(tuple_offset);
+  }
+
   virtual bool HasNextFile() const { return iterator_->HasNext(); }
 
   virtual void NextFile() {

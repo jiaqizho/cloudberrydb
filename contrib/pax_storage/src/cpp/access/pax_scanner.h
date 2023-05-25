@@ -33,14 +33,6 @@ class PaxScanDesc {
   static bool ScanSampleNextTuple(TableScanDesc scan,
                                   SampleScanState *scanstate,
                                   TupleTableSlot *slot);
-  //
-  bool SeekMicroPartitionOffset(int offset, IteratorSeekPosType whence) {
-    return reader_->SeekMicroPartitionOffset(offset, whence);
-  }
-
-  bool SeekCurrentMicroPartitionTupleOffset(int tuple_offset) {
-    return reader_->SeekCurrentMicroPartitionTupleOffset(tuple_offset);
-  }
 
   uint32_t GetMicroPartitionNumber() const {
     return reader_->GetMicroPartitionNumber();
