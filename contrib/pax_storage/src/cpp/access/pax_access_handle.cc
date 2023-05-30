@@ -5,8 +5,8 @@
 #include "access/pax_dml_state.h"
 #include "access/pax_scanner.h"
 #include "catalog/pax_aux_table.h"
-#include "exceptions/CException.h"
 #include "comm/paxc_utils.h"
+#include "exceptions/CException.h"
 
 #define NOT_IMPLEMENTED_YET                        \
   ereport(ERROR,                                   \
@@ -34,6 +34,7 @@
 //    // specific exception handler
 //    error_message.Append("error message: %s", error_message.message());
 // }
+// CBDB_CATCH_COMM();
 // CBDB_CATCH_DEFAULT();
 // CBDB_END_TRY();
 //
@@ -50,6 +51,13 @@
   }                                      \
   catch (exception_decl) {               \
     internal_cbdb_try_throw_error_ = true;
+
+#define CBDB_CATCH_COMM()                            \
+  }                                                  \
+  catch (cbdb::CException & e) {                     \
+    internal_cbdb_try_throw_error_ = true;           \
+    elog(LOG, "\npax stack trace: \n%s", e.Stack()); \
+    ereport(ERROR, errmsg("%s", e.What().c_str()));
 
 // catch c++ exception and rethrow ERROR to C code
 // only used by the outer c++ code called by C
@@ -113,6 +121,7 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
   {
     return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags);
   }
+  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_END_TRY();
 
@@ -122,6 +131,7 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
 void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
   CBDB_TRY();
   { PaxScanDesc::EndScan(scan); }
+  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy PaxScanDesc?
@@ -140,6 +150,7 @@ bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
                                         TupleTableSlot *slot) {
   CBDB_TRY();
   { return PaxScanDesc::ScanGetNextSlot(scan, direction, slot); }
+  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy PaxScanDesc?
@@ -154,6 +165,7 @@ void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
                                     BulkInsertState bistate) {
   CBDB_TRY();
   { CPaxInserter::TupleInsert(relation, slot, cid, options, bistate); }
+  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy CPaxInserter?
@@ -225,6 +237,7 @@ void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
   {
     CPaxInserter::MultiInsert(relation, slots, ntuples, cid, options, bistate);
   }
+  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy CPaxInserter?
@@ -238,6 +251,7 @@ void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
   // FinishBulkInsert callback function to cleanup its dml state.
   CBDB_TRY();
   { pax::CPaxInserter::FinishBulkInsert(relation, options); }
+  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy CPaxInserter?
@@ -380,7 +394,8 @@ void PaxAccessMethod::RelationSetNewFilenode(Relation rel,
     relation_close(auxRel, NoLock);
 
     // Create micro-partition file directory for truncate case.
-    paxc::CreateMicroPartitionFileDirectory(newrnode, rel->rd_backend, persistence);
+    paxc::CreateMicroPartitionFileDirectory(newrnode, rel->rd_backend,
+                                            persistence);
   } else {
     // create pg_pax_blocks_<pax_table_oid>
     cbdb::PaxCreateMicroPartitionTable(rel, newrnode, persistence);
@@ -429,33 +444,36 @@ void PaxAccessMethod::RelationCopyData(Relation rel,
 
   // get micropatition file source folder filename list for copying.
   fileList = paxc::ListDirectory(srcPath);
-  if (!fileList || !list_length(fileList))
-    return;
+  if (!fileList || !list_length(fileList)) return;
 
-  // create pg_pax_table relfilenode file and dbid directory under path pg_tblspc/.
+  // create pg_pax_table relfilenode file and dbid directory under path
+  // pg_tblspc/.
   srel = RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, SMGR_MD);
   smgrclose(srel);
 
   dstPath = paxc::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   if (srcPath[0] == '\0' || strlen(srcPath) >= PAX_MICROPARTITION_NAME_LENGTH ||
       dstPath[0] == '\0' || strlen(dstPath) >= PAX_MICROPARTITION_NAME_LENGTH)
-    ereport(ERROR, (errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
-                   errmsg("MircoPartition file name length mismatch limits.")));
+    ereport(ERROR,
+            (errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
+             errmsg("MircoPartition file name length mismatch limits.")));
 
   // create micropartition file destination folder for copying.
   if (MakePGDirectory(dstPath) != 0)
-    ereport(ERROR,
-                (errcode_for_file_access(),
-                errmsg("RelationCopyData could not create destination directory \"%s\": %m for copying", dstPath)));
+    ereport(ERROR, (errcode_for_file_access(),
+                    errmsg("RelationCopyData could not create destination "
+                           "directory \"%s\": %m for copying",
+                           dstPath)));
 
-  foreach(listCell, fileList) {
+  foreach (listCell, fileList) {  // NOLINT
     char *filePath = reinterpret_cast<char *>(lfirst(listCell));
     snprintf(srcFilePath, sizeof(srcFilePath), "%s/%s", srcPath, filePath);
     snprintf(dstFilePath, sizeof(dstFilePath), "%s/%s", dstPath, filePath);
     paxc::CopyFile(srcFilePath, dstFilePath);
   }
 
-  // TODO(Tony) : here need to implement pending delete srcPath after set new tablespace.
+  // TODO(Tony) : here need to implement pending delete srcPath after set new
+  // tablespace.
 
   pfree(srcPath);
   pfree(dstPath);

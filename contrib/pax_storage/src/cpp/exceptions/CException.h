@@ -1,7 +1,12 @@
 #pragma once
+#include "comm/cbdb_api.h"
+
 #include <sstream>
 #include <string>
 namespace cbdb {
+
+#define DEFAULT_STACK_MAX_DEPTH 63
+#define DEFAULT_STACK_MAX_SIZE (DEFAULT_STACK_MAX_DEPTH + 1) * PIPE_MAX_PAYLOAD
 // error message buffer
 class ErrorMessage final {
  public:
@@ -21,6 +26,7 @@ class CException {
  public:
   enum ExType {
     ExTypeInvalid = 0,
+    ExTypeUnImplements,
     ExTypeAssert,
     ExTypeAbort,
     ExTypeOOM,
@@ -51,45 +57,25 @@ class CException {
     return buffer.str();
   }
 
-  static void Raise(CException ex) __attribute__((__noreturn__));
-  static void Raise(ExType extype) __attribute__((__noreturn__));
+  const char *Stack() const { return stack_; }
+
   static void Raise(const char *filename, int line, ExType extype)
       __attribute__((__noreturn__));
-  static void Reraise(CException ex) __attribute__((__noreturn__));
-  static const char *ExTypeString(ExType extype);
+  static void Raise(CException ex, bool reraise) __attribute__((__noreturn__));
+  static void ReRaise(CException ex) __attribute__((__noreturn__));
 
  private:
+  char stack_[DEFAULT_STACK_MAX_SIZE];
   static const char *exception_names[];
   const char *m_filename;
   int m_lineno;
   ExType m_extype;
 };
 
-//---------------------------------------------------------------------------
-//    @class:
-//        CErrorHandler
-//
-//    @doc:
-//        Error handler to be installed inside a worker;
-//
-//---------------------------------------------------------------------------
-class CErrorHandler {
- public:
-  CErrorHandler(const CErrorHandler &) = delete;
-
-  // ctor
-  CErrorHandler() = default;
-
-  // dtor
-  virtual ~CErrorHandler() = default;
-
-  // process error
-  virtual void Process(CException exception) = 0;
-};  // class CErrorHandler
-
 }  // namespace cbdb
 
 #define CBDB_RAISE(...) cbdb::CException::Raise(__FILE__, __LINE__, __VA_ARGS__)
+#define CBDB_RERAISE(ex) cbdb::CException::ReRaise(ex)
 #define CBDB_CHECK(check, ...) \
   if (!(check)) {              \
     CBDB_RAISE(__VA_ARGS__);   \

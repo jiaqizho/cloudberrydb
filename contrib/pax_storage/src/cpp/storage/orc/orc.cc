@@ -86,6 +86,7 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
 
     if (table_slot->tts_isnull[i]) {
       // TODO(jiaqizho) support is null
+      CBDB_RAISE(cbdb::CException::ExType::ExTypeUnImplements);
     }
 
     switch (type_len) {

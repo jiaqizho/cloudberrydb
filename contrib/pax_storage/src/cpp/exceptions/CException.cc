@@ -1,16 +1,160 @@
 #include "CException.h"
 
+#include "comm/cbdb_wrappers.h"
+#include "comm/pax_def.h"
+
+#ifdef __GNUC__
+#include <cxxabi.h>
+#include <execinfo.h>
+#endif
+
 #include <cstdarg>
 #include <cstring>
 namespace cbdb {
+
+#ifdef __GNUC__
+
+static const char *EMPTY_MSG = "  <empty stack>\n";
+static const char *FUNC_NAME_MSG = "  %s: %s + %s\n";
+static const char *NO_FUNC_NAME_MSG = "  %s: <symbol not found> + %s\n";
+static const char *BEGIN_NAME_MSG = "  %s: %s() + %s\n";
+static const char *SYMBOL_NAME = "  %s\n";
+
+static inline int Append(char *dst, size_t count, const char *format, ...) {
+  va_list ap;
+  int n;
+  va_start(ap, format);
+  n = vsnprintf(dst, count, format, ap);
+  va_end(ap);
+  // ignore n < 0 error
+  // When there are other problems in logic
+  // it can only be judged by the generated log
+  if (n < 0) {
+    n = 0;
+  }
+  return n;
+}
+
+static inline void StackTrace(char *stack_buffer,
+                              uint8_t max_depth = DEFAULT_STACK_MAX_DEPTH) {
+  void *addr_list[max_depth + 1];
+  int addr_len;
+  char **symbol_list;
+  size_t origin_func_name_size = 256;
+  size_t func_name_size = origin_func_name_size;
+  char func_name[func_name_size];
+  int index = 0;
+
+  addr_len = backtrace(addr_list, sizeof(addr_list) / sizeof(void *));
+  if (addr_len == 0) {
+    Append(stack_buffer, DEFAULT_STACK_MAX_SIZE, EMPTY_MSG);
+    return;
+  }
+
+  symbol_list = backtrace_symbols(addr_list, addr_len);
+  if (!symbol_list) {
+    return;
+  }
+
+  char *begin_name, *begin_offset, *end_offset;
+  int single_buffer_size = 0;
+  for (int i = 1; i < addr_len; i++) {
+    begin_name = nullptr;
+    begin_offset = nullptr;
+    end_offset = nullptr;
+
+    for (char *p = symbol_list[i]; *p; ++p) {
+      if (*p == '(') {
+        begin_name = p;
+      } else if (*p == '+') {
+        begin_offset = p;
+      } else if (*p == ')' && begin_offset) {
+        end_offset = p;
+        break;
+      }
+    }
+
+    if (begin_name && begin_offset && end_offset && begin_name < begin_offset) {
+      *begin_name++ = '\0';
+      *begin_offset++ = '\0';
+      *end_offset = '\0';
+
+      int status;
+      char *ret =
+          abi::__cxa_demangle(begin_name, func_name, &func_name_size, &status);
+
+      if (origin_func_name_size < func_name_size) {
+        // realloc happen
+        // should not allow realloc in `abi::__cxa_demangle`
+        // just return and make sure origin_func_name_size big enough
+        free(func_name);
+        goto finish;
+      }
+      if (status == 0) {
+        if (!ret) {
+          continue;
+        }
+        memcpy(func_name, ret, func_name_size);
+        single_buffer_size = strlen(FUNC_NAME_MSG) + strlen(symbol_list[i]) +
+                             func_name_size + strlen(begin_offset);
+        if (index > DEFAULT_STACK_MAX_SIZE ||
+            DEFAULT_STACK_MAX_SIZE - index < single_buffer_size) {
+          goto finish;
+        }
+        index += Append(stack_buffer + index, DEFAULT_STACK_MAX_SIZE - index,
+                        FUNC_NAME_MSG, symbol_list[i], func_name, begin_offset);
+      } else {
+        if (begin_name[0] == '\0') {
+          single_buffer_size = strlen(NO_FUNC_NAME_MSG) +
+                               strlen(symbol_list[i]) + strlen(begin_offset);
+          if (index > DEFAULT_STACK_MAX_SIZE ||
+              DEFAULT_STACK_MAX_SIZE - index < single_buffer_size) {
+            goto finish;
+          }
+          index += Append(stack_buffer + index, DEFAULT_STACK_MAX_SIZE - index,
+                          NO_FUNC_NAME_MSG, symbol_list[i], begin_offset);
+        } else {
+          single_buffer_size = strlen(BEGIN_NAME_MSG) + strlen(symbol_list[i]) +
+                               strlen(begin_name) + strlen(begin_offset);
+          if (index >= DEFAULT_STACK_MAX_SIZE ||
+              DEFAULT_STACK_MAX_SIZE - index < single_buffer_size) {
+            goto finish;
+          }
+          index +=
+              Append(stack_buffer + index, DEFAULT_STACK_MAX_SIZE - index,
+                     BEGIN_NAME_MSG, symbol_list[i], begin_name, begin_offset);
+        }
+      }
+    } else {
+      single_buffer_size = strlen(SYMBOL_NAME) + strlen(symbol_list[i]);
+      if (index >= DEFAULT_STACK_MAX_SIZE ||
+          DEFAULT_STACK_MAX_SIZE - index < single_buffer_size) {
+        goto finish;
+      }
+      index += Append(stack_buffer + index, DEFAULT_STACK_MAX_SIZE - index,
+                      SYMBOL_NAME, symbol_list[i]);
+    }
+  }
+
+finish:
+  if (index < DEFAULT_STACK_MAX_SIZE) {
+    stack_buffer[index] = '\0';
+  }
+  free(symbol_list);
+}
+
+#endif
+
 ErrorMessage::ErrorMessage() {
   index_ = 0;
   message_[0] = '\0';
 }
+
 ErrorMessage::ErrorMessage(const ErrorMessage &message) {
   index_ = message.index_;
   std::memcpy(message_, message.message_, static_cast<size_t>(message.index_));
 }
+
 void ErrorMessage::Append(const char *format, ...) noexcept {
   unsigned index = (unsigned)index_;
   if (index < sizeof(message_)) {
@@ -31,17 +175,24 @@ void ErrorMessage::AppendV(const char *format, va_list ap) noexcept {
     if (n > 0) index_ += n;
   }
 }
-void CException::Raise(CException ex) { throw ex; }
 
-void CException::Raise(ExType extype) { Raise(CException(extype)); }
-
-void CException::Raise(const char *filename, int lineno, ExType extype) {
-  Raise(CException(filename, lineno, extype));
+void CException::Raise(CException ex, bool reraise) {
+#ifdef __GNUC__
+  if (!reraise) {
+    StackTrace(&ex.stack_[0]);
+  }
+#endif
+  throw ex;
 }
 
-void CException::Reraise(CException ex) { Raise(ex); }
+void CException::Raise(const char *filename, int lineno, ExType extype) {
+  Raise(CException(filename, lineno, extype), false);
+}
+
+void CException::ReRaise(CException ex) { Raise(ex, true); }
 
 const char *CException::exception_names[] = {"Invalid ExType",
+                                             "Not implements in cpp",
                                              "Assert Failure",
                                              "Abort",
                                              "Out of Memory",
@@ -52,12 +203,5 @@ const char *CException::exception_names[] = {"Invalid ExType",
                                              "Schema not match",
                                              "Invalid orc format",
                                              "Out of range"};
-
-const char *CException::ExTypeString(ExType extype) {
-  int n = static_cast<int>((sizeof(exception_names) / sizeof(char *)));
-  int i = static_cast<int>(extype);
-  if (i < 0 || i >= n) i = 0;
-  return exception_names[i];
-}
 
 }  // namespace cbdb
