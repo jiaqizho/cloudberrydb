@@ -23,6 +23,7 @@ extern "C" {
 #include "catalog/pg_pax_tables.h"
 #include "catalog/storage.h"
 #include "executor/tuptable.h"
+#include "postmaster/syslogger.h"  // for PIPE_CHUNK_SIZE
 #include "storage/block.h"
 #include "storage/bufmgr.h"
 #include "storage/relfilenode.h"
