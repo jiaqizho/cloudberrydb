@@ -1,5 +1,7 @@
 #include "catalog/table_metadata.h"
 
+#include "exceptions/CException.h"
+
 namespace pax {
 std::shared_ptr<TableMetadata::Iterator> TableMetadata::NewIterator() {
   auto micro_partitions =
@@ -27,10 +29,11 @@ void TableMetadata::Iterator::Seek(int offset, IteratorSeekPosType whence) {
       current_idx = max_mpartition_offset - offset;
       break;
     default:
-      ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
-                      errmsg("TableMetadata Iterator seek error, no such "
-                              "kind micro partition seek type: %d.",
-                              whence)));
+      elog(WARNING,
+           "TableMetadata Iterator seek error, no such "
+           "kind micro partition seek type: %d.",
+           whence);
+      CBDB_RAISE(cbdb::CException::ExType::ExTypeLogicError);
   }
   // TODO(Tony) : Not sure the error handling when current_index_ exceeds
   // micropartition file size range case which should be handled, temporary
