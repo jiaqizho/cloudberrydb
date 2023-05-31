@@ -88,9 +88,9 @@ file(GLOB TEST_CASE_SOURCES
 
 link_directories($ENV{GPHOME}/lib)
 add_executable(test_main ${TEST_CASE_SOURCES})
-add_dependencies(test_main gtest gtest_main)
+add_dependencies(test_main gtest gmock gtest_main)
 target_include_directories(test_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include)
-target_link_libraries(test_main gtest gtest_main postgres pax_storage)
+target_link_libraries(test_main gtest gmock gtest_main postgres pax_storage)
 endif(BUILD_GTEST)
 
 set(pax_comm_src
