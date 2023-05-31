@@ -1499,6 +1499,19 @@ select ex2.b/2, sum(ex1.a) from ex1, (select a, coalesce(b, 1) b from ex2) ex2 w
 explain (verbose on, costs off) SELECT b/2, sum(b) * (b/2) FROM ex1  GROUP BY b/2;
 SELECT b/2, sum(b) * (b/2) FROM ex1  GROUP BY b/2;
 
+-- Test if Motion is placed between the "group by clauses"
+drop table if exists t;
+create table t(a int, b int, c int) distributed by (a);
+insert into t select 1, i, i from generate_series(1, 10)i;
+insert into t select 1, i, i from generate_series(1, 10)i;
+insert into t select 1, i, i from generate_series(1, 10)i;
+insert into t select 1, i, i from generate_series(1, 10)i;
+analyze t;
+
+explain (costs off) select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
+select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
+
+drop table t;
 -- CLEANUP
 set client_min_messages='warning';
 drop schema bfv_aggregate cascade;
