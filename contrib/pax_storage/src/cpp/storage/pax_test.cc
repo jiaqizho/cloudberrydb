@@ -1,16 +1,20 @@
-#include "storage/pax.h"
+#include "comm/gtest_wrappers.h"
 
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "comm/gtest_wrappers.h"
 #include "exceptions/CException.h"
+#include "storage/pax.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/orc/orc.h"
 
 namespace pax::tests {
+using ::testing::_;
+using ::testing::AtLeast;
+using ::testing::Return;
+
 const char *pax_file_name = "./test.pax";
 #define COLUMN_NUMS 2
 
@@ -141,11 +145,7 @@ class MockWriter : public TableWriter {
     SetFileSplitStrategy(new PaxDefaultSplitStrategy());
   }
 
- protected:
-  std::string GenFilePath(const std::string &block_id) override {
-    (void)block_id;
-    return pax_file_name;
-  }
+  MOCK_METHOD(std::string, GenFilePath, (const std::string &), (override));
 };
 
 class PaxWriterTest : public ::testing::Test {
@@ -167,7 +167,11 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
         callback_called = true;
       };
 
-  TableWriter *writer = new MockWriter(relation, callback);
+  auto writer = new MockWriter(relation, callback);
+  EXPECT_CALL(*writer, GenFilePath(_))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(pax_file_name));
+
   writer->Open();
 
   writer->WriteTuple(slot);
@@ -207,18 +211,6 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   delete reader;
 }
 
-class MockWriterSplit : public MockWriter {
- public:
-  MockWriterSplit(const Relation relation, WriteSummaryCallback callback)
-      : MockWriter(relation, callback) {}
-
- protected:
-  std::string GenFilePath(const std::string &block_id) override {
-    static int count = 0;
-    return pax_file_name + std::to_string(count++);
-  }
-};
-
 TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   CTupleSlot *slot = CreateFakeCTupleSlot(true);
   Relation relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
@@ -231,7 +223,14 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
         callback_called = true;
       };
 
-  TableWriter *writer = new MockWriterSplit(relation, callback);
+  auto writer = new MockWriter(relation, callback);
+  uint32_t call_times = 0;
+  EXPECT_CALL(*writer, GenFilePath(_))
+      .Times(AtLeast(2))
+      .WillRepeatedly(testing::Invoke([&call_times]() -> std::string {
+        return pax_file_name + std::to_string(call_times++);
+      }));
+
   writer->Open();
 
   ASSERT_NE(-1, writer->GetFileSplitStrategy()->SplitTupleNumbers());
