@@ -25,6 +25,11 @@ void CPaxInserter::InsertTuple(Relation relation, TupleTableSlot *slot,
                                BulkInsertState bistate) {
   Assert(relation == rel_);
   slot->tts_tableOid = cbdb::RelationGetRelationId(relation);
+
+  if (!TTS_IS_VIRTUAL(slot)) {
+    slot_getallattrs(slot);
+  }
+
   CTupleSlot cslot(slot);
   writer_->WriteTuple(&cslot);
 }
