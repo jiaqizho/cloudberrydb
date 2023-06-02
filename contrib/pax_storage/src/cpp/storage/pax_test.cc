@@ -205,8 +205,8 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
 
   reader->ReadTuple(rslot);
 
-  ASSERT_EQ(1, cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[0]));
-  ASSERT_EQ(2, cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[1]));
+  ASSERT_EQ(1, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[0]));
+  ASSERT_EQ(2, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[1]));
   delete relation;
   delete reader;
 }
@@ -273,10 +273,8 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
 
   for (size_t i = 0; i < split_size + 1; i++) {
     ASSERT_TRUE(reader->ReadTuple(rslot));
-    ASSERT_EQ(1,
-              cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[0]));
-    ASSERT_EQ(2,
-              cbdb::Int32FromDatum(rslot->GetTupleTableSlot()->tts_values[1]));
+    ASSERT_EQ(1, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[0]));
+    ASSERT_EQ(2, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[1]));
   }
   ASSERT_FALSE(reader->ReadTuple(rslot));
   reader->Close();

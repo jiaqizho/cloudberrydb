@@ -79,7 +79,8 @@ class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
   void Seek(int offset, IteratorSeekPosType whence) override;
 
   std::shared_ptr<MicroPartitionMetadata>& Next() override {
-    assert(current_index_ >= 0 && current_index_ + 1 < micro_partitions_->size());
+    assert(current_index_ >= 0 &&
+           current_index_ + 1 < micro_partitions_->size());
     return micro_partitions_->at(++current_index_);
   }
 
