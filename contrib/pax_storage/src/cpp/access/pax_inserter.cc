@@ -13,9 +13,7 @@ namespace pax {
 
 CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
   writer_ = new TableWriter(rel);
-  writer_
-      ->SetWriteSummaryCallback(std::bind(&CPaxInserter::AddMicroPartitionEntry,
-                                          this, std::placeholders::_1))
+  writer_->SetWriteSummaryCallback(&cbdb::AddMicroPartitionEntry)
       ->SetFileSplitStrategy(new PaxDefaultSplitStrategy())
       ->Open();
 }
@@ -62,14 +60,6 @@ void CPaxInserter::TupleInsert(Relation relation, TupleTableSlot *slot,
   Assert(inserter != nullptr);
 
   inserter->InsertTuple(relation, slot, cid, options, bistate);
-}
-
-void CPaxInserter::AddMicroPartitionEntry(const WriteSummary &summary) {
-  Oid pax_block_tables_rel_id;
-  cbdb::GetMicroPartitionEntryAttributes(rel_->rd_id, &pax_block_tables_rel_id,
-                                         NULL, NULL);
-  cbdb::InsertPaxBlockEntry(pax_block_tables_rel_id, summary.block_id.c_str(),
-                            summary.num_tuples, summary.file_size);
 }
 
 }  // namespace pax

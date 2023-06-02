@@ -4,10 +4,10 @@
 
 #include <memory>
 
+#include "access/pax_deleter.h"
+#include "access/pax_inserter.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
-#include "access/pax_inserter.h"
-#include "access/pax_deleter.h"
 
 namespace pax {
 struct PaxDmlState {

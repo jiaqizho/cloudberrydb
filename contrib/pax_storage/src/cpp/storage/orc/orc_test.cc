@@ -136,6 +136,12 @@ class OrcTest : public ::testing::Test {
         cbdb::Palloc0(sizeof(TupleTableSlot)));
     auto *tts_values =
         reinterpret_cast<Datum *>(cbdb::Palloc0(sizeof(Datum) * COLUMN_NUMS));
+    for (int i = 0; i < COLUMN_NUMS; i++) {
+      tuple_desc->attrs[i] = {
+          .attlen = sizeof(bool),
+          .attbyval = true,
+      };
+    }
     tuple_slot->tts_tupleDescriptor = tuple_desc;
     tuple_slot->tts_values = tts_values;
     tuple_slot->tts_isnull = fake_is_null;
