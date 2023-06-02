@@ -36,21 +36,7 @@ class CTupleSlot {
   TupleTableSlot *slot_;
 };
 
-// WriteSummary is generated after the current micro partition is flushed and
-// closed.
-struct WriteSummary {
-  std::string file_name;
-  std::string block_id;
-  size_t file_size;
-  size_t num_tuples;
-  WriteSummary() : file_size(0), num_tuples(0) {}
-  WriteSummary(const WriteSummary &summary)
-      : file_name(summary.file_name),
-        block_id(summary.block_id),
-        file_size(summary.file_size),
-        num_tuples(summary.num_tuples) {}
-};
-
+struct WriteSummary;
 class MicroPartitionWriter;
 using MicroPartitionWriterPtr = pax::MicroPartitionWriter *;
 
@@ -60,6 +46,7 @@ class MicroPartitionWriter {
     std::string file_name;
     std::string block_id;
     TupleDesc desc;
+    Oid rel_oid;
   };
 
   explicit MicroPartitionWriter(const WriterOptions &writer_options)

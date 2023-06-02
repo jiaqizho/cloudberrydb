@@ -10,6 +10,7 @@
 #include "storage/orc/protobuf_stream.h"
 #define FATAL 22
 
+#include "catalog/micro_partition_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_defer.h"
 #include "exceptions/CException.h"
@@ -68,19 +69,30 @@ class OrcWriter : public MicroPartitionWriter {
     Assert(desc->natts > 0);
     for (int i = 0; i < desc->natts; i++) {
       auto *attr = &desc->attrs[i];
-      if (attr->attisdropped) continue;
-
-      switch (attr->attlen) {
-        case -1:
-          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-          break;
-        case 4:
-          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-          break;
-        default:
-          Assert(false);
+      if (attr->attbyval) {
+        switch (attr->attlen) {
+          case 1:
+            type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_BYTE);
+            break;
+          case 2:
+            type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_SHORT);
+            break;
+          case 4:
+            type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+            break;
+          case 8:
+            type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
+            break;
+          default:
+            Assert(!"should not be here! pg_type which attbyval=true only have typlen of "
+                  "1, 2, 4, or 8");
+        }
+      } else {
+        Assert(attr->attlen > 0 || attr->attlen == -1);
+        type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
       }
     }
+
     return type_kinds;
   }
 
@@ -88,6 +100,7 @@ class OrcWriter : public MicroPartitionWriter {
   static MicroPartitionWriter *CreateWriter(
       FileSystem *fs, const MicroPartitionWriter::WriterOptions options) {
     File *file_ = fs->Open(options.file_name);
+    Assert(file_ != nullptr);
     auto types = BuildSchema(options.desc);
 
     return CreateWriter(file_, std::move(types), options);

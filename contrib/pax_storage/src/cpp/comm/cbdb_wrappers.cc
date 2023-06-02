@@ -116,29 +116,6 @@ Oid cbdb::RelationGetRelationId(Relation rel) {
   CBDB_WRAP_END;
 }
 
-void *cbdb::PointerFromDatum(Datum d) {
-  CBDB_WRAP_START;
-  { return DatumGetPointer(d); }
-  CBDB_WRAP_END;
-  return nullptr;
-}
-
-int32 cbdb::Int32FromDatum(Datum d) {
-  Datum d2 = d;
-  CBDB_WRAP_START;
-  { return DatumGetInt32(d2); }
-  CBDB_WRAP_END;
-  return 0;
-}
-
-int64 cbdb::Int64FromDatum(Datum d) {
-  Datum d2 = d;
-  CBDB_WRAP_START;
-  { return DatumGetInt64(d2); }
-  CBDB_WRAP_END;
-  return 0;
-}
-
 #ifdef RUN_GTEST
 Datum cbdb::DatumFromCString(const char *src, const size_t length) {
   CBDB_WRAP_START;
@@ -168,6 +145,20 @@ Datum cbdb::DatumFromPointer(const void *p, int16 typlen) {
 struct varlena *cbdb::PgDeToastDatumPacked(struct varlena *datum) {
   CBDB_WRAP_START;
   { return pg_detoast_datum_packed(datum); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
+void *cbdb::PointerAndLenFromDatum(Datum d, int *len) {
+  struct varlena *vl = nullptr;
+  *len = -1;
+  CBDB_WRAP_START;
+  {
+    // FIXME(gongxun): is VARSIZE_ANY(d) better?
+    vl = (struct varlena *)DatumGetPointer(d);
+    *len = VARSIZE_ANY_EXHDR(vl) + VARHDRSZ;
+    return static_cast<void *>(vl);
+  }
   CBDB_WRAP_END;
   return nullptr;
 }
