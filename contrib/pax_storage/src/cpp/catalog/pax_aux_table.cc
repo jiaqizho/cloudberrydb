@@ -129,7 +129,8 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel,
   }
 
   // 4. create micro-partition file directory
-  paxc::CreateMicroPartitionFileDirectory(newrnode, rel->rd_backend, persistence);
+  paxc::CreateMicroPartitionFileDirectory(newrnode, rel->rd_backend,
+                                          persistence);
 }
 
 void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
@@ -204,4 +205,12 @@ void cbdb::GetAllMicroPartitionMetadata(
     table_close(pg_paxblock_rel, AccessShareLock);
   }
   CBDB_WRAP_END;
+}
+
+void cbdb::AddMicroPartitionEntry(const pax::WriteSummary &summary) {
+  Oid pax_block_tables_rel_id;
+  cbdb::GetMicroPartitionEntryAttributes(summary.rel_oid,
+                                         &pax_block_tables_rel_id, NULL, NULL);
+  cbdb::InsertPaxBlockEntry(pax_block_tables_rel_id, summary.block_id.c_str(),
+                            summary.num_tuples, summary.file_size);
 }

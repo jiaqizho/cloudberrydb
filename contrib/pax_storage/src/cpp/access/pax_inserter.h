@@ -25,8 +25,6 @@ class CPaxInserter {
   void FinishInsert();
 
  private:
-  void AddMicroPartitionEntry(const WriteSummary &summary);
-
   Relation rel_;
   uint32_t insert_count_;
 

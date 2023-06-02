@@ -108,7 +108,11 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
 }
 
 template class PaxCommColumn<char>;
+template class PaxCommColumn<int16>;
 template class PaxCommColumn<int32>;
+template class PaxCommColumn<int64>;
+template class PaxCommColumn<float>;
+template class PaxCommColumn<double>;
 
 PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity)
     : PaxColumn(), estimated_size_(0) {
@@ -214,11 +218,27 @@ PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types) : PaxColumn() {
         columns_.emplace_back(pax_non_fixed_column);
         break;
       }
-      case (orc::proto::Type_Kind::Type_Kind_INT): {  // len 4
+      case (orc::proto::Type_Kind::Type_Kind_BOOLEAN):
+      case (orc::proto::Type_Kind::Type_Kind_BYTE): {  // len 1 integer
+        columns_.emplace_back(new PaxCommColumn<char>());
+        break;
+      }
+      case (orc::proto::Type_Kind::Type_Kind_SHORT): {  // len 2 integer
+        columns_.emplace_back(new PaxCommColumn<int16>());
+        break;
+      }
+      case (orc::proto::Type_Kind::Type_Kind_INT): {  // len 4 integer
         columns_.emplace_back(new PaxCommColumn<int32>());
+        break;
+      }
+      case (orc::proto::Type_Kind::Type_Kind_LONG): {
+        columns_.emplace_back(new PaxCommColumn<int64>());  // len 8 integer
+        break;
       }
       default:
         // TODO(jiaqizho): support other column type
+        // but now should't be here
+        Assert(!"non-implemented column type");
         break;
     }
   }

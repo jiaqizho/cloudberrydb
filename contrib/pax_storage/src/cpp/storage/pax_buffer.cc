@@ -142,6 +142,10 @@ void DataBuffer<T>::Clear() {
 }
 
 template class DataBuffer<char>;
+template class DataBuffer<int16>;
 template class DataBuffer<int32>;
-template class DataBuffer<long>;  // NOLINT
+template class DataBuffer<int64>;
+template class DataBuffer<float>;
+template class DataBuffer<double>;
+
 }  // namespace pax

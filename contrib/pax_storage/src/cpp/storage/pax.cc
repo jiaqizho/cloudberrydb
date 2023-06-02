@@ -56,6 +56,7 @@ void TableWriter::Open() {
   block_id = GenRandomBlockId();
   file_path = GenFilePath(block_id);
 
+  options.rel_oid = relation_->rd_id;
   options.desc = relation_->rd_att;
   options.block_id = std::move(block_id);
   options.file_name = std::move(file_path);
