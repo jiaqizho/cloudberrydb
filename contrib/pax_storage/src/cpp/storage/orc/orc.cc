@@ -21,8 +21,9 @@ OrcWriter::OrcWriter(
       current_offset_(0) {
   pax_columns_ = new PaxColumns(column_types);
 
-  summary_.block_id = writer_options_.block_id;
-  summary_.file_name = writer_options_.file_name;
+  summary_.rel_oid = orc_writer_options.rel_oid;
+  summary_.block_id = orc_writer_options.block_id;
+  summary_.file_name = orc_writer_options.file_name;
   summary_.file_size = 0;
   summary_.num_tuples = 0;
 
@@ -89,33 +90,52 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
       CBDB_RAISE(cbdb::CException::ExType::ExTypeUnImplements);
     }
 
-    switch (type_len) {
-      case -1: {
-        struct varlena *vl = nullptr;
-        int len = -1;
-        CBDB_WRAP_START;
-        {
-          vl = (struct varlena *)DatumGetPointer(table_slot->tts_values[i]);
-
-          // not support compress
-          Assert((Pointer)pg_detoast_datum_packed(vl) == (Pointer)vl);
-          len = VARSIZE_ANY_EXHDR(vl) + VARHDRSZ;
+    if (table_desc->attrs[i].attbyval) {
+      switch (type_len) {
+        case 1: {
+          auto value = cbdb::DatumToInt8(table_slot->tts_values[i]);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value),
+                                     type_len);
+          break;
         }
-        CBDB_WRAP_END;
-        Assert(len != -1);
-
-        (*pax_columns_)[i]->Append(reinterpret_cast<char *>(vl), len);
-        break;
+        case 2: {
+          auto value = cbdb::DatumToInt16(table_slot->tts_values[i]);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value),
+                                     type_len);
+          break;
+        }
+        case 4: {
+          auto value = cbdb::DatumToInt32(table_slot->tts_values[i]);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value),
+                                     type_len);
+          break;
+        }
+        case 8: {
+          auto value = cbdb::DatumToInt64(table_slot->tts_values[i]);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value),
+                                     type_len);
+          break;
+        }
+        default:
+          Assert(!"should not be here! pg_type which attbyval=true only have typlen of "
+                  "1, 2, 4, or 8 ");
       }
-      case 4: {
-        auto value = cbdb::Int32FromDatum(table_slot->tts_values[i]);
-        (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value), type_len);
-        break;
+    } else {
+      switch (type_len) {
+        case -1: {
+          void *vl = nullptr;
+          int len = -1;
+          vl = cbdb::PointerAndLenFromDatum(table_slot->tts_values[i], &len);
+          Assert(vl != nullptr && len != -1);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(vl), len);
+          break;
+        }
+        default:
+          Assert(type_len > 0);
+          (*pax_columns_)[i]->Append(static_cast<char *>(cbdb::PointerFromDatum(
+                                         table_slot->tts_values[i])),
+                                     type_len);
       }
-      default:
-        // TODO(jiaqizho): support more type and len
-        Assert(false);
-        break;
     }
   }
 }
@@ -503,7 +523,64 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
         pax_columns->Append(pax_column);
         break;
       }
+      case (orc::proto::Type_Kind::Type_Kind_BOOLEAN):
+      case (orc::proto::Type_Kind::Type_Kind_BYTE): {
+        const orc::proto::Stream &data_stream =
+            stripe_footer.streams(streams_index++);
+        uint32 column_data_size = static_cast<uint32>(data_stream.column());
+        uint64 column_data_len = static_cast<uint64>(data_stream.length());
+        auto column_data_buffer = new DataBuffer<char>(
+            reinterpret_cast<char *>(data_buffer->GetAvailableBuffer()),
+            column_data_len, false, false);
+
+        column_data_buffer->BrushAll();
+        data_buffer->Brush(column_data_len);
+
+        Assert(column_data_size == column_data_buffer->GetSize());
+        PaxCommColumn<char> *pax_column = new PaxCommColumn<char>();
+        pax_column->Set(column_data_buffer);
+        pax_columns->Append(pax_column);
+        break;
+      }
+      case (orc::proto::Type_Kind::Type_Kind_SHORT): {
+        const orc::proto::Stream &data_stream =
+            stripe_footer.streams(streams_index++);
+        uint32 column_data_size = static_cast<uint32>(data_stream.column());
+        uint64 column_data_len = static_cast<uint64>(data_stream.length());
+        auto column_data_buffer = new DataBuffer<int16>(
+            reinterpret_cast<int16 *>(data_buffer->GetAvailableBuffer()),
+            column_data_len, false, false);
+
+        column_data_buffer->BrushAll();
+        data_buffer->Brush(column_data_len);
+
+        Assert(column_data_size == column_data_buffer->GetSize());
+        PaxCommColumn<int16> *pax_column = new PaxCommColumn<int16>();
+        pax_column->Set(column_data_buffer);
+        pax_columns->Append(pax_column);
+        break;
+      }
+      case (orc::proto::Type_Kind::Type_Kind_LONG): {
+        const orc::proto::Stream &data_stream =
+            stripe_footer.streams(streams_index++);
+        uint32 column_data_size = static_cast<uint32>(data_stream.column());
+        uint64 column_data_len = static_cast<uint64>(data_stream.length());
+        auto column_data_buffer = new DataBuffer<int64>(
+            reinterpret_cast<int64 *>(data_buffer->GetAvailableBuffer()),
+            column_data_len, false, false);
+
+        column_data_buffer->BrushAll();
+        data_buffer->Brush(column_data_len);
+
+        Assert(column_data_size == column_data_buffer->GetSize());
+        PaxCommColumn<int64> *pax_column = new PaxCommColumn<int64>();
+        pax_column->Set(column_data_buffer);
+        pax_columns->Append(pax_column);
+        break;
+      }
       default:
+        // should't be here
+        Assert(!"should't be here, non-implemented type");
         break;
     }
   }
@@ -514,7 +591,7 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
 }
 
 OrcReader::StripeInformation *OrcReader::GetStripeInfo(size_t index) const {
-  auto *stripe_info = new StripeInformation();
+  auto stripe_info = new StripeInformation();
   orc::proto::StripeInformation stripeInfo;
 
   CBDB_CHECK(index < num_of_stripes,
@@ -603,12 +680,31 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
         break;
       }
       case TYPE_FIXED: {
-        slot->tts_values[tts_index++] =
-            cbdb::Int32FromDatum(*reinterpret_cast<int32 *>(buffer));
+        // FIXME(gongxun): get value info from PaxColumn
+        switch (slot->tts_tupleDescriptor->attrs[tts_index].attlen) {
+          case 1:
+            slot->tts_values[tts_index++] =
+                cbdb::Int8ToDatum(*reinterpret_cast<int8 *>(buffer));
+            break;
+          case 2:
+            slot->tts_values[tts_index++] =
+                cbdb::Int16ToDatum(*reinterpret_cast<int16 *>(buffer));
+            break;
+          case 4:
+            slot->tts_values[tts_index++] =
+                cbdb::Int32ToDatum(*reinterpret_cast<int32 *>(buffer));
+            break;
+          case 8:
+            slot->tts_values[tts_index++] =
+                cbdb::Int64ToDatum(*reinterpret_cast<int64 *>(buffer));
+            break;
+          default:
+            Assert(!"should't be here, fixed type len should be 1, 2, 4, 8");
+        }
         break;
       }
       default: {
-        Assert(false);
+        Assert(!"should't be here, non-implemented column type in memory");
         break;
       }
     }
@@ -713,7 +809,7 @@ bool OrcIteratorReader::ReadTuple(CTupleSlot *slot) {
 
 size_t OrcIteratorReader::Length() const {
   // TODO(gongxun): get length from orc file
-  Assert(false);
+  Assert(!"not implemented");
   return 0;
 }
 

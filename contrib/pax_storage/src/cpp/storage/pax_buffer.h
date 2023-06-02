@@ -166,7 +166,10 @@ class DataBuffer : public BlockBufferBase {
   T* data_buffer_ = nullptr;
 };
 extern template class DataBuffer<char>;
+extern template class DataBuffer<int16>;
 extern template class DataBuffer<int32>;
-extern template class DataBuffer<long>;  // NOLINT
+extern template class DataBuffer<int64>;
+extern template class DataBuffer<float>;
+extern template class DataBuffer<double>;
 
 };  // namespace pax

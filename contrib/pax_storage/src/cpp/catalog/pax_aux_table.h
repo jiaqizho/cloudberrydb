@@ -37,4 +37,5 @@ void GetAllMicroPartitionMetadata(
     const Relation parentrel, const Snapshot paxMetaDataSnapshot,
     std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result);
 
+void AddMicroPartitionEntry(const pax::WriteSummary &summary);
 }  // namespace cbdb

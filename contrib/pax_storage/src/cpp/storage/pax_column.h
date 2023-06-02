@@ -104,7 +104,11 @@ class PaxCommColumn : public PaxColumn {
 };
 
 extern template class PaxCommColumn<char>;
+extern template class PaxCommColumn<int16>;
 extern template class PaxCommColumn<int32>;
+extern template class PaxCommColumn<int64>;
+extern template class PaxCommColumn<float>;
+extern template class PaxCommColumn<double>;
 
 class PaxNonFixedColumn : public PaxColumn {
  public:

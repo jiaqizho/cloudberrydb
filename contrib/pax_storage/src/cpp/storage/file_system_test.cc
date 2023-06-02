@@ -1,6 +1,6 @@
-#include "storage/file_system.h"
-
 #include <gtest/gtest.h>
+
+#include "storage/file_system.h"
 
 #include "comm/singleton.h"
 #include "storage/local_file_system.h"

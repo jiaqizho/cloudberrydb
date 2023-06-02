@@ -10,6 +10,7 @@
 namespace cbdb {
 void *Palloc(size_t size);
 void *Palloc0(size_t size);
+void *RePalloc(void *ptr, size_t size);
 void Pfree(void *ptr);
 void *MemCtxAlloc(MemoryContext ctx, size_t size);
 }  // namespace cbdb
@@ -112,9 +113,28 @@ void MemoryCtxRegisterResetCallback(MemoryContext context,
 
 Oid RelationGetRelationId(Relation rel);
 
-void *PointerFromDatum(Datum d);
-int32 Int32FromDatum(Datum d);
-int64 Int64FromDatum(Datum d);
+static inline void *PointerFromDatum(Datum d) noexcept {
+  return DatumGetPointer(d);
+}
+
+static inline int8 DatumToInt8(Datum d) noexcept { return DatumGetInt8(d); }
+
+static inline int16 DatumToInt16(Datum d) noexcept { return DatumGetInt16(d); }
+
+static inline int32 DatumToInt32(Datum d) noexcept { return DatumGetInt32(d); }
+
+static inline int64 DatumToInt64(Datum d) noexcept { return DatumGetInt64(d); }
+
+static inline Datum Int8ToDatum(int8 d) noexcept { return Int8GetDatum(d); }
+
+static inline int16 Int16ToDatum(int16 d) noexcept { return Int16GetDatum(d); }
+
+static inline int32 Int32ToDatum(int32 d) noexcept { return Int32GetDatum(d); }
+
+static inline int64 Int64ToDatum(int64 d) noexcept { return Int64GetDatum(d); }
+
+void *PointerAndLenFromDatum(Datum d, int *len);
+
 Datum DatumFromCString(const char *src, const size_t length);
 
 Datum DatumFromPointer(const void *p, int16 typlen);
