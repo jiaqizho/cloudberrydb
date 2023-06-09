@@ -38,15 +38,14 @@ class TableMetadata {
     return file_path;
   }
 
-  std::shared_ptr<Iterator> NewIterator();
+  std::unique_ptr<Iterator> NewIterator();
 
  private:
   TableMetadata(const Relation parent_relation, const Snapshot snapshot)
       : parent_relation_(parent_relation), snapshot_(snapshot) {}
 
   void getAllMicroPartitionMetadata(
-      std::shared_ptr<std::vector<std::shared_ptr<MicroPartitionMetadata>>>
-          micro_partitions) {
+      std::vector<pax::MicroPartitionMetadata>& micro_partitions) {
     cbdb::GetAllMicroPartitionMetadata(parent_relation_, snapshot_,
                                        micro_partitions);
   }
@@ -59,45 +58,43 @@ class TableMetadata {
 // TODO(gongxun): enhance this iterator to support lazy loading
 class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
  public:
-  static std::shared_ptr<Iterator> Create(
-      std::shared_ptr<std::vector<std::shared_ptr<MicroPartitionMetadata>>>
-          micro_partitions) {
-    return std::shared_ptr<Iterator>(new Iterator(micro_partitions));
+  static std::unique_ptr<Iterator> Create(
+      std::vector<pax::MicroPartitionMetadata>&& micro_partitions) {
+    return std::unique_ptr<Iterator>(new Iterator(micro_partitions));
   }
   void Init() override {}
 
-  std::size_t getCurrentIndex() const { return current_index_; }
+  std::size_t Index() const { return current_index_; }
 
-  inline bool Empty() const override { return micro_partitions_->empty(); }
+  inline bool Empty() const override { return micro_partitions_.empty(); }
 
-  inline uint32_t Size() const override { return micro_partitions_->size(); }
+  inline uint32_t Size() const override { return micro_partitions_.size(); }
 
   bool HasNext() const override {
-    return current_index_ + 1 < micro_partitions_->size();
+    return current_index_ + 1 < micro_partitions_.size();
   }
 
-  void Seek(int offset, IteratorSeekPosType whence) override;
+  size_t Seek(int offset, IteratorSeekPosType whence) override;
 
-  std::shared_ptr<MicroPartitionMetadata>& Next() override {
+  pax::MicroPartitionMetadata Next() override {
     assert(current_index_ >= 0 &&
-           current_index_ + 1 < micro_partitions_->size());
-    return micro_partitions_->at(++current_index_);
+           current_index_ + 1 < micro_partitions_.size());
+    return micro_partitions_[++current_index_];
   }
 
-  std::shared_ptr<MicroPartitionMetadata>& Current() const override {
-    return micro_partitions_->at(current_index_);
+  pax::MicroPartitionMetadata Current() const override {
+    return micro_partitions_[current_index_];
   }
 
-  ~Iterator() { micro_partitions_->clear(); }
+  ~Iterator() { micro_partitions_.clear(); }
 
  private:
-  Iterator(std::shared_ptr<std::vector<std::shared_ptr<MicroPartitionMetadata>>>
-               micro_partitions)
+  explicit Iterator(std::vector<pax::MicroPartitionMetadata>&
+                        micro_partitions)  // NOLINT(runtime/references)
       : current_index_(0), micro_partitions_(micro_partitions) {}
 
   size_t current_index_;
-  std::shared_ptr<std::vector<std::shared_ptr<MicroPartitionMetadata>>>
-      micro_partitions_;
+  std::vector<pax::MicroPartitionMetadata> micro_partitions_;
 };
 
 }  // namespace pax

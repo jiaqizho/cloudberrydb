@@ -1,9 +1,10 @@
-#include "comm/gtest_wrappers.h"
+#include <gtest/gtest.h>
 
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "comm/gtest_wrappers.h"
 #include "exceptions/CException.h"
 #include "storage/pax.h"
 #include "storage/local_file_system.h"
@@ -89,31 +90,27 @@ CTupleSlot *CreateFakeCTupleSlot(bool with_value) {
 
 class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
  public:
-  MockReaderInterator(const std::vector<std::shared_ptr<MicroPartitionMetadata>>
-                          &meta_info_list)
+  explicit MockReaderInterator(const std::vector<MicroPartitionMetadata> &meta_info_list)
       : index(0) {
-    micro_partitions_ = std::make_shared<
-        std::vector<std::shared_ptr<MicroPartitionMetadata>>>();
-    micro_partitions_->insert(micro_partitions_->end(), meta_info_list.begin(),
+    micro_partitions_.insert(micro_partitions_.end(), meta_info_list.begin(),
                               meta_info_list.end());
   }
 
   void Init() override {}
 
   bool HasNext() const override {
-    if (micro_partitions_->size() == 0) {
+    if (micro_partitions_.size() == 0) {
       return false;
     }
-    return index < micro_partitions_->size() - 1;
+    return index < micro_partitions_.size() - 1;
   }
 
-  std::shared_ptr<MicroPartitionMetadata> &Current() const override {
-    return micro_partitions_->at(index);
+  MicroPartitionMetadata Current() const override {
+    return micro_partitions_[index];
   }
-
-  virtual bool Empty() const { return micro_partitions_->empty(); }
-  virtual uint32_t Size() const { return micro_partitions_->size(); }
-  virtual void Seek(int offset, IteratorSeekPosType whence) {
+  virtual bool Empty() const { return micro_partitions_.empty(); }
+  virtual uint32_t Size() const { return micro_partitions_.size(); }
+  virtual size_t Seek(int offset, IteratorSeekPosType whence) {
     switch (whence) {
       case BEGIN:
         index = offset;
@@ -122,19 +119,19 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
         index += offset;
         break;
       case END:
-        index = micro_partitions_->size() - offset;
+        index = micro_partitions_.size() - offset;
         break;
     }
+    return index;
   }
 
-  std::shared_ptr<MicroPartitionMetadata> &Next() override {
-    return micro_partitions_->at(++index);
+  MicroPartitionMetadata Next() override {
+    return micro_partitions_[++index];
   }
 
  private:
   uint32_t index;
-  std::shared_ptr<std::vector<std::shared_ptr<MicroPartitionMetadata>>>
-      micro_partitions_;
+  std::vector<MicroPartitionMetadata> micro_partitions_;
 };
 
 class MockWriter : public TableWriter {
@@ -187,18 +184,21 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   MicroPartitionReaderPtr micro_partition_reader =
       new OrcIteratorReader(file_system);
 
-  std::vector<std::shared_ptr<MicroPartitionMetadata>> meta_info_list;
-  std::shared_ptr<MicroPartitionMetadata> meta_info_ptr =
-      std::make_shared<MicroPartitionMetadata>(pax_file_name, pax_file_name);
+  std::vector<MicroPartitionMetadata> meta_info_list;
+  MicroPartitionMetadata meta_info(pax_file_name, pax_file_name);
 
-  meta_info_list.push_back(meta_info_ptr);
+  meta_info_list.push_back(std::move(meta_info));
 
-  std::shared_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
-      std::shared_ptr<IteratorBase<MicroPartitionMetadata>>(
+  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
+      std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(
           new MockReaderInterator(meta_info_list));
 
   TableReader *reader;
-  reader = new TableReader(micro_partition_reader, meta_info_iterator);
+  TableReader::ReaderOptions reader_options;
+  reader_options.build_bitmap_ = false;
+  reader_options.rel_oid_ = 0;
+  reader = new TableReader(micro_partition_reader,
+                           std::move(meta_info_iterator), reader_options);
   reader->Open();
 
   CTupleSlot *rslot = CreateFakeCTupleSlot(true);
@@ -249,24 +249,25 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   MicroPartitionReaderPtr micro_partition_reader =
       new OrcIteratorReader(file_system);
 
-  std::vector<std::shared_ptr<MicroPartitionMetadata>> meta_info_list;
-  std::shared_ptr<MicroPartitionMetadata> meta_info_ptr1 =
-      std::make_shared<MicroPartitionMetadata>(
-          pax_file_name, pax_file_name + std::to_string(0));
+  std::vector<MicroPartitionMetadata> meta_info_list;
+  MicroPartitionMetadata meta_info1(pax_file_name,
+                                    pax_file_name + std::to_string(0));
 
-  std::shared_ptr<MicroPartitionMetadata> meta_info_ptr2 =
-      std::make_shared<MicroPartitionMetadata>(
-          pax_file_name, pax_file_name + std::to_string(1));
+  MicroPartitionMetadata meta_info2(pax_file_name,
+                                    pax_file_name + std::to_string(1));
 
-  meta_info_list.push_back(meta_info_ptr1);
-  meta_info_list.push_back(meta_info_ptr2);
+  meta_info_list.push_back(std::move(meta_info1));
+  meta_info_list.push_back(std::move(meta_info2));
 
-  std::shared_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
-      std::shared_ptr<IteratorBase<MicroPartitionMetadata>>(
+  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
+      std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(
           new MockReaderInterator(meta_info_list));
 
   TableReader *reader;
-  reader = new TableReader(micro_partition_reader, meta_info_iterator);
+  TableReader::ReaderOptions reader_options;
+  reader_options.build_bitmap_ = false;
+  reader = new TableReader(micro_partition_reader,
+                           std::move(meta_info_iterator), reader_options);
   reader->Open();
 
   CTupleSlot *rslot = CreateFakeCTupleSlot(true);
