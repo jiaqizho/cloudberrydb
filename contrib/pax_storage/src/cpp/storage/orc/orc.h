@@ -256,6 +256,7 @@ class OrcIteratorReader : public MicroPartitionReader {
   std::string block_id_;
   MicroPartitionReader *reader_;
   DataBuffer<char> *reused_buffer_;
+  bool closed_ = true;
 };
 
 };  // namespace pax

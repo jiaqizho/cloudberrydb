@@ -9,6 +9,10 @@ void CPaxDmlStateLocal::DmlStateResetCallback(void *_) {
 
 void CPaxDmlStateLocal::InitDmlState(const Relation rel,
                                      const CmdType operation) {
+  if (operation == CMD_UPDATE || operation == CMD_DELETE) {
+    cbdb::InitCommandResource();
+  }
+
   if (!this->dml_descriptor_tab_) {
     HASHCTL hash_ctl;
     Assert(this->state_ctx_ == NULL);
@@ -32,10 +36,14 @@ void CPaxDmlStateLocal::FinishDmlState(const Relation rel,
   PaxDmlState *state;
   state = RemoveDmlState(cbdb::RelationGetRelationId(rel));
 
-  if (!state) return;
+  if (state == nullptr) {
+    return;
+  }
 
   if (state->deleter) {
     // TODO(gongxun): deleter finish
+    state->deleter->ExecDelete();
+
     delete state->deleter;
     state->deleter = nullptr;
     // FIXME: it's update operation, maybe we should do something here
@@ -49,7 +57,7 @@ void CPaxDmlStateLocal::FinishDmlState(const Relation rel,
   }
 }
 
-CPaxInserter *CPaxDmlStateLocal::GetInserter(const Relation &rel) {
+CPaxInserter *CPaxDmlStateLocal::GetInserter(const Relation rel) {
   PaxDmlState *state;
   state = FindDmlState(cbdb::RelationGetRelationId(rel));
   // TODO(gongxun): switch memory context??
@@ -59,12 +67,13 @@ CPaxInserter *CPaxDmlStateLocal::GetInserter(const Relation &rel) {
   return state->inserter;
 }
 
-CPaxDeleter *CPaxDmlStateLocal::GetDeleter(const Relation &rel) {
+CPaxDeleter *CPaxDmlStateLocal::GetDeleter(const Relation rel,
+                                           const Snapshot snapshot) {
   PaxDmlState *state;
   state = FindDmlState(cbdb::RelationGetRelationId(rel));
   // TODO(gongxun): switch memory context??
   if (state->deleter == nullptr) {
-    state->deleter = new CPaxDeleter(rel);
+    state->deleter = new CPaxDeleter(rel, snapshot);
   }
   return state->deleter;
 }

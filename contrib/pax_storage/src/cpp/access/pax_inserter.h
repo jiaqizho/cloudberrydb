@@ -2,6 +2,7 @@
 
 #include "comm/cbdb_api.h"
 
+#include "catalog/micro_partition_metadata.h"
 #include "storage/pax.h"
 
 namespace pax {

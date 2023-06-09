@@ -1,6 +1,7 @@
-#include "catalog/table_metadata.h"
+#include <gtest/gtest.h>
 
-#include "comm/gtest_wrappers.h"
+#include "catalog/table_metadata.h"
+#include <utility>
 
 extern int gp_debug_linger;
 
@@ -15,9 +16,7 @@ namespace pax::tests {
 
 class TableMetadataTest : public ::testing::Test {
  public:
-  void SetUp() override {
-    gp_debug_linger = 0;
-  }
+  void SetUp() override { gp_debug_linger = 0; }
 
   void TearDown() override {}
 };
@@ -25,96 +24,88 @@ class TableMetadataTest : public ::testing::Test {
 TEST_F(TableMetadataTest, new_iterator) {
   std::string block_id = "block_id";
   std::string file_name = "file_name";
-  std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>>
-      micro_partitions = std::make_shared<
-          std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>>();
+  std::vector<pax::MicroPartitionMetadata> micro_partitions;
 
-  std::shared_ptr<pax::MicroPartitionMetadata> meta_info_ptr =
-      std::make_shared<pax::MicroPartitionMetadata>(block_id, file_name);
+  pax::MicroPartitionMetadata meta_info(block_id, file_name);
 
-  meta_info_ptr->setTupleCount(1);
-  meta_info_ptr->setFileSize(MPARTITION_FILE_SIZE);
+  meta_info.setTupleCount(1);
+  meta_info.setFileSize(MPARTITION_FILE_SIZE);
 
-  micro_partitions->push_back(meta_info_ptr);
+  micro_partitions.push_back(std::move(meta_info));
 
-  std::shared_ptr<pax::TableMetadata::Iterator> iterator =
-      pax::TableMetadata::Iterator::Create(micro_partitions);
+  std::unique_ptr<pax::TableMetadata::Iterator> iterator =
+      pax::TableMetadata::Iterator::Create(std::move(micro_partitions));
 
   ASSERT_FALSE(iterator->Empty());
   ASSERT_EQ(iterator->Size(), 1);
   ASSERT_FALSE(iterator->HasNext());
 
-  std::shared_ptr<pax::MicroPartitionMetadata> meta_info = iterator->Current();
-  ASSERT_EQ(meta_info->getFileName(), file_name);
-  ASSERT_EQ(meta_info->getTupleCount(), 1);
-  ASSERT_EQ(meta_info->getFileSize(), MPARTITION_FILE_SIZE);
+  pax::MicroPartitionMetadata meta_info_cur = iterator->Current();
+  ASSERT_EQ(meta_info_cur.getFileName(), file_name);
+  ASSERT_EQ(meta_info_cur.getTupleCount(), 1);
+  ASSERT_EQ(meta_info_cur.getFileSize(), MPARTITION_FILE_SIZE);
 }
 
 TEST_F(TableMetadataTest, seek_iterator) {
   std::string block_id = "block_id";
   std::string file_name = "file_name";
-  std::shared_ptr<std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>>
-      micro_partitions = std::make_shared<
-          std::vector<std::shared_ptr<pax::MicroPartitionMetadata>>>();
+  std::vector<pax::MicroPartitionMetadata> micro_partitions;
 
   for (int i = 0; i < MPARTITION_FILE_NUM; i++) {
-    std::shared_ptr<pax::MicroPartitionMetadata> meta_info_ptr =
-        std::make_shared<pax::MicroPartitionMetadata>(block_id, file_name);
-    meta_info_ptr->setTupleCount(1);
-    meta_info_ptr->setFileSize(MPARTITION_FILE_SIZE);
-    micro_partitions->push_back(meta_info_ptr);
+    pax::MicroPartitionMetadata meta_info(block_id, file_name);
+    meta_info.setTupleCount(1);
+    meta_info.setFileSize(MPARTITION_FILE_SIZE);
+    micro_partitions.push_back(std::move(meta_info));
   }
 
-  std::shared_ptr<pax::TableMetadata::Iterator> iterator =
-      pax::TableMetadata::Iterator::Create(micro_partitions);
+  std::unique_ptr<pax::TableMetadata::Iterator> iterator =
+      pax::TableMetadata::Iterator::Create(std::move(micro_partitions));
 
   ASSERT_TRUE(iterator->HasNext());
-  ASSERT_EQ(micro_partitions->size(), MPARTITION_FILE_NUM);
 
-
-  // *SEEK pax::BEGIN  cases *
+  // *SEEK BEGIN  cases *
   // case seek from begin
   iterator->Seek(SEEK_BEGIN_POS, pax::BEGIN);
-  ASSERT_EQ(iterator->getCurrentIndex(), SEEK_BEGIN_POS);
+  ASSERT_EQ(iterator->Index(), SEEK_BEGIN_POS);
 
   // case seek from begin exceed max bound.
-  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_POS*10, pax::BEGIN), "");
+  ASSERT_EQ(iterator->Seek(SEEK_OFFSET_EXCEED_POS * 10, pax::BEGIN),
+            MPARTITION_FILE_NUM - 1);
 
   // case seek from begin exceed min bound.
-  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_NEG*10, pax::BEGIN), "");
+  ASSERT_EQ(iterator->Seek(SEEK_OFFSET_EXCEED_NEG * 10, pax::BEGIN), 0);
 
-
-  // *SEEK pax::CURRENT  cases *
+  // *SEEK CURRENT  cases *
   // case seek from middle
   iterator->Seek(SEEK_BEGIN_POS, pax::BEGIN);
-  iterator->Seek(MPARTITION_FILE_NUM/2, pax::BEGIN);
+  iterator->Seek(MPARTITION_FILE_NUM / 2, pax::BEGIN);
   iterator->Seek(SEEK_OFFSET_POS, pax::CURRENT);
-  ASSERT_EQ(iterator->getCurrentIndex(), MPARTITION_FILE_NUM/2 + SEEK_OFFSET_POS);
+  ASSERT_EQ(iterator->Index(), MPARTITION_FILE_NUM / 2 + SEEK_OFFSET_POS);
   iterator->Seek(SEEK_OFFSET_NEG, pax::CURRENT);
-  ASSERT_EQ(iterator->getCurrentIndex(), MPARTITION_FILE_NUM/2);
+  ASSERT_EQ(iterator->Index(), MPARTITION_FILE_NUM / 2);
 
   // case seek from middle excceds max bound
   iterator->Seek(SEEK_BEGIN_POS, pax::BEGIN);
-  iterator->Seek(MPARTITION_FILE_NUM/2, pax::BEGIN);
+  iterator->Seek(MPARTITION_FILE_NUM / 2, pax::BEGIN);
   iterator->Seek(SEEK_OFFSET_EXCEED_POS, pax::CURRENT);
-  ASSERT_EQ(iterator->getCurrentIndex(), MPARTITION_FILE_NUM-1);
+  ASSERT_EQ(iterator->Index(), MPARTITION_FILE_NUM - 1);
 
   // case seek from middle excceds min bound
   iterator->Seek(SEEK_BEGIN_POS, pax::BEGIN);
-  iterator->Seek(MPARTITION_FILE_NUM/2, pax::BEGIN);
+  iterator->Seek(MPARTITION_FILE_NUM / 2, pax::BEGIN);
   iterator->Seek(SEEK_OFFSET_EXCEED_NEG, pax::CURRENT);
-  ASSERT_EQ(iterator->getCurrentIndex(), SEEK_BEGIN_POS);
+  ASSERT_EQ(iterator->Index(), SEEK_BEGIN_POS);
 
-
-  // *SEEK pax::END  cases *
+  // *SEEK END  cases *
   // case seek from end
   iterator->Seek(SEEK_OFFSET_POS, pax::END);
-  ASSERT_EQ(iterator->getCurrentIndex(), MPARTITION_FILE_NUM - 1 - SEEK_OFFSET_POS);
+  ASSERT_EQ(iterator->Index(), MPARTITION_FILE_NUM - 1 - SEEK_OFFSET_POS);
 
   // case seek from middle excceds max bound
-  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_POS*10, pax::END), "");
+  ASSERT_EQ(iterator->Seek(SEEK_OFFSET_EXCEED_POS * 10, pax::END), 0);
 
   // case seek from end excceds min bound
-  ASSERT_DEATH(iterator->Seek(SEEK_OFFSET_EXCEED_NEG*10, pax::END), "");
+  ASSERT_EQ(iterator->Seek(SEEK_OFFSET_EXCEED_NEG * 10, pax::END),
+            MPARTITION_FILE_NUM - 1);
 }
 }  // namespace pax::tests

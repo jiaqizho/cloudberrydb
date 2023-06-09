@@ -11,6 +11,8 @@ DATA = pax--1.0.sql
 PGFILEDESC = "pax - PAX table access method"
 SHLIB_LINK += -luuid
 
+REGRESS = ddl types join update update_gp
+
 ifdef USE_PGXS
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
