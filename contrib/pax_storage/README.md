@@ -52,6 +52,11 @@ cd build
 ```
 cd src/data
 make install -j
+make installcheck
+```
+Before starting working with Pax, adding the following line to postgresql.conf is required. This change requires a restart of the PostgreSQL database server.
+```
+shared_preload_libraries = 'pax.so'
 ```
 
 ## GTEST accesses internal functions/variables

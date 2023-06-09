@@ -9,8 +9,10 @@
 #include <string>
 #include <vector>
 
+#include "catalog/table_metadata.h"
 #include "comm/pax_def.h"
 #include "storage/file_system.h"
+#include "storage/pax_itemptr.h"
 #include "storage/pax_buffer.h"
 #include "storage/statistics.h"
 
@@ -18,12 +20,28 @@ namespace pax {
 
 class CTupleSlot {
  public:
-  explicit CTupleSlot(TupleTableSlot *tuple_slot) : slot_(tuple_slot) {}
+  explicit CTupleSlot(TupleTableSlot *tuple_slot)
+      : slot_(tuple_slot), offset_(0) {}
   TupleTableSlot *GetTupleTableSlot() { return slot_; }
 
-  void ClearTuple() { slot_->tts_ops->clear(slot_); }
+  inline void ClearTuple() { slot_->tts_ops->clear(slot_); }
+
+  inline uint32_t GetOffset() const { return offset_; }
+
+  inline uint8_t GetTableNo() const { return table_no_; }
+
+  inline void SetOffset(uint64_t offset) { offset_ = offset; }
+
+  inline void SetBlockNumber(const int &block_number) {
+    block_number_ = block_number;
+  }
+
+  inline void SetTableNo(uint8_t table_no) { table_no_ = table_no; }
 
   void StoreVirtualTuple() {
+    // TODO(gongxun): set tts_tid, how to get block number from block id
+    slot_->tts_tid =
+        PaxItemPointer::GetTupleId(table_no_, block_number_, offset_);
     slot_->tts_flags &= ~TTS_FLAG_EMPTY;
     slot_->tts_nvalid = slot_->tts_tupleDescriptor->natts;
   }
@@ -34,6 +52,9 @@ class CTupleSlot {
 
  private:
   TupleTableSlot *slot_;
+  uint8 table_no_;
+  int block_number_;
+  uint32_t offset_;
 };
 
 struct WriteSummary;

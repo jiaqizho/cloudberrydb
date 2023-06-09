@@ -712,6 +712,7 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
 
   current_row_index_++;
   current_offset_++;
+  cslot->SetOffset(current_offset_);
   Assert(tts_index == column_numbers);
 
   return true;
@@ -783,13 +784,18 @@ void OrcIteratorReader::Open(const ReaderOptions &options) {
   if (reused_buffer_) {
     reader_->SetReadBuffer(reused_buffer_);
   }
+  closed_ = false;
 }
 
 void OrcIteratorReader::Close() {
+  if (closed_) {
+    return;
+  }
   Assert(reader_);
   reader_->Close();
   delete reader_;
   reader_ = nullptr;
+  closed_ = true;
 }
 
 void OrcIteratorReader::Seek(size_t offset) {

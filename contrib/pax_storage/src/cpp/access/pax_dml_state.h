@@ -29,8 +29,8 @@ class CPaxDmlStateLocal final {
   void InitDmlState(const Relation rel, const CmdType operation);
   void FinishDmlState(const Relation rel, const CmdType operation);
 
-  CPaxInserter* GetInserter(const Relation& rel);
-  CPaxDeleter* GetDeleter(const Relation& rel);
+  CPaxInserter* GetInserter(const Relation rel);
+  CPaxDeleter* GetDeleter(const Relation rel, const Snapshot snapshot);
 
   void reset() {
     last_used_state_ = nullptr;

@@ -4,10 +4,18 @@
 
 #include <uuid/uuid.h>
 
+#include <utility>
+
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/paxc_utils.h"
+#include "storage/paxc_block_map_manager.h"
+
+namespace cbdb {
+void DeletePaxBlockEntry(const Oid relid, const Snapshot paxMetaDataSnapshot,
+                         const char *blockname);
+}  // namespace cbdb
 
 void cbdb::GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
                                             NameData *compresstype,
@@ -134,9 +142,8 @@ void cbdb::PaxCreateMicroPartitionTable(const Relation rel,
 }
 
 void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
-    std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result,
-    const Relation relation, const Relation pg_blockfile_rel,
-    const Snapshot paxMetaDataSnapshot) {
+    std::vector<pax::MicroPartitionMetadata> &result, const Relation relation,
+    const Relation pg_blockfile_rel, const Snapshot paxMetaDataSnapshot) {
   TupleDesc pg_paxblock_dsc;
   HeapTuple tuple;
   SysScanDesc pax_scan;
@@ -159,20 +166,18 @@ void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
       std::string file_name = pax::TableMetadata::BuildPaxFilePath(
           relation, DatumGetName(blockid)->data);
 
-      std::shared_ptr<pax::MicroPartitionMetadata> meta_info =
-          std::make_shared<pax::MicroPartitionMetadata>(
-              DatumGetName(blockid)->data, file_name);
+      pax::MicroPartitionMetadata meta_info(DatumGetName(blockid)->data,
+                                            file_name);
 
       tup_count = heap_getattr(tuple, Anum_pg_pax_block_tables_pttupcount,
                                pg_paxblock_dsc, &is_null);
       if (is_null)
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
                         errmsg("got invalid tupcount value: NULL")));
-      meta_info->setTupleCount(tup_count);
+      meta_info.setTupleCount(tup_count);
 
       // TODO(gongxun): add more statistics info
-
-      result->push_back(meta_info);
+      result.push_back(std::move(meta_info));
     }
 
     systable_endscan(pax_scan);
@@ -182,7 +187,7 @@ void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
 
 void cbdb::GetAllMicroPartitionMetadata(
     const Relation parentrel, const Snapshot paxMetaDataSnapshot,
-    std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result) {
+    std::vector<pax::MicroPartitionMetadata> &result) {
   Relation pg_paxblock_rel;
   Oid block_rel_id;
 
@@ -205,6 +210,47 @@ void cbdb::GetAllMicroPartitionMetadata(
     table_close(pg_paxblock_rel, AccessShareLock);
   }
   CBDB_WRAP_END;
+}
+
+void cbdb::DeletePaxBlockEntry(const Oid relid,
+                               const Snapshot paxMetaDataSnapshot,
+                               const char *blockname) {
+  Relation rel;
+  ScanKeyData key[1];
+  SysScanDesc scan;
+  HeapTuple tuple;
+  NameData ptblockname;
+
+  CBDB_WRAP_START;
+  {
+    rel = table_open(relid, RowExclusiveLock);
+    namestrcpy(&ptblockname, blockname);
+    ScanKeyInit(&key[0], Anum_pg_pax_block_tables_ptblockname,
+                BTEqualStrategyNumber, F_NAMEEQ, NameGetDatum(&ptblockname));
+
+    // should add snapshot support
+    scan =
+        systable_beginscan(rel, InvalidOid, false, paxMetaDataSnapshot, 1, key);
+
+    tuple = systable_getnext(scan);
+    if (HeapTupleIsValid(tuple)) {
+      CatalogTupleDelete(rel, &tuple->t_self);
+    }
+
+    systable_endscan(scan);
+    table_close(rel, RowExclusiveLock);
+  }
+  CBDB_WRAP_END;
+}
+
+void cbdb::DeleteMicroPartitionEntry(const Oid rel_oid,
+                                     const Snapshot paxMetaDataSnapshot,
+                                     const std::string block_id) {
+  Oid pax_block_tables_rel_id;
+  cbdb::GetMicroPartitionEntryAttributes(rel_oid, &pax_block_tables_rel_id,
+                                         NULL, NULL);
+  cbdb::DeletePaxBlockEntry(pax_block_tables_rel_id, paxMetaDataSnapshot,
+                            block_id.c_str());
 }
 
 void cbdb::AddMicroPartitionEntry(const pax::WriteSummary &summary) {

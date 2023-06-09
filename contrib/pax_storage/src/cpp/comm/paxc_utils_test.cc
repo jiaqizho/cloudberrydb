@@ -1,4 +1,5 @@
 #include "comm/paxc_utils.h"
+
 #include "comm/gtest_wrappers.h"
 
 extern int gp_debug_linger;
@@ -11,7 +12,8 @@ static const char *pax_copy_src_path = "/tmp/test_src";
 static const char *pax_copy_dst_path = "/tmp/copytest/test_dst";
 static const char *pax_copy_content = "12345678";
 static const char *pax_list_path = "/tmp/testlist";
-static const char *pax_file_pathname = "/tmp/pg_tblspc/16400/GPDB_1_302206171/13261/16394";
+static const char *pax_file_pathname =
+    "/tmp/pg_tblspc/16400/GPDB_1_302206171/13261/16394";
 static const char *pax_file_pathnull = NULL;
 static const char *pax_file_pathempty = "";
 
@@ -35,7 +37,8 @@ TEST_F(TablePaxUtilsTest, list_directory) {
   system(cmd);
 
   for (int i = 0; i < PAX_TEST_LIST_FILE_NUM; i++) {
-    snprintf(cmd, sizeof(cmd), "echo '%s' > %s/test%d", pax_copy_content, pax_list_path, i);
+    snprintf(cmd, sizeof(cmd), "echo '%s' > %s/test%d", pax_copy_content,
+             pax_list_path, i);
     system(cmd);
   }
 
@@ -54,7 +57,8 @@ TEST_F(TablePaxUtilsTest, copy_file) {
   snprintf(cmd, sizeof(cmd), "rm -rf %s", pax_copy_test_dir);
   system(cmd);
 
-  snprintf(cmd, sizeof(cmd), "echo '%s' > %s;chmod 600 %s", pax_copy_content, pax_copy_src_path, pax_copy_src_path);
+  snprintf(cmd, sizeof(cmd), "echo '%s' > %s;chmod 600 %s", pax_copy_content,
+           pax_copy_src_path, pax_copy_src_path);
   system(cmd);
 
   paxc::MakedirRecursive(pax_copy_test_dir);
@@ -87,5 +91,3 @@ TEST_F(TablePaxUtilsTest, makedir_recursive) {
 }
 
 }  // namespace pax::tests
-
-
