@@ -15,9 +15,9 @@ class IteratorBase {
   virtual bool Empty() const = 0;
   virtual uint32_t Size() const = 0;
   virtual bool HasNext() const = 0;
-  virtual std::shared_ptr<T>& Next() = 0;
-  virtual std::shared_ptr<T>& Current() const = 0;
-  virtual void Seek(int offset, IteratorSeekPosType whence) = 0;
+  virtual T Next() = 0;
+  virtual T Current() const = 0;
+  virtual size_t Seek(int offset, IteratorSeekPosType whence) = 0;
   virtual ~IteratorBase() {}
 };  // class IteratorBase
 }  // namespace pax

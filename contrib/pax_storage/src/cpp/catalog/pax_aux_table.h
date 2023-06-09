@@ -15,7 +15,6 @@
 #define Natts_pg_pax_block_tables 3
 
 namespace cbdb {
-using MicroPartitionMetadataPtr = std::shared_ptr<pax::MicroPartitionMetadata>;
 
 void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
                                       NameData *compresstype,
@@ -29,13 +28,19 @@ void PaxCreateMicroPartitionTable(const Relation rel,
                                   char persistence);
 
 void GetAllBlockFileInfo_PG_PaxBlock_Relation(
-    std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result,
+    std::vector<pax::MicroPartitionMetadata>
+        &result,  // NOLINT(runtime/references)
     const Relation relation, const Relation pg_blockfile_rel,
     const Snapshot paxMetaDataSnapshot);
 
-void GetAllMicroPartitionMetadata(
-    const Relation parentrel, const Snapshot paxMetaDataSnapshot,
-    std::shared_ptr<std::vector<MicroPartitionMetadataPtr>> result);
+void GetAllMicroPartitionMetadata(const Relation parentrel,
+                                  const Snapshot paxMetaDataSnapshot,
+                                  std::vector<pax::MicroPartitionMetadata>
+                                      &result);  // NOLINT(runtime/references)
 
 void AddMicroPartitionEntry(const pax::WriteSummary &summary);
+
+void DeleteMicroPartitionEntry(const Oid rel_oid,
+                               const Snapshot paxMetaDataSnapshot,
+                               const std::string block_id);
 }  // namespace cbdb

@@ -6,6 +6,7 @@
 #include <string>
 
 #include "exceptions/CException.h"
+#include "storage/pax_block_id.h"
 
 namespace cbdb {
 void *Palloc(size_t size);
@@ -140,4 +141,15 @@ Datum DatumFromCString(const char *src, const size_t length);
 Datum DatumFromPointer(const void *p, int16 typlen);
 
 struct varlena *PgDeToastDatumPacked(struct varlena *datum);
+
+// pax ctid mapping functions
+void InitCommandResource();
+void ReleaseCommandResource();
+void GetTableIndexAndTableNumber(Oid table_rel_oid, uint8_t *table_no,
+                                 uint32_t *table_index);
+uint32_t GetBlockNumber(Oid table_rel_oid, uint32_t table_index,
+                        paxc::PaxBlockId block_id);
+paxc::PaxBlockId GetBlockId(Oid table_rel_oid, uint8_t table_no,
+                            uint32_t block_number);
+
 }  // namespace cbdb

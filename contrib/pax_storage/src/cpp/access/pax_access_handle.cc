@@ -4,9 +4,11 @@
 
 #include "access/pax_dml_state.h"
 #include "access/pax_scanner.h"
+#include "access/pax_updater.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/paxc_utils.h"
 #include "exceptions/CException.h"
+#include "storage/paxc_block_map_manager.h"
 
 #define NOT_IMPLEMENTED_YET                        \
   ereport(ERROR,                                   \
@@ -178,8 +180,16 @@ TM_Result CCPaxAccessMethod::TupleDelete(Relation relation, ItemPointer tid,
                                          Snapshot crosscheck, bool wait,
                                          TM_FailureData *tmfd,
                                          bool changingPart) {
-  NOT_IMPLEMENTED_YET;
-  return TM_Ok;
+  CBDB_TRY();
+  {
+    return CPaxDeleter::DeleteTuple(relation, tid, cid, snapshot, crosscheck,
+                                    wait, tmfd, changingPart);
+  }
+
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
 TM_Result CCPaxAccessMethod::TupleUpdate(Relation relation, ItemPointer otid,
@@ -188,8 +198,17 @@ TM_Result CCPaxAccessMethod::TupleUpdate(Relation relation, ItemPointer otid,
                                          bool wait, TM_FailureData *tmfd,
                                          LockTupleMode *lockmode,
                                          bool *update_indexes) {
-  NOT_IMPLEMENTED_YET;
-  return TM_Ok;
+  CBDB_TRY();
+  {
+    return CPaxUpdater::UpdateTuple(relation, otid, slot, cid, snapshot,
+                                    crosscheck, wait, tmfd, lockmode,
+                                    update_indexes);
+  }
+
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
 bool CCPaxAccessMethod::ScanAnalyzeNextBlock(TableScanDesc scan,
@@ -260,11 +279,19 @@ void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
 }
 
 void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
+  if (!OidIsValid(rel->rd_rel->relam)) {
+    Assert(rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE);
+    return;
+  }
   if (RelationIsPax(rel))
     pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
 }
 
 void CCPaxAccessMethod::ExtDmlFini(Relation rel, CmdType operation) {
+  if (!OidIsValid(rel->rd_rel->relam)) {
+    Assert(rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE);
+    return;
+  }
   if (RelationIsPax(rel))
     pax::CPaxDmlStateLocal::instance()->FinishDmlState(rel, operation);
 }
@@ -729,7 +756,37 @@ static void pax_validate_compresstype(const char *value) {
   ereport(ERROR, (errmsg("unsupported compress type: '%s'", value)));
 }
 
+static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
+
+static ExecutorEnd_hook_type prev_ExecutorEnd = NULL;
+
+void pax_shmem_init() {
+  if (prev_shmem_startup_hook) prev_shmem_startup_hook();
+
+  paxc::pax_shmem_startup();
+}
+
+static void pax_ExecutorEnd(QueryDesc *queryDesc) {
+  paxc::release_command_resource();
+  if (prev_ExecutorEnd)
+    prev_ExecutorEnd(queryDesc);
+  else
+    standard_ExecutorEnd(queryDesc);
+}
 void _PG_init(void) {
+  if (!process_shared_preload_libraries_in_progress) {
+    ereport(ERROR, (errmsg("pax must be loaded via shared_preload_libraries")));
+    return;
+  }
+
+  paxc::pax_shmem_request();
+
+  prev_shmem_startup_hook = shmem_startup_hook;
+  shmem_startup_hook = pax_shmem_init;
+
+  prev_ExecutorEnd = ExecutorEnd_hook;
+  ExecutorEnd_hook = pax_ExecutorEnd;
+
   ext_dml_init_hook = pax::CCPaxAccessMethod::ExtDmlInit;
   ext_dml_finish_hook = pax::CCPaxAccessMethod::ExtDmlFini;
 

@@ -108,6 +108,7 @@ set(pax_storage_src
     storage/pax_column.cc
     storage/strategy.cc
     storage/orc/protobuf_stream.cc
+    storage/paxc_block_map_manager.cc
     storage/orc/orc.cc)
 
 set(pax_access_src
@@ -115,6 +116,7 @@ set(pax_access_src
     access/pax_deleter.cc
     access/pax_dml_state.cc
     access/pax_inserter.cc
+    access/pax_updater.cc
     access/pax_scanner.cc)
 set(pax_catalog_src
     catalog/pax_aux_table.cc

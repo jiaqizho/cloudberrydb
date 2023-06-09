@@ -34,6 +34,8 @@ TableScanDesc PaxScanDesc::BeginScan(const Relation relation,
   desc->key_ = key;
   desc->reused_buffer = new DataBuffer<char>(32 * 1024 * 1024);  // 32mb
 
+  // init shared memory
+  cbdb::InitCommandResource();
   // build reader
   TableMetadata *meta_info;
   meta_info = TableMetadata::Create(relation, snapshot);
@@ -44,8 +46,12 @@ TableScanDesc PaxScanDesc::BeginScan(const Relation relation,
       new OrcIteratorReader(file_system);
   micro_partition_reader->SetReadBuffer(desc->reused_buffer);
 
-  desc->reader_ =
-      new TableReader(micro_partition_reader, meta_info->NewIterator());
+  TableReader::ReaderOptions reader_options;
+  reader_options.build_bitmap_ = true;
+  reader_options.rel_oid_ = desc->rs_base.rs_rd->rd_id;
+
+  desc->reader_ = new TableReader(micro_partition_reader,
+                                  meta_info->NewIterator(), reader_options);
   desc->reader_->Open();
 
   return &desc->rs_base;
