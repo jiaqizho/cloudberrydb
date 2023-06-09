@@ -1,5 +1,6 @@
 #include "comm/cbdb_wrappers.h"
 
+#include "storage/paxc_block_map_manager.h"
 extern "C" {
 const char *progname;
 }
@@ -151,7 +152,6 @@ struct varlena *cbdb::PgDeToastDatumPacked(struct varlena *datum) {
 
 void *cbdb::PointerAndLenFromDatum(Datum d, int *len) {
   struct varlena *vl = nullptr;
-  *len = -1;
   CBDB_WRAP_START;
   {
     // FIXME(gongxun): is VARSIZE_ANY(d) better?
@@ -161,4 +161,40 @@ void *cbdb::PointerAndLenFromDatum(Datum d, int *len) {
   }
   CBDB_WRAP_END;
   return nullptr;
+}
+
+// pax ctid mapping functions
+
+void cbdb::InitCommandResource() {
+  CBDB_WRAP_START;
+  { paxc::init_command_resource(); }
+  CBDB_WRAP_END;
+}
+void cbdb::ReleaseCommandResource() {
+  CBDB_WRAP_START;
+  { paxc::release_command_resource(); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::GetTableIndexAndTableNumber(Oid table_rel_oid, uint8_t *table_no,
+                                       uint32_t *table_index) {
+  CBDB_WRAP_START;
+  {
+    paxc::get_table_index_and_table_number(table_rel_oid, table_no,
+                                           table_index);
+  }
+  CBDB_WRAP_END;
+}
+
+uint32_t cbdb::GetBlockNumber(Oid table_rel_oid, uint32_t table_index,
+                              paxc::PaxBlockId block_id) {
+  CBDB_WRAP_START;
+  { return paxc::get_block_number(table_rel_oid, table_index, block_id); }
+  CBDB_WRAP_END;
+}
+paxc::PaxBlockId cbdb::GetBlockId(Oid table_rel_oid, uint8_t table_no,
+                                  uint32_t block_number) {
+  CBDB_WRAP_START;
+  { return paxc::get_block_id(table_rel_oid, table_no, block_number); }
+  CBDB_WRAP_END;
 }

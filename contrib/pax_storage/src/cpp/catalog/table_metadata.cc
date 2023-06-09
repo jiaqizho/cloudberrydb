@@ -1,23 +1,22 @@
 #include "catalog/table_metadata.h"
 
+#include <utility>
+
 #include "exceptions/CException.h"
 
 namespace pax {
-std::shared_ptr<TableMetadata::Iterator> TableMetadata::NewIterator() {
-  auto micro_partitions =
-      std::make_shared<std::vector<std::shared_ptr<MicroPartitionMetadata>>>();
-
+std::unique_ptr<TableMetadata::Iterator> TableMetadata::NewIterator() {
+  std::vector<MicroPartitionMetadata> micro_partitions;
   getAllMicroPartitionMetadata(micro_partitions);
 
-  return std::shared_ptr<Iterator>(Iterator::Create(micro_partitions));
+  return std::unique_ptr<Iterator>(
+      Iterator::Create(std::move(micro_partitions)));
 }
 
-void TableMetadata::Iterator::Seek(int offset, IteratorSeekPosType whence) {
-  std::size_t mpsize = micro_partitions_->size();
+size_t TableMetadata::Iterator::Seek(int offset, IteratorSeekPosType whence) {
+  std::size_t mpsize = micro_partitions_.size();
   int max_mpartition_offset = static_cast<int>(mpsize) - 1;
   int current_idx = current_index_;
-  Assert(offset >= 0 - max_mpartition_offset &&
-         offset <= max_mpartition_offset);
   switch (whence) {
     case BEGIN:
       current_idx = offset;
@@ -44,6 +43,8 @@ void TableMetadata::Iterator::Seek(int offset, IteratorSeekPosType whence) {
     current_index_ = 0;
   else
     current_index_ = current_idx;
+
+  return current_index_;
 }
 
 }  // namespace pax

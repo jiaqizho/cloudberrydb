@@ -21,3 +21,4 @@ build*/**
 
 # Executables
 *.out
+!src/data/expected/*.out

@@ -144,6 +144,9 @@ class CCPaxAccessMethod final {
 
 }  // namespace pax
 
+extern ext_dml_func_hook_type ext_dml_init_hook;
+extern ext_dml_func_hook_type ext_dml_finish_hook;
+
 // plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
   int32 vl_len_; /* varlena header (do not touch directly!) */
