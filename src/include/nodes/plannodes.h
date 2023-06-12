@@ -681,8 +681,6 @@ typedef struct DynamicIndexScan
  * indextlist are marked as resjunk if they correspond to columns that
  * the index AM cannot reconstruct.
  * ----------------
- * GPDB: We need indexqualorig to determine direct dispatch, however there
- * is no need to dispatch it.
  */
 typedef struct IndexOnlyScan
 {
