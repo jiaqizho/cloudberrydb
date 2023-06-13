@@ -11,15 +11,70 @@
 
 namespace pax {
 
-PaxColumn::PaxColumn() : has_nulls_(false), is_encoded_(false) {}
+PaxColumn::PaxColumn() : null_bitmap_(nullptr), is_encoded_(false) {}
+
+PaxColumn::~PaxColumn() {
+  if (null_bitmap_) {
+    delete null_bitmap_;
+  }
+}
 
 PaxColumnTypeInMem PaxColumn::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::TYPE_INVALID;
 }
 
-void PaxColumn::Clear() { non_null_.clear(); }
+void PaxColumn::Clear() {
+  if (null_bitmap_) {
+    delete null_bitmap_;
+    null_bitmap_ = nullptr;
+  }
+}
 
-bool PaxColumn::HasNull() { return has_nulls_; }
+bool PaxColumn::HasNull() { return null_bitmap_ != nullptr; }
+
+void PaxColumn::SetNulls(DataBuffer<bool> *null_bitmap) {
+  Assert(!null_bitmap_);
+  null_bitmap_ = null_bitmap;
+}
+
+DataBuffer<bool> *PaxColumn::GetNulls() const { return null_bitmap_; }
+
+size_t PaxColumn::GetRows() {
+  return null_bitmap_ ? null_bitmap_->Used() : GetNonNullRows();
+}
+
+void PaxColumn::AppendNull() {
+  if (!null_bitmap_) {
+    size_t current_rows = GetNonNullRows();
+    size_t size = current_rows > DEFAULT_CAPACITY
+                      ? (current_rows / DEFAULT_CAPACITY + 1) * DEFAULT_CAPACITY
+                      : DEFAULT_CAPACITY;
+    null_bitmap_ = new DataBuffer<bool>(size);
+    null_bitmap_->Brush(current_rows * sizeof(bool));
+    memset(null_bitmap_->GetBuffer(), 1, null_bitmap_->Capacity());
+  }
+
+  if (null_bitmap_->Available() == 0) {
+    size_t old_cap = null_bitmap_->Capacity();
+    null_bitmap_->ReSize(old_cap * 2);
+    memset(null_bitmap_->GetAvailableBuffer(), 1, old_cap);
+  }
+
+  null_bitmap_->Write(false);
+  null_bitmap_->Brush(sizeof(bool));
+}
+
+void PaxColumn::Append([[maybe_unused]] char *buffer,
+                       [[maybe_unused]] size_t size) {
+  if (null_bitmap_) {
+    if (null_bitmap_->Available() == 0) {
+      size_t old_cap = null_bitmap_->Capacity();
+      null_bitmap_->ReSize(old_cap * 2);
+      memset(null_bitmap_->GetAvailableBuffer(), 1, old_cap);
+    }
+    null_bitmap_->Brush(sizeof(bool));
+  }
+}
 
 template <typename T>
 PaxCommColumn<T>::PaxCommColumn(uint64 capacity)
@@ -46,12 +101,13 @@ void PaxCommColumn<T>::Set(DataBuffer<T> *data) {
 
 template <typename T>
 void PaxCommColumn<T>::Append(char *buffer, size_t size) {
+  PaxColumn::Append(buffer, size);
   auto *buffer_t = reinterpret_cast<T *>(buffer);
 
   Assert(size == sizeof(T));
-  Assert(GetRows() <= capacity_);
+  Assert(GetNonNullRows() <= capacity_);
 
-  if (GetRows() == capacity_) {
+  if (GetNonNullRows() == capacity_) {
     ReSize(capacity_ * 2);
   }
 
@@ -84,7 +140,7 @@ void PaxCommColumn<T>::ReSize(uint64 cap) {
 }
 
 template <typename T>
-size_t PaxCommColumn<T>::GetRows() const {
+size_t PaxCommColumn<T>::GetNonNullRows() const {
   return data_->Used() / sizeof(T);
 }
 
@@ -100,7 +156,7 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer() {
 
 template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
-  if (position >= GetRows()) {
+  if (position >= GetNonNullRows()) {
     CBDB_RAISE(cbdb::CException::ExType::ExTypeOutOfRange);
   }
   return std::make_pair(data_->Buffer().Start() + (sizeof(T) * position),
@@ -142,6 +198,7 @@ void PaxNonFixedColumn::Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
 }
 
 void PaxNonFixedColumn::Append(char *buffer, size_t size) {
+  PaxColumn::Append(buffer, size);
   while (data_->Available() < size) {
     data_->ReSize(data_->Capacity() * 2);
   }
@@ -184,12 +241,12 @@ std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer() {
   return std::make_pair(data_->GetBuffer(), data_->Used());
 }
 
-size_t PaxNonFixedColumn::GetRows() const { return lengths_->GetSize(); }
+size_t PaxNonFixedColumn::GetNonNullRows() const { return lengths_->GetSize(); }
 
 size_t PaxNonFixedColumn::EstimatedSize() const { return estimated_size_; }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
-  if (position >= GetRows()) {
+  if (position >= GetNonNullRows()) {
     CBDB_RAISE(cbdb::CException::ExType::ExTypeOutOfRange);
   }
 
@@ -277,7 +334,7 @@ void PaxColumns::Set(DataBuffer<char> *data) {
   data_ = data;
 }
 
-size_t PaxColumns::GetRows() const {
+size_t PaxColumns::GetNonNullRows() const {
   CBDB_RAISE(cbdb::CException::ExType::ExTypeLogicError);
 }
 
@@ -323,7 +380,16 @@ size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
   size_t buffer_len = 0;
 
   for (auto *column : columns_) {
-    size_t column_size = column->GetRows();
+    // has null will generate a bitmap in current stripe
+    if (column->HasNull()) {
+      size_t non_null_length = column->GetNulls()->Used();
+      buffer_len += non_null_length;
+      pre_calc_func(orc::proto::Stream_Kind_PRESENT, column->GetRows(),
+                    non_null_length);
+    }
+
+    size_t column_size = column->GetNonNullRows();
+
     switch (column->GetPaxColumnTypeInMem()) {
       case TYPE_NON_FIXED: {
         size_t lengths_size = column_size * sizeof(int64);
@@ -363,6 +429,15 @@ void PaxColumns::CombineDataBuffer() {
   Assert(data_->Capacity() != 0);
 
   for (auto *column : columns_) {
+    if (column->HasNull()) {
+      auto null_data_buffer = column->GetNulls();
+      size_t non_null_length = null_data_buffer->Used();
+
+      data_->Write(reinterpret_cast<char *>(null_data_buffer->GetBuffer()),
+                   non_null_length);
+      data_->Brush(non_null_length);
+    }
+
     switch (column->GetPaxColumnTypeInMem()) {
       case TYPE_NON_FIXED: {
         PaxNonFixedColumn *no_fixed_column =

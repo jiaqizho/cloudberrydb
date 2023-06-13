@@ -75,14 +75,20 @@ void DataBuffer<T>::Set(char *ptr, size_t size) {
 }
 
 template <typename T>
+void DataBuffer<T>::Write(T value) {
+  Assert(Available() >= sizeof(T) && Available() <= Capacity());
+  *(reinterpret_cast<T *>(block_pos_)) = value;
+}
+
+template <typename T>
 void DataBuffer<T>::Write(T *ptr, size_t size) {
-  Assert(Available() >= size && Available() >= 0 && Available() <= Capacity());
+  Assert(Available() >= size && Available() <= Capacity());
   memcpy(block_pos_, reinterpret_cast<const char *>(ptr), size);
 }
 
 template <typename T>
 void DataBuffer<T>::Write(const T *ptr, size_t size) {
-  Assert(Available() >= size && Available() >= 0 && Available() <= Capacity());
+  Assert(Available() >= size && Available() <= Capacity());
   memcpy(block_pos_, reinterpret_cast<const char *>(ptr), size);
 }
 
@@ -147,5 +153,6 @@ template class DataBuffer<int32>;
 template class DataBuffer<int64>;
 template class DataBuffer<float>;
 template class DataBuffer<double>;
+template class DataBuffer<bool>;
 
 }  // namespace pax

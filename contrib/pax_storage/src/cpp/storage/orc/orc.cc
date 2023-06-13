@@ -82,15 +82,15 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
   for (int i = 0; i < n; i++) {
     type_len = table_desc->attrs[i].attlen;
     type_by_val = table_desc->attrs[i].attbyval;
-    // use to convect pg_type to orc type
-    (void)type_by_val;  // NOLINT
+
+    AssertImply(table_desc->attrs[i].attisdropped, table_slot->tts_isnull[i]);
 
     if (table_slot->tts_isnull[i]) {
-      // TODO(jiaqizho) support is null
-      CBDB_RAISE(cbdb::CException::ExType::ExTypeUnImplements);
+      (*pax_columns_)[i]->AppendNull();
+      continue;
     }
 
-    if (table_desc->attrs[i].attbyval) {
+    if (type_by_val) {
       switch (type_len) {
         case 1: {
           auto value = cbdb::DatumToInt8(table_slot->tts_values[i]);
@@ -147,7 +147,7 @@ void OrcWriter::WriteTupleN(CTupleSlot **slot, size_t n) {
 bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
   std::vector<orc::proto::Stream> streams;
   orc::proto::StripeFooter stripe_footer;
-  orc::proto::StripeStatistics *stripeStats = meta_data_.add_stripestats();
+  auto stripeStats = meta_data_.add_stripestats();
 
   size_t data_len = 0;
   size_t number_of_row = 0;
@@ -178,18 +178,15 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
     data_len += streams[i].length();
   }
 
-  for (size_t i = 0; i < column_types_.size(); i++) {
-    // encoding
-    orc::proto::ColumnEncoding encoding;
-    encoding.set_kind(orc::proto::ColumnEncoding_Kind_DIRECT);
-    encoding.set_dictionarysize(0);
-    *stripe_footer.add_columns() = encoding;
+  for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
+    auto encoding = stripe_footer.add_columns();
+    auto pb_stats = stripeStats->add_colstats();
 
-    // colstats
-    orc::proto::ColumnStatistics pb_stats;
-    pb_stats.set_hasnull(true);
-    pb_stats.set_numberofvalues((*pax_columns_)[i]->GetRows());
-    *stripeStats->add_colstats() = pb_stats;
+    encoding->set_kind(orc::proto::ColumnEncoding_Kind_DIRECT);
+    encoding->set_dictionarysize(0);
+
+    pb_stats->set_hasnull((*pax_columns_)[i]->HasNull());
+    pb_stats->set_numberofvalues((*pax_columns_)[i]->GetRows());
   }
 
   stripe_footer.set_writertimezone("GMT");
@@ -260,13 +257,11 @@ void OrcWriter::InitStripe() {
 }
 
 void OrcWriter::BuildFooterType() {
-  ::orc::proto::Type proto_type;
-  proto_type.set_maximumlength(0);
-  proto_type.set_precision(0);
-  proto_type.set_scale(0);
-
-  proto_type.set_kind(::orc::proto::Type_Kind_STRUCT);
-  *file_footer_.add_types() = proto_type;
+  auto proto_type = file_footer_.add_types();
+  proto_type->set_maximumlength(0);
+  proto_type->set_precision(0);
+  proto_type->set_scale(0);
+  proto_type->set_kind(::orc::proto::Type_Kind_STRUCT);
 
   // TODO(jiaqizho): support interface for meta kv, if we do need this function
   //   protoAttr->set_key(key);
@@ -274,13 +269,11 @@ void OrcWriter::BuildFooterType() {
   for (size_t i = 0; i < column_types_.size(); ++i) {
     auto orc_type = column_types_[i];
 
-    ::orc::proto::Type sub_proto_type;
-    sub_proto_type.set_maximumlength(0);
-    sub_proto_type.set_precision(0);
-    sub_proto_type.set_scale(0);
-
-    sub_proto_type.set_kind(orc_type);
-    *file_footer_.add_types() = sub_proto_type;
+    auto sub_proto_type = file_footer_.add_types();
+    sub_proto_type->set_maximumlength(0);
+    sub_proto_type->set_precision(0);
+    sub_proto_type->set_scale(0);
+    sub_proto_type->set_kind(orc_type);
 
     file_footer_.mutable_types(0)->add_subtypes(i);
   }
@@ -298,11 +291,12 @@ void OrcWriter::WriteFileFooter(BufferedOutputStream *buffer_mem_stream) {
   file_footer_.set_contentlength(current_offset_ - file_footer_.headerlength());
   file_footer_.set_numberofrows(total_rows_);
 
-  for (size_t i = 0; i < column_types_.size(); i++) {
-    orc::proto::ColumnStatistics pb_stats;
-    pb_stats.set_hasnull(true);
-    pb_stats.set_numberofvalues((*pax_columns_)[i]->GetRows());
-    *file_footer_.add_statistics() = pb_stats;
+  for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
+    auto pb_stats = file_footer_.add_statistics();
+    // FIXME(jiaqizho): the statistics in file footer is not accurate
+    // but statistics in stripe stats is accurate
+    pb_stats->set_hasnull(false);
+    pb_stats->set_numberofvalues((*pax_columns_)[i]->GetRows());
   }
 
   buffer_mem_stream->StartBufferOutRecord();
@@ -400,6 +394,8 @@ void OrcReader::ReadFooter(size_t footer_offset, size_t footer_len) {
              cbdb::CException::ExType::ExTypeIOError);
 
   BuildProtoTypes();
+  current_nulls_ = new uint32[column_types_.size()];
+  memset(current_nulls_, 0, column_types_.size() * sizeof(uint32));
 }
 
 void OrcReader::ReadPostScript(size_t file_len, uint64 post_script_len) {
@@ -455,8 +451,23 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
 
   streams_size = stripe_footer.streams_size();
 
-  for (auto &orc_type : column_types_) {
-    switch (orc_type) {
+  for (size_t index = 0; index < column_types_.size(); index++) {
+    DataBuffer<bool> *non_null_bitmap = nullptr;
+    bool has_null = stripe_info->stripe_statistics.colstats(index).hasnull();
+    if (has_null) {
+      uint64 non_null_length = 0;
+      const orc::proto::Stream &non_null_stream =
+          stripe_footer.streams(streams_index++);
+      non_null_length = static_cast<uint32>(non_null_stream.length());
+
+      non_null_bitmap = new DataBuffer<bool>(
+          reinterpret_cast<bool *>(data_buffer->GetAvailableBuffer()),
+          non_null_length, false, false);
+      non_null_bitmap->BrushAll();
+      data_buffer->Brush(non_null_length);
+    }
+
+    switch (column_types_[index]) {
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
         uint32 column_lens_size = 0;
         uint64 column_lens_len = 0;
@@ -583,6 +594,13 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
         Assert(!"should't be here, non-implemented type");
         break;
     }
+
+    // fill nulls data buffer
+    if (has_null) {
+      Assert(pax_columns->GetColumns() > 0 && non_null_bitmap);
+      auto last_column = (*pax_columns)[pax_columns->GetColumns() - 1];
+      last_column->SetNulls(non_null_bitmap);
+    }
   }
 
   Assert(streams_size == streams_index);
@@ -607,6 +625,9 @@ OrcReader::StripeInformation *OrcReader::GetStripeInfo(size_t index) const {
   stripe_info->stripe_footer_start_ =
       stripeInfo.offset() + stripeInfo.indexlength() + stripeInfo.datalength();
 
+  stripe_info->stripe_statistics =
+      meta_data_.stripestats(static_cast<int>(index));
+
   return stripe_info;
 }
 
@@ -622,10 +643,14 @@ void OrcReader::ResetCurrentReading() {
   current_stripe_index_ = 0;
   current_row_index_ = 0;
   current_offset_ = 0;
+  memset(current_nulls_, 0, column_types_.size() * sizeof(uint32));
 }
 
 void OrcReader::Close() {
+  Assert(current_nulls_);
   ResetCurrentReading();
+  delete[] current_nulls_;
+  current_nulls_ = nullptr;
   file_->Close();
 }
 
@@ -646,6 +671,9 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
 
       working_pax_columns_ = ReadStripe(current_stripe_index_++);
       current_row_index_ = 0;
+      for (size_t i = 0; i < column_types_.size(); i++) {
+        current_nulls_[i] = 0;
+      }
     }
 
     column_numbers = working_pax_columns_->GetColumns();
@@ -673,7 +701,23 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
 
   for (size_t index = 0; index < column_numbers; index++) {
     PaxColumn *column = ((*working_pax_columns_)[index]);
-    std::tie(buffer, buffer_len) = column->GetBuffer(current_row_index_);
+
+    // set default is not null
+    slot->tts_isnull[index] = false;
+    if (column->HasNull()) {
+      auto null_bitmap = column->GetNulls();
+      if (!(*null_bitmap)[current_row_index_]) {
+        slot->tts_isnull[index] = true;
+        current_nulls_[index]++;
+        tts_index++;
+        continue;
+      }
+    }
+
+    Assert(current_row_index_ >= current_nulls_[index]);
+
+    std::tie(buffer, buffer_len) =
+        column->GetBuffer(current_row_index_ - current_nulls_[index]);
     switch (column->GetPaxColumnTypeInMem()) {
       case TYPE_NON_FIXED: {
         slot->tts_values[tts_index++] = PointerGetDatum(buffer);
@@ -752,6 +796,19 @@ void OrcReader::Seek(size_t offset) {
         stripe_nums, current_stripe_index_, row_nums, current_offset_, offset);
     ResetCurrentReading();
     CBDB_RAISE(cbdb::CException::ExType::ExTypeOutOfRange);
+  }
+
+  for (size_t i = 0; i < working_pax_columns_->GetColumns(); i++) {
+    auto column = (*working_pax_columns_)[i];
+    if (column->HasNull()) {
+      auto null_data_buffer = column->GetNulls();
+      for (size_t j = 0; j < null_data_buffer->Used() || j < current_row_index_;
+           j++) {
+        if (!(*null_data_buffer)[j]) {
+          current_nulls_[i]++;
+        }
+      }
+    }
   }
 }
 

@@ -154,6 +154,9 @@ class OrcReader : public MicroPartitionReader {
 
     uint64 index_length_;
     uint64 stripe_footer_start_;
+
+    // refine column statistics if we do need it
+    ::orc::proto::StripeStatistics stripe_statistics;
   };
 
   ~OrcReader() { delete file_; }
@@ -222,6 +225,8 @@ class OrcReader : public MicroPartitionReader {
   size_t current_stripe_index_ = 0;
   size_t current_row_index_ = 0;
   uint64 current_offset_ = 0;
+
+  uint32 *current_nulls_ = nullptr;
 
   orc::proto::PostScript post_script_;
   orc::proto::Footer file_footer_;
