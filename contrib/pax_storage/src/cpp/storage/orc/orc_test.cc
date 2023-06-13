@@ -118,7 +118,7 @@ class OrcTest : public ::testing::Test {
           cbdb::DatumFromCString(column_buff, COLUMN_SIZE);
       tuple_slot->tts_values[1] =
           cbdb::DatumFromCString(column_buff + COLUMN_SIZE, COLUMN_SIZE);
-      tuple_slot->tts_values[2] = Int32GetDatum(INT32_COLUMN_VALUE);
+      tuple_slot->tts_values[2] = cbdb::Int32ToDatum(INT32_COLUMN_VALUE);
       tuple_slot->tts_isnull = fake_is_null;
     }
 
@@ -136,12 +136,21 @@ class OrcTest : public ::testing::Test {
         cbdb::Palloc0(sizeof(TupleTableSlot)));
     auto *tts_values =
         reinterpret_cast<Datum *>(cbdb::Palloc0(sizeof(Datum) * COLUMN_NUMS));
-    for (int i = 0; i < COLUMN_NUMS; i++) {
-      tuple_desc->attrs[i] = {
-          .attlen = sizeof(bool),
-          .attbyval = true,
-      };
-    }
+    tuple_desc->natts = COLUMN_NUMS;
+    tuple_desc->attrs[0] = {
+        .attlen = -1,
+        .attbyval = false,
+    };
+
+    tuple_desc->attrs[1] = {
+        .attlen = -1,
+        .attbyval = false,
+    };
+
+    tuple_desc->attrs[2] = {
+        .attlen = 4,
+        .attbyval = true,
+    };
     tuple_slot->tts_tupleDescriptor = tuple_desc;
     tuple_slot->tts_values = tts_values;
     tuple_slot->tts_isnull = fake_is_null;
@@ -173,7 +182,7 @@ class OrcTest : public ::testing::Test {
     auto *column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[1]);
     auto *column3 = reinterpret_cast<PaxCommColumn<int32> *>((*columns)[2]);
 
-    EXPECT_EQ(1, column1->GetRows());
+    EXPECT_EQ(1, column1->GetNonNullRows());
     char *column1_buffer = column1->GetBuffer(0).first;
     EXPECT_EQ(0,
               std::memcmp(column1_buffer + VARHDRSZ, column_buff, COLUMN_SIZE));
@@ -191,7 +200,7 @@ class OrcTest : public ::testing::Test {
     EXPECT_EQ(read_data, column1_buffer + VARHDRSZ);
 
     char *column2_buffer = column2->GetBuffer(0).first;
-    EXPECT_EQ(1, column2->GetRows());
+    EXPECT_EQ(1, column2->GetNonNullRows());
     EXPECT_EQ(0,
               std::memcmp(column2_buffer + VARHDRSZ, column_buff, COLUMN_SIZE));
     vl = (struct varlena *)DatumGetPointer(column2_buffer);
@@ -348,12 +357,12 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   PaxNonFixedColumn *column2 =
       reinterpret_cast<PaxNonFixedColumn *>((*columns_stripe)[1]);
 
-  EXPECT_EQ(2, column1->GetRows());
+  EXPECT_EQ(2, column1->GetNonNullRows());
   EXPECT_EQ(0, std::memcmp(column1->GetBuffer(0).first + VARHDRSZ, column_buff,
                            COLUMN_SIZE));
   EXPECT_EQ(0, std::memcmp(column1->GetBuffer(1).first + VARHDRSZ, column_buff,
                            COLUMN_SIZE));
-  EXPECT_EQ(2, column2->GetRows());
+  EXPECT_EQ(2, column2->GetNonNullRows());
   EXPECT_EQ(0, std::memcmp(column2->GetBuffer(0).first + VARHDRSZ, column_buff,
                            COLUMN_SIZE));
   EXPECT_EQ(0, std::memcmp(column2->GetBuffer(1).first + VARHDRSZ, column_buff,
@@ -736,7 +745,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
 
   GenFakeBuffer(column_buff_origin, COLUMN_SIZE);
 
-  EXPECT_EQ(2, column1->GetRows());
+  EXPECT_EQ(2, column1->GetNonNullRows());
   EXPECT_EQ(0, std::memcmp(column1->GetBuffer(0).first + VARHDRSZ,
                            column_buff_origin, COLUMN_SIZE));
   EXPECT_EQ(0, std::memcmp(column1->GetBuffer(1).first + VARHDRSZ,
@@ -748,6 +757,234 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   DeleteCTupleSlot(tuple_slot);
   delete writer;
   delete reader;
+}
+
+TEST_F(OrcTest, WriteReadWithNullField) {
+  char column_buff[COLUMN_SIZE];
+  CTupleSlot *ctuple_slot = CreateFakeCTupleSlot();
+  auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto *file_ptr = local_fs->Open(file_name);
+  EXPECT_NE(nullptr, file_ptr);
+
+  GenFakeBuffer(column_buff, COLUMN_SIZE);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+  OrcWriter::WriterOptions writer_options;
+
+  auto *writer = OrcWriter::CreateWriter(file_ptr, types, writer_options);
+
+  // str str int
+  // null null int
+  // str str null
+  // null null null
+  writer->WriteTuple(ctuple_slot);
+
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = false;
+  writer->WriteTuple(ctuple_slot);
+
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = false;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = false;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = true;
+  writer->WriteTuple(ctuple_slot);
+
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = true;
+  writer->WriteTuple(ctuple_slot);
+
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name);
+
+  auto *reader =
+      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
+
+  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  tuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
+
+  reader->ReadTuple(tuple_slot_empty);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[1]);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2]);
+
+  reader->ReadTuple(tuple_slot_empty);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[1]);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2]);
+  EXPECT_EQ(
+      cbdb::DatumToInt32(tuple_slot_empty->GetTupleTableSlot()->tts_values[2]),
+      INT32_COLUMN_VALUE);
+
+  reader->ReadTuple(tuple_slot_empty);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[1]);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2]);
+  auto vl = (struct varlena *)DatumGetPointer(
+      tuple_slot_empty->GetTupleTableSlot()->tts_values[0]);
+  int read_len = VARSIZE(vl);
+  char *read_data = VARDATA_ANY(vl);
+  EXPECT_EQ(read_len, COLUMN_SIZE + VARHDRSZ);
+  EXPECT_EQ(0, std::memcmp(read_data, column_buff, COLUMN_SIZE));
+
+  vl = (struct varlena *)DatumGetPointer(
+      tuple_slot_empty->GetTupleTableSlot()->tts_values[1]);
+  read_len = VARSIZE(vl);
+  read_data = VARDATA_ANY(vl);
+  EXPECT_EQ(read_len, COLUMN_SIZE + VARHDRSZ);
+  EXPECT_EQ(0, std::memcmp(read_data, column_buff, COLUMN_SIZE));
+
+  reader->ReadTuple(tuple_slot_empty);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[1]);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2]);
+
+  reader->Close();
+
+  DeleteCTupleSlot(tuple_slot_empty);
+  DeleteCTupleSlot(ctuple_slot);
+  delete reader;
+  delete writer;
+}
+
+TEST_F(OrcTest, WriteReadWithBoundNullField) {
+  char column_buff[COLUMN_SIZE];
+  CTupleSlot *ctuple_slot = CreateFakeCTupleSlot();
+  auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto *file_ptr = local_fs->Open(file_name);
+  EXPECT_NE(nullptr, file_ptr);
+
+  GenFakeBuffer(column_buff, COLUMN_SIZE);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+  OrcWriter::WriterOptions writer_options;
+
+  auto *writer = OrcWriter::CreateWriter(file_ptr, types, writer_options);
+
+  // null null null
+  // str str int
+  // null null null
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = true;
+  writer->WriteTuple(ctuple_slot);
+
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = false;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = false;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = false;
+  writer->WriteTuple(ctuple_slot);
+
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = true;
+  writer->WriteTuple(ctuple_slot);
+
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name);
+
+  auto *reader =
+      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
+
+  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  tuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
+
+  reader->ReadTuple(tuple_slot_empty);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[1]);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2]);
+
+  reader->ReadTuple(tuple_slot_empty);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[1]);
+  EXPECT_FALSE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2]);
+
+  auto vl = (struct varlena *)DatumGetPointer(
+      tuple_slot_empty->GetTupleTableSlot()->tts_values[0]);
+  int read_len = VARSIZE(vl);
+  char *read_data = VARDATA_ANY(vl);
+  EXPECT_EQ(read_len, COLUMN_SIZE + VARHDRSZ);
+  EXPECT_EQ(0, std::memcmp(read_data, column_buff, COLUMN_SIZE));
+
+  vl = (struct varlena *)DatumGetPointer(
+      tuple_slot_empty->GetTupleTableSlot()->tts_values[1]);
+  read_len = VARSIZE(vl);
+  read_data = VARDATA_ANY(vl);
+  EXPECT_EQ(read_len, COLUMN_SIZE + VARHDRSZ);
+  EXPECT_EQ(0, std::memcmp(read_data, column_buff, COLUMN_SIZE));
+  EXPECT_EQ(DatumGetInt32(tuple_slot_empty->GetTupleTableSlot()->tts_values[2]),
+            INT32_COLUMN_VALUE);
+
+  reader->ReadTuple(tuple_slot_empty);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[1]);
+  EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2]);
+
+  reader->Close();
+
+  DeleteCTupleSlot(tuple_slot_empty);
+  DeleteCTupleSlot(ctuple_slot);
+  delete reader;
+  delete writer;
+}
+
+TEST_F(OrcTest, WriteReadWithALLNullField) {
+  CTupleSlot *ctuple_slot = CreateFakeCTupleSlot();
+  auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto *file_ptr = local_fs->Open(file_name);
+  EXPECT_NE(nullptr, file_ptr);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+  OrcWriter::WriterOptions writer_options;
+
+  auto *writer = OrcWriter::CreateWriter(file_ptr, types, writer_options);
+
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = true;
+  ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = true;
+  for (size_t i = 0; i < 1000; i++) {
+    writer->WriteTuple(ctuple_slot);
+  }
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name);
+
+  auto *reader =
+      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
+
+  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  tuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
+  for (size_t i = 0; i < 1000; i++) {
+    reader->ReadTuple(tuple_slot_empty);
+    EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]);
+    EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[1]);
+    EXPECT_TRUE(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2]);
+  }
+  reader->Close();
+
+  DeleteCTupleSlot(tuple_slot_empty);
+  DeleteCTupleSlot(ctuple_slot);
+  delete reader;
+  delete writer;
 }
 
 }  // namespace pax::tests
