@@ -133,6 +133,8 @@ class DataBuffer : public BlockBufferBase {
 
   // Direct write a element into available buffer
   // Should call `Brush` after write
+  void Write(T value);
+
   void Write(T* ptr, size_t size);
 
   void Write(const T* ptr, size_t size);
@@ -171,5 +173,6 @@ extern template class DataBuffer<int32>;
 extern template class DataBuffer<int64>;
 extern template class DataBuffer<float>;
 extern template class DataBuffer<double>;
+extern template class DataBuffer<bool>;
 
 };  // namespace pax

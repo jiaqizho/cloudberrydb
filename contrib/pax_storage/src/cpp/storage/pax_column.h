@@ -26,7 +26,7 @@ class PaxColumn {
  public:
   PaxColumn();
 
-  virtual ~PaxColumn() = default;
+  virtual ~PaxColumn();
 
   // Get the column in memory type
   virtual PaxColumnTypeInMem GetPaxColumnTypeInMem() const;
@@ -41,8 +41,11 @@ class PaxColumn {
   // Get buffer by position
   virtual std::pair<char *, size_t> GetBuffer(size_t position) = 0;
 
-  // Get rows number from column
-  virtual size_t GetRows() const = 0;
+  // Get all rows number(contain null) from column
+  virtual size_t GetRows();
+
+  // Get rows number(not null) from column
+  virtual size_t GetNonNullRows() const = 0;
 
   // Append new filed into current column
   virtual void Append(char *buffer, size_t size) = 0;
@@ -50,14 +53,22 @@ class PaxColumn {
   // Contain null filed or not
   virtual bool HasNull();
 
+  // Set null bitmap
+  virtual void SetNulls(DataBuffer<bool> *null_bitmap);
+
+  // Get null bitmaps
+  DataBuffer<bool> *GetNulls() const;
+
+  // Append a null filed into last position
+  virtual void AppendNull();
+
   // Estimated memory size from current column
   virtual size_t EstimatedSize() const = 0;
 
  protected:
-  // TODO(jiaqizho): support not null implements
-  std::vector<bool> non_null_;
-  // whether there are any null values
-  bool has_nulls_;
+  // null field bit ma
+  DataBuffer<bool> *null_bitmap_;
+
   // whether the vector batch is encoded
   bool is_encoded_;
 
@@ -79,11 +90,11 @@ class PaxCommColumn : public PaxColumn {
 
   PaxColumnTypeInMem GetPaxColumnTypeInMem() const override;
 
-  size_t GetRows() const override;
-
   void Append(char *buffer, size_t size) override;
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
+
+  size_t GetNonNullRows() const override;
 
   void Clear() override;
 
@@ -129,20 +140,17 @@ class PaxNonFixedColumn : public PaxColumn {
 
   std::pair<char *, size_t> GetBuffer() override;
 
-  size_t GetRows() const override;
-
   size_t EstimatedSize() const override;
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
+
+  size_t GetNonNullRows() const override;
 
   DataBuffer<int64> *GetLengthBuffer() const;
 
   bool IsMemTakeOver() const;
 
   void SetMemTakeOver(bool take_over);
-#ifndef RUN_GTEST
- protected:  // NOLINT
-#endif
 
  protected:
   size_t estimated_size_;
@@ -175,8 +183,6 @@ class PaxColumns : public PaxColumn {
 
   void Set(DataBuffer<char> *data);
 
-  size_t GetRows() const override;
-
   size_t EstimatedSize() const override;
 
   // Get number of column in columns
@@ -187,6 +193,8 @@ class PaxColumns : public PaxColumn {
 
   // Get the combine buffer of single column
   std::pair<char *, size_t> GetBuffer(size_t position) override;
+
+  size_t GetNonNullRows() const override;
 
   using PreCalcBufferFunc =
       std::function<void(const orc::proto::Stream_Kind &, size_t, size_t)>;
