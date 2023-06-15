@@ -79,6 +79,8 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
   CBDB_CHECK(pax_columns_->GetColumns() == static_cast<size_t>(n),
              cbdb::CException::ExType::ExTypeSchemaNotMatch);
 
+  pax_columns_->AddRows(1);
+
   for (int i = 0; i < n; i++) {
     type_len = table_desc->attrs[i].attlen;
     type_by_val = table_desc->attrs[i].attbyval;
@@ -152,8 +154,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
   size_t data_len = 0;
   size_t number_of_row = 0;
 
-  Assert(pax_columns_->GetColumns() != 0);
-  number_of_row = (*pax_columns_)[0]->GetRows();
+  number_of_row = pax_columns_->GetRows();
   stripe_rows_ = number_of_row;
 
   // No need add stripe if nothing in memeory
@@ -419,6 +420,14 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
   size_t streams_index = 0;
   size_t streams_size = 0;
 
+  pax_columns->AddRows(stripe_info->numbers_of_row_);
+
+  defer({ delete stripe_info; });
+
+  if (unlikely(stripe_info->footer_length_ == 0)) {
+    return pax_columns;
+  }
+
   if (reused_buffer_) {
     while (reused_buffer_->Capacity() < stripe_info->footer_length_) {
       reused_buffer_->ReSize(reused_buffer_->Capacity() / 2 * 3);
@@ -432,8 +441,6 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
   stripe_footer_offset = stripe_info->data_length_ + stripe_info->index_length_;
 
   pax_columns->Set(data_buffer);
-
-  defer({ delete stripe_info; });
 
   Assert(stripe_info->index_length_ == 0);
   file_->PRead(data_buffer->GetBuffer(), stripe_info->footer_length_,
@@ -450,6 +457,10 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
   }
 
   streams_size = stripe_footer.streams_size();
+
+  if (unlikely(streams_size == 0 && column_types_.empty())) {
+    return pax_columns;
+  }
 
   for (size_t index = 0; index < column_types_.size(); index++) {
     DataBuffer<bool> *non_null_bitmap = nullptr;
@@ -604,7 +615,6 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
   }
 
   Assert(streams_size == streams_index);
-
   return pax_columns;
 }
 
@@ -679,13 +689,12 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
     column_numbers = working_pax_columns_->GetColumns();
 
     // schema not match
-    if (unlikely(column_numbers == 0 ||
-                 column_numbers !=
-                     static_cast<size_t>(slot->tts_tupleDescriptor->natts))) {
+    if (unlikely(column_numbers !=
+                 static_cast<size_t>(slot->tts_tupleDescriptor->natts))) {
       CBDB_RAISE(cbdb::CException::ExType::ExTypeSchemaNotMatch);
     }
 
-    row_nums = (*working_pax_columns_)[0]->GetRows();
+    row_nums = working_pax_columns_->GetRows();
 
     // skip the empty stripe or current stripe already consumed
     if (unlikely(row_nums == 0) || current_row_index_ == row_nums) {
