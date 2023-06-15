@@ -141,13 +141,12 @@ ERROR:  more than one row returned by a subquery used as an expression
 -- set to null if no rows supplied:
 UPDATE update_test SET (b,a) = (select a+1,b from update_test where a = 1000)
   WHERE a = 11;
-ERROR:  /home/gpadmin/workspace/cbdb/contrib/pax_storage/src/cpp/storage/orc/orc.cc:90 Not implements in cpp (pax_access_handle.cc:170)
 SELECT * FROM update_test;
  a  |  b  |  c  
 ----+-----+-----
  41 |  12 | car
  42 |  12 | car
- 11 |  42 | 
+    |     | 
  21 | 101 | 
 (4 rows)
 
@@ -173,7 +172,7 @@ SELECT a, b, char_length(c) FROM update_test;
  a  |  b  | char_length 
 ----+-----+-------------
  21 | 100 |           0
- 11 |  42 |           0
+    |     |           0
  41 |  12 |       10000
  42 |  12 |       10000
 (4 rows)
@@ -211,9 +210,9 @@ UPDATE update_test t
 SELECT a, b, char_length(c) FROM update_test;
   a  | b  | char_length 
 -----+----+-------------
+     |    |           0
   12 | 41 |       10000
   12 | 42 |       10000
-  42 | 11 |           0
  100 | 21 |           0
 (4 rows)
 

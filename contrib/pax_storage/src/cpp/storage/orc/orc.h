@@ -66,7 +66,6 @@ class OrcWriter : public MicroPartitionWriter {
   // };
   static inline std::vector<orc::proto::Type_Kind> BuildSchema(TupleDesc desc) {
     std::vector<orc::proto::Type_Kind> type_kinds;
-    Assert(desc->natts > 0);
     for (int i = 0; i < desc->natts; i++) {
       auto *attr = &desc->attrs[i];
       if (attr->attbyval) {
