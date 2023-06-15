@@ -204,6 +204,9 @@ class PaxColumns : public PaxColumn {
   // different column
   virtual DataBuffer<char> *GetDataBuffer(const PreCalcBufferFunc &func);
 
+  inline void AddRows(size_t row_num) { row_nums_ += row_num; }
+  inline size_t GetRows() override { return row_nums_; }
+
  protected:
   virtual size_t MeasureDataBuffer(const PreCalcBufferFunc &func);
 
@@ -212,6 +215,7 @@ class PaxColumns : public PaxColumn {
  protected:
   std::vector<PaxColumn *> columns_;
   DataBuffer<char> *data_;
+  size_t row_nums_;
 };
 
 };  // namespace pax
