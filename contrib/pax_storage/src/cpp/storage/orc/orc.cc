@@ -802,8 +802,8 @@ void OrcReader::Seek(size_t offset) {
     auto column = (*working_pax_columns_)[i];
     if (column->HasNull()) {
       auto null_data_buffer = column->GetNulls();
-      for (size_t j = 0; j < null_data_buffer->Used() || j < current_row_index_;
-           j++) {
+      Assert(current_row_index_ <= null_data_buffer->Used());
+      for (size_t j = 0; j < current_row_index_; j++) {
         if (!(*null_data_buffer)[j]) {
           current_nulls_[i]++;
         }
