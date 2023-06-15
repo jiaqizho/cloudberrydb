@@ -264,7 +264,8 @@ void PaxNonFixedColumn::SetMemTakeOver(bool take_over) {
   lengths_->SetMemTakeOver(take_over);
 }
 
-PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types) : PaxColumn() {
+PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types)
+    : PaxColumn(), row_nums_(0) {
   data_ = new DataBuffer<char>(0);
   for (auto &type : types) {
     switch (type) {
@@ -301,7 +302,9 @@ PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types) : PaxColumn() {
   }
 }
 
-PaxColumns::PaxColumns() : PaxColumn() { data_ = new DataBuffer<char>(0); }
+PaxColumns::PaxColumns() : PaxColumn(), row_nums_(0) {
+  data_ = new DataBuffer<char>(0);
+}
 
 PaxColumns::~PaxColumns() {
   for (auto *column : columns_) {
@@ -311,6 +314,7 @@ PaxColumns::~PaxColumns() {
 }
 
 void PaxColumns::Clear() {
+  row_nums_ = 0;
   for (auto *column : columns_) {
     column->Clear();
   }
@@ -425,8 +429,6 @@ size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
 void PaxColumns::CombineDataBuffer() {
   char *buffer = nullptr;
   size_t buffer_len = 0;
-
-  Assert(data_->Capacity() != 0);
 
   for (auto *column : columns_) {
     if (column->HasNull()) {

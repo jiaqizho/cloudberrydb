@@ -53,7 +53,7 @@ class BlockBufferBase {
 
   inline void BrushBack(size_t size) {
     size_t new_offset = Used() - size;
-    Assert(new_offset > 0);
+    CBDB_CHECK(new_offset >= 0, cbdb::CException::ExType::ExTypeOutOfRange);
     block_pos_ = block_buffer_.Start() + new_offset;
   }
 
