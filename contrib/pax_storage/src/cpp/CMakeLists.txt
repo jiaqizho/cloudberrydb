@@ -28,7 +28,7 @@ set(PROTOBUF_CONFIGURE CONFIGURE_COMMAND "${THIRDPARTY_CONFIGURE_COMMAND}" ${PRO
                                              "${CMAKE_CURRENT_BINARY_DIR}/protobuf_ep-prefix/src/protobuf_ep/cmake")
 
 ExternalProject_Add(protobuf_ep
-    URL "https://github.com/google/protobuf/archive/v3.5.1.tar.gz"
+    URL "https://artifactory.hashdata.xyz/artifactory/utility/protobuf-3.5.1.tar.gz"
     ${PROTOBUF_CONFIGURE}
     ${THIRDPARTY_LOG_OPTIONS}
     BUILD_BYPRODUCTS "${PROTOBUF_STATIC_LIB}" "${PROTOC_STATIC_LIB}")
