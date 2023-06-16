@@ -757,8 +757,9 @@ static void pax_validate_compresstype(const char *value) {
 }
 
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
-
+static ExecutorStart_hook_type prev_ExecutorStart = NULL;
 static ExecutorEnd_hook_type prev_ExecutorEnd = NULL;
+static uint32 executor_run_ref_count = 0;
 
 void pax_shmem_init() {
   if (prev_shmem_startup_hook) prev_shmem_startup_hook();
@@ -766,13 +767,38 @@ void pax_shmem_init() {
   paxc::pax_shmem_startup();
 }
 
+static void pax_ExecutorStart(QueryDesc *queryDesc, int eflags) {
+  if (prev_ExecutorStart)
+    prev_ExecutorStart(queryDesc, eflags);
+  else
+    standard_ExecutorStart(queryDesc, eflags);
+
+  executor_run_ref_count++;
+}
+
 static void pax_ExecutorEnd(QueryDesc *queryDesc) {
-  paxc::release_command_resource();
   if (prev_ExecutorEnd)
     prev_ExecutorEnd(queryDesc);
   else
     standard_ExecutorEnd(queryDesc);
+  executor_run_ref_count--;
+  Assert(executor_run_ref_count >= 0);
+  if (executor_run_ref_count == 0) {
+    paxc::release_command_resource();
+  }
 }
+
+static void pax_xact_callback(XactEvent event, void *arg) {
+  if (event == XACT_EVENT_COMMIT || event == XACT_EVENT_ABORT ||
+      event == XACT_EVENT_PARALLEL_ABORT ||
+      event == XACT_EVENT_PARALLEL_COMMIT) {
+    if (executor_run_ref_count > 0) {
+      executor_run_ref_count = 0;
+      paxc::release_command_resource();
+    }
+  }
+}
+
 void _PG_init(void) {
   if (!process_shared_preload_libraries_in_progress) {
     ereport(ERROR, (errmsg("pax must be loaded via shared_preload_libraries")));
@@ -784,11 +810,16 @@ void _PG_init(void) {
   prev_shmem_startup_hook = shmem_startup_hook;
   shmem_startup_hook = pax_shmem_init;
 
+  prev_ExecutorStart = ExecutorStart_hook;
+  ExecutorStart_hook = pax_ExecutorStart;
+
   prev_ExecutorEnd = ExecutorEnd_hook;
   ExecutorEnd_hook = pax_ExecutorEnd;
 
   ext_dml_init_hook = pax::CCPaxAccessMethod::ExtDmlInit;
   ext_dml_finish_hook = pax::CCPaxAccessMethod::ExtDmlFini;
+
+  RegisterXactCallback(pax_xact_callback, NULL);
 
   self_relopt_kind = add_reloption_kind();
   add_string_reloption(self_relopt_kind, "storage_format", "pax storage format",
