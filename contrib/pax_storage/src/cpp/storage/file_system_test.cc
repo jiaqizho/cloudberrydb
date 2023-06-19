@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
-
 #include "storage/file_system.h"
+
+#include <gtest/gtest.h>
 
 #include "comm/singleton.h"
 #include "storage/local_file_system.h"
@@ -12,29 +12,29 @@ class LocalFileSystemTest : public ::testing::Test {
   void SetUp() override {}
 
   void TearDown() override {
-    pax::Singleton<LocalFileSystem>::GetInstance()->Delete(file_name);
+    pax::Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
   }
 
  protected:
-  const std::string file_name = "./test.file";
+  const std::string file_name_ = "./test.file";
 };
 
-TEST_F(LocalFileSystemTest, open) {
+TEST_F(LocalFileSystemTest, Open) {
   auto local_fs = pax::Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name);
+  auto file_ptr = local_fs->Open(file_name_);
   EXPECT_NE(nullptr, file_ptr);
 
   file_ptr->Close();
   delete file_ptr;
 }
 
-TEST_F(LocalFileSystemTest, build_path) {
+TEST_F(LocalFileSystemTest, BuildPath) {
   auto local_fs = pax::Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name);
+  auto file_ptr = local_fs->Open(file_name_);
   ASSERT_NE(nullptr, file_ptr);
 
   auto path = local_fs->BuildPath(file_ptr);
@@ -44,11 +44,11 @@ TEST_F(LocalFileSystemTest, build_path) {
   delete file_ptr;
 }
 
-TEST_F(LocalFileSystemTest, write_read) {
+TEST_F(LocalFileSystemTest, WriteRead) {
   auto local_fs = pax::Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name);
+  auto file_ptr = local_fs->Open(file_name_);
   ASSERT_NE(nullptr, file_ptr);
 
   auto write_size = file_ptr->Write("abc", 3);
@@ -56,7 +56,7 @@ TEST_F(LocalFileSystemTest, write_read) {
 
   file_ptr->Flush();
   file_ptr->Close();
-  file_ptr = local_fs->Open(file_name);
+  file_ptr = local_fs->Open(file_name_);
   ASSERT_NE(nullptr, file_ptr);
 
   char buff[10] = {0};

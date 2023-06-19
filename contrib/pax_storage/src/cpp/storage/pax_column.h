@@ -16,11 +16,7 @@ namespace pax {
 #define DEFAULT_CAPACITY 2048
 
 // Used to mapping pg_type
-enum PaxColumnTypeInMem {
-  TYPE_INVALID = 1,
-  TYPE_FIXED = 2,
-  TYPE_NON_FIXED = 3
-};
+enum PaxColumnTypeInMem { kTypeInvalid = 1, kTypeFixed = 2, kTypeNonFixed = 3 };
 
 class PaxColumn {
  public:
@@ -82,7 +78,7 @@ class PaxCommColumn : public PaxColumn {
  public:
   explicit PaxCommColumn(uint64 capacity);
 
-  virtual ~PaxCommColumn();
+  ~PaxCommColumn() override;
 
   PaxCommColumn();
 
@@ -127,7 +123,7 @@ class PaxNonFixedColumn : public PaxColumn {
 
   PaxNonFixedColumn();
 
-  ~PaxNonFixedColumn();
+  ~PaxNonFixedColumn() override;
 
   void Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
            size_t total_size);
@@ -159,7 +155,6 @@ class PaxNonFixedColumn : public PaxColumn {
   // orc needs to serialize int64 array
   DataBuffer<int64> *lengths_;
   std::vector<uint64> offsets_;
-  uint64 capacity_;
 };
 
 // PaxColumns are similar to the kind_struct in orc
@@ -171,7 +166,7 @@ class PaxColumns : public PaxColumn {
 
   PaxColumns();
 
-  ~PaxColumns();
+  ~PaxColumns() override;
 
   void Clear() override;
 

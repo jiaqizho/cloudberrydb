@@ -30,42 +30,41 @@ namespace pax {
 // #define PAX_TUPLE_BIT_IN_BI_LO_BITS (32 - PAX_BLOCK_BIT_SIZE)
 // #define PAX_TUPLE_BIT_IN_BI_LO_MASK (0xFFFF >> PAX_BLOCK_BIT_IN_BI_LO_BITS)
 
-#define PAXTupleId_MaxRowNum INT64CONST((1 << (PAX_TUPLE_BIT_SIZE - 1)) - 1)
+#define PAX_TUPLE_ID_MAX_ROW_NUM INT64CONST((1 << (PAX_TUPLE_BIT_SIZE - 1)) - 1)
 
 // | block number (24 bits) | tuple number (23 bits) |
 // | (16 bits) | 8bit       |8bit |1bit |7bit | 8bit |
 struct PaxItemPointer final {
-  uint16 bytes_0_1_;
-  uint16 bytes_2_3_;
-  uint16 bytes_4_5_;
+  uint16 bytes_0_1;
+  uint16 bytes_2_3;
+  uint16 bytes_4_5;
   PaxItemPointer() {
-    bytes_0_1_ = 0;
-    bytes_2_3_ = 0;
-    bytes_4_5_ = 0;
+    bytes_0_1 = 0;
+    bytes_2_3 = 0;
+    bytes_4_5 = 0;
   }
-  PaxItemPointer(uint8_t table_no, uint32_t block_number,
-                 uint32_t tuple_number) {
-    bytes_0_1_ = (table_no << BLOCK_NO_BITS_IN_BYTES_0_1);
-    bytes_0_1_ |= (block_number >> BLOCK_NO_BITS_IN_BYTES_2_3);
+  PaxItemPointer(uint8 table_no, uint32 block_number, uint32 tuple_number) {
+    bytes_0_1 = (table_no << BLOCK_NO_BITS_IN_BYTES_0_1);
+    bytes_0_1 |= (block_number >> BLOCK_NO_BITS_IN_BYTES_2_3);
 
     // |7bit 9bit|11 bit 5 biy| 16bit|
 
-    bytes_2_3_ |= (block_number & BLOCK_NO_MASK_IN_BYTES_2_3)
-                  << TUPLE_NO_BITS_IN_BYTES_2_3;
-    bytes_2_3_ = (tuple_number >> 15);
+    bytes_2_3 |= (block_number & BLOCK_NO_MASK_IN_BYTES_2_3)
+                 << TUPLE_NO_BITS_IN_BYTES_2_3;
+    bytes_2_3 = (tuple_number >> 15);
 
-    bytes_4_5_ = (tuple_number & 0x7FFF) + 1;
+    bytes_4_5 = (tuple_number & 0x7FFF) + 1;
   }
 
-  explicit PaxItemPointer(const PaxItemPointer* tid) {
-    bytes_0_1_ = tid->bytes_0_1_;
-    bytes_2_3_ = tid->bytes_2_3_;
-    bytes_4_5_ = tid->bytes_4_5_;
+  explicit PaxItemPointer(const PaxItemPointer *tid) {
+    bytes_0_1 = tid->bytes_0_1;
+    bytes_2_3 = tid->bytes_2_3;
+    bytes_4_5 = tid->bytes_4_5;
   }
 
-  inline bool Valid() const { return bytes_4_5_ != 0; }
-  static ItemPointerData GetTupleId(uint8_t table_no, uint32_t block_number,
-                                    uint32_t tuple_number) {
+  inline bool Valid() const { return bytes_4_5 != 0; }
+  static ItemPointerData GetTupleId(uint8 table_no, uint32 block_number,
+                                    uint32 tuple_number) {
     ItemPointerData tid;
     // table_no in bi_hi
     tid.ip_blkid.bi_hi = (table_no << BLOCK_NO_BITS_IN_BYTES_0_1);
@@ -85,27 +84,25 @@ struct PaxItemPointer final {
     return tid;
   }
 
-  uint8_t GetTableNo() const {
-    return bytes_0_1_ >> BLOCK_NO_BITS_IN_BYTES_0_1;
-  }
+  uint8 GetTableNo() const { return bytes_0_1 >> BLOCK_NO_BITS_IN_BYTES_0_1; }
 
-  uint32_t GetBlockNumber() const {
+  uint32 GetBlockNumber() const {
     Assert(Valid());
-    // get block_number in bytes_0_1_
-    uint32 block_number = (bytes_0_1_ & BLOCK_NO_MASK_IN_BYTES_0_1)
+    // get block_number in bytes_0_1
+    uint32 block_number = (bytes_0_1 & BLOCK_NO_MASK_IN_BYTES_0_1)
                           << BLOCK_NO_BITS_IN_BYTES_2_3;
-    block_number |= (bytes_2_3_ >> TUPLE_NO_BITS_IN_BYTES_2_3);
+    block_number |= (bytes_2_3 >> TUPLE_NO_BITS_IN_BYTES_2_3);
     return block_number;
   }
-  uint32_t GetTupleNumber() const {
+  uint32 GetTupleNumber() const {
     Assert(Valid());
-    return bytes_4_5_ - 1 + ((bytes_2_3_ & TUPLE_NO_MASK_IN_BYTES_2_3) << 15);
+    return bytes_4_5 - 1 + ((bytes_2_3 & TUPLE_NO_MASK_IN_BYTES_2_3) << 15);
   }
 
   void Clear() {
-    bytes_0_1_ = 0;
-    bytes_2_3_ = 0;
-    bytes_4_5_ = 0;
+    bytes_0_1 = 0;
+    bytes_2_3 = 0;
+    bytes_4_5 = 0;
   }
 };
 }  // namespace pax

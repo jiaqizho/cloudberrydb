@@ -1,12 +1,13 @@
 #include <gtest/gtest.h>
 
+#include "storage/pax.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "comm/gtest_wrappers.h"
 #include "exceptions/CException.h"
-#include "storage/pax.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/orc/orc.h"
@@ -19,16 +20,16 @@ using ::testing::Return;
 const char *pax_file_name = "./test.pax";
 #define COLUMN_NUMS 2
 
-TupleTableSlot *MakeTupleTableSlot(TupleDesc tupleDesc,
+TupleTableSlot *MakeTupleTableSlot(TupleDesc tuple_desc,
                                    const TupleTableSlotOps *tts_ops) {
   Size basesz, allocsz;
   TupleTableSlot *slot;
 
   basesz = tts_ops->base_slot_size;
 
-  if (tupleDesc)
-    allocsz = MAXALIGN(basesz) + MAXALIGN(tupleDesc->natts * sizeof(Datum)) +
-              MAXALIGN(tupleDesc->natts * sizeof(bool));
+  if (tuple_desc)
+    allocsz = MAXALIGN(basesz) + MAXALIGN(tuple_desc->natts * sizeof(Datum)) +
+              MAXALIGN(tuple_desc->natts * sizeof(bool));
   else
     allocsz = basesz;
 
@@ -36,17 +37,17 @@ TupleTableSlot *MakeTupleTableSlot(TupleDesc tupleDesc,
   *((const TupleTableSlotOps **)&slot->tts_ops) = tts_ops;
   slot->type = T_TupleTableSlot;
   slot->tts_flags |= TTS_FLAG_EMPTY;
-  if (tupleDesc != NULL) slot->tts_flags |= TTS_FLAG_FIXED;
-  slot->tts_tupleDescriptor = tupleDesc;
+  if (tuple_desc) slot->tts_flags |= TTS_FLAG_FIXED;
+  slot->tts_tupleDescriptor = tuple_desc;
   slot->tts_mcxt = CurrentMemoryContext;
   slot->tts_nvalid = 0;
 
-  if (tupleDesc != NULL) {
+  if (tuple_desc) {
     slot->tts_values = reinterpret_cast<Datum *>(
         (reinterpret_cast<char *>(slot)) + MAXALIGN(basesz));
     slot->tts_isnull = reinterpret_cast<bool *>(
         (reinterpret_cast<char *>(slot)) + MAXALIGN(basesz) +
-        MAXALIGN(tupleDesc->natts * sizeof(Datum)));
+        MAXALIGN(tuple_desc->natts * sizeof(Datum)));
   }
   slot->tts_ops->init(slot);
 
@@ -56,7 +57,7 @@ TupleTableSlot *MakeTupleTableSlot(TupleDesc tupleDesc,
 CTupleSlot *CreateFakeCTupleSlot(bool with_value) {
   TupleTableSlot *tuple_slot;
 
-  TupleDescData *tuple_desc = reinterpret_cast<TupleDescData *>(cbdb::Palloc0(
+  auto tuple_desc = reinterpret_cast<TupleDescData *>(cbdb::Palloc0(
       sizeof(TupleDescData) + sizeof(FormData_pg_attribute) * COLUMN_NUMS));
 
   tuple_desc->natts = COLUMN_NUMS;
@@ -83,54 +84,53 @@ CTupleSlot *CreateFakeCTupleSlot(bool with_value) {
     tuple_slot->tts_isnull = fake_is_null;
   }
 
-  CTupleSlot *ctuple_slot = new CTupleSlot(tuple_slot);
+  auto ctuple_slot = new CTupleSlot(tuple_slot);
 
   return ctuple_slot;
 }
 
 class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
  public:
-  explicit MockReaderInterator(const std::vector<MicroPartitionMetadata> &meta_info_list)
-      : index(0) {
+  explicit MockReaderInterator(
+      const std::vector<MicroPartitionMetadata> &meta_info_list)
+      : index_(0) {
     micro_partitions_.insert(micro_partitions_.end(), meta_info_list.begin(),
-                              meta_info_list.end());
+                             meta_info_list.end());
   }
 
   void Init() override {}
 
   bool HasNext() const override {
-    if (micro_partitions_.size() == 0) {
+    if (micro_partitions_.empty()) {
       return false;
     }
-    return index < micro_partitions_.size() - 1;
+    return index_ < micro_partitions_.size() - 1;
   }
 
   MicroPartitionMetadata Current() const override {
-    return micro_partitions_[index];
+    return micro_partitions_[index_];
   }
-  virtual bool Empty() const { return micro_partitions_.empty(); }
-  virtual uint32_t Size() const { return micro_partitions_.size(); }
-  virtual size_t Seek(int offset, IteratorSeekPosType whence) {
+  bool Empty() const override { return micro_partitions_.empty(); }
+  uint32 Size() const override { return micro_partitions_.size(); }
+  size_t Seek(int offset, IteratorSeekPosType whence) override {
     switch (whence) {
       case BEGIN:
-        index = offset;
+        index_ = offset;
         break;
       case CURRENT:
-        index += offset;
+        index_ += offset;
         break;
       case END:
-        index = micro_partitions_.size() - offset;
+        index_ = micro_partitions_.size() - offset;
         break;
     }
-    return index;
+    return index_;
   }
 
-  MicroPartitionMetadata Next() override {
-    return micro_partitions_[++index];
-  }
+  MicroPartitionMetadata Next() override { return micro_partitions_[++index_]; }
 
  private:
-  uint32_t index;
+  uint32 index_;
   std::vector<MicroPartitionMetadata> micro_partitions_;
 };
 
@@ -155,12 +155,12 @@ class PaxWriterTest : public ::testing::Test {
 TEST_F(PaxWriterTest, WriteReadTuple) {
   CTupleSlot *slot = CreateFakeCTupleSlot(true);
 
-  Relation relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
+  auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
   relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
   bool callback_called = false;
 
   TableWriter::WriteSummaryCallback callback =
-      [&callback_called](const WriteSummary &summary) {
+      [&callback_called](const WriteSummary & /*summary*/) {
         callback_called = true;
       };
 
@@ -179,9 +179,9 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   cbdb::Pfree(slot->GetTupleTableSlot());
   delete writer;
 
-  FileSystemPtr file_system = Singleton<LocalFileSystem>::GetInstance();
+  FileSystem *file_system = Singleton<LocalFileSystem>::GetInstance();
 
-  MicroPartitionReaderPtr micro_partition_reader =
+  MicroPartitionReader *micro_partition_reader =
       new OrcIteratorReader(file_system);
 
   std::vector<MicroPartitionMetadata> meta_info_list;
@@ -194,9 +194,9 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
           new MockReaderInterator(meta_info_list));
 
   TableReader *reader;
-  TableReader::ReaderOptions reader_options;
-  reader_options.build_bitmap_ = false;
-  reader_options.rel_oid_ = 0;
+  TableReader::ReaderOptions reader_options{};
+  reader_options.build_bitmap = false;
+  reader_options.rel_oid = 0;
   reader = new TableReader(micro_partition_reader,
                            std::move(meta_info_iterator), reader_options);
   reader->Open();
@@ -213,18 +213,18 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
 
 TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   CTupleSlot *slot = CreateFakeCTupleSlot(true);
-  Relation relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
+  auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
 
   relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
   bool callback_called = false;
 
   TableWriter::WriteSummaryCallback callback =
-      [&callback_called](const WriteSummary &summary) {
+      [&callback_called](const WriteSummary & /*summary*/) {
         callback_called = true;
       };
 
   auto writer = new MockWriter(relation, callback);
-  uint32_t call_times = 0;
+  uint32 call_times = 0;
   EXPECT_CALL(*writer, GenFilePath(_))
       .Times(AtLeast(2))
       .WillRepeatedly(testing::Invoke([&call_times]() -> std::string {
@@ -233,7 +233,7 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
 
   writer->Open();
 
-  ASSERT_NE(-1, writer->GetFileSplitStrategy()->SplitTupleNumbers());
+  ASSERT_TRUE(writer->GetFileSplitStrategy()->SplitTupleNumbers());
   auto split_size = writer->GetFileSplitStrategy()->SplitTupleNumbers();
 
   for (size_t i = 0; i < split_size + 1; i++) writer->WriteTuple(slot);
@@ -244,9 +244,9 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   cbdb::Pfree(slot->GetTupleTableSlot());
   delete writer;
 
-  FileSystemPtr file_system = Singleton<LocalFileSystem>::GetInstance();
+  FileSystem *file_system = Singleton<LocalFileSystem>::GetInstance();
 
-  MicroPartitionReaderPtr micro_partition_reader =
+  MicroPartitionReader *micro_partition_reader =
       new OrcIteratorReader(file_system);
 
   std::vector<MicroPartitionMetadata> meta_info_list;
@@ -264,8 +264,9 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
           new MockReaderInterator(meta_info_list));
 
   TableReader *reader;
-  TableReader::ReaderOptions reader_options;
-  reader_options.build_bitmap_ = false;
+  TableReader::ReaderOptions reader_options{.build_bitmap = false,
+                                            .rel_oid = 0};
+  reader_options.build_bitmap = false;
   reader = new TableReader(micro_partition_reader,
                            std::move(meta_info_iterator), reader_options);
   reader->Open();

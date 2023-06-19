@@ -34,12 +34,12 @@ TM_Result CPaxDeleter::DeleteTuple(const Relation relation,
 
 TM_Result CPaxDeleter::MarkDelete(const ItemPointer tid) {
   PaxItemPointer pax_tid(reinterpret_cast<PaxItemPointer *>(tid));
-  uint8_t table_no = pax_tid.GetTableNo();
-  uint32_t block_number = pax_tid.GetBlockNumber();
-  uint32_t tuple_number = pax_tid.GetTupleNumber();
+  uint8 table_no = pax_tid.GetTableNo();
+  uint32 block_number = pax_tid.GetBlockNumber();
+  uint32 tuple_number = pax_tid.GetTupleNumber();
 
   const char *char_block_id =
-      cbdb::GetBlockId(rel_->rd_id, table_no, block_number).to_str();
+      cbdb::GetBlockId(rel_->rd_id, table_no, block_number).ToStr();
   std::string block_id = char_block_id;
 
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
@@ -78,7 +78,7 @@ CPaxDeleter::buildDeleteIterator() {
     std::string block_id = it->first;
     DynamicBitmap *bitmap_ptr = it->second.get();
     BitmapIterator bitmap_it(bitmap_ptr);
-    int32_t tuple_number = bitmap_it.Next(true);
+    int32 tuple_number = bitmap_it.Next(true);
     if (tuple_number != -1) {
       pax::MicroPartitionMetadata meta_info(
           block_id, TableMetadata::BuildPaxFilePath(rel_, block_id));
