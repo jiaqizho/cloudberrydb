@@ -20,8 +20,8 @@ class FileSplitStrategy {
 
 class PaxDefaultSplitStrategy : public FileSplitStrategy {
  public:
-  PaxDefaultSplitStrategy() {}
-  ~PaxDefaultSplitStrategy() {}
+  PaxDefaultSplitStrategy() = default;
+  ~PaxDefaultSplitStrategy() override = default;
 
   size_t SplitTupleNumbers() const override;
 

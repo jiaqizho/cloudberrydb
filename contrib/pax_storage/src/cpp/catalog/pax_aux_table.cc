@@ -174,7 +174,7 @@ void cbdb::GetAllBlockFileInfo_PG_PaxBlock_Relation(
       if (is_null)
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
                         errmsg("got invalid tupcount value: NULL")));
-      meta_info.setTupleCount(tup_count);
+      meta_info.SetTupleCount(tup_count);
 
       // TODO(gongxun): add more statistics info
       result.push_back(std::move(meta_info));

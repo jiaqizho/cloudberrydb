@@ -34,41 +34,36 @@ class PaxScanDesc {
                                   SampleScanState *scanstate,
                                   TupleTableSlot *slot);
 
-  uint32_t GetMicroPartitionNumber() const {
-    return reader_->GetMicroPartitionNumber();
-  }
+  uint32 GetMicroPartitionNumber() const;
 
-  uint32_t GetCurrentMicroPartitionTupleNumber() const {
-    return reader_->GetCurrentMicroPartitionTupleNumber();
-  }
+  uint32 GetCurrentMicroPartitionTupleNumber() const;
 
-  bool SeekTuple(const uint64_t targettupleid, uint64_t *nexttupleid) {
-    return reader_->SeekTuple(targettupleid, nexttupleid);
-  }
+  bool SeekTuple(const uint64 target_tuple_id, uint64 *next_tuple_id);
 
-  ~PaxScanDesc();
+  ~PaxScanDesc() = default;
 
  private:
   PaxScanDesc() = default;
+
   static inline PaxScanDesc *to_desc(TableScanDesc scan) {
     PaxScanDesc *desc = reinterpret_cast<PaxScanDesc *>(scan);
-    Assert(&desc->rs_base == scan);
     return desc;
   }
 
-  TableScanDescData rs_base;
+ private:
+  TableScanDescData rs_base_;
   const ScanKeyData *key_;
   TableReader *reader_;
 
-  DataBuffer<char> *reused_buffer;
+  DataBuffer<char> *reused_buffer_;
 
-  // TODO(chenhongjie): Only used by `scan analyze` and `scan sample`
-  uint64_t nextTupleId = 0;
-  // TODO(chenhongjie): Only used by `scan analyze`
-  uint64_t targetTupleId = 0;
-  // TODO(chenhongjie): Only used by `scan sample`
-  uint64_t fetchTupleId = 0;
-  uint64_t totalTuples = 0;
+  // Only used by `scan analyze` and `scan sample`
+  uint64 next_tuple_id_ = 0;
+  // Only used by `scan analyze`
+  uint64 target_tuple_id_ = 0;
+  // Only used by `scan sample`
+  uint64 fetch_tuple_id_ = 0;
+  uint64 total_tuples_ = 0;
 };  // class PaxScanDesc
 
 }  // namespace pax

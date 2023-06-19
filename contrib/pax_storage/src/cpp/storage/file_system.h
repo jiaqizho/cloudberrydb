@@ -27,6 +27,5 @@ class FileSystem {
 
  protected:
 };
-using FileSystemPtr = FileSystem *;
 
 }  //  namespace pax

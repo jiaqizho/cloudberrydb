@@ -10,56 +10,45 @@
 #include <vector>
 
 #include "catalog/table_metadata.h"
-#include "comm/pax_def.h"
 #include "storage/file_system.h"
-#include "storage/pax_itemptr.h"
 #include "storage/pax_buffer.h"
+#include "storage/pax_itemptr.h"
 #include "storage/statistics.h"
 
 namespace pax {
 
 class CTupleSlot {
  public:
-  explicit CTupleSlot(TupleTableSlot *tuple_slot)
-      : slot_(tuple_slot), offset_(0) {}
-  TupleTableSlot *GetTupleTableSlot() { return slot_; }
+  explicit CTupleSlot(TupleTableSlot *tuple_slot);
 
   inline void ClearTuple() { slot_->tts_ops->clear(slot_); }
 
-  inline uint32_t GetOffset() const { return offset_; }
+  inline uint32 GetOffset() const { return offset_; }
 
-  inline uint8_t GetTableNo() const { return table_no_; }
+  inline uint8 GetTableNo() const { return table_no_; }
 
-  inline void SetOffset(uint64_t offset) { offset_ = offset; }
+  inline void SetOffset(uint64 offset) { offset_ = offset; }
 
   inline void SetBlockNumber(const int &block_number) {
     block_number_ = block_number;
   }
 
-  inline void SetTableNo(uint8_t table_no) { table_no_ = table_no; }
+  inline void SetTableNo(uint8 table_no) { table_no_ = table_no; }
 
-  void StoreVirtualTuple() {
-    // TODO(gongxun): set tts_tid, how to get block number from block id
-    slot_->tts_tid =
-        PaxItemPointer::GetTupleId(table_no_, block_number_, offset_);
-    slot_->tts_flags &= ~TTS_FLAG_EMPTY;
-    slot_->tts_nvalid = slot_->tts_tupleDescriptor->natts;
-  }
+  void StoreVirtualTuple();
 
-  TupleDesc GetTupleDesc() const { return slot_->tts_tupleDescriptor; }
+  TupleDesc GetTupleDesc() const;
 
-  TupleTableSlot *GetTupleTableSlot() const { return slot_; }
+  TupleTableSlot *GetTupleTableSlot() const;
 
  private:
   TupleTableSlot *slot_;
   uint8 table_no_;
   int block_number_;
-  uint32_t offset_;
+  uint32 offset_;
 };
 
 struct WriteSummary;
-class MicroPartitionWriter;
-using MicroPartitionWriterPtr = pax::MicroPartitionWriter *;
 
 class MicroPartitionWriter {
  public:
@@ -70,8 +59,7 @@ class MicroPartitionWriter {
     Oid rel_oid;
   };
 
-  explicit MicroPartitionWriter(const WriterOptions &writer_options)
-      : writer_options_(writer_options) {}
+  explicit MicroPartitionWriter(const WriterOptions &writer_options);
 
   virtual ~MicroPartitionWriter() = default;
 
@@ -90,11 +78,6 @@ class MicroPartitionWriter {
   // return the number of tuples the current micro partition has written
   virtual void WriteTuple(CTupleSlot *slot) = 0;
   virtual void WriteTupleN(CTupleSlot **slot, size_t n) = 0;
-
-  // returns the full file name(including directory path) used for write.
-  // normally it's <tablespace_dir>/<database_id>/<file_name> for local files,
-  // depends on the write options
-  virtual const std::string FullFileName() const = 0;
 
   using WriteSummaryCallback = std::function<void(const WriteSummary &summary)>;
 
@@ -118,9 +101,6 @@ class MicroPartitionWriter {
   StatsCollector *collector_ = nullptr;
 };
 
-class MicroPartitionReader;
-using MicroPartitionReaderPtr = pax::MicroPartitionReader *;
-
 class MicroPartitionReader {
  public:
   struct ReaderOptions {
@@ -130,9 +110,9 @@ class MicroPartitionReader {
     std::string block_id;
   };
 
-  explicit MicroPartitionReader(const FileSystemPtr fs) : file_system_(fs) {}
+  explicit MicroPartitionReader(FileSystem *fs);
 
-  MicroPartitionReader() : file_system_(nullptr) {}
+  MicroPartitionReader();
 
   virtual ~MicroPartitionReader() = default;
 
@@ -158,11 +138,11 @@ class MicroPartitionReader {
 
   virtual void SetReadBuffer(DataBuffer<char> *data_buffer) = 0;
 
-  using Filter = Vector<uint16_t>;
+  using Filter = std::vector<uint16>;
   virtual void SetFilter(Filter *filter) = 0;
 
  protected:
-  const FileSystemPtr file_system_ = nullptr;
+  FileSystem *file_system_ = nullptr;
 };
 
 }  // namespace pax

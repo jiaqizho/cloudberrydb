@@ -18,21 +18,19 @@ TableScanDesc PaxScanDesc::BeginScan(const Relation relation,
   PaxScanDesc *desc;
 
   StaticAssertStmt(
-      offsetof(PaxScanDesc, rs_base) == 0,
+      offsetof(PaxScanDesc, rs_base_) == 0,
       "rs_base should be the first field and aligned to the object address");
 
   desc = new PaxScanDesc();
 
-  Assert(reinterpret_cast<PaxScanDesc *>(&desc->rs_base) == desc);
-
-  memset(&desc->rs_base, 0, sizeof(desc->rs_base));
-  desc->rs_base.rs_rd = relation;
-  desc->rs_base.rs_snapshot = snapshot;
-  desc->rs_base.rs_nkeys = nkeys;
-  desc->rs_base.rs_flags = flags;
-  desc->rs_base.rs_parallel = pscan;
+  memset(&desc->rs_base_, 0, sizeof(desc->rs_base_));
+  desc->rs_base_.rs_rd = relation;
+  desc->rs_base_.rs_snapshot = snapshot;
+  desc->rs_base_.rs_nkeys = nkeys;
+  desc->rs_base_.rs_flags = flags;
+  desc->rs_base_.rs_parallel = pscan;
   desc->key_ = key;
-  desc->reused_buffer = new DataBuffer<char>(32 * 1024 * 1024);  // 32mb
+  desc->reused_buffer_ = new DataBuffer<char>(32 * 1024 * 1024);  // 32mb
 
   // init shared memory
   cbdb::InitCommandResource();
@@ -40,21 +38,21 @@ TableScanDesc PaxScanDesc::BeginScan(const Relation relation,
   TableMetadata *meta_info;
   meta_info = TableMetadata::Create(relation, snapshot);
 
-  FileSystemPtr file_system = Singleton<LocalFileSystem>::GetInstance();
+  FileSystem *file_system = Singleton<LocalFileSystem>::GetInstance();
 
   MicroPartitionReader *micro_partition_reader =
       new OrcIteratorReader(file_system);
-  micro_partition_reader->SetReadBuffer(desc->reused_buffer);
+  micro_partition_reader->SetReadBuffer(desc->reused_buffer_);
 
   TableReader::ReaderOptions reader_options;
-  reader_options.build_bitmap_ = true;
-  reader_options.rel_oid_ = desc->rs_base.rs_rd->rd_id;
+  reader_options.build_bitmap = true;
+  reader_options.rel_oid = desc->rs_base_.rs_rd->rd_id;
 
   desc->reader_ = new TableReader(micro_partition_reader,
                                   meta_info->NewIterator(), reader_options);
   desc->reader_->Open();
 
-  return &desc->rs_base;
+  return &desc->rs_base_;
 }
 
 void PaxScanDesc::EndScan(TableScanDesc scan) {
@@ -62,7 +60,7 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
 
   Assert(desc->reader_);
   desc->reader_->Close();
-  delete desc->reused_buffer;
+  delete desc->reused_buffer_;
   delete desc->reader_;
   delete desc;
 }
@@ -87,7 +85,7 @@ bool PaxScanDesc::ScanGetNextSlot(TableScanDesc scan,
 bool PaxScanDesc::ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno,
                                        BufferAccessStrategy bstrategy) {
   PaxScanDesc *desc = to_desc(scan);
-  desc->targetTupleId = blockno;
+  desc->target_tuple_id_ = blockno;
 
   return true;
 }
@@ -102,14 +100,14 @@ bool PaxScanDesc::ScanAnalyzeNextTuple(TableScanDesc scan,
   Assert(*deadrows == 0);  // not dead rows in pax latest snapshot
 
   // skip several tuples if they are not sampling target.
-  ret = desc->SeekTuple(desc->targetTupleId, &(desc->nextTupleId));
+  ret = desc->SeekTuple(desc->target_tuple_id_, &(desc->next_tuple_id_));
 
   if (!ret) {
     return false;
   }
 
   ret = PaxScanDesc::ScanGetNextSlot(scan, ForwardScanDirection, slot);
-  desc->nextTupleId++;
+  desc->next_tuple_id_++;
   if (ret) {
     *liverows += 1;
   }
@@ -126,24 +124,24 @@ bool PaxScanDesc::ScanSampleNextBlock(TableScanDesc scan,
   TsmRoutine *tsm = scanstate->tsmroutine;
   BlockNumber blockno = 0;
   BlockNumber pages = 0;
-  double totaltuples = 0;
+  double total_tuples = 0;
   int32 attrwidths = 0;
   double allvisfrac = 0;
 
-  if (desc->totalTuples == 0) {
+  if (desc->total_tuples_ == 0) {
     paxc::PaxAccessMethod::EstimateRelSize(scan->rs_rd, &attrwidths, &pages,
-                                           &totaltuples, &allvisfrac);
-    desc->totalTuples = totaltuples;
+                                           &total_tuples, &allvisfrac);
+    desc->total_tuples_ = total_tuples;
   }
 
   if (tsm->NextSampleBlock)
-    blockno = tsm->NextSampleBlock(scanstate, desc->totalTuples);
+    blockno = tsm->NextSampleBlock(scanstate, desc->total_tuples_);
   else
-    blockno = system_nextsampleblock(scanstate, desc->totalTuples);
+    blockno = system_nextsampleblock(scanstate, desc->total_tuples_);
 
   if (!BlockNumberIsValid(blockno)) return false;
 
-  desc->fetchTupleId = blockno;
+  desc->fetch_tuple_id_ = blockno;
   return true;
 }
 
@@ -154,15 +152,27 @@ bool PaxScanDesc::ScanSampleNextTuple(TableScanDesc scan,
   bool ret = false;
 
   // skip several tuples if they are not sampling target.
-  ret = desc->SeekTuple(desc->fetchTupleId, &desc->nextTupleId);
+  ret = desc->SeekTuple(desc->fetch_tuple_id_, &desc->next_tuple_id_);
 
   if (!ret) return false;
 
   ret = PaxScanDesc::ScanGetNextSlot(scan, ForwardScanDirection, slot);
-  desc->nextTupleId++;
+  desc->next_tuple_id_++;
 
   return ret;
 }
 
-PaxScanDesc::~PaxScanDesc() {}
+uint32 PaxScanDesc::GetMicroPartitionNumber() const {
+  return reader_->GetMicroPartitionNumber();
+}
+
+uint32 PaxScanDesc::GetCurrentMicroPartitionTupleNumber() const {
+  return reader_->GetCurrentMicroPartitionTupleNumber();
+}
+
+bool PaxScanDesc::SeekTuple(const uint64 target_tuple_id,
+                            uint64 *next_tuple_id) {
+  return reader_->SeekTuple(target_tuple_id, next_tuple_id);
+}
+
 }  // namespace pax
