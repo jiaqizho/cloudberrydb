@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-
 #include "comm/bitmap.h"
+
 namespace pax::tests {
 class BitMapTest : public ::testing::Test {
  public:

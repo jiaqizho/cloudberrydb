@@ -20,7 +20,7 @@ PaxColumn::~PaxColumn() {
 }
 
 PaxColumnTypeInMem PaxColumn::GetPaxColumnTypeInMem() const {
-  return PaxColumnTypeInMem::TYPE_INVALID;
+  return PaxColumnTypeInMem::kTypeInvalid;
 }
 
 void PaxColumn::Clear() {
@@ -77,8 +77,7 @@ void PaxColumn::Append([[maybe_unused]] char *buffer,
 }
 
 template <typename T>
-PaxCommColumn<T>::PaxCommColumn(uint64 capacity)
-    : PaxColumn(), capacity_(capacity) {
+PaxCommColumn<T>::PaxCommColumn(uint64 capacity) : capacity_(capacity) {
   data_ = new DataBuffer<T>(capacity * sizeof(T));
 }
 
@@ -87,14 +86,12 @@ PaxCommColumn<T>::~PaxCommColumn() {
   delete data_;
 }
 
-template <typename T>
+template <typename T>  // NOLINT: redirect constructor
 PaxCommColumn<T>::PaxCommColumn() : PaxCommColumn(DEFAULT_CAPACITY) {}
 
 template <typename T>
 void PaxCommColumn<T>::Set(DataBuffer<T> *data) {
-  if (data_) {
-    delete data_;
-  }
+  delete data_;
 
   data_ = data;
 }
@@ -102,7 +99,7 @@ void PaxCommColumn<T>::Set(DataBuffer<T> *data) {
 template <typename T>
 void PaxCommColumn<T>::Append(char *buffer, size_t size) {
   PaxColumn::Append(buffer, size);
-  auto *buffer_t = reinterpret_cast<T *>(buffer);
+  auto buffer_t = reinterpret_cast<T *>(buffer);
 
   Assert(size == sizeof(T));
   Assert(GetNonNullRows() <= capacity_);
@@ -117,7 +114,7 @@ void PaxCommColumn<T>::Append(char *buffer, size_t size) {
 
 template <typename T>
 PaxColumnTypeInMem PaxCommColumn<T>::GetPaxColumnTypeInMem() const {
-  return PaxColumnTypeInMem::TYPE_FIXED;
+  return PaxColumnTypeInMem::kTypeFixed;
 }
 
 template <typename T>
@@ -157,7 +154,7 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer() {
 template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
   if (position >= GetNonNullRows()) {
-    CBDB_RAISE(cbdb::CException::ExType::ExTypeOutOfRange);
+    CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
   }
   return std::make_pair(data_->Buffer().Start() + (sizeof(T) * position),
                         sizeof(T));
@@ -170,8 +167,7 @@ template class PaxCommColumn<int64>;
 template class PaxCommColumn<float>;
 template class PaxCommColumn<double>;
 
-PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity)
-    : PaxColumn(), estimated_size_(0) {
+PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity) : estimated_size_(0) {
   data_ = new DataBuffer<char>(capacity * sizeof(char) * 100);
   lengths_ = new DataBuffer<int64>(capacity * sizeof(char));
 }
@@ -179,14 +175,24 @@ PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity)
 PaxNonFixedColumn::PaxNonFixedColumn() : PaxNonFixedColumn(DEFAULT_CAPACITY) {}
 
 PaxNonFixedColumn::~PaxNonFixedColumn() {
-  if (data_) delete data_;
-  if (lengths_) delete lengths_;
+  if (data_) {
+    delete data_;
+  }
+
+  if (lengths_) {
+    delete lengths_;
+  }
 }
 
 void PaxNonFixedColumn::Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
                             size_t total_size) {
-  if (data_) delete data_;
-  if (lengths_) delete lengths_;
+  if (data_) {
+    delete data_;
+  }
+
+  if (lengths_) {
+    delete lengths_;
+  }
 
   estimated_size_ = total_size;
   data_ = data;
@@ -225,7 +231,7 @@ DataBuffer<int64> *PaxNonFixedColumn::GetLengthBuffer() const {
 }
 
 PaxColumnTypeInMem PaxNonFixedColumn::GetPaxColumnTypeInMem() const {
-  return PaxColumnTypeInMem::TYPE_NON_FIXED;
+  return PaxColumnTypeInMem::kTypeNonFixed;
 }
 
 void PaxNonFixedColumn::Clear() {
@@ -247,7 +253,7 @@ size_t PaxNonFixedColumn::EstimatedSize() const { return estimated_size_; }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
   if (position >= GetNonNullRows()) {
-    CBDB_RAISE(cbdb::CException::ExType::ExTypeOutOfRange);
+    CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
   }
 
   return std::make_pair(data_->GetBuffer() + offsets_[position],
@@ -270,7 +276,7 @@ PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types)
   for (auto &type : types) {
     switch (type) {
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
-        auto *pax_non_fixed_column = new PaxNonFixedColumn();
+        auto pax_non_fixed_column = new PaxNonFixedColumn();
         // current memory will copy from tuple, so should take over it
         pax_non_fixed_column->SetMemTakeOver(true);
         columns_.emplace_back(pax_non_fixed_column);
@@ -307,7 +313,7 @@ PaxColumns::PaxColumns() : PaxColumn(), row_nums_(0) {
 }
 
 PaxColumns::~PaxColumns() {
-  for (auto *column : columns_) {
+  for (auto column : columns_) {
     delete column;
   }
   delete data_;
@@ -315,7 +321,7 @@ PaxColumns::~PaxColumns() {
 
 void PaxColumns::Clear() {
   row_nums_ = 0;
-  for (auto *column : columns_) {
+  for (auto column : columns_) {
     column->Clear();
   }
 
@@ -328,7 +334,7 @@ void PaxColumns::Append(PaxColumn *column) { columns_.emplace_back(column); }
 
 void PaxColumns::Append([[maybe_unused]] char *buffer,
                         [[maybe_unused]] size_t size) {
-  CBDB_RAISE(cbdb::CException::ExType::ExTypeLogicError);
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
 void PaxColumns::Set(DataBuffer<char> *data) {
@@ -339,12 +345,12 @@ void PaxColumns::Set(DataBuffer<char> *data) {
 }
 
 size_t PaxColumns::GetNonNullRows() const {
-  CBDB_RAISE(cbdb::CException::ExType::ExTypeLogicError);
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
 size_t PaxColumns::EstimatedSize() const {
   size_t total_size = 0;
-  for (auto *column : columns_) {
+  for (auto column : columns_) {
     total_size += column->EstimatedSize();
   }
   return total_size;
@@ -354,13 +360,13 @@ size_t PaxColumns::GetColumns() const { return columns_.size(); }
 
 std::pair<char *, size_t> PaxColumns::GetBuffer() {
   PaxColumns::PreCalcBufferFunc func_null;
-  auto *data_buffer = GetDataBuffer(func_null);
+  auto data_buffer = GetDataBuffer(func_null);
   return std::make_pair(data_buffer->GetBuffer(), data_buffer->Used());
 }
 
 std::pair<char *, size_t> PaxColumns::GetBuffer(size_t position) {
   if (position >= GetColumns()) {
-    CBDB_RAISE(cbdb::CException::ExType::ExTypeOutOfRange);
+    CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
   }
   return columns_[position]->GetBuffer();
 }
@@ -383,7 +389,7 @@ DataBuffer<char> *PaxColumns::GetDataBuffer(const PreCalcBufferFunc &func) {
 size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
   size_t buffer_len = 0;
 
-  for (auto *column : columns_) {
+  for (auto column : columns_) {
     // has null will generate a bitmap in current stripe
     if (column->HasNull()) {
       size_t non_null_length = column->GetNulls()->Used();
@@ -395,7 +401,7 @@ size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
     size_t column_size = column->GetNonNullRows();
 
     switch (column->GetPaxColumnTypeInMem()) {
-      case TYPE_NON_FIXED: {
+      case kTypeNonFixed: {
         size_t lengths_size = column_size * sizeof(int64);
 
         buffer_len += lengths_size;
@@ -409,16 +415,16 @@ size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
 
         break;
       }
-      case TYPE_FIXED: {
+      case kTypeFixed: {
         auto length_data = column->GetBuffer().second;
         buffer_len += length_data;
         pre_calc_func(orc::proto::Stream_Kind_DATA, column_size, length_data);
 
         break;
       }
-      case TYPE_INVALID:
+      case kTypeInvalid:
       default: {
-        CBDB_RAISE(cbdb::CException::ExType::ExTypeLogicError);
+        CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
         break;
       }
     }
@@ -430,7 +436,7 @@ void PaxColumns::CombineDataBuffer() {
   char *buffer = nullptr;
   size_t buffer_len = 0;
 
-  for (auto *column : columns_) {
+  for (auto column : columns_) {
     if (column->HasNull()) {
       auto null_data_buffer = column->GetNulls();
       size_t non_null_length = null_data_buffer->Used();
@@ -441,9 +447,8 @@ void PaxColumns::CombineDataBuffer() {
     }
 
     switch (column->GetPaxColumnTypeInMem()) {
-      case TYPE_NON_FIXED: {
-        PaxNonFixedColumn *no_fixed_column =
-            reinterpret_cast<PaxNonFixedColumn *>(column);
+      case kTypeNonFixed: {
+        auto no_fixed_column = reinterpret_cast<PaxNonFixedColumn *>(column);
         auto length_data_buffer = no_fixed_column->GetLengthBuffer();
 
         memcpy(data_->GetAvailableBuffer(), length_data_buffer->GetBuffer(),
@@ -456,13 +461,13 @@ void PaxColumns::CombineDataBuffer() {
 
         break;
       }
-      case TYPE_FIXED: {
+      case kTypeFixed: {
         std::tie(buffer, buffer_len) = column->GetBuffer();
         data_->Write(buffer, buffer_len);
         data_->Brush(buffer_len);
         break;
       }
-      case TYPE_INVALID:
+      case kTypeInvalid:
       default:
         break;
     }

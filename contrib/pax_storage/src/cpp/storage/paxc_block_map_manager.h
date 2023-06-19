@@ -10,8 +10,8 @@ namespace paxc {
 #define BLOCK_MAPPING_ARRAY_SIZE 64
 struct SharedTableBlockMappingData {
   Oid relid_;
-  uint32_t shared_size_block_ids_;
-  uint32_t shared_used_block_ids_;
+  uint32 shared_size_block_ids_;
+  uint32 shared_used_block_ids_;
   dsm_handle shared_block_ids_handle_;
   SharedTableBlockMappingData() {
     relid_ = InvalidOid;
@@ -23,16 +23,16 @@ struct SharedTableBlockMappingData {
 
 struct PaxXactSharedState {
   LWLock lock_;
-  uint32_t block_mapping_used_size_;
+  uint32 block_mapping_used_size_;
   SharedTableBlockMappingData shared_block_mapping_[BLOCK_MAPPING_ARRAY_SIZE];
 };
 
 struct LocalTableBlockMappingData {
   Oid relid_;
-  uint32_t size_block_ids_;
-  uint32_t used_block_ids_;
-  dsm_segment* block_ids_segment_;
-  PaxBlockId* block_ids_;
+  uint32 size_block_ids_;
+  uint32 used_block_ids_;
+  dsm_segment *block_ids_segment_;
+  PaxBlockId *block_ids_;
   LocalTableBlockMappingData() {
     relid_ = InvalidOid;
     size_block_ids_ = 0;
@@ -45,7 +45,7 @@ struct LocalTableBlockMappingData {
 struct TableEntry {
   uint16 table_no;
   Oid relid_;
-  uint32_t table_index_;
+  uint32 table_index_;
 };
 
 struct XactHashKey {
@@ -73,11 +73,11 @@ void pax_shmem_startup();
 void init_command_resource();
 void release_command_resource();
 
-void get_table_index_and_table_number(const Oid table_rel_oid, uint8_t* table_no,
-                                      uint32_t* table_index);
+void get_table_index_and_table_number(const Oid table_rel_oid, uint8 *table_no,
+                                      uint32 *table_index);
 
-uint32_t get_block_number(const Oid table_rel_oid, const uint32_t table_index,
-                          const PaxBlockId block_id);
-PaxBlockId get_block_id(const Oid table_rel_oid, const uint8_t table_no,
-                        const uint32_t block_number);
+uint32 get_block_number(const Oid table_rel_oid, const uint32 table_index,
+                        const PaxBlockId block_id);
+PaxBlockId get_block_id(const Oid table_rel_oid, const uint8 table_no,
+                        const uint32 block_number);
 }  // namespace paxc

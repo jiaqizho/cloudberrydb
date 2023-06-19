@@ -9,14 +9,6 @@
 #include "storage/pax_block_id.h"
 
 namespace cbdb {
-void *Palloc(size_t size);
-void *Palloc0(size_t size);
-void *RePalloc(void *ptr, size_t size);
-void Pfree(void *ptr);
-void *MemCtxAlloc(MemoryContext ctx, size_t size);
-}  // namespace cbdb
-
-namespace cbdb {
 //---------------------------------------------------------------------------
 //  @class:
 //      CAutoExceptionStack
@@ -47,20 +39,13 @@ class CAutoExceptionStack final {
 
   // ctor
   CAutoExceptionStack(void **global_exception_stack,
-                      void **global_error_context_stack)
-      : m_global_exception_stack(global_exception_stack),
-        m_global_error_context_stack(global_error_context_stack),
-        m_exception_stack(*global_exception_stack),
-        m_error_context_stack(*global_error_context_stack) {}
+                      void **global_error_context_stack);
 
   // dtor
-  ~CAutoExceptionStack() {
-    *m_global_exception_stack = m_exception_stack;
-    *m_global_error_context_stack = m_error_context_stack;
-  }
+  ~CAutoExceptionStack();
 
   // set the exception stack to the given address
-  void SetLocalJmp(void *local_jump) { *m_global_exception_stack = local_jump; }
+  void SetLocalJmp(void *local_jump);
 };  // class CAutoExceptionStack
 
 void *MemCtxAlloc(MemoryContext ctx, size_t size);
@@ -86,7 +71,7 @@ void Pfree(void *ptr);
   }                                                               \
   else                                                            \
   {                                                               \
-      CBDB_RAISE(cbdb::CException::ExType::ExTypeCError);         \
+      CBDB_RAISE(cbdb::CException::ExType::kExTypeCError);         \
   }                                                               \
   }
 // clang-format on
@@ -145,11 +130,11 @@ struct varlena *PgDeToastDatumPacked(struct varlena *datum);
 // pax ctid mapping functions
 void InitCommandResource();
 void ReleaseCommandResource();
-void GetTableIndexAndTableNumber(Oid table_rel_oid, uint8_t *table_no,
-                                 uint32_t *table_index);
-uint32_t GetBlockNumber(Oid table_rel_oid, uint32_t table_index,
-                        paxc::PaxBlockId block_id);
-paxc::PaxBlockId GetBlockId(Oid table_rel_oid, uint8_t table_no,
-                            uint32_t block_number);
+void GetTableIndexAndTableNumber(Oid table_rel_oid, uint8 *table_no,
+                                 uint32 *table_index);
+uint32 GetBlockNumber(Oid table_rel_oid, uint32 table_index,
+                      paxc::PaxBlockId block_id);
+paxc::PaxBlockId GetBlockId(Oid table_rel_oid, uint8 table_no,
+                            uint32 block_number);
 
 }  // namespace cbdb

@@ -11,15 +11,12 @@ namespace pax {
 
 class LocalFile final : public File {
  public:
-  LocalFile(int fd, const std::string &file_path)
-      : File(), fd_(fd), file_path_(file_path) {
-    Assert(fd != -1);
-  }
+  LocalFile(int fd, const std::string &file_path);
 
   ssize_t Read(void *ptr, size_t n) override;
   ssize_t Write(const void *ptr, size_t n) override;
-  ssize_t PWrite(const void *buf, size_t count, size_t offset) override;
-  ssize_t PRead(void *buf, size_t count, size_t offset) override;
+  ssize_t PWrite(const void *ptr, size_t n, size_t offset) override;
+  ssize_t PRead(void *ptr, size_t n, size_t offset) override;
   size_t FileLength() const override;
   void Close() override;
   void Flush() override;
@@ -28,7 +25,7 @@ class LocalFile final : public File {
  private:
   int fd_;
   std::string file_path_;
-  // TBD: added resource owner
+  // TODO(jiaqizho): added resource owner
 };
 
 class LocalFileSystem final : public FileSystem {

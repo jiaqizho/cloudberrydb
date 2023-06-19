@@ -8,12 +8,13 @@ typedef enum IteratorSeekPosType {
   CURRENT = 1,
   END = 2
 } IteratorSeekPosType;
+
 template <typename T>
 class IteratorBase {
  public:
   virtual void Init() = 0;
   virtual bool Empty() const = 0;
-  virtual uint32_t Size() const = 0;
+  virtual uint32 Size() const = 0;
   virtual bool HasNext() const = 0;
   virtual T Next() = 0;
   virtual T Current() const = 0;

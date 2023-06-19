@@ -5,7 +5,7 @@
 #include "comm/cbdb_wrappers.h"
 namespace paxc {
 
-static PaxXactSharedState* current_xact_shared_pax_ss = NULL;
+static PaxXactSharedState *current_xact_shared_pax_ss = NULL;
 
 #define DEFAULT_BLOCK_IDS_SIZE 16
 
@@ -21,10 +21,10 @@ static MemoryContext pax_block_mapping_context = NULL;
 
 static int max_procs = 0;
 // the lock for pax_xact_hash
-static LWLockPadded* pax_hash_lock = NULL;
-static HTAB* pax_xact_hash = NULL;
+static LWLockPadded *pax_hash_lock = NULL;
+static HTAB *pax_xact_hash = NULL;
 // common PaxSharedState
-static PaxSharedState* pax_shared_state;
+static PaxSharedState *pax_shared_state;
 
 void init_local_command_resource();
 void init_command_shmem_resource();
@@ -67,7 +67,7 @@ void pax_shmem_startup() {
       TopMemoryContext, "Pax Block Mapping Context", ALLOCSET_DEFAULT_SIZES);
 
   LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
-  pax_shared_state = reinterpret_cast<PaxSharedState*>(
+  pax_shared_state = reinterpret_cast<PaxSharedState *>(
       ShmemInitStruct("pax_shared_stat", struct_mem_size(), &found));
   if (!found) {
     pax_shared_state->pax_xact_lock_tranche_id_ = LWLockNewTrancheId();
@@ -99,12 +99,11 @@ void release_command_resource() {
 // there may be multiple scan processes scanning the same table,
 // which will modify the current_xact_shared_pax_ss state,
 // so a LW_EXCLUSIVE lock is required
-void get_table_index_and_table_number(const Oid table_rel_oid,
-                                      uint8_t* table_no,
-                                      uint32_t* table_index) {
+void get_table_index_and_table_number(const Oid table_rel_oid, uint8 *table_no,
+                                      uint32 *table_index) {
   LWLockAcquire(&current_xact_shared_pax_ss->lock_, LW_EXCLUSIVE);
-  uint8_t alloc_table_no = 0;
-  for (uint32_t i = 0; i < current_xact_shared_pax_ss->block_mapping_used_size_;
+  uint8 alloc_table_no = 0;
+  for (uint32 i = 0; i < current_xact_shared_pax_ss->block_mapping_used_size_;
        i++) {
     if (current_xact_shared_pax_ss->shared_block_mapping_[i].relid_ ==
         table_rel_oid) {
@@ -143,11 +142,11 @@ void get_table_index_and_table_number(const Oid table_rel_oid,
 
 // FIXME(gongxun): the delete and update processes only read
 // current_xact_shared_pax_ss , whether it is possible to not add a shared lock?
-uint32_t pax_get_table_index(const Oid table_rel_oid, const uint8_t table_no) {
+uint32 pax_get_table_index(const Oid table_rel_oid, const uint8 table_no) {
   LWLockAcquire(&current_xact_shared_pax_ss->lock_, LW_SHARED);
-  uint8_t tmp_table_no = -1;
+  uint8 tmp_table_no = -1;
   int index = -1;
-  for (uint32_t i = 0; i < current_xact_shared_pax_ss->block_mapping_used_size_;
+  for (uint32 i = 0; i < current_xact_shared_pax_ss->block_mapping_used_size_;
        i++) {
     if (current_xact_shared_pax_ss->shared_block_mapping_[i].relid_ ==
         table_rel_oid) {
@@ -162,22 +161,21 @@ uint32_t pax_get_table_index(const Oid table_rel_oid, const uint8_t table_no) {
   return index;
 }
 
-void dump_shared_block_ids(const Oid table_rel_oid,
-                           const uint32_t table_index) {
-  LocalTableBlockMappingData* block_mapping_data =
+void dump_shared_block_ids(const Oid table_rel_oid, const uint32 table_index) {
+  LocalTableBlockMappingData *block_mapping_data =
       &local_pax_block_mapping_data[table_index];
 
-  PaxBlockId* shared_ptr;
+  PaxBlockId *shared_ptr;
 
   // save old segment, if shared memory is full, we need to alloc a new
   // segment and copy old data,then free old segment
-  dsm_segment* old_segment = block_mapping_data->block_ids_segment_;
-  dsm_segment* new_segment = nullptr;
+  dsm_segment *old_segment = block_mapping_data->block_ids_segment_;
+  dsm_segment *new_segment = nullptr;
   block_mapping_data->relid_ = table_rel_oid;
 
   // if local memory size is large than shared memory's size, we need to
   // resize shared memory
-  SharedTableBlockMappingData* shared_block_mapping_data =
+  SharedTableBlockMappingData *shared_block_mapping_data =
       &current_xact_shared_pax_ss->shared_block_mapping_[table_index];
   ereport(DEBUG1, (errmsg("dump_shared_block_ids pax_xact_hash=%p, lock=%p,"
                           "gp_session_id=%d "
@@ -198,7 +196,7 @@ void dump_shared_block_ids(const Oid table_rel_oid,
     oldowner = CurrentResourceOwner;
     CurrentResourceOwner = TopTransactionResourceOwner;
 
-    uint32_t new_size = block_mapping_data->size_block_ids_;
+    uint32 new_size = block_mapping_data->size_block_ids_;
     new_segment = dsm_create(sizeof(PaxBlockId) * new_size,
                              DSM_CREATE_NULL_IF_MAXSEGMENTS);
 
@@ -217,12 +215,12 @@ void dump_shared_block_ids(const Oid table_rel_oid,
     shared_block_mapping_data->shared_used_block_ids_ = 0;
 
     shared_ptr =
-        reinterpret_cast<PaxBlockId*>(dsm_segment_address(new_segment));
+        reinterpret_cast<PaxBlockId *>(dsm_segment_address(new_segment));
 
     CurrentResourceOwner = oldowner;
   }
 
-  shared_ptr = reinterpret_cast<PaxBlockId*>(
+  shared_ptr = reinterpret_cast<PaxBlockId *>(
       dsm_segment_address(block_mapping_data->block_ids_segment_));
 
   memcpy(
@@ -248,11 +246,10 @@ void dump_shared_block_ids(const Oid table_rel_oid,
   }
 }
 
-void load_shared_block_ids(const Oid table_rel_oid,
-                           const uint32_t table_index) {
+void load_shared_block_ids(const Oid table_rel_oid, const uint32 table_index) {
   dsm_handle table_block_mapping_handle;
-  dsm_segment* attached_block_ids;
-  PaxBlockId* shared_ptr;
+  dsm_segment *attached_block_ids;
+  PaxBlockId *shared_ptr;
 
   for (;;) {
     table_block_mapping_handle =
@@ -271,7 +268,7 @@ void load_shared_block_ids(const Oid table_rel_oid,
   }
 
   shared_ptr =
-      reinterpret_cast<PaxBlockId*>(dsm_segment_address(attached_block_ids));
+      reinterpret_cast<PaxBlockId *>(dsm_segment_address(attached_block_ids));
 
   pg_read_barrier();
 
@@ -279,7 +276,7 @@ void load_shared_block_ids(const Oid table_rel_oid,
           .shared_used_block_ids_ >
       local_pax_block_mapping_data[table_index].size_block_ids_) {
     // resize local memory
-    uint32_t new_size =
+    uint32 new_size =
         current_xact_shared_pax_ss->shared_block_mapping_[table_index]
             .shared_size_block_ids_;
     MemoryContext oldcontext = MemoryContextSwitchTo(pax_block_mapping_context);
@@ -287,10 +284,11 @@ void load_shared_block_ids(const Oid table_rel_oid,
       local_pax_block_mapping_data[table_index].used_block_ids_ = 0;
       local_pax_block_mapping_data[table_index].size_block_ids_ = new_size;
       local_pax_block_mapping_data[table_index].block_ids_ =
-          reinterpret_cast<PaxBlockId*>(palloc0(sizeof(PaxBlockId) * new_size));
+          reinterpret_cast<PaxBlockId *>(
+              palloc0(sizeof(PaxBlockId) * new_size));
     } else {
       local_pax_block_mapping_data[table_index].block_ids_ =
-          reinterpret_cast<PaxBlockId*>(
+          reinterpret_cast<PaxBlockId *>(
               repalloc(local_pax_block_mapping_data[table_index].block_ids_,
                        sizeof(PaxBlockId) * new_size));
     }
@@ -313,29 +311,29 @@ void load_shared_block_ids(const Oid table_rel_oid,
   dsm_detach(attached_block_ids);
 }
 
-uint32_t get_block_number(const Oid table_rel_oid, const uint32_t table_index,
-                          const PaxBlockId block_id) {
-  LocalTableBlockMappingData* block_mapping_data =
+uint32 get_block_number(const Oid table_rel_oid, const uint32 table_index,
+                        const PaxBlockId block_id) {
+  LocalTableBlockMappingData *block_mapping_data =
       &local_pax_block_mapping_data[table_index];
 
   if (block_mapping_data->used_block_ids_ >=
       block_mapping_data->size_block_ids_) {
     MemoryContext oldcontext = MemoryContextSwitchTo(pax_block_mapping_context);
     if (block_mapping_data->block_ids_ == nullptr) {
-      block_mapping_data->block_ids_ = reinterpret_cast<PaxBlockId*>(
+      block_mapping_data->block_ids_ = reinterpret_cast<PaxBlockId *>(
           palloc0(sizeof(PaxBlockId) * DEFAULT_BLOCK_IDS_SIZE));
       block_mapping_data->size_block_ids_ = DEFAULT_BLOCK_IDS_SIZE;
       block_mapping_data->block_ids_segment_ = NULL;
     } else {
-      uint32_t new_size = block_mapping_data->size_block_ids_ * 2;
-      block_mapping_data->block_ids_ = reinterpret_cast<PaxBlockId*>(repalloc(
+      uint32 new_size = block_mapping_data->size_block_ids_ * 2;
+      block_mapping_data->block_ids_ = reinterpret_cast<PaxBlockId *>(repalloc(
           block_mapping_data->block_ids_, sizeof(PaxBlockId) * new_size));
       block_mapping_data->size_block_ids_ = new_size;
     }
     MemoryContextSwitchTo(oldcontext);
   }
 
-  uint32_t block_number = block_mapping_data->used_block_ids_++;
+  uint32 block_number = block_mapping_data->used_block_ids_++;
   block_mapping_data->block_ids_[block_number] = block_id;
   // TODO(gongxun): should we add the condition that only Gp_reader dump
   // to shared memory?
@@ -343,9 +341,9 @@ uint32_t get_block_number(const Oid table_rel_oid, const uint32_t table_index,
   return block_number;
 }
 
-PaxBlockId pax_get_block_id(const Oid table_rel_oid, const uint32_t table_index,
-                            const uint32_t block_number) {
-  LocalTableBlockMappingData* block_mapping_data =
+PaxBlockId pax_get_block_id(const Oid table_rel_oid, const uint32 table_index,
+                            const uint32 block_number) {
+  LocalTableBlockMappingData *block_mapping_data =
       &local_pax_block_mapping_data[table_index];
 
   if (block_mapping_data->relid_ != table_rel_oid ||
@@ -361,9 +359,9 @@ PaxBlockId pax_get_block_id(const Oid table_rel_oid, const uint32_t table_index,
   return block_mapping_data->block_ids_[block_number];
 }
 
-PaxBlockId get_block_id(const Oid table_rel_oid, const uint8_t table_no,
-                        const uint32_t block_number) {
-  uint32_t table_index = pax_get_table_index(table_rel_oid, table_no);
+PaxBlockId get_block_id(const Oid table_rel_oid, const uint8 table_no,
+                        const uint32 block_number) {
+  uint32 table_index = pax_get_table_index(table_rel_oid, table_no);
   return pax_get_block_id(table_rel_oid, table_index, block_number);
 }
 
@@ -371,10 +369,10 @@ void init_command_shmem_resource() {
   XactHashKey pax_xact_hash_key;
   pax_xact_hash_key.session_id_ = gp_session_id;
   pax_xact_hash_key.command_id_ = gp_command_count;
-  XactHashEntry* entry = NULL;
+  XactHashEntry *entry = NULL;
   bool found;
   ACQUIRE_HASH_LOCK(pax_hash_lock, LW_EXCLUSIVE);
-  entry = reinterpret_cast<XactHashEntry*>(
+  entry = reinterpret_cast<XactHashEntry *>(
       hash_search(pax_xact_hash, &pax_xact_hash_key, HASH_ENTER, &found));
   if (!found) {
     entry->key_ = pax_xact_hash_key;
@@ -418,8 +416,8 @@ void cleanup_command_shmem_resource() {
                     ",gp_is_writer=%d",
                     pax_xact_hash, gp_session_id, getpid(), GpIdentity.dbid,
                     GpIdentity.segindex, gp_command_count, Gp_is_writer)));
-    for (uint32_t i = 0;
-         i < current_xact_shared_pax_ss->block_mapping_used_size_; i++) {
+    for (uint32 i = 0; i < current_xact_shared_pax_ss->block_mapping_used_size_;
+         i++) {
       current_xact_shared_pax_ss->shared_block_mapping_[i].relid_ = InvalidOid;
       current_xact_shared_pax_ss->shared_block_mapping_[i]
           .shared_used_block_ids_ = 0;
@@ -442,7 +440,7 @@ void cleanup_command_shmem_resource() {
 }
 
 void init_local_command_resource() {
-  for (uint32_t i = 0; i < BLOCK_MAPPING_ARRAY_SIZE; i++) {
+  for (uint32 i = 0; i < BLOCK_MAPPING_ARRAY_SIZE; i++) {
     local_pax_block_mapping_data[i].relid_ = InvalidOid;
     local_pax_block_mapping_data[i].size_block_ids_ = 0;
     local_pax_block_mapping_data[i].used_block_ids_ = 0;
@@ -463,7 +461,7 @@ void init_local_command_resource() {
 
 void cleanup_local_command_resource() {
   // TODO(gongxun): should only clean the slot used
-  for (uint32_t i = 0; i < BLOCK_MAPPING_ARRAY_SIZE; i++) {
+  for (uint32 i = 0; i < BLOCK_MAPPING_ARRAY_SIZE; i++) {
     local_pax_block_mapping_data[i].relid_ = InvalidOid;
     local_pax_block_mapping_data[i].size_block_ids_ = 0;
     local_pax_block_mapping_data[i].used_block_ids_ = 0;

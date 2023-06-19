@@ -8,36 +8,36 @@ namespace pax {
 template <typename T>
 class Singleton final {
  public:
+  Singleton(const Singleton &) = delete;
+  Singleton &operator=(const Singleton &) = delete;
   template <typename... ArgTypes>
-  static T* GetInstance(ArgTypes&&... args) {
+  static T *GetInstance(ArgTypes &&...args) {
     std::call_once(
-        of_,
-        [](ArgTypes&&... args) {
-          instance_.reset(new T(std::forward<ArgTypes>(args)...));
+        of,
+        [](ArgTypes &&...args) {
+          instance.reset(new T(std::forward<ArgTypes>(args)...));
         },
         std::forward<ArgTypes>(args)...);
 
-    return instance_.get();
+    return instance.get();
   }
 
-  static inline void destory() {
-    if (instance_) {
-      instance_.reset();
+  static inline void Destroy() {
+    if (instance) {
+      instance.reset();
     }
   }
 
  private:
   Singleton() = default;
   ~Singleton() = default;
-  Singleton(const Singleton&) = delete;
-  Singleton& operator=(const Singleton&) = delete;
-  static std::once_flag of_;
-  static std::unique_ptr<T> instance_;
+  static std::once_flag of;
+  static std::unique_ptr<T> instance;
 };
 
 template <class T>
-std::once_flag Singleton<T>::of_;
+std::once_flag Singleton<T>::of;
 
 template <class T>
-std::unique_ptr<T> Singleton<T>::instance_ = nullptr;
+std::unique_ptr<T> Singleton<T>::instance = nullptr;
 }  // namespace pax

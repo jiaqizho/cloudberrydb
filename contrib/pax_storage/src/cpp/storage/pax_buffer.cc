@@ -6,6 +6,11 @@ namespace pax {
 BlockBuffer::BlockBuffer(char *begin_offset, char *end_offset)
     : begin_offset_(begin_offset), end_offset_(end_offset) {}
 
+BlockBufferBase::BlockBufferBase(char *ptr, size_t size, size_t offset)
+    : block_pos_(ptr + offset), block_buffer_(ptr, ptr + size) {
+  Assert(offset <= size);
+}
+
 void BlockBufferBase::Set(char *ptr, size_t size, size_t offset) {
   block_buffer_ = BlockBuffer(ptr, ptr + size);
   block_pos_ = ptr + offset;
@@ -39,7 +44,7 @@ DataBuffer<T>::DataBuffer(T *data_buffer, size_t size, bool allow_null,
   BlockBufferBase::Set(reinterpret_cast<char *>(data_buffer_), size, 0);
 }
 
-template <typename T>
+template <typename T>  // NOLINT: redirect constructor
 DataBuffer<T>::DataBuffer(size_t size)
     : DataBuffer(nullptr, size, false, true) {}
 
@@ -93,15 +98,15 @@ void DataBuffer<T>::Write(const T *ptr, size_t size) {
 }
 
 template <typename T>
-void DataBuffer<T>::Read(T *to) {
+void DataBuffer<T>::Read(T *dst) {
   Assert(Used() > sizeof(T) && Used() <= Capacity());
-  memcpy(to, block_pos_, sizeof(T));
+  memcpy(dst, block_pos_, sizeof(T));
 }
 
 template <typename T>
-void DataBuffer<T>::Read(void *to, size_t n) {
+void DataBuffer<T>::Read(void *dst, size_t n) {
   Assert(Used() > n && Used() <= Capacity());
-  memcpy(to, block_pos_, n);
+  memcpy(dst, block_pos_, n);
 }
 
 template <typename T>
@@ -117,7 +122,7 @@ T *DataBuffer<T>::GetAvailableBuffer() const {
 template <typename T>
 void DataBuffer<T>::ReSize(size_t size) {
   if (!mem_take_over_) {
-    CBDB_RAISE(cbdb::CException::ExType::ExTypeInvalidMemoryOperation);
+    CBDB_RAISE(cbdb::CException::ExType::kExTypeInvalidMemoryOperation);
   }
 
   size_t used = Used();
