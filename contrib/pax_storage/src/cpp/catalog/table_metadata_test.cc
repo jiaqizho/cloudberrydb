@@ -28,8 +28,8 @@ TEST_F(TableMetadataTest, new_iterator) {
 
   pax::MicroPartitionMetadata meta_info(block_id, file_name);
 
-  meta_info.setTupleCount(1);
-  meta_info.setFileSize(MPARTITION_FILE_SIZE);
+  meta_info.SetTupleCount(1);
+  meta_info.SetFileSize(MPARTITION_FILE_SIZE);
 
   micro_partitions.push_back(std::move(meta_info));
 
@@ -41,9 +41,9 @@ TEST_F(TableMetadataTest, new_iterator) {
   ASSERT_FALSE(iterator->HasNext());
 
   pax::MicroPartitionMetadata meta_info_cur = iterator->Current();
-  ASSERT_EQ(meta_info_cur.getFileName(), file_name);
-  ASSERT_EQ(meta_info_cur.getTupleCount(), 1);
-  ASSERT_EQ(meta_info_cur.getFileSize(), MPARTITION_FILE_SIZE);
+  ASSERT_EQ(meta_info_cur.GetFileName(), file_name);
+  ASSERT_EQ(meta_info_cur.GetTupleCount(), 1);
+  ASSERT_EQ(meta_info_cur.GetFileSize(), MPARTITION_FILE_SIZE);
 }
 
 TEST_F(TableMetadataTest, seek_iterator) {
@@ -53,8 +53,8 @@ TEST_F(TableMetadataTest, seek_iterator) {
 
   for (int i = 0; i < MPARTITION_FILE_NUM; i++) {
     pax::MicroPartitionMetadata meta_info(block_id, file_name);
-    meta_info.setTupleCount(1);
-    meta_info.setFileSize(MPARTITION_FILE_SIZE);
+    meta_info.SetTupleCount(1);
+    meta_info.SetFileSize(MPARTITION_FILE_SIZE);
     micro_partitions.push_back(std::move(meta_info));
   }
 

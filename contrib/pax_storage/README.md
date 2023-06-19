@@ -20,6 +20,11 @@ You **must** enable the pre-push hooks to automatically check format:
 cp .githooks/* .git/hooks/`
 ```
 
+Also before `git push`
+```
+clang-format -i {your changed code}
+```
+
 ### Build PAX
 
 1. make sure you have already build and install `cbdb` in your env
@@ -27,6 +32,8 @@ cp .githooks/* .git/hooks/`
 3. follow below steps
 
 ```
+git submodule update --init
+
 mkdir build
 cd build
 cmake .. 
@@ -61,7 +68,7 @@ shared_preload_libraries = 'pax.so'
 
 ## GTEST accesses internal functions/variables
 
-Using marco `RUN_GTEST` to make protected/private functions/variables public.
+1. Using marco `RUN_GTEST` to make protected/private functions/variables public.
 ex. 
 
 **obj.h**:
@@ -96,6 +103,14 @@ TEST_F(Example, test) {
 }
 ```
 
+3. Will generate temp file in disk? 
+- use relative paths
+- generate temporary files in `SetUp` and delete files in `TearDown`
+  - if generated files in test body, please delete it at the end of the test
+- please make sure that no junk files remain after `gtest`
+
+3. Using `gmock` to mock a class
+
 ### exception && try catch
 
 There are two way to throw a exception
@@ -117,6 +132,15 @@ About try catch, you need to know
       - do not have any global resources
         - just throw it without `try...catch`
     - like: logic error, out of range error...
+  3. Do not use `catch(...)` in c++ code
+    - expect access method layer
+    - used `catch(...)` in below access method will drop the current stack/tracker.
+
+About `ereport/elog(ERROR)`, you need to know
+  1. Better not use `ereport/elog(ERROR)` in c++ code
+    - can not use `try...catch` handle it
+    - make sure resource have been clean up before call `ereport/elog(ERROR)`
+  2. use it as a panic
 
 example here:
 1. Expected exceptions
@@ -168,7 +192,19 @@ void ReadResources() {
 ```
 void ParseResource(Resource * res, size_t offset) {
   // direct throw without any try...catch
-  CBDB_CHECK(offset > res->size(), ExTypeOutOfRange);
+  CBDB_CHECK(offset > res->size(), kExTypeOutOfRange);
   ... // normal logic
 }
 ```
+
+### Others
+
+1. please change all `auto *` to `auto`
+  - notice that `auto` and `auto &` are different
+2. split logic code into `.cc`
+  - should not add logic code(logic in class) into `.h`, `clang-format`/`cpplint` won't detect it 
+  - except `inline`/`static` method
+3. don't make the constructor too bloated
+  - some parameters can be passed through `Set`
+    - in the method starting with `Set`, if necessary, add a `Assert` to ensure that the parameter is only passed once
+  - consider using a factory method to construct the object

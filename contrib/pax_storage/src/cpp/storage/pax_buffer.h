@@ -6,16 +6,15 @@
 #include <utility>
 
 #include "comm/cbdb_wrappers.h"
-#include "comm/pax_def.h"
 
 namespace pax {
 
 struct BlockBuffer {
-  BlockBuffer(char* begin_offset, char* end_offset);
+  BlockBuffer(char *begin_offset, char *end_offset);
 
-  inline char* Start() const { return begin_offset_; }
+  inline char *Start() const { return begin_offset_; }
 
-  inline char* End() const { return end_offset_; }
+  inline char *End() const { return end_offset_; }
 
   inline size_t Size() const { return size_t(end_offset_ - begin_offset_); }
 
@@ -27,25 +26,22 @@ struct BlockBuffer {
     return size_t(end_offset_ - begin_offset_) / size;
   }
 
-  inline void Swap(BlockBuffer& other) {
+  inline void Swap(BlockBuffer &other) {
     std::swap(begin_offset_, other.begin_offset_);
     std::swap(end_offset_, other.end_offset_);
   }
 
  private:
-  char* begin_offset_;
-  char* end_offset_;
+  char *begin_offset_;
+  char *end_offset_;
 };
 
 class BlockBufferBase {
  public:
-  BlockBufferBase(char* ptr, size_t size, size_t offset)
-      : block_pos_(ptr + offset), block_buffer_(ptr, ptr + size) {
-    Assert(offset <= size);
-  }
+  BlockBufferBase(char *ptr, size_t size, size_t offset);
 
-  inline BlockBuffer& Buffer() { return block_buffer_; }
-  inline char* Position() { return block_pos_; }
+  inline BlockBuffer &Buffer() { return block_buffer_; }
+  inline char *Position() { return block_pos_; }
 
   /* Should not call Brush inside BlockBuffer or DataBuffer */
   inline void Brush(size_t size) { block_pos_ += size; }
@@ -53,7 +49,7 @@ class BlockBufferBase {
 
   inline void BrushBack(size_t size) {
     size_t new_offset = Used() - size;
-    CBDB_CHECK(new_offset >= 0, cbdb::CException::ExType::ExTypeOutOfRange);
+    CBDB_CHECK(new_offset >= 0, cbdb::CException::ExType::kExTypeOutOfRange);
     block_pos_ = block_buffer_.Start() + new_offset;
   }
 
@@ -71,18 +67,18 @@ class BlockBufferBase {
     return size_t(block_buffer_.End() - block_buffer_.Start());
   }
 
-  virtual void Set(char* ptr, size_t size, size_t offset);
+  virtual void Set(char *ptr, size_t size, size_t offset);
 
-  virtual void Set(char* ptr, size_t size);
+  virtual void Set(char *ptr, size_t size);
 
-  void Write(char* ptr, size_t size);
+  void Write(char *ptr, size_t size);
 
-  void Combine(const BlockBufferBase& buffer);
+  void Combine(const BlockBufferBase &buffer);
 
   virtual ~BlockBufferBase() = default;
 
  protected:
-  char* block_pos_;
+  char *block_pos_;
   BlockBuffer block_buffer_;
 };
 
@@ -110,45 +106,45 @@ class DataBuffer : public BlockBufferBase {
   // or new alloced will be freed when `DataBuffer` been freed, otherwise the
   // internal buffer should be freed by caller also the method `ReSize` can't be
   // called if `mem_take_over` is false.
-  DataBuffer(T* data_buffer, size_t size, bool allow_null = true,
+  DataBuffer(T *data_buffer, size_t size, bool allow_null = true,
              bool mem_take_over = true);
 
   // will alloc a size of buffer and memory will take over with DataBuffer
   explicit DataBuffer(size_t size);
 
   // Direct access elements of internal buffer
-  T& operator[](size_t i);
+  T &operator[](size_t i);
 
   // Get size of elements of internal buffer
   size_t GetSize();
 
-  ~DataBuffer();
+  ~DataBuffer() override;
 
   // Set a memory buffer, should make sure internal buffer is nullptr.
   // This method is split from the constructor.
   // Sometimes caller need prealloc a DataBuffer without internal buffer.
-  virtual void Set(char* ptr, size_t size, size_t offset);
+  void Set(char *ptr, size_t size, size_t offset) override;
 
-  virtual void Set(char* ptr, size_t size);
+  void Set(char *ptr, size_t size) override;
 
   // Direct write a element into available buffer
   // Should call `Brush` after write
   void Write(T value);
 
-  void Write(T* ptr, size_t size);
+  void Write(T *ptr, size_t size);
 
-  void Write(const T* ptr, size_t size);
+  void Write(const T *ptr, size_t size);
 
   // Read all to dst pointer
-  void Read(T* dst);
+  void Read(T *dst);
 
-  void Read(void* dst, size_t n);
+  void Read(void *dst, size_t n);
 
   // Get the internal buffer pointer
-  T* GetBuffer() const;
+  T *GetBuffer() const;
 
   // Get the available buffer pointer
-  T* GetAvailableBuffer() const;
+  T *GetAvailableBuffer() const;
 
   // Resize the internal buffer, size should bigger than capacity of internal
   // buffer `mem_take_over` should be true
@@ -165,7 +161,7 @@ class DataBuffer : public BlockBufferBase {
 
  private:
   bool mem_take_over_;
-  T* data_buffer_ = nullptr;
+  T *data_buffer_ = nullptr;
 };
 extern template class DataBuffer<char>;
 extern template class DataBuffer<int16>;

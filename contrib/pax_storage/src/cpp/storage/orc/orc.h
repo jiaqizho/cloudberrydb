@@ -31,10 +31,7 @@ namespace pax {
 
 class OrcWriter : public MicroPartitionWriter {
  public:
-  ~OrcWriter() {
-    delete pax_columns_;
-    delete file_;
-  }
+  ~OrcWriter() override;
 
   void Flush() override;
 
@@ -45,8 +42,6 @@ class OrcWriter : public MicroPartitionWriter {
   void Close() override;
 
   size_t EstimatedSize() const override;
-
-  const std::string FullFileName() const override;
 
   // TODO(jiaqizho): using pg type mapping to replace fixed one
   // typlen + typname -> orc type id
@@ -95,19 +90,20 @@ class OrcWriter : public MicroPartitionWriter {
     return type_kinds;
   }
 
-  // TODO(jiaqizho): split into orc_factory.h
   static MicroPartitionWriter *CreateWriter(
       FileSystem *fs, const MicroPartitionWriter::WriterOptions options) {
-    File *file_ = fs->Open(options.file_name);
-    Assert(file_ != nullptr);
+    File *file = fs->Open(options.file_name);
+    Assert(file != nullptr);
     auto types = BuildSchema(options.desc);
 
-    return CreateWriter(file_, std::move(types), options);
+    return CreateWriter(file, std::move(types), options);
   }
 
 #ifndef RUN_GTEST
  protected:  // NOLINT
 #endif
+
+  // Only for test
   static MicroPartitionWriter *CreateWriter(
       File *file, const std::vector<orc::proto::Type_Kind> column_types,
       const MicroPartitionWriter::WriterOptions options) {
@@ -125,7 +121,7 @@ class OrcWriter : public MicroPartitionWriter {
   void WritePostscript(BufferedOutputStream *buffer_mem_stream);
 
   OrcWriter(const MicroPartitionWriter::WriterOptions &orc_writer_options,
-            const std::vector<orc::proto::Type_Kind> column_types, File *file);
+            std::vector<orc::proto::Type_Kind> column_types, File *file);
 
  protected:
   PaxColumns *pax_columns_;
@@ -146,19 +142,19 @@ class OrcWriter : public MicroPartitionWriter {
 class OrcReader : public MicroPartitionReader {
  public:
   struct StripeInformation {
-    uint64 footer_length_;
-    uint64 data_length_;
-    uint64 numbers_of_row_;
-    uint64 offset_;
+    uint64 footer_length;
+    uint64 data_length;
+    uint64 numbers_of_row;
+    uint64 offset;
 
-    uint64 index_length_;
-    uint64 stripe_footer_start_;
+    uint64 index_length;
+    uint64 stripe_footer_start;
 
     // refine column statistics if we do need it
     ::orc::proto::StripeStatistics stripe_statistics;
   };
 
-  ~OrcReader() { delete file_; }
+  ~OrcReader() override;
 
   StripeInformation *GetStripeInfo(size_t index) const;
 
@@ -213,7 +209,7 @@ class OrcReader : public MicroPartitionReader {
 
   // Optional, when reused buffer is not set, new memory will be generated for
   // ReadTuple
-  void SetReadBuffer(DataBuffer<char> *data_buffer) override;
+  void SetReadBuffer(DataBuffer<char> *reused_buffer) override;
 
  protected:
   std::vector<orc::proto::Type_Kind> column_types_;
@@ -231,14 +227,14 @@ class OrcReader : public MicroPartitionReader {
   orc::proto::Footer file_footer_;
   orc::proto::Metadata meta_data_;
 
-  size_t num_of_stripes;
+  size_t num_of_stripes_;
 };
 
-class OrcIteratorReader : public MicroPartitionReader {
+class OrcIteratorReader final : public MicroPartitionReader {
  public:
-  explicit OrcIteratorReader(const FileSystemPtr &fs);
+  explicit OrcIteratorReader(FileSystem *fs);
 
-  virtual ~OrcIteratorReader();
+  ~OrcIteratorReader() override = default;
 
   void Open(const ReaderOptions &options) override;
 
@@ -252,9 +248,9 @@ class OrcIteratorReader : public MicroPartitionReader {
 
   size_t Length() const override;
 
-  void SetFilter(Filter *filter) override { reader_->SetFilter(filter); }
+  void SetFilter(Filter *filter) override;
 
-  void SetReadBuffer(DataBuffer<char> *data_buffer) override;
+  void SetReadBuffer(DataBuffer<char> *reused_buffer) override;
 
  private:
   std::string block_id_;

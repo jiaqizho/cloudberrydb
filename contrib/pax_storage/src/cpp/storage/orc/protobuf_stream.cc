@@ -1,20 +1,23 @@
 #include "storage/orc/protobuf_stream.h"
 
-#include "comm/pax_def.h"
 #include "exceptions/CException.h"
 
 namespace pax {
 
-void BufferedOutputStream::Set(DataBuffer<char>* data_buffer,
-                               uint64_t block_size) {
+BufferedOutputStream::BufferedOutputStream(DataBuffer<char> *data_buffer,
+                                           uint64 block_size)
+    : data_buffer_(data_buffer), block_size_(block_size) {}
+
+void BufferedOutputStream::Set(DataBuffer<char> *data_buffer,
+                               uint64 block_size) {
   Assert(data_buffer);
   data_buffer_ = data_buffer;
   block_size_ = block_size;
 }
 
-bool BufferedOutputStream::Next(void** buffer, int* size) {
-  uint64_t old_capacity = data_buffer_->Capacity();
-  uint64_t new_capacity = data_buffer_->Capacity();
+bool BufferedOutputStream::Next(void **buffer, int *size) {
+  uint64 old_capacity = data_buffer_->Capacity();
+  uint64 new_capacity = data_buffer_->Capacity();
 
   while (new_capacity < data_buffer_->Used() + block_size_) {
     if (new_capacity == 0) {
@@ -40,7 +43,7 @@ bool BufferedOutputStream::Next(void** buffer, int* size) {
 void BufferedOutputStream::BackUp(int count) {
   if (count >= 0) {
     if (static_cast<size_t>(count) > data_buffer_->Used()) {
-      CBDB_RAISE(cbdb::CException::ExType::ExTypeIOError);
+      CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
     }
     data_buffer_->BrushBack(count);
   }
@@ -50,16 +53,16 @@ google::protobuf::int64 BufferedOutputStream::ByteCount() const {
   return static_cast<google::protobuf::int64>(data_buffer_->Used());
 }
 
-bool BufferedOutputStream::WriteAliasedRaw([[maybe_unused]] const void* data,
+bool BufferedOutputStream::WriteAliasedRaw([[maybe_unused]] const void *data,
                                            [[maybe_unused]] int size) {
   return false;
 }
 
 bool BufferedOutputStream::AllowsAliasing() const { return false; }
 
-uint64_t BufferedOutputStream::GetSize() const { return data_buffer_->Used(); }
+uint64 BufferedOutputStream::GetSize() const { return data_buffer_->Used(); }
 
-DataBuffer<char>* BufferedOutputStream::GetDataBuffer() const {
+DataBuffer<char> *BufferedOutputStream::GetDataBuffer() const {
   return data_buffer_;
 }
 
@@ -71,7 +74,7 @@ size_t BufferedOutputStream::EndBufferOutRecord() {
   return data_buffer_->Used() - last_used_;
 }
 
-void BufferedOutputStream::DirectWrite(char* ptr, size_t size) {
+void BufferedOutputStream::DirectWrite(char *ptr, size_t size) {
   if (data_buffer_->Available() < size) {
     data_buffer_->ReSize(data_buffer_->Capacity() + size);
   }
@@ -79,7 +82,10 @@ void BufferedOutputStream::DirectWrite(char* ptr, size_t size) {
   data_buffer_->Brush(size);
 }
 
-bool SeekableInputStream::Next(const void** buffer, int* size) {
+SeekableInputStream::SeekableInputStream(char *data_buffer, uint64 length)
+    : data_buffer_(data_buffer, length, true, false) {}
+
+bool SeekableInputStream::Next(const void **buffer, int *size) {
   if (data_buffer_.Available() > 0) {
     *buffer = data_buffer_.Position();
     *size = static_cast<int>(data_buffer_.Available());
@@ -93,7 +99,7 @@ bool SeekableInputStream::Next(const void** buffer, int* size) {
 void SeekableInputStream::BackUp(int count) {
   if (count >= 0) {
     if (static_cast<size_t>(count) > data_buffer_.Used()) {
-      CBDB_RAISE(cbdb::CException::ExType::ExTypeIOError);
+      CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
     }
     data_buffer_.BrushBack(count);
   }
@@ -101,7 +107,7 @@ void SeekableInputStream::BackUp(int count) {
 
 bool SeekableInputStream::Skip(int count) {
   if (count >= 0) {
-    uint64_t unsigned_count = static_cast<uint64_t>(count);
+    auto unsigned_count = static_cast<uint64>(count);
     if (unsigned_count + data_buffer_.Used() <= data_buffer_.Capacity()) {
       data_buffer_.Brush(unsigned_count);
       return true;

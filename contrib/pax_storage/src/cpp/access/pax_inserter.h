@@ -10,7 +10,7 @@ namespace pax {
 class CPaxInserter {
  public:
   explicit CPaxInserter(Relation rel);
-  virtual ~CPaxInserter();
+  virtual ~CPaxInserter() = default;
 
   static void TupleInsert(Relation relation, TupleTableSlot *slot,
                           CommandId cid, int options, BulkInsertState bistate);
@@ -27,7 +27,7 @@ class CPaxInserter {
 
  private:
   Relation rel_;
-  uint32_t insert_count_;
+  uint32 insert_count_;
 
   TableWriter *writer_;
 };  // class CPaxInserter

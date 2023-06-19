@@ -19,14 +19,12 @@ static const char *pax_file_pathempty = "";
 
 class TablePaxUtilsTest : public ::testing::Test {
  public:
-  void SetUp() override {
-    gp_debug_linger = 0;
-  }
+  void SetUp() override { gp_debug_linger = 0; }
 
   void TearDown() override {}
 };
 
-TEST_F(TablePaxUtilsTest, list_directory) {
+TEST_F(TablePaxUtilsTest, ListDirectory) {
   char cmd[PAX_TEST_CMD_LENGTH];
   List *filelist;
 
@@ -50,7 +48,7 @@ TEST_F(TablePaxUtilsTest, list_directory) {
   ASSERT_DEATH(paxc::ListDirectory(pax_file_pathempty), "");
 }
 
-TEST_F(TablePaxUtilsTest, copy_file) {
+TEST_F(TablePaxUtilsTest, CopyFile) {
   int result = 0;
   char cmd[PAX_TEST_CMD_LENGTH];
 
@@ -73,7 +71,7 @@ TEST_F(TablePaxUtilsTest, copy_file) {
   ASSERT_DEATH(paxc::CopyFile(pax_file_pathempty, pax_file_pathempty), "");
 }
 
-TEST_F(TablePaxUtilsTest, makedir_recursive) {
+TEST_F(TablePaxUtilsTest, MakedirRecursive) {
   int result = 0;
   struct stat st;
   char cmd[PAX_TEST_CMD_LENGTH];

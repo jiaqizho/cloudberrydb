@@ -1,7 +1,6 @@
 #include "CException.h"
 
 #include "comm/cbdb_wrappers.h"
-#include "comm/pax_def.h"
 
 #ifdef __GNUC__
 #include <cxxabi.h>
@@ -36,7 +35,7 @@ static inline int Append(char *dst, size_t count, const char *format, ...) {
 }
 
 static inline void StackTrace(char *stack_buffer,
-                              uint8_t max_depth = DEFAULT_STACK_MAX_DEPTH) {
+                              uint8 max_depth = DEFAULT_STACK_MAX_DEPTH) {
   void *addr_list[max_depth + 1];
   int addr_len;
   char **symbol_list;
@@ -176,6 +175,9 @@ void ErrorMessage::AppendV(const char *format, va_list ap) noexcept {
   }
 }
 
+const char *ErrorMessage::Message() const noexcept { return &message_[0]; }
+int ErrorMessage::Length() const noexcept { return index_; }
+
 void CException::Raise(CException ex, bool reraise) {
 #ifdef __GNUC__
   if (!reraise) {
@@ -184,6 +186,26 @@ void CException::Raise(CException ex, bool reraise) {
 #endif
   throw ex;
 }
+
+CException::CException(ExType extype)
+    : m_filename(nullptr), m_lineno(0), m_extype(extype) {}
+
+CException::CException(const char *filename, int lineno, ExType extype)
+    : m_filename(filename), m_lineno(lineno), m_extype(extype) {}
+
+const char *CException::Filename() const { return m_filename; }
+
+int CException::Lineno() const { return m_lineno; }
+
+CException::ExType CException::EType() const { return m_extype; }
+
+std::string CException::What() const {
+  std::ostringstream buffer;
+  buffer << m_filename << ":" << m_lineno << " " << exception_names[m_extype];
+  return buffer.str();
+}
+
+const char *CException::Stack() const { return stack_; }
 
 void CException::Raise(const char *filename, int lineno, ExType extype) {
   Raise(CException(filename, lineno, extype), false);

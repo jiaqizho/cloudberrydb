@@ -18,8 +18,6 @@ CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
       ->Open();
 }
 
-CPaxInserter::~CPaxInserter() {}
-
 void CPaxInserter::InsertTuple(Relation relation, TupleTableSlot *slot,
                                CommandId cid, int options,
                                BulkInsertState bistate) {
@@ -41,8 +39,10 @@ void CPaxInserter::MultiInsert(Relation relation, TupleTableSlot **slots,
       pax::CPaxDmlStateLocal::instance()->GetInserter(relation);
   Assert(inserter != nullptr);
   // TODO(Tony): implement bulk insert as AO/HEAP does with tuples iteration,
-  // which needs to be futher optmized by using new feature like Parallelization
-  // or Vectorization.
+  // which needs to be further optimized by using new feature like
+  // Parallelization or Vectorization.
+
+  // todo(jiaqizho),
   for (int i = 0; i < ntuples; i++) {
     inserter->InsertTuple(relation, slots[i], cid, options, bistate);
   }
