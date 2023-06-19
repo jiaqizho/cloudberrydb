@@ -10,7 +10,7 @@ compile_pax() {
 	source $CBDB_INSTALL_PATH/greenplum_path.sh
 	mkdir -p $CBDB_PAX_SRC_PATH/build
 	pushd $CBDB_PAX_SRC_PATH/build
-	cmake ..
+	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ..
 	make
 	popd
 }
