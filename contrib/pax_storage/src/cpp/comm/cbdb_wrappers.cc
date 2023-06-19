@@ -5,7 +5,26 @@ extern "C" {
 const char *progname;
 }
 
-void *cbdb::MemCtxAlloc(MemoryContext ctx, size_t size) {
+namespace cbdb {
+
+CAutoExceptionStack::CAutoExceptionStack(void **global_exception_stack,
+                                         void **global_error_context_stack)
+    : m_global_exception_stack(global_exception_stack),
+      m_global_error_context_stack(global_error_context_stack),
+      m_exception_stack(*global_exception_stack),
+      m_error_context_stack(*global_error_context_stack) {}
+
+CAutoExceptionStack::~CAutoExceptionStack() {
+  *m_global_exception_stack = m_exception_stack;
+  *m_global_error_context_stack = m_error_context_stack;
+}
+
+// set the exception stack to the given address
+void CAutoExceptionStack::SetLocalJmp(void *local_jump) {
+  *m_global_exception_stack = local_jump;
+}
+
+void *MemCtxAlloc(MemoryContext ctx, size_t size) {
   CBDB_WRAP_START;
   {
     { return MemoryContextAlloc(ctx, (Size)size); }
@@ -14,7 +33,7 @@ void *cbdb::MemCtxAlloc(MemoryContext ctx, size_t size) {
   return nullptr;
 }
 
-void *cbdb::Palloc(size_t size) {
+void *Palloc(size_t size) {
   CBDB_WRAP_START;
   {
 #ifdef RUN_GTEST
@@ -28,7 +47,7 @@ void *cbdb::Palloc(size_t size) {
   return nullptr;
 }
 
-void *cbdb::Palloc0(size_t size) {
+void *Palloc0(size_t size) {
   CBDB_WRAP_START;
   {
 #ifdef RUN_GTEST
@@ -42,14 +61,14 @@ void *cbdb::Palloc0(size_t size) {
   return nullptr;
 }
 
-void *cbdb::RePalloc(void *ptr, size_t size) {
+void *RePalloc(void *ptr, size_t size) {
   CBDB_WRAP_START;
   { return repalloc(ptr, size); }
   CBDB_WRAP_END;
   return nullptr;
 }
 
-void cbdb::Pfree(void *ptr) {
+void Pfree(void *ptr) {
 #ifdef RUN_GTEST
   if (ptr == nullptr) {
     return;
@@ -59,6 +78,8 @@ void cbdb::Pfree(void *ptr) {
   { pfree(ptr); }
   CBDB_WRAP_END;
 }
+
+}  // namespace cbdb
 
 void *operator new(std::size_t size) { return cbdb::Palloc(size); }
 
@@ -176,8 +197,8 @@ void cbdb::ReleaseCommandResource() {
   CBDB_WRAP_END;
 }
 
-void cbdb::GetTableIndexAndTableNumber(Oid table_rel_oid, uint8_t *table_no,
-                                       uint32_t *table_index) {
+void cbdb::GetTableIndexAndTableNumber(Oid table_rel_oid, uint8 *table_no,
+                                       uint32 *table_index) {
   CBDB_WRAP_START;
   {
     paxc::get_table_index_and_table_number(table_rel_oid, table_no,
@@ -186,14 +207,14 @@ void cbdb::GetTableIndexAndTableNumber(Oid table_rel_oid, uint8_t *table_no,
   CBDB_WRAP_END;
 }
 
-uint32_t cbdb::GetBlockNumber(Oid table_rel_oid, uint32_t table_index,
-                              paxc::PaxBlockId block_id) {
+uint32 cbdb::GetBlockNumber(Oid table_rel_oid, uint32 table_index,
+                            paxc::PaxBlockId block_id) {
   CBDB_WRAP_START;
   { return paxc::get_block_number(table_rel_oid, table_index, block_id); }
   CBDB_WRAP_END;
 }
-paxc::PaxBlockId cbdb::GetBlockId(Oid table_rel_oid, uint8_t table_no,
-                                  uint32_t block_number) {
+paxc::PaxBlockId cbdb::GetBlockId(Oid table_rel_oid, uint8 table_no,
+                                  uint32 block_number) {
   CBDB_WRAP_START;
   { return paxc::get_block_id(table_rel_oid, table_no, block_number); }
   CBDB_WRAP_END;

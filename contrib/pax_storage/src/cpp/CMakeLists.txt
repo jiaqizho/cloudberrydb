@@ -94,6 +94,7 @@ target_link_libraries(test_main gtest gmock gtest_main postgres pax_storage)
 endif(BUILD_GTEST)
 
 set(pax_comm_src
+    comm/bitmap.cc
     comm/cbdb_wrappers.cc
     comm/paxc_utils.cc)
 
@@ -119,6 +120,7 @@ set(pax_access_src
     access/pax_updater.cc
     access/pax_scanner.cc)
 set(pax_catalog_src
+    catalog/micro_partition_metadata.cc
     catalog/pax_aux_table.cc
     catalog/table_metadata.cc)
 

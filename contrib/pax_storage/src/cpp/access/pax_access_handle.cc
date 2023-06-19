@@ -34,7 +34,7 @@
 // CBDB_CATCH_MATCH(std::exception &exp); // optional
 // {
 //    // specific exception handler
-//    error_message.Append("error message: %s", error_message.message());
+//    error_message.Append("error message: %s", error_message.Message());
 // }
 // CBDB_CATCH_COMM();
 // CBDB_CATCH_DEFAULT();
@@ -80,9 +80,9 @@
 #define CBDB_END_TRY()                                     \
   }                                                        \
   if (internal_cbdb_try_throw_error_) {                    \
-    if (error_message.length() == 0)                       \
+    if (error_message.Length() == 0)                       \
       error_message.Append("ERROR: %s", __func__);         \
-    ereport(ERROR, errmsg("%s", error_message.message())); \
+    ereport(ERROR, errmsg("%s", error_message.Message())); \
   }                                                        \
   }                                                        \
   while (0)
@@ -106,10 +106,10 @@ bool AMOidIsPax(Oid amOid) {
 // reloptions structure and variables.
 static relopt_kind self_relopt_kind;
 static const relopt_parse_elt self_relopt_tab[] = {
-    {"compresslevel", RELOPT_TYPE_INT, offsetof(PaxOptions, compresslevel)},
-    {"compresstype", RELOPT_TYPE_STRING, offsetof(PaxOptions, compresstype)},
+    {"compresslevel", RELOPT_TYPE_INT, offsetof(PaxOptions, compress_level_)},
+    {"compresstype", RELOPT_TYPE_STRING, offsetof(PaxOptions, compress_type_)},
     {"storage_format", RELOPT_TYPE_STRING,
-     offsetof(PaxOptions, storage_format)},
+     offsetof(PaxOptions, storage_format_)},
 };
 
 // access methods that are implemented in C++
@@ -654,8 +654,8 @@ bytea *PaxAccessMethod::Amoptions(Datum reloptions, char relkind,
                             sizeof(PaxOptions), self_relopt_tab,
                             lengthof(self_relopt_tab));
   // adjust string values
-  PAX_COPY_OPT(rdopts, storage_format);
-  PAX_COPY_OPT(rdopts, compresstype);
+  PAX_COPY_OPT(rdopts, storage_format_);
+  PAX_COPY_OPT(rdopts, compress_type_);
 
   return reinterpret_cast<bytea *>(rdopts);
 }

@@ -9,43 +9,41 @@ namespace pax {
 
 class BufferedOutputStream : public google::protobuf::io::ZeroCopyOutputStream {
  public:
-  BufferedOutputStream(DataBuffer<char>* data_buffer, uint64_t block_size)
-      : data_buffer_(data_buffer), block_size_(block_size) {}
+  BufferedOutputStream(DataBuffer<char> *data_buffer, uint64 block_size);
 
-  virtual void Set(DataBuffer<char>* data_buffer, uint64_t block_size);
+  virtual void Set(DataBuffer<char> *data_buffer, uint64 block_size);
 
-  bool Next(void** buffer, int* size) override;
+  bool Next(void **buffer, int *size) override;
 
   void BackUp(int count) override;
 
   google::protobuf::int64 ByteCount() const override;
 
-  bool WriteAliasedRaw(const void* data, int size) override;
+  bool WriteAliasedRaw(const void *data, int size) override;
 
   bool AllowsAliasing() const override;
 
-  virtual uint64_t GetSize() const;
+  virtual uint64 GetSize() const;
 
-  virtual DataBuffer<char>* GetDataBuffer() const;
+  virtual DataBuffer<char> *GetDataBuffer() const;
 
   virtual void StartBufferOutRecord();
 
   virtual size_t EndBufferOutRecord();
 
-  virtual void DirectWrite(char* ptr, size_t size);
+  virtual void DirectWrite(char *ptr, size_t size);
 
  private:
   size_t last_used_ = 0;
-  DataBuffer<char>* data_buffer_;
-  uint64_t block_size_;
+  DataBuffer<char> *data_buffer_;
+  uint64 block_size_;
 };
 
 class SeekableInputStream : public google::protobuf::io::ZeroCopyInputStream {
  public:
-  SeekableInputStream(char* data_buffer, uint64_t length)
-      : data_buffer_(data_buffer, length, true, false) {}
+  SeekableInputStream(char *data_buffer, uint64 length);
 
-  bool Next(const void** buffer, int* size) override;
+  bool Next(const void **buffer, int *size) override;
 
   void BackUp(int count) override;
 

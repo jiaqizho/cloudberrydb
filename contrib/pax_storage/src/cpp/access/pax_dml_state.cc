@@ -4,7 +4,7 @@ namespace pax {
 // class CPaxDmlStateLocal
 
 void CPaxDmlStateLocal::DmlStateResetCallback(void *_) {
-  pax::CPaxDmlStateLocal::instance()->reset();
+  pax::CPaxDmlStateLocal::instance()->Reset();
 }
 
 void CPaxDmlStateLocal::InitDmlState(const Relation rel,
@@ -78,6 +78,19 @@ CPaxDeleter *CPaxDmlStateLocal::GetDeleter(const Relation rel,
   return state->deleter;
 }
 
+void CPaxDmlStateLocal::Reset() {
+  last_used_state_ = nullptr;
+  state_ctx_ = nullptr;
+  dml_descriptor_tab_ = nullptr;
+}
+
+CPaxDmlStateLocal::CPaxDmlStateLocal() {
+  dml_descriptor_tab_ = nullptr;
+  last_used_state_ = nullptr;
+  state_ctx_ = nullptr;
+  cb_ = {.func = DmlStateResetCallback, .arg = NULL};
+}
+
 PaxDmlState *CPaxDmlStateLocal::EntryDmlState(const Oid &oid) {
   PaxDmlState *state;
   bool found;
@@ -92,6 +105,7 @@ PaxDmlState *CPaxDmlStateLocal::EntryDmlState(const Oid &oid) {
   this->last_used_state_ = state;
   return state;
 }
+
 PaxDmlState *CPaxDmlStateLocal::RemoveDmlState(const Oid &oid) {
   Assert(this->dml_descriptor_tab_);
 

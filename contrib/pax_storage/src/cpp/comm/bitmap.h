@@ -1,5 +1,7 @@
 #pragma once
 
+#include "comm/cbdb_api.h"
+
 #include <assert.h>
 
 #include <algorithm>
@@ -15,60 +17,37 @@ namespace pax {
 class Bitmap {
  public:
   virtual ~Bitmap() {}
-  virtual void Set(uint32_t index) = 0;
-  virtual bool Test(uint32_t index) const = 0;
-  virtual void Clear(uint32_t index) = 0;
+  virtual void Set(uint32 index) = 0;
+  virtual bool Test(uint32 index) const = 0;
+  virtual void Clear(uint32 index) = 0;
   virtual void Reset() = 0;
-  virtual bool BitmapFindFirst(uint32_t offset, bool value,
-                               uint32_t *idx) const = 0;
-  virtual uint32_t NumBits() const = 0;
+  virtual bool BitmapFindFirst(uint32 offset, bool value,
+                               uint32 *idx) const = 0;
+  virtual uint32 NumBits() const = 0;
 };
 
 class DynamicBitmap : public Bitmap {
  public:
   friend class BitmapIterator;
-  DynamicBitmap() { bitmap_.resize(1024); }
-  explicit DynamicBitmap(uint32_t size) { bitmap_.resize(size); }
+  DynamicBitmap();
+  explicit DynamicBitmap(uint32 size);
 
-  virtual ~DynamicBitmap() { bitmap_.clear(); }
+  virtual ~DynamicBitmap();
 
-  void Set(uint32_t index) override {
-    if (index < 0 || index >= bitmap_.size()) {
-      throw std::out_of_range("index out of range");
-    }
-    bitmap_[index] = true;
-  }
+  void Set(uint32 index) override;
 
-  bool Test(uint32_t index) const override {
-    if (index < 0 || index >= bitmap_.size()) {
-      throw std::out_of_range("index out of range");
-    }
-    return bitmap_[index];
-  }
+  bool Test(uint32 index) const override;
 
-  void Clear(uint32_t index) override {
-    if (index < 0 || index >= bitmap_.size()) {
-      throw std::out_of_range("index out of range");
-    }
-    bitmap_[index] = false;
-  }
+  void Clear(uint32 index) override;
 
-  void Reset() override { bitmap_.clear(); }
+  void Reset() override;
 
-  void Resize(int size) { bitmap_.resize(size); }
+  void Resize(int size);
 
   // TODO(gongxun): need to do optimization for this function
-  bool BitmapFindFirst(uint32_t offset, bool value,
-                       uint32_t *idx) const override {
-    auto it = std::find(bitmap_.begin() + offset, bitmap_.end(), value);
-    if (it == bitmap_.end()) {
-      return false;
-    }
-    *idx = it - bitmap_.begin();
-    return true;
-  }
+  bool BitmapFindFirst(uint32 offset, bool value, uint32 *idx) const override;
 
-  uint32_t NumBits() const override { return bitmap_.size(); }
+  uint32 NumBits() const override;
 
  private:
   std::vector<bool> bitmap_;
@@ -77,91 +56,23 @@ class DynamicBitmap : public Bitmap {
 class FixedBitmap : public Bitmap {
  public:
   friend class BitmapIterator;
-  explicit FixedBitmap(uint32_t size) {
-    byte_size_ = (size >> 3) + (size & 7 ? 1 : 0);
-    bitmap_ = new uint8_t[byte_size_];
+  explicit FixedBitmap(uint32 size);
 
-    num_bits_ = size;
-    memset(bitmap_, 0, byte_size_);
-  }
-  virtual ~FixedBitmap() { delete[] bitmap_; }
+  virtual ~FixedBitmap();
 
-  void Set(uint32_t index) override {
-    if (index < 0 || index >= num_bits_) {
-      throw std::out_of_range("index out of range");
-    }
-    bitmap_[index >> 3] |= 1 << (index & 7);
-  }
+  void Set(uint32 index) override;
 
-  bool Test(uint32_t index) const override {
-    if (index < 0 || index >= num_bits_) {
-      throw std::out_of_range("index out of range");
-    }
-    return bitmap_[index >> 3] & (1 << (index & 7));
-  }
+  bool Test(uint32 index) const override;
 
-  void Reset() override { std::memset(bitmap_, 0, byte_size_); }
+  void Reset() override;
 
-  void Clear(uint32_t index) override {
-    if (index < 0 || index >= num_bits_) {
-      throw std::out_of_range("index out of range");
-    }
-    bitmap_[index >> 3] &= ~(1 << (index & 7));
-  }
+  void Clear(uint32 index) override;
 
-  uint32_t Size() const { return byte_size_; }
-  uint32_t NumBits() const override { return num_bits_; }
-  bool BitmapFindFirst(uint32_t offset, bool value, uint32_t *idx) const {
-    const uint64_t pattern64[2] = {0xffffffffffffffff, 0x0000000000000000};
-    const uint8_t pattern8[2] = {0xff, 0x00};
-    uint32_t bit;
+  uint32 Size() const;
 
-    if (offset >= num_bits_) {
-      return false;
-    }
+  uint32 NumBits() const override;
 
-    // Jump to the byte at specified offset
-    const uint8_t *p = bitmap_ + (offset >> 3);
-    uint32_t num_bits = num_bits_ - offset;
-
-    // Find a 'value' bit at the end of the first byte
-    if ((bit = offset & 0x7)) {
-      for (; bit < 8 && num_bits > 0; ++bit) {
-        if (Test(((p - bitmap_) << 3) + bit) == value) {
-          *idx = ((p - bitmap_) << 3) + bit;
-          return true;
-        }
-
-        num_bits--;
-      }
-      p++;
-    }
-
-    // check 64bit at the time for a 'value' bit
-    const uint64_t *u64 = (const uint64_t *)p;
-    while (num_bits >= 64 && *u64 == pattern64[value]) {
-      num_bits -= 64;
-      u64++;
-    }
-
-    // check 8bit at the time for a 'value' bit
-    p = (const uint8_t *)u64;
-    while (num_bits >= 8 && *p == pattern8[value]) {
-      num_bits -= 8;
-      p++;
-    }
-
-    // Find a 'value' bit at the beginning of the last byte
-    for (bit = 0; num_bits > 0; ++bit) {
-      if (Test(((p - bitmap_) << 3) + bit) == value) {
-        *idx = ((p - bitmap_) << 3) + bit;
-        return true;
-      }
-      num_bits--;
-    }
-
-    return false;
-  }
+  bool BitmapFindFirst(uint32 offset, bool value, uint32 *idx) const;
 
  private:
   FixedBitmap(const FixedBitmap &other) = delete;
@@ -169,33 +80,21 @@ class FixedBitmap : public Bitmap {
   FixedBitmap &operator=(const FixedBitmap &other) = delete;
   FixedBitmap &operator=(FixedBitmap &&other) = delete;
 
-  uint32_t byte_size_;
-  uint32_t num_bits_;
-  uint8_t *bitmap_;
+  uint32 byte_size_;
+  uint32 num_bits_;
+  uint8 *bitmap_;
 };
 
 class BitmapIterator {
  public:
-  explicit BitmapIterator(Bitmap *map) : offset_(0), bitmap_(map) {}
+  explicit BitmapIterator(Bitmap *map);
 
-  void SeekTo(size_t bit) {
-    assert(bit < bitmap_->NumBits());
-    offset_ = bit;
-  }
+  void SeekTo(size_t bit);
 
-  int32_t Next(bool value) {
-    int32_t len = bitmap_->NumBits() - offset_;
-    if (len <= 0) return -1;
-    uint32_t index;
-    if (bitmap_->BitmapFindFirst(offset_, value, &index)) {
-      offset_ = index + 1;
-      return index;
-    }
-    return -1;
-  }
+  int32 Next(bool value);
 
  private:
-  uint32_t offset_;
+  uint32 offset_;
   Bitmap *bitmap_;
 };
 }  // namespace pax

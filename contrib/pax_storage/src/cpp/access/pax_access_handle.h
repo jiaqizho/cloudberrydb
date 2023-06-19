@@ -150,7 +150,7 @@ extern ext_dml_func_hook_type ext_dml_finish_hook;
 // plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
   int32 vl_len_; /* varlena header (do not touch directly!) */
-  char storage_format[16];
-  char compresstype[16];
-  int compresslevel;
+  char storage_format_[16];
+  char compress_type_[16];
+  int compress_level_;
 };

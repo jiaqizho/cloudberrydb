@@ -1,4 +1,5 @@
 #pragma once
+#include "comm/cbdb_api.h"
 
 #include <string>
 #include <utility>
@@ -12,60 +13,35 @@ struct WriteSummary {
   size_t file_size;
   size_t num_tuples;
   unsigned int rel_oid;
-  WriteSummary() : file_size(0), num_tuples(0) {}
-  WriteSummary(const WriteSummary& summary)
-      : file_name(summary.file_name),
-        block_id(summary.block_id),
-        file_size(summary.file_size),
-        num_tuples(summary.num_tuples),
-        rel_oid(summary.rel_oid) {}
+  WriteSummary();
+  WriteSummary(const WriteSummary &summary);
 };
+
 class MicroPartitionMetadata {
  public:
-  MicroPartitionMetadata(const std::string micro_partition_id,
-                         const std::string filename)
-      : micro_partition_id_(micro_partition_id), file_name_(filename) {}
+  MicroPartitionMetadata(std::string micro_partition_id, std::string filename);
 
-  ~MicroPartitionMetadata() {}
+  ~MicroPartitionMetadata() = default;
 
-  MicroPartitionMetadata(const MicroPartitionMetadata& other)
-      : micro_partition_id_(other.micro_partition_id_),
-        file_name_(other.file_name_),
-        tuple_count_(other.tuple_count_),
-        file_size_(other.file_size_) {}
+  MicroPartitionMetadata(const MicroPartitionMetadata &other);
 
-  MicroPartitionMetadata(MicroPartitionMetadata&& other) {
-    micro_partition_id_ = std::move(other.micro_partition_id_);
-    file_name_ = std::move(other.file_name_);
-    tuple_count_ = other.tuple_count_;
-    file_size_ = other.file_size_;
-  }
+  MicroPartitionMetadata(MicroPartitionMetadata &&other);
 
-  MicroPartitionMetadata& operator=(const MicroPartitionMetadata& other) {
-    micro_partition_id_ = other.micro_partition_id_;
-    file_name_ = other.file_name_;
-    tuple_count_ = other.tuple_count_;
-    file_size_ = other.file_size_;
-    return *this;
-  }
+  MicroPartitionMetadata &operator=(const MicroPartitionMetadata &other);
 
-  MicroPartitionMetadata& operator=(MicroPartitionMetadata&& other) {
-    micro_partition_id_ = std::move(other.micro_partition_id_);
-    file_name_ = std::move(other.file_name_);
-    tuple_count_ = other.tuple_count_;
-    file_size_ = other.file_size_;
-    return *this;
-  }
+  MicroPartitionMetadata &operator=(MicroPartitionMetadata &&other);
 
-  const std::string& getMicroPartitionId() const { return micro_partition_id_; }
+  const std::string &GetMicroPartitionId() const;
 
-  const std::string& getFileName() const { return file_name_; }
+  const std::string &GetFileName() const;
 
-  void setTupleCount(uint32_t tuple_count) { tuple_count_ = tuple_count; }
-  uint32_t const getTupleCount() const { return tuple_count_; }
+  void SetTupleCount(uint32 tuple_count);
 
-  void setFileSize(uint32_t file_size) { file_size_ = file_size; }
-  uint32_t const getFileSize() const { return file_size_; }
+  uint32 GetTupleCount() const;
+
+  void SetFileSize(uint32 file_size);
+
+  uint32 GetFileSize() const;
 
  private:
   std::string micro_partition_id_;
@@ -73,8 +49,8 @@ class MicroPartitionMetadata {
   std::string file_name_;
 
   // statistics info
-  uint32_t tuple_count_ = 0;
-  uint32_t file_size_ = 0;
+  uint32 tuple_count_ = 0;
+  uint32 file_size_ = 0;
 
   // TODO(gongxun): add more info like bloom filter, index, etc.
 };  // class MicroPartitionMetadata
