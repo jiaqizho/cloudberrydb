@@ -32,6 +32,7 @@ stages:
     echo "${CI_PIPELINE_ID}" > ${CBDB_PROJECT_DIR}/BUILD_NUMBER
     bash ${CBDB_PROJECT_DIR}/hd-ci/compile_cbdb.bash
     bash ${GIT_CLONE_PATH}/hd-ci/compile_pax.bash
+    bash ${GIT_CLONE_PATH}/hd-ci/clang_tidy_pax.bash
     cp ${CBDB_PROJECT_DIR}/cbdb-artifacts.txt ${CI_PROJECT_DIR}/cbdb-artifacts.txt
     touch /code/CI_STATUS
 
