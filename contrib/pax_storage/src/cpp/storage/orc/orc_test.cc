@@ -8,6 +8,7 @@
 #include "comm/gtest_wrappers.h"
 #include "exceptions/CException.h"
 #include "storage/local_file_system.h"
+#include "access/tupdesc_details.h"
 
 namespace pax::tests {
 
@@ -15,6 +16,7 @@ namespace pax::tests {
 #define COLUMN_NUMS 3
 #define COLUMN_SIZE 100
 #define INT32_COLUMN_VALUE 0x123
+#define INT32_COLUMN_VALUE_DEFAULT 0x001
 
 static void GenFakeBuffer(char *buffer, size_t length) {
   for (size_t i = 0; i < length; i++) {
@@ -527,6 +529,62 @@ TEST_F(OrcTest, ReadTuple) {
   delete writer;
   delete reader;
 }
+
+TEST_F(OrcTest, ReadTupleDefaultColumn) {
+  CTupleSlot *tuple_slot = CreateFakeCTupleSlot(true);
+  auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto *file_ptr = local_fs->Open(file_name_);
+  EXPECT_NE(nullptr, file_ptr);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+  MicroPartitionWriter::WriterOptions writer_options;
+
+  auto *writer = OrcWriter::CreateWriter(file_ptr, types, writer_options);
+
+  writer->WriteTuple(tuple_slot);
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name_);
+
+  auto *reader =
+      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
+
+  TupleTableSlot *slot = tuple_slot_empty->GetTupleTableSlot();
+
+  slot->tts_tupleDescriptor->attrs[3] = {
+        .attlen = 4,
+        .attbyval = true,
+    };
+
+  slot->tts_tupleDescriptor->natts = COLUMN_NUMS+1;
+
+  slot->tts_tupleDescriptor->attrs[3].atthasmissing = true;
+  slot->tts_tupleDescriptor->constr =
+                      reinterpret_cast<TupleConstr *>(cbdb::Palloc0(sizeof(TupleConstr)));
+  slot->tts_tupleDescriptor->constr->missing =
+                      reinterpret_cast<AttrMissing *>(cbdb::Palloc0((COLUMN_NUMS+1)*sizeof(AttrMissing)));
+
+  slot->tts_tupleDescriptor->constr->missing[3].am_value = cbdb::Int32ToDatum(INT32_COLUMN_VALUE_DEFAULT);
+  slot->tts_tupleDescriptor->constr->missing[3].am_present = true;
+  reader->ReadTuple(tuple_slot_empty);
+
+  ASSERT_EQ(tuple_slot_empty->GetTupleTableSlot()->tts_values[3], INT32_COLUMN_VALUE_DEFAULT);
+
+  reader->Close();
+
+  DeleteCTupleSlot(tuple_slot_empty);
+  DeleteCTupleSlot(tuple_slot);
+  delete writer;
+  delete reader;
+}
+
 
 TEST_F(OrcTest, WriteReadBigTuple) {
   TupleTableSlot *tuple_slot = nullptr;

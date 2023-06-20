@@ -14,6 +14,7 @@ extern "C" {
 #include "access/tableam.h"
 #include "access/tsmapi.h"
 #include "access/tupdesc.h"
+#include "access/tupdesc_details.h"
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
 #include "catalog/indexing.h"
