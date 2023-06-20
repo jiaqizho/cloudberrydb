@@ -39,8 +39,10 @@ stages:
 .build_artifacts: &build_artifacts
   artifacts:
     name: "artifacts"
+    when: always
     paths:
       - ${CI_PROJECT_DIR}/cbdb-artifacts.txt
+      - ${GIT_CLONE_PATH}/clang-tidy.result
     reports:
       dotenv: ${CI_PROJECT_DIR}/cbdb-artifacts.txt
 
