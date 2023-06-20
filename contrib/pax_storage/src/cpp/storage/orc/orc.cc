@@ -687,7 +687,9 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
   size_t row_nums = 0;
   TupleTableSlot *slot;
   size_t column_numbers = 0;
-  size_t tts_index = 0;
+  size_t index = 0;
+  size_t nattrs = 0;
+  AttrMissing *attrmiss = NULL;
 
   slot = cslot->GetTupleTableSlot();
 
@@ -707,9 +709,11 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
 
     column_numbers = working_pax_columns_->GetColumns();
 
-    // schema not match
-    if (unlikely(column_numbers !=
-                 static_cast<size_t>(slot->tts_tupleDescriptor->natts))) {
+    nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
+
+    // The column number in Pax file meta could be smaller than the column number in TupleSlot
+    // in case after alter table add column DDL operation was done.
+    if (column_numbers > nattrs) {
       CBDB_RAISE(cbdb::CException::ExType::kExTypeSchemaNotMatch);
     }
 
@@ -727,7 +731,27 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
   char *buffer = nullptr;
   size_t buffer_len = 0;
 
-  for (size_t index = 0; index < column_numbers; index++) {
+  //  first check if column has missing value
+  if (slot->tts_tupleDescriptor->constr)
+    attrmiss = slot->tts_tupleDescriptor->constr->missing;
+
+  for (index = 0; index < nattrs; index++) {
+    // handle PAX columns number inconsistent with pg catalog nattrs in case data not
+    // been inserted yet or read pax file conserved before last add column DDL is done,
+    // for these cases it is normal that pg catalog schema is not match with that in PAX file:
+    // 1. if atthasmissing is set, then return default column value.
+    // 2. if atthasmissing is not set, then return null value.
+    if (index >= column_numbers) {
+      slot->tts_isnull[index] = true;
+      //  The attrmiss default value memory is managed in CacheMemoryContext, which
+      //  was allocated in RelationBuildTupleDesc.
+      if (attrmiss && (slot->tts_tupleDescriptor->attrs[index].atthasmissing && attrmiss[index].am_present)) {
+        slot->tts_values[index] = attrmiss[index].am_value;
+        slot->tts_isnull[index] = false;
+      }
+      continue;
+    }
+
     PaxColumn *column = ((*working_pax_columns_)[index]);
 
     // set default is not null
@@ -737,7 +761,6 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
       if (!(*null_bitmap)[current_row_index_]) {
         slot->tts_isnull[index] = true;
         current_nulls_[index]++;
-        tts_index++;
         continue;
       }
     }
@@ -748,26 +771,26 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
         column->GetBuffer(current_row_index_ - current_nulls_[index]);
     switch (column->GetPaxColumnTypeInMem()) {
       case kTypeNonFixed: {
-        slot->tts_values[tts_index++] = PointerGetDatum(buffer);
+        slot->tts_values[index] = PointerGetDatum(buffer);
         break;
       }
       case kTypeFixed: {
         // FIXME(gongxun): get value info from PaxColumn
-        switch (slot->tts_tupleDescriptor->attrs[tts_index].attlen) {
+        switch (slot->tts_tupleDescriptor->attrs[index].attlen) {
           case 1:
-            slot->tts_values[tts_index++] =
+            slot->tts_values[index] =
                 cbdb::Int8ToDatum(*reinterpret_cast<int8 *>(buffer));
             break;
           case 2:
-            slot->tts_values[tts_index++] =
+            slot->tts_values[index] =
                 cbdb::Int16ToDatum(*reinterpret_cast<int16 *>(buffer));
             break;
           case 4:
-            slot->tts_values[tts_index++] =
+            slot->tts_values[index] =
                 cbdb::Int32ToDatum(*reinterpret_cast<int32 *>(buffer));
             break;
           case 8:
-            slot->tts_values[tts_index++] =
+            slot->tts_values[index] =
                 cbdb::Int64ToDatum(*reinterpret_cast<int64 *>(buffer));
             break;
           default:
@@ -785,7 +808,6 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
   current_row_index_++;
   current_offset_++;
   cslot->SetOffset(current_offset_);
-  Assert(tts_index == column_numbers);
 
   return true;
 }
@@ -793,6 +815,7 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
 uint64 OrcReader::Offset() const { return current_offset_; }
 
 void OrcReader::Seek(size_t offset) {
+  size_t column_nums = 0;
   size_t row_nums = 0;
   size_t stripe_nums = 0;
 
@@ -826,7 +849,10 @@ void OrcReader::Seek(size_t offset) {
     CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
   }
 
-  for (size_t i = 0; i < working_pax_columns_->GetColumns(); i++) {
+  if (working_pax_columns_)
+      column_nums = working_pax_columns_->GetColumns();
+
+  for (size_t i = 0; i < column_nums; i++) {
     auto column = (*working_pax_columns_)[i];
     if (column->HasNull()) {
       auto null_data_buffer = column->GetNulls();
