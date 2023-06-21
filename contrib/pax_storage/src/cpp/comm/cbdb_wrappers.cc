@@ -105,21 +105,21 @@ HTAB *cbdb::HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
   return nullptr;
 }
 
-void *cbdb::HashSearch(HTAB *hashp, const void *keyPtr, HASHACTION action,
-                       bool *foundPtr) {
+void *cbdb::HashSearch(HTAB *hashp, const void *key_ptr, HASHACTION action,
+                       bool *found_ptr) {
   CBDB_WRAP_START;
-  { return hash_search(hashp, keyPtr, action, foundPtr); }
+  { return hash_search(hashp, key_ptr, action, found_ptr); }
   CBDB_WRAP_END;
   return nullptr;
 }
 
 MemoryContext cbdb::AllocSetCtxCreate(MemoryContext parent, const char *name,
-                                      Size minContextSize, Size initBlockSize,
-                                      Size maxBlockSize) {
+                                      Size min_context_size, Size init_block_size,
+                                      Size max_block_size) {
   CBDB_WRAP_START;
   {
-    return AllocSetContextCreateInternal(parent, name, minContextSize,
-                                         initBlockSize, maxBlockSize);
+    return AllocSetContextCreateInternal(parent, name, min_context_size,
+                                         init_block_size, max_block_size);
   }
   CBDB_WRAP_END;
   return nullptr;
@@ -175,9 +175,8 @@ void *cbdb::PointerAndLenFromDatum(Datum d, int *len) {
   struct varlena *vl = nullptr;
   CBDB_WRAP_START;
   {
-    // FIXME(gongxun): is VARSIZE_ANY(d) better?
     vl = (struct varlena *)DatumGetPointer(d);
-    *len = VARSIZE_ANY_EXHDR(vl) + VARHDRSZ;
+    *len = VARSIZE_ANY(vl);
     return static_cast<void *>(vl);
   }
   CBDB_WRAP_END;
