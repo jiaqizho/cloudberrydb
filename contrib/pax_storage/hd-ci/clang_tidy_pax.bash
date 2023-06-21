@@ -19,10 +19,14 @@ function do_git_diff() {
     for extension in "${CBDB_PAX_EXT[@]}"; do
         if echo "$modified_files" | grep -q -E -e "$extension"; then
             files=$(echo "$modified_files" | grep -E -e "$extension")
-
-            if [ -n "$files" ]; then
-                modified_exts+=("$files")
+            if [ -z "$files" ]; then
+                continue
             fi
+            for file in $files; do
+                if [ -e "$file" ]; then
+                    modified_exts+=("$file")
+                fi
+            done
         fi
     done
 }
