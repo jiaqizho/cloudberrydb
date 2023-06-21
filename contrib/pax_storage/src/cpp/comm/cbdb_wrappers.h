@@ -89,11 +89,11 @@ extern void *operator new[](std::size_t size, MemoryContext ctx);
 namespace cbdb {
 HTAB *HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
                  int flags);
-void *HashSearch(HTAB *hashp, const void *keyPtr, HASHACTION action,
-                 bool *foundPtr);
+void *HashSearch(HTAB *hashp, const void *key_ptr, HASHACTION action,
+                 bool *found_ptr);
 MemoryContext AllocSetCtxCreate(MemoryContext parent, const char *name,
-                                Size minContextSize, Size initBlockSize,
-                                Size maxBlockSize);
+                                Size min_context_size, Size init_block_size,
+                                Size max_block_size);
 void MemoryCtxRegisterResetCallback(MemoryContext context,
                                     MemoryContextCallback *cb);
 

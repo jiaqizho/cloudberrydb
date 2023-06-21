@@ -204,7 +204,16 @@ void PaxNonFixedColumn::Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
 }
 
 void PaxNonFixedColumn::Append(char *buffer, size_t size) {
-  PaxColumn::Append(buffer, size);
+  Assert(likely(reinterpret_cast<char *> MAXALIGN(data_->Position()) ==
+                data_->Position()));
+
+  size_t origin_size;
+  origin_size = size;
+
+  // FIMXE(gongxun): maybe it should be aligned base on the typalign?
+  size = MAXALIGN(size);
+
+  PaxColumn::Append(buffer, origin_size);
   while (data_->Available() < size) {
     data_->ReSize(data_->Capacity() * 2);
   }
@@ -214,8 +223,9 @@ void PaxNonFixedColumn::Append(char *buffer, size_t size) {
   }
 
   estimated_size_ += size;
-  data_->Write(buffer, size);
+  data_->Write(buffer, origin_size);
   data_->Brush(size);
+
   lengths_->Write(reinterpret_cast<int64 *>(&size), sizeof(int64));
   lengths_->Brush(sizeof(int64));
 
@@ -271,7 +281,7 @@ void PaxNonFixedColumn::SetMemTakeOver(bool take_over) {
 }
 
 PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types)
-    : PaxColumn(), row_nums_(0) {
+    : row_nums_(0) {
   data_ = new DataBuffer<char>(0);
   for (auto &type : types) {
     switch (type) {
@@ -308,9 +318,7 @@ PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types)
   }
 }
 
-PaxColumns::PaxColumns() : PaxColumn(), row_nums_(0) {
-  data_ = new DataBuffer<char>(0);
-}
+PaxColumns::PaxColumns() : row_nums_(0) { data_ = new DataBuffer<char>(0); }
 
 PaxColumns::~PaxColumns() {
   for (auto column : columns_) {
