@@ -29,7 +29,8 @@ class TableMetadata {
   TableMetadata(const Relation parent_relation, const Snapshot snapshot);
 
   void GetAllMicroPartitionMetadata(
-      std::vector<pax::MicroPartitionMetadata> &micro_partitions);
+      std::vector<pax::MicroPartitionMetadata>
+          &micro_partitions);  // NOLINT (runtime/references)
 
  private:
   const Relation parent_relation_;
@@ -61,7 +62,8 @@ class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
   ~Iterator();
 
  private:
-  explicit Iterator(std::vector<pax::MicroPartitionMetadata> &micro_partitions);
+  explicit Iterator(std::vector<pax::MicroPartitionMetadata>
+                        &micro_partitions);  // NOLINT (runtime/references)
 
   size_t current_index_;
   std::vector<pax::MicroPartitionMetadata> micro_partitions_;
