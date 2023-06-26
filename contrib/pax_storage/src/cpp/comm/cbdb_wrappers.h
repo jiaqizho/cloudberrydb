@@ -137,4 +137,27 @@ uint32 GetBlockNumber(Oid table_rel_oid, uint32 table_index,
 paxc::PaxBlockId GetBlockId(Oid table_rel_oid, uint8 table_no,
                             uint32 block_number);
 
+void RelationCreateStorageDirectory(RelFileNode rnode, char relpersistence, SMgrImpl smgr_which);
+
+bool TupleIsValid(HeapTuple tupcache);
+
+void ReleaseTupleCache(HeapTuple tupcache);
+
+void RelationDropStorageDirectory(Relation rel);
+
+int PathNameCreateDir(const char *path);
+
+HeapTuple SearchSysCache(Relation rel, SysCacheIdentifier id);
+
+void PathNameDeleteDir(const char * path, bool delete_topleveldir);
+
+void CopyFile(const char *srcsegpath, const char *dstsegpath);
+
+void MakedirRecursive(const char *path);
+
+char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
+
+char *BuildPaxFilePath(const Relation rel, const std::string &block_id);
+
+void Unused(const void *args, ...);
 }  // namespace cbdb

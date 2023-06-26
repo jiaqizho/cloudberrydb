@@ -10,7 +10,6 @@
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/iterator.h"
-#include "comm/paxc_utils.h"
 
 namespace pax {
 class TableMetadata {
@@ -19,9 +18,6 @@ class TableMetadata {
 
   static TableMetadata *Create(const Relation parent_relation,
                                const Snapshot snapshot);
-
-  static std::string BuildPaxFilePath(const Relation relation,
-                                      const std::string &block_id);
 
   std::unique_ptr<Iterator> NewIterator();
 

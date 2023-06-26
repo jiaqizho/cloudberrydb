@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include "comm/cbdb_wrappers.h"
 
 namespace pax {
 
@@ -24,6 +26,12 @@ class FileSystem {
   virtual File *Open(const std::string &file_path) = 0;
   virtual std::string BuildPath(const File *file) const = 0;
   virtual void Delete(const std::string &file_path) const = 0;
+  virtual std::vector<std::string> ListDirectory(const std::string &path) const = 0;
+  virtual void CopyFile(const std::string &srcFilePath, const std::string &dstFilePath) const = 0;
+  virtual void CreateDirectory(const std::string &path) const = 0;
+  virtual void DeleteDirectory(const std::string &path, bool delete_topleveldir) const = 0;
+  virtual std::string BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend) const = 0;
+  virtual std::string BuildPaxFilePath(const Relation rel, const std::string &block_id) const = 0;
 
  protected:
 };
