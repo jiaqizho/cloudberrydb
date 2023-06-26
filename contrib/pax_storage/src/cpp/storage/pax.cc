@@ -7,7 +7,6 @@
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
-#include "storage/local_file_system.h"
 #include "storage/orc/orc.h"
 
 namespace pax {
@@ -60,7 +59,7 @@ const FileSplitStrategy *TableWriter::GetFileSplitStrategy() const {
 }
 
 std::string TableWriter::GenFilePath(const std::string &block_id) {
-  return TableMetadata::BuildPaxFilePath(relation_, block_id);
+  return file_system->BuildPaxFilePath(relation_, block_id);
 }
 
 void TableWriter::Open() {

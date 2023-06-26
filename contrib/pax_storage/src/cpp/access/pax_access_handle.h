@@ -40,13 +40,8 @@ class PaxAccessMethod final {
   static TransactionId IndexDeleteTuples(Relation rel,
                                          TM_IndexDeleteOp *delstate);
 
-  static void RelationSetNewFilenode(Relation rel, const RelFileNode *newrnode,
-                                     char persistence, TransactionId *freezeXid,
-                                     MultiXactId *minmulti);
-  static void RelationNontransactionalTruncate(Relation rel);
-
   static bool RelationNeedsToastTable(Relation rel);
-  static uint64 RelationSize(Relation rel, ForkNumber forkNumber);
+  static uint64 RelationSize(Relation rel, ForkNumber fork_number);
   static void EstimateRelSize(Relation rel, int32 *attr_widths,
                               BlockNumber *pages, double *tuples,
                               double *allvisfrac);
@@ -54,19 +49,18 @@ class PaxAccessMethod final {
   /* unsupported DML now, may move to CCPaxAccessMethod */
   static void TupleInsertSpeculative(Relation relation, TupleTableSlot *slot,
                                      CommandId cid, int options,
-                                     BulkInsertState bistate, uint32 specToken);
+                                     BulkInsertState bistate, uint32 spec_token);
   static void TupleCompleteSpeculative(Relation relation, TupleTableSlot *slot,
-                                       uint32 specToken, bool succeeded);
+                                       uint32 spec_token, bool succeeded);
   static TM_Result TupleLock(Relation relation, ItemPointer tid,
                              Snapshot snapshot, TupleTableSlot *slot,
                              CommandId cid, LockTupleMode mode,
                              LockWaitPolicy wait_policy, uint8 flags,
                              TM_FailureData *tmfd);
 
-  static void RelationCopyData(Relation rel, const RelFileNode *newrnode);
-  static void RelationCopyForCluster(Relation OldHeap, Relation NewHeap,
-                                     Relation OldIndex, bool use_sort,
-                                     TransactionId OldestXmin,
+  static void RelationCopyForCluster(Relation old_heap, Relation new_heap,
+                                     Relation old_index, bool use_sort,
+                                     TransactionId oldest_xmin,
                                      TransactionId *xid_cutoff,
                                      MultiXactId *multi_cutoff,
                                      double *num_tuples, double *tups_vacuumed,
@@ -75,12 +69,12 @@ class PaxAccessMethod final {
   static void RelationVacuum(Relation onerel, VacuumParams *params,
                              BufferAccessStrategy bstrategy);
   static double IndexBuildRangeScan(
-      Relation heapRelation, Relation indexRelation, IndexInfo *indexInfo,
+      Relation heap_relation, Relation index_relation, IndexInfo *index_info,
       bool allow_sync, bool anyvisible, bool progress,
       BlockNumber start_blockno, BlockNumber numblocks,
       IndexBuildCallback callback, void *callback_state, TableScanDesc scan);
-  static void IndexValidateScan(Relation heapRelation, Relation indexRelation,
-                                IndexInfo *indexInfo, Snapshot snapshot,
+  static void IndexValidateScan(Relation heap_relation, Relation index_relation,
+                                IndexInfo *index_info, Snapshot snapshot,
                                 ValidateIndexState *state);
 
   static bytea *Amoptions(Datum reloptions, char relkind, bool validate);
@@ -110,16 +104,24 @@ class CCPaxAccessMethod final {
   static TM_Result TupleDelete(Relation relation, ItemPointer tid,
                                CommandId cid, Snapshot snapshot,
                                Snapshot crosscheck, bool wait,
-                               TM_FailureData *tmfd, bool changingPart);
+                               TM_FailureData *tmfd, bool changing_part);
   static TM_Result TupleUpdate(Relation relation, ItemPointer otid,
                                TupleTableSlot *slot, CommandId cid,
                                Snapshot snapshot, Snapshot crosscheck,
                                bool wait, TM_FailureData *tmfd,
                                LockTupleMode *lockmode, bool *update_indexes);
 
+  static void RelationCopyData(Relation rel, const RelFileNode *newrnode);
+
+  static void RelationSetNewFilenode(Relation rel, const RelFileNode *newrnode,
+                                     char persistence, TransactionId *freeze_xid,
+                                     MultiXactId *minmulti);
+
+  static void RelationNontransactionalTruncate(Relation rel);
+
   static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno,
                                    BufferAccessStrategy bstrategy);
-  static bool ScanAnalyzeNextTuple(TableScanDesc scan, TransactionId OldestXmin,
+  static bool ScanAnalyzeNextTuple(TableScanDesc scan, TransactionId oldest_xmin,
                                    double *liverows, double *deadrows,
                                    TupleTableSlot *slot);
   static bool ScanBitmapNextBlock(TableScanDesc scan, TBMIterateResult *tbmres);
@@ -140,6 +142,9 @@ class CCPaxAccessMethod final {
   // DML init/fini hooks
   static void ExtDmlInit(Relation rel, CmdType operation);
   static void ExtDmlFini(Relation rel, CmdType operation);
+
+  // MicroPartition File cleanup hook
+  static void RelationFileUnlink(RelFileNodeBackend rnode);
 };
 
 }  // namespace pax
@@ -149,8 +154,8 @@ extern ext_dml_func_hook_type ext_dml_finish_hook;
 
 // plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
-  int32 vl_len_; /* varlena header (do not touch directly!) */
-  char storage_format_[16];
-  char compress_type_[16];
-  int compress_level_;
+  int32 vl_len; /* varlena header (do not touch directly!) */
+  char storage_format[16];
+  char compress_type[16];
+  int compress_level;
 };

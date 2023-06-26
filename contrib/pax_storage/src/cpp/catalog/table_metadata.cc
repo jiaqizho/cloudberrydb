@@ -13,22 +13,6 @@ TableMetadata *TableMetadata::Create(const Relation parent_relation,
   return new TableMetadata(parent_relation, snapshot);
 }
 
-std::string TableMetadata::BuildPaxFilePath(const Relation relation,
-                                            const std::string &block_id) {
-  std::string file_path;
-  std::string base_path =
-      GetDatabasePath(relation->rd_node.dbNode, relation->rd_node.spcNode);
-  file_path.append(std::string(DataDir));
-  file_path.append(k_path_sperator);
-  file_path.append(std::string(base_path));
-  file_path.append(k_path_sperator);
-  file_path.append(std::to_string(relation->rd_node.relNode));
-  file_path.append(PAX_MICROPARTITION_DIR_POSTFIX);
-  file_path.append(k_path_sperator);
-  file_path.append(block_id);
-  return file_path;
-}
-
 std::unique_ptr<TableMetadata::Iterator> TableMetadata::NewIterator() {
   std::vector<MicroPartitionMetadata> micro_partitions;
   GetAllMicroPartitionMetadata(micro_partitions);
