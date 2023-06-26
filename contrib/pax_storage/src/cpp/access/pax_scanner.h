@@ -14,24 +14,20 @@ class PaxScanDesc {
                                  const ParallelTableScanDesc pscan,
                                  const uint32 flags);
 
-  static void ReScan(TableScanDesc scan, ScanKey key, bool set_params,
-                     bool allow_strat, bool allow_sync, bool allow_pagemode);
+  static void ReScan(TableScanDesc scan);
   static void EndScan(TableScanDesc scan);
 
-  static bool ScanGetNextSlot(TableScanDesc scan, const ScanDirection direction,
+  static bool ScanGetNextSlot(TableScanDesc scan,
                               TupleTableSlot *slot);
 
-  static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno,
-                                   BufferAccessStrategy bstrategy);
-  static bool ScanAnalyzeNextTuple(TableScanDesc scan, TransactionId OldestXmin,
-                                   double *liverows, double *deadrows,
-                                   TupleTableSlot *slot);
+  static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno);
+  static bool ScanAnalyzeNextTuple(TableScanDesc scan, double *liverows,
+                                   double *deadrows, TupleTableSlot *slot);
 
   static bool ScanSampleNextBlock(TableScanDesc scan,
                                   SampleScanState *scanstate);
 
   static bool ScanSampleNextTuple(TableScanDesc scan,
-                                  SampleScanState *scanstate,
                                   TupleTableSlot *slot);
 
   uint32 GetMicroPartitionNumber() const;

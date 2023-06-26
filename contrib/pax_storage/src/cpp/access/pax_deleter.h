@@ -16,8 +16,7 @@ class CPaxDeleter {
 
   static TM_Result DeleteTuple(const Relation relation, const ItemPointer tid,
                                const CommandId cid, const Snapshot snapshot,
-                               const Snapshot crosscheck, const bool wait,
-                               TM_FailureData *tmfd, const bool changingPart);
+                               TM_FailureData *tmfd);
 
   TM_Result MarkDelete(const ItemPointer tid);
 

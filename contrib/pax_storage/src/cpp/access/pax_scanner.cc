@@ -1,7 +1,7 @@
 #include "access/pax_scanner.h"
-
 #include "access/pax_access_handle.h"
 #include "catalog/table_metadata.h"
+#include "comm/paxc_utils.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/orc/orc.h"
@@ -44,7 +44,7 @@ TableScanDesc PaxScanDesc::BeginScan(const Relation relation,
       new OrcIteratorReader(file_system);
   micro_partition_reader->SetReadBuffer(desc->reused_buffer_);
 
-  TableReader::ReaderOptions reader_options;
+  TableReader::ReaderOptions reader_options{};
   reader_options.build_bitmap = true;
   reader_options.rel_oid = desc->rs_base_.rs_rd->rd_id;
 
@@ -66,24 +66,20 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
 }
 
 // FIXME: shall we take these parameters into account?
-void PaxScanDesc::ReScan(TableScanDesc scan, ScanKey key, bool set_params,
-                         bool allow_strat, bool allow_sync,
-                         bool allow_pagemode) {
+void PaxScanDesc::ReScan(TableScanDesc scan) {
   PaxScanDesc *desc = to_desc(scan);
   Assert(desc && desc->reader_);
   desc->reader_->ReOpen();
 }
 
 bool PaxScanDesc::ScanGetNextSlot(TableScanDesc scan,
-                                  const ScanDirection direction,
                                   TupleTableSlot *slot) {
   PaxScanDesc *desc = to_desc(scan);
   CTupleSlot cslot(slot);
   return desc->reader_->ReadTuple(&cslot);
 }
 
-bool PaxScanDesc::ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno,
-                                       BufferAccessStrategy bstrategy) {
+bool PaxScanDesc::ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno) {
   PaxScanDesc *desc = to_desc(scan);
   desc->target_tuple_id_ = blockno;
 
@@ -91,9 +87,9 @@ bool PaxScanDesc::ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno,
 }
 
 bool PaxScanDesc::ScanAnalyzeNextTuple(TableScanDesc scan,
-                                       TransactionId OldestXmin,
                                        double *liverows, double *deadrows,
                                        TupleTableSlot *slot) {
+  cbdb::Unused(deadrows);
   PaxScanDesc *desc = to_desc(scan);
   bool ret = false;
 
@@ -106,7 +102,7 @@ bool PaxScanDesc::ScanAnalyzeNextTuple(TableScanDesc scan,
     return false;
   }
 
-  ret = PaxScanDesc::ScanGetNextSlot(scan, ForwardScanDirection, slot);
+  ret = PaxScanDesc::ScanGetNextSlot(scan, slot);
   desc->next_tuple_id_++;
   if (ret) {
     *liverows += 1;
@@ -146,7 +142,6 @@ bool PaxScanDesc::ScanSampleNextBlock(TableScanDesc scan,
 }
 
 bool PaxScanDesc::ScanSampleNextTuple(TableScanDesc scan,
-                                      SampleScanState *scanstate,
                                       TupleTableSlot *slot) {
   PaxScanDesc *desc = to_desc(scan);
   bool ret = false;
@@ -156,7 +151,7 @@ bool PaxScanDesc::ScanSampleNextTuple(TableScanDesc scan,
 
   if (!ret) return false;
 
-  ret = PaxScanDesc::ScanGetNextSlot(scan, ForwardScanDirection, slot);
+  ret = PaxScanDesc::ScanGetNextSlot(scan, slot);
   desc->next_tuple_id_++;
 
   return ret;

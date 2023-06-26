@@ -12,14 +12,12 @@ namespace pax {
 CPaxDeleter::CPaxDeleter(const Relation rel, const Snapshot snapshot)
     : rel_(rel), snapshot_(snapshot) {}
 
-CPaxDeleter::~CPaxDeleter() {}
+CPaxDeleter::~CPaxDeleter() = default;
 
 TM_Result CPaxDeleter::DeleteTuple(const Relation relation,
                                    const ItemPointer tid, const CommandId cid,
                                    const Snapshot snapshot,
-                                   const Snapshot crosscheck, const bool wait,
-                                   TM_FailureData *tmfd,
-                                   const bool changingPart) {
+                                   TM_FailureData *tmfd) {
   CPaxDeleter *deleter =
       CPaxDmlStateLocal::instance()->GetDeleter(relation, snapshot);
   // TODO(gongxun): need more graceful way to pass snapshot
@@ -45,7 +43,7 @@ TM_Result CPaxDeleter::MarkDelete(const ItemPointer tid) {
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
     // TODO(gongxun): bitmap should support dynamic raise size
     block_bitmap_map_[block_id] =
-        std::unique_ptr<DynamicBitmap>(new DynamicBitmap());
+        std::unique_ptr<DynamicBitmap>(new DynamicBitmap());  // NOLINT
   }
   DynamicBitmap *bitmap = block_bitmap_map_[block_id].get();
   if (bitmap->NumBits() <= tuple_number) {
@@ -73,15 +71,15 @@ void CPaxDeleter::ExecDelete() {
 std::unique_ptr<IteratorBase<MicroPartitionMetadata>>
 CPaxDeleter::buildDeleteIterator() {
   std::vector<pax::MicroPartitionMetadata> micro_partitions;
-  for (auto it = block_bitmap_map_.begin(); it != block_bitmap_map_.end();
-       ++it) {
-    std::string block_id = it->first;
-    DynamicBitmap *bitmap_ptr = it->second.get();
+  FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
+  for (auto &it : block_bitmap_map_) {
+    std::string block_id = it.first;
+    DynamicBitmap *bitmap_ptr = it.second.get();
     BitmapIterator bitmap_it(bitmap_ptr);
     int32 tuple_number = bitmap_it.Next(true);
     if (tuple_number != -1) {
       pax::MicroPartitionMetadata meta_info(
-          block_id, TableMetadata::BuildPaxFilePath(rel_, block_id));
+          block_id, fs->BuildPaxFilePath(rel_, block_id));
       micro_partitions.push_back(std::move(meta_info));
     }
   }
