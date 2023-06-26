@@ -51,6 +51,7 @@ class TableWriter {
   MicroPartitionWriter *writer_;
   const FileSplitStrategy *strategy_;
   WriteSummaryCallback summary_callback_;
+  const FileSystem *file_system = Singleton<LocalFileSystem>::GetInstance();
 
   size_t num_tuples_ = 0;
   size_t total_tuples_ = 0;
