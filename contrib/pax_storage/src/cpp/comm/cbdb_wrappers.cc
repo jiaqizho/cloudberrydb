@@ -1,4 +1,6 @@
 #include "comm/cbdb_wrappers.h"
+#include "comm/paxc_utils.h"
+#include "storage/local_file_system.h"
 
 #include "storage/paxc_block_map_manager.h"
 extern "C" {
@@ -218,3 +220,79 @@ paxc::PaxBlockId cbdb::GetBlockId(Oid table_rel_oid, uint8 table_no,
   { return paxc::get_block_id(table_rel_oid, table_no, block_number); }
   CBDB_WRAP_END;
 }
+
+void cbdb::RelationCreateStorageDirectory(RelFileNode rnode, char relpersistence, SMgrImpl smgr_which) {
+  CBDB_WRAP_START;
+  {
+      SMgrRelation srel = RelationCreateStorage(rnode, relpersistence, smgr_which);
+      smgrclose(srel);
+  }
+  CBDB_WRAP_END;
+}
+
+void cbdb::RelationDropStorageDirectory(Relation rel) {
+  CBDB_WRAP_START;
+  { RelationDropStorage(rel); }
+  CBDB_WRAP_END;
+}
+
+int cbdb::PathNameCreateDir(const char *path) {
+  CBDB_WRAP_START;
+  { return MakePGDirectory(path); }
+  CBDB_WRAP_END;
+}
+
+HeapTuple cbdb::SearchSysCache(Relation rel, SysCacheIdentifier id) {
+  CBDB_WRAP_START;
+  { return SearchSysCache1(id, RelationGetRelid(rel)); }
+  CBDB_WRAP_END;
+}
+
+bool cbdb::TupleIsValid(HeapTuple tupcache) {
+  CBDB_WRAP_START;
+  { return HeapTupleIsValid(tupcache); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::ReleaseTupleCache(HeapTuple tupcache) {
+  CBDB_WRAP_START;
+  { ReleaseSysCache(tupcache); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::PathNameDeleteDir(const char * path, bool delete_topleveldir) {
+  CBDB_WRAP_START;
+  { paxc::DeletePaxDirectoryPath(path, delete_topleveldir); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::CopyFile(const char *srcsegpath, const char *dstsegpath) {
+  CBDB_WRAP_START;
+  { paxc::CopyFile(srcsegpath, dstsegpath); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::MakedirRecursive(const char *path) {
+  CBDB_WRAP_START;
+  { paxc::MakedirRecursive(path); }
+  CBDB_WRAP_END;
+}
+
+char *cbdb::BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend) {
+  CBDB_WRAP_START;
+  { return paxc::BuildPaxDirectoryPath(rd_node, rd_backend); }
+  CBDB_WRAP_END;
+}
+
+char *cbdb::BuildPaxFilePath(const Relation rel, const std::string &block_id) {
+  CBDB_WRAP_START;
+  { return paxc::BuildPaxFilePath(rel, block_id.c_str()); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::Unused(const void *args, ...) {
+  CBDB_WRAP_START;
+  {  paxc::Unused(args); }
+  CBDB_WRAP_END;
+}
+
