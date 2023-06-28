@@ -2019,7 +2019,7 @@ CPredicateUtils::PexprIndexLookup(CMemoryPool *mp, CMDAccessor *md_accessor,
 								  const IMDIndex *pmdindex,
 								  CColRefArray *pdrgpcrIndex,
 								  CColRefSet *outer_refs,
-								  BOOL allowArrayCmpForBTreeIndexes)
+								  BOOL considerBitmapAltForArrayCmp)
 {
 	GPOS_ASSERT(nullptr != pexprScalar);
 	GPOS_ASSERT(nullptr != pdrgpcrIndex);
@@ -2034,10 +2034,11 @@ CPredicateUtils::PexprIndexLookup(CMemoryPool *mp, CMDAccessor *md_accessor,
 			 CScalarArrayCmp::EarrcmpAny ==
 				 CScalarArrayCmp::PopConvert(pexprScalar->Pop())->Earrcmpt() &&
 			 (IMDIndex::EmdindBitmap == pmdindex->IndexType() ||
-			  (allowArrayCmpForBTreeIndexes &&
-			   IMDIndex::EmdindBtree == pmdindex->IndexType())))
+			  (considerBitmapAltForArrayCmp &&
+			   (IMDIndex::EmdindBtree == pmdindex->IndexType() ||
+				IMDIndex::EmdindHash == pmdindex->IndexType()))))
 	{
-		// array cmps are always allowed on bitmap indexes and when requested on btree indexes
+		// array cmps are always allowed on bitmap indexes and when requested on btree/hash indexes
 		cmptype = CUtils::ParseCmpType(
 			CScalarArrayCmp::PopConvert(pexprScalar->Pop())->MdIdOp());
 	}
@@ -2086,7 +2087,7 @@ CPredicateUtils::ExtractIndexPredicates(
 	CExpressionArray *pdrgpexprResidual,
 	CColRefSet *
 		pcrsAcceptedOuterRefs,	// outer refs that are acceptable in an index predicate
-	BOOL allowArrayCmpForBTreeIndexes)
+	BOOL considerBitmapAltForArrayCmp)
 {
 	const ULONG length = pdrgpexprPredicate->Size();
 
@@ -2143,7 +2144,7 @@ CPredicateUtils::ExtractIndexPredicates(
 			// attempt building index lookup predicate
 			CExpression *pexprLookupPred = PexprIndexLookup(
 				mp, md_accessor, pexprCond, pmdindex, pdrgpcrIndex,
-				pcrsAcceptedOuterRefs, allowArrayCmpForBTreeIndexes);
+				pcrsAcceptedOuterRefs, considerBitmapAltForArrayCmp);
 			if (nullptr != pexprLookupPred)
 			{
 				pexprCond->Release();
