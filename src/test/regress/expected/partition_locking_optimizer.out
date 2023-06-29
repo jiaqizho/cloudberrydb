@@ -67,7 +67,7 @@ begin;
 -- creation
 create table partlockt (i int, t text) partition by range(i)
 (start(1) end(10) every(1));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 select * from locktest_master where coalesce not like 'gp_%' and coalesce not like 'pg_%';
      coalesce      |        mode         | locktype |  node  
@@ -159,8 +159,9 @@ select * from locktest_master where coalesce not like 'gp_%' and coalesce not li
 select * from locktest_segments where coalesce not like 'gp_%' and coalesce not like 'pg_%';
      coalesce      |      mode       | locktype |   node    
 -------------------+-----------------+----------+-----------
+ partlockt         | AccessShareLock | relation | 1 segment
  partlockt_1_prt_1 | AccessShareLock | relation | 1 segment
-(1 row)
+(2 rows)
 
 commit;
 -- drop
@@ -240,7 +241,7 @@ create table partlockt (i int, t text, n numeric)
 with (appendonly = true)
 partition by list(i)
 (values(1), values(2), values(3));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 select * from locktest_master where coalesce not like 'gp_%' and coalesce not like 'pg_%';
      coalesce      |        mode         | locktype |  node  
@@ -285,8 +286,9 @@ insert into partlockt values(1), (2), (3);
 select * from locktest_master where coalesce not like 'gp_%' and coalesce not like 'pg_%';
  coalesce  |       mode       | locktype |  node  
 -----------+------------------+----------+--------
+ partlockt | AccessShareLock  | relation | master
  partlockt | RowExclusiveLock | relation | master
-(1 row)
+(2 rows)
 
 select * from locktest_segments where coalesce not like 'gp_%' and coalesce not like 'pg_%';
      coalesce      |       mode       | locktype |    node    
@@ -353,7 +355,7 @@ commit;
 -- Indexing
 create table partlockt (i int, t text) partition by range(i)
 (start(1) end(10) every(1));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 begin;
 create index partlockt_idx on partlockt(i);
@@ -421,19 +423,19 @@ select * from partlockt where i = 1;
 (0 rows)
 
 select * from locktest_master where coalesce not like 'gp_%' and coalesce not like 'pg_%';
-        coalesce         |      mode       | locktype |  node  
--------------------------+-----------------+----------+--------
- partlockt               | AccessShareLock | relation | master
- partlockt_1_prt_1       | AccessShareLock | relation | master
- partlockt_1_prt_1_i_idx | AccessShareLock | relation | master
-(3 rows)
+     coalesce      |      mode       | locktype |  node  
+-------------------+-----------------+----------+--------
+ partlockt         | AccessShareLock | relation | master
+ partlockt_1_prt_1 | AccessShareLock | relation | master
+(2 rows)
 
 select * from locktest_segments where coalesce not like 'gp_%' and coalesce not like 'pg_%';
         coalesce         |      mode       | locktype |   node    
 -------------------------+-----------------+----------+-----------
+ partlockt               | AccessShareLock | relation | 1 segment
  partlockt_1_prt_1       | AccessShareLock | relation | 1 segment
  partlockt_1_prt_1_i_idx | AccessShareLock | relation | 1 segment
-(2 rows)
+(3 rows)
 
 commit;
 -- In ORCA we are seeing discrepancy with 'AccessShareLock' on root partition table
