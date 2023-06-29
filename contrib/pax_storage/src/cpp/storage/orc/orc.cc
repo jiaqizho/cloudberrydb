@@ -752,6 +752,12 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
       continue;
     }
 
+    // In case column is droped, then set its value as null without reading data tuples.
+    if (unlikely(slot->tts_tupleDescriptor->attrs[index].attisdropped)) {
+      slot->tts_isnull[index] = true;
+      continue;
+    }
+
     PaxColumn *column = ((*working_pax_columns_)[index]);
 
     // set default is not null

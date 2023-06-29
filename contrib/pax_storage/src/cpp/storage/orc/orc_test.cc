@@ -585,6 +585,47 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   delete reader;
 }
 
+TEST_F(OrcTest, ReadTupleDroppedColumn) {
+  CTupleSlot *tuple_slot = CreateFakeCTupleSlot(true);
+  auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto *file_ptr = local_fs->Open(file_name_);
+  EXPECT_NE(nullptr, file_ptr);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+  MicroPartitionWriter::WriterOptions writer_options;
+
+  auto *writer = OrcWriter::CreateWriter(file_ptr, types, writer_options);
+
+  writer->WriteTuple(tuple_slot);
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name_);
+
+  auto *reader =
+      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
+
+  TupleTableSlot *slot = tuple_slot_empty->GetTupleTableSlot();
+
+  slot->tts_tupleDescriptor->attrs[2].attisdropped = true;
+
+  reader->ReadTuple(tuple_slot_empty);
+
+  ASSERT_EQ(tuple_slot_empty->GetTupleTableSlot()->tts_isnull[2], true);
+
+  reader->Close();
+
+  DeleteCTupleSlot(tuple_slot_empty);
+  DeleteCTupleSlot(tuple_slot);
+  delete writer;
+  delete reader;
+}
 
 TEST_F(OrcTest, WriteReadBigTuple) {
   TupleTableSlot *tuple_slot = nullptr;
