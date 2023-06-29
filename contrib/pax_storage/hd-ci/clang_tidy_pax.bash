@@ -37,7 +37,7 @@ function run_clang_tidy() {
     fi
 
     echo "clang-tidy result will generate in $(pwd)/$CLANG_TIDY_OUT_FILE_NAME"
-    clang-tidy -p build/ $modified_exts > $CLANG_TIDY_OUT_FILE_NAME 2>&1
+    clang-tidy -p build/ ${modified_exts[@]} > $CLANG_TIDY_OUT_FILE_NAME 2>&1
 }
 
 function _main() {
