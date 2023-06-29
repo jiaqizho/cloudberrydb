@@ -25,7 +25,8 @@
 
 #define PAX_DEFAULT_COMPRESSTYPE AO_DEFAULT_COMPRESSTYPE
 
-#define RELATION_IS_PAX(rel) AMOidIsPax((rel)->rd_rel->relam)
+#define RELATION_IS_PAX(rel) \
+  (OidIsValid((rel)->rd_rel->relam) && AMOidIsPax((rel)->rd_rel->relam))
 
 // CBDB_TRY();
 // {
@@ -342,19 +343,11 @@ void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
 }
 
 void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
-  if (!OidIsValid(rel->rd_rel->relam)) {
-    Assert(rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE);
-    return;
-  }
   if (RELATION_IS_PAX(rel))
     pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
 }
 
 void CCPaxAccessMethod::ExtDmlFini(Relation rel, CmdType operation) {
-  if (!OidIsValid(rel->rd_rel->relam)) {
-    Assert(rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE);
-    return;
-  }
   if (RELATION_IS_PAX(rel))
     pax::CPaxDmlStateLocal::instance()->FinishDmlState(rel, operation);
 }
