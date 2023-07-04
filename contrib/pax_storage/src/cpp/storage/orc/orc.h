@@ -19,9 +19,7 @@
 
 namespace pax {
 
-#define VERIFY_ORC 1
 #define ORC_MAGIC_ID "ORC"
-#define ORC_MAGIC_ID_LEN 3
 // ORC cpp writer
 #define ORC_WRITER_ID 1
 #define ORC_SOFT_VERSION "1"
