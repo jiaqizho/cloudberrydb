@@ -26,12 +26,7 @@ OrcWriter::OrcWriter(
   summary_.file_size = 0;
   summary_.num_tuples = 0;
 
-  // TODO(jiaqizho): combine it, do not waste iops
-  // Or consider remove write ORC flag
-  file_->Write(ORC_MAGIC_ID, ORC_MAGIC_ID_LEN);
-  current_offset_ += ORC_MAGIC_ID_LEN;
-
-  file_footer_.set_headerlength(current_offset_);
+  file_footer_.set_headerlength(0);
   file_footer_.set_contentlength(0);
   file_footer_.set_numberofrows(0);
   file_footer_.set_rowindexstride(0);
@@ -405,9 +400,8 @@ void OrcReader::ReadFooter(size_t footer_offset, size_t footer_len) {
 void OrcReader::ReadPostScript(size_t file_size, uint64 post_script_len) {
   char post_script_buffer[post_script_len];
 
-  file_->PRead(
-      post_script_buffer, post_script_len,
-      file_size - ORC_POST_SCRIPT_SIZE - ORC_MAGIC_ID_LEN - post_script_len);
+  file_->PRead(post_script_buffer, post_script_len,
+               file_size - ORC_POST_SCRIPT_SIZE - post_script_len);
 
   post_script_.ParseFromArray(&post_script_buffer,
                               static_cast<int>(post_script_len));
@@ -711,8 +705,9 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
 
     nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
 
-    // The column number in Pax file meta could be smaller than the column number in TupleSlot
-    // in case after alter table add column DDL operation was done.
+    // The column number in Pax file meta could be smaller than the column
+    // number in TupleSlot in case after alter table add column DDL operation
+    // was done.
     if (column_numbers > nattrs) {
       CBDB_RAISE(cbdb::CException::ExType::kExTypeSchemaNotMatch);
     }
@@ -736,16 +731,18 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
     attrmiss = slot->tts_tupleDescriptor->constr->missing;
 
   for (index = 0; index < nattrs; index++) {
-    // handle PAX columns number inconsistent with pg catalog nattrs in case data not
-    // been inserted yet or read pax file conserved before last add column DDL is done,
-    // for these cases it is normal that pg catalog schema is not match with that in PAX file:
+    // handle PAX columns number inconsistent with pg catalog nattrs in case
+    // data not been inserted yet or read pax file conserved before last add
+    // column DDL is done, for these cases it is normal that pg catalog schema
+    // is not match with that in PAX file:
     // 1. if atthasmissing is set, then return default column value.
     // 2. if atthasmissing is not set, then return null value.
     if (index >= column_numbers) {
       slot->tts_isnull[index] = true;
-      //  The attrmiss default value memory is managed in CacheMemoryContext, which
-      //  was allocated in RelationBuildTupleDesc.
-      if (attrmiss && (slot->tts_tupleDescriptor->attrs[index].atthasmissing && attrmiss[index].am_present)) {
+      //  The attrmiss default value memory is managed in CacheMemoryContext,
+      //  which was allocated in RelationBuildTupleDesc.
+      if (attrmiss && (slot->tts_tupleDescriptor->attrs[index].atthasmissing &&
+                       attrmiss[index].am_present)) {
         slot->tts_values[index] = attrmiss[index].am_value;
         slot->tts_isnull[index] = false;
       }
@@ -855,8 +852,7 @@ void OrcReader::Seek(size_t offset) {
     CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
   }
 
-  if (working_pax_columns_)
-      column_nums = working_pax_columns_->GetColumns();
+  if (working_pax_columns_) column_nums = working_pax_columns_->GetColumns();
 
   for (size_t i = 0; i < column_nums; i++) {
     auto column = (*working_pax_columns_)[i];
