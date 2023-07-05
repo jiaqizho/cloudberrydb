@@ -4,7 +4,7 @@
 
 #define USE_PAX_MACRO
 
-#if USE_PAX_MACRO
+#if defined(USE_PAX_MACRO)
 /* define these values in pax header file */
 #include "comm/cbdb_api.h"
 #else
@@ -25,6 +25,7 @@
 #endif
 
 int main() {
+
   printf("-- insert pax catalog values\n");
   printf(
       "INSERT INTO pg_proc "
