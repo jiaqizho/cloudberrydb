@@ -36,9 +36,8 @@ TM_Result CPaxDeleter::MarkDelete(const ItemPointer tid) {
   uint32 block_number = pax_tid.GetBlockNumber();
   uint32 tuple_number = pax_tid.GetTupleNumber();
 
-  const char *char_block_id =
+  std::string block_id =
       cbdb::GetBlockId(rel_->rd_id, table_no, block_number).ToStr();
-  std::string block_id = char_block_id;
 
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
     // TODO(gongxun): bitmap should support dynamic raise size
