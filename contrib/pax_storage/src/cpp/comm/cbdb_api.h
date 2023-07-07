@@ -24,6 +24,7 @@ extern "C" {
 #include "catalog/pg_pax_tables.h"
 #include "catalog/storage.h"
 #include "cdb/cdbvars.h"
+#include "commands/cluster.h"
 #include "common/file_utils.h"
 #include "executor/executor.h"
 #include "executor/tuptable.h"
