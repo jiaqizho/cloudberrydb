@@ -691,14 +691,25 @@ void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2, TransactionId fr
   table_close(paxRel, NoLock);
 
   /* swap relation files for aux table */
-  swap_relation_files(bRelid1, bRelid2, false, /* target_is_pg_class */
-      false, /* swap_toast_by_content */
-      true, /*swap_stats */
-      true, /* is_internal */
-      frozenXid,
-      cutoffMulti,
-      NULL
-      );
+  {
+    Relation bRel1;
+    Relation bRel2;
+
+    bRel1 = relation_open(bRelid1, AccessExclusiveLock);
+    bRel2 = relation_open(bRelid2, AccessExclusiveLock);
+
+    swap_relation_files(bRelid1, bRelid2, false, /* target_is_pg_class */
+        true, /* swap_toast_by_content */
+        true, /*swap_stats */
+        true, /* is_internal */
+        frozenXid,
+        cutoffMulti,
+        NULL
+        );
+
+    relation_close(bRel1, NoLock);
+    relation_close(bRel2, NoLock);
+  }
 }
 
 }  // namespace paxc
