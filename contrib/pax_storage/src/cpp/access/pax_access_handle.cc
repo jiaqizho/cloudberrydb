@@ -627,6 +627,80 @@ bytea *PaxAccessMethod::Amoptions(Datum reloptions, char relkind,
 }
 #undef PAX_COPY_OPT
 
+void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2, TransactionId frozenXid, MultiXactId cutoffMulti) {
+  HeapTuple tuple1;
+  HeapTuple tuple2;
+  Relation paxRel;
+
+  Oid bRelid1;
+  Oid bRelid2;
+
+
+  paxRel = table_open(PaxTablesRelationId, RowExclusiveLock);
+
+  tuple1 = SearchSysCacheCopy1(PAXTABLESID, relid1);
+  if (!HeapTupleIsValid(tuple1))
+    ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                  errmsg("cache lookup failed with relid=%u for aux relation "
+                         "in pg_pax_tables.",
+                         relid1)));
+
+  tuple2 = SearchSysCacheCopy1(PAXTABLESID, relid2);
+  if (!HeapTupleIsValid(tuple2))
+    ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                  errmsg("cache lookup failed with relid=%u for aux relation "
+                         "in pg_pax_tables.",
+                         relid2)));
+
+  // swap the entries
+  {
+    Form_pg_pax_tables form1;
+    Form_pg_pax_tables form2;
+
+    Oid temp_oid;
+    int16 temp_compresslevel;
+    NameData temp_compresstype;
+
+    form1 = (Form_pg_pax_tables) GETSTRUCT(tuple1);
+    form2 = (Form_pg_pax_tables) GETSTRUCT(tuple2);
+
+    Assert(((Form_pg_pax_tables) GETSTRUCT(tuple1))->relid == relid1);
+    Assert(((Form_pg_pax_tables) GETSTRUCT(tuple2))->relid == relid2);
+
+    bRelid1 = form1->blocksrelid;
+    bRelid2 = form2->blocksrelid;
+
+    memcpy(&temp_compresstype, &form1->compresstype, sizeof(NameData));
+    memcpy(&form1->compresstype, &form2->compresstype, sizeof(NameData));
+    memcpy(&form2->compresstype, &temp_compresstype, sizeof(NameData));
+
+    temp_compresslevel = form1->compresslevel;
+    form1->compresslevel = form2->compresslevel;
+    form2->compresslevel = temp_compresslevel;
+  }
+
+  {
+    CatalogIndexState indstate;
+
+    indstate = CatalogOpenIndexes(paxRel);
+    CatalogTupleUpdateWithInfo(paxRel, &tuple1->t_self, tuple1, indstate);
+    CatalogTupleUpdateWithInfo(paxRel, &tuple2->t_self, tuple2, indstate);
+    CatalogCloseIndexes(indstate);
+  }
+
+  table_close(paxRel, NoLock);
+
+  /* swap relation files for aux table */
+  swap_relation_files(bRelid1, bRelid2, false, /* target_is_pg_class */
+      false, /* swap_toast_by_content */
+      true, /*swap_stats */
+      true, /* is_internal */
+      frozenXid,
+      cutoffMulti,
+      NULL
+      );
+}
+
 }  // namespace paxc
 // END of C implementation
 
@@ -688,6 +762,7 @@ static const TableAmRoutine kPaxColumnMethods = {
     .scan_sample_next_tuple = pax::CCPaxAccessMethod::ScanSampleNextTuple,
 
     .amoptions = paxc::PaxAccessMethod::Amoptions,
+    .swap_relation_files = paxc::PaxAccessMethod::SwapRelationFiles,
 };
 
 PG_MODULE_MAGIC;
