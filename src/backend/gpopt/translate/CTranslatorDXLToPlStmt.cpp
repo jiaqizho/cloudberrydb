@@ -5464,7 +5464,16 @@ List *
 CTranslatorDXLToPlStmt::CreateTargetListWithNullsForDroppedCols(
 	List *target_list, const IMDRelation *md_rel, bool keepDropedAsNull)
 {
-	GPOS_ASSERT_FIXME(nullptr != target_list);
+	// There are cases where target list can be null
+	// Eg. insert rows with no columns into a table with no columns
+	//
+	// create table foo();
+	// insert into foo default values;
+	if (nullptr == target_list)
+	{
+		return nullptr;
+	}
+
 	GPOS_ASSERT(gpdb::ListLength(target_list) <= md_rel->ColumnCount());
 
 	List *result_list = NIL;
