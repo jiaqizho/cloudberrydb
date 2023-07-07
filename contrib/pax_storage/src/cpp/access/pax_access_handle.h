@@ -78,6 +78,8 @@ class PaxAccessMethod final {
                                 ValidateIndexState *state);
 
   static bytea *Amoptions(Datum reloptions, char relkind, bool validate);
+
+  static void SwapRelationFiles(Oid relid1, Oid relid2, TransactionId frozenXid, MultiXactId cutoffMulti);
 };
 
 }  // namespace paxc
