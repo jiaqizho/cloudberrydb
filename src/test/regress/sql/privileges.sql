@@ -13,6 +13,8 @@ set optimizer=off;
 
 set optimizer_trace_fallback = on;
 set enable_nestloop=on;
+set optimizer_enable_nljoin = on;
+
 -- Clean up in case a prior regression run failed
 
 -- Suppress NOTICE messages when users/groups don't exist
@@ -145,9 +147,15 @@ DELETE FROM atest2; -- ok
 UPDATE pg_catalog.pg_class SET relname = '123'; -- fail
 DELETE FROM pg_catalog.pg_class; -- fail
 UPDATE pg_toast.pg_toast_1213 SET chunk_id = 1; -- fail
+-- test ctas
+create table atest2_ctas_ok as select col1 from atest2
+where col1 in (select distinct b from atest1); -- ok 
 
 SET SESSION AUTHORIZATION regress_priv_user3;
 SELECT session_user, current_user;
+
+create table atest2_ctas_fail as select col1 from atest2
+where col1 in (select distinct b from atest1); -- fail 
 
 SELECT * FROM atest1; -- ok
 SELECT * FROM atest2; -- fail
@@ -184,7 +192,7 @@ SELECT * FROM atest1; -- ok
 SET SESSION AUTHORIZATION regress_priv_user1;
 
 CREATE TABLE atest12 as
-  SELECT x AS a, 10001 - x AS b FROM generate_series(1,10000) x;
+  SELECT x AS a, 10001 - x AS b FROM generate_series(1,10000) x distributed by (a);
 CREATE INDEX ON atest12 (a);
 CREATE INDEX ON atest12 (abs(a));
 -- results below depend on having quite accurate stats for atest12, so...
@@ -232,6 +240,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM atest12 WHERE a >>> 0;
 -- privileges of the view owner.
 EXPLAIN (COSTS OFF) SELECT * FROM atest12v x, atest12v y WHERE x.a = y.b;
 
+-- reset the plan cache, sometimes it would re-plan these prepared statements and log ORCA fallbacks
 discard plans;
 EXPLAIN (COSTS OFF) SELECT * FROM atest12sbv x, atest12sbv y WHERE x.a = y.b;
 
@@ -1622,6 +1631,7 @@ DROP TABLE atest6;
 DROP TABLE atestc;
 DROP TABLE atestp1;
 DROP TABLE atestp2;
+DROP TABLE atest2_ctas_ok;
 
 -- start_ignore
 SELECT lo_unlink(oid) FROM pg_largeobject_metadata WHERE oid >= 1000 AND oid < 3000 ORDER BY oid;
