@@ -5,7 +5,6 @@
 #include "access/pax_dml_state.h"
 #include "access/pax_scanner.h"
 #include "access/pax_updater.h"
-#include "comm/paxc_utils.h"
 #include "catalog/pax_aux_table.h"
 #include "exceptions/CException.h"
 #include "storage/paxc_block_map_manager.h"
@@ -150,11 +149,11 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
   CBDB_TRY();
   {
     *freeze_xid = *minmulti = InvalidTransactionId;
-    pax::CCPaxAuxTable::PaxAuxRelationSetNewFilenode(rel, newrnode, persistence);
+    pax::CCPaxAuxTable::PaxAuxRelationSetNewFilenode(rel, newrnode,
+                                                     persistence);
   }
   CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({
-  });
+  CBDB_FINALLY({});
   CBDB_END_TRY();
 }
 
@@ -165,53 +164,44 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
 // and truncate table inside transactional block.
 void CCPaxAccessMethod::RelationNontransactionalTruncate(Relation rel) {
   CBDB_TRY();
-  {
-    pax::CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(rel);
-  }
+  { pax::CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(rel); }
   CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({
-  });
+  CBDB_FINALLY({});
   CBDB_END_TRY();
 }
-
 
 void CCPaxAccessMethod::RelationCopyData(Relation rel,
                                          const RelFileNode *newrnode) {
   CBDB_TRY();
-  {
-    pax::CCPaxAuxTable::PaxAuxRelationCopyData(rel, newrnode);
-  }
+  { pax::CCPaxAuxTable::PaxAuxRelationCopyData(rel, newrnode); }
   CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({
-  });
+  CBDB_FINALLY({});
   CBDB_END_TRY();
 }
 
 void CCPaxAccessMethod::RelationFileUnlink(RelFileNodeBackend rnode) {
   CBDB_TRY();
   {
-    pax::CCPaxAuxTable::PaxAuxRelationFileUnlink(rnode.node, rnode.backend, true);
+    pax::CCPaxAuxTable::PaxAuxRelationFileUnlink(rnode.node, rnode.backend,
+                                                 true);
   }
   CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({
-  });
+  CBDB_FINALLY({});
   CBDB_END_TRY();
 }
 
-void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
-                                   bool set_params, bool allow_strat,
-                                   bool allow_sync, bool allow_pagemode) {
-  cbdb::Unused(scan, key, set_params, allow_strat, allow_sync, allow_pagemode);
+void CCPaxAccessMethod::ScanRescan(TableScanDesc /*scan*/, ScanKey /*key*/,
+                                   bool /*set_params*/, bool /*allow_strat*/,
+                                   bool /*allow_sync*/,
+                                   bool /*allow_pagemode*/) {
   NOT_IMPLEMENTED_YET;
 }
 
 bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
-                                        ScanDirection direction,
+                                        ScanDirection /*direction*/,
                                         TupleTableSlot *slot) {
   CBDB_TRY();
-  {
-    cbdb::Unused(&direction);
-    return PaxScanDesc::ScanGetNextSlot(scan, slot); }
+  { return PaxScanDesc::ScanGetNextSlot(scan, slot); }
   CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
@@ -226,7 +216,14 @@ void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
                                     CommandId cid, int options,
                                     BulkInsertState bistate) {
   CBDB_TRY();
-  { CPaxInserter::TupleInsert(relation, slot, cid, options, bistate); }
+  {
+    MemoryContext old_ctx;
+    Assert(cbdb::pax_memory_context);
+
+    old_ctx = MemoryContextSwitchTo(cbdb::pax_memory_context);
+    CPaxInserter::TupleInsert(relation, slot, cid, options, bistate);
+    MemoryContextSwitchTo(old_ctx);
+  }
   CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
@@ -237,14 +234,11 @@ void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
 
 TM_Result CCPaxAccessMethod::TupleDelete(Relation relation, ItemPointer tid,
                                          CommandId cid, Snapshot snapshot,
-                                         Snapshot crosscheck, bool wait,
+                                         Snapshot /*crosscheck*/, bool /*wait*/,
                                          TM_FailureData *tmfd,
-                                         bool changing_part) {
+                                         bool /*changing_part*/) {
   CBDB_TRY();
-  {
-    cbdb::Unused(crosscheck, wait, changing_part);
-    return CPaxDeleter::DeleteTuple(relation, tid, cid, snapshot, tmfd);
-  }
+  { return CPaxDeleter::DeleteTuple(relation, tid, cid, snapshot, tmfd); }
 
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
@@ -260,57 +254,78 @@ TM_Result CCPaxAccessMethod::TupleUpdate(Relation relation, ItemPointer otid,
                                          bool *update_indexes) {
   CBDB_TRY();
   {
-    return CPaxUpdater::UpdateTuple(relation, otid, slot, cid, snapshot,
-                                    crosscheck, wait, tmfd, lockmode,
-                                    update_indexes);
-  }
+    MemoryContext old_ctx;
+    TM_Result result;
 
+    Assert(cbdb::pax_memory_context);
+    old_ctx = MemoryContextSwitchTo(cbdb::pax_memory_context);
+    result = CPaxUpdater::UpdateTuple(relation, otid, slot, cid, snapshot,
+                                      crosscheck, wait, tmfd, lockmode,
+                                      update_indexes);
+    MemoryContextSwitchTo(old_ctx);
+    return result;
+  }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
   pg_unreachable();
 }
 
-bool CCPaxAccessMethod::ScanAnalyzeNextBlock(TableScanDesc scan,
-                                             BlockNumber blockno,
-                                             BufferAccessStrategy bstrategy) {
-  cbdb::Unused(bstrategy);
-  return PaxScanDesc::ScanAnalyzeNextBlock(scan, blockno);
+bool CCPaxAccessMethod::ScanAnalyzeNextBlock(
+    TableScanDesc scan, BlockNumber blockno,
+    BufferAccessStrategy /*bstrategy*/) {
+  CBDB_TRY();
+  { return PaxScanDesc::ScanAnalyzeNextBlock(scan, blockno); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
 bool CCPaxAccessMethod::ScanAnalyzeNextTuple(TableScanDesc scan,
-                                             TransactionId oldest_xmin,
+                                             TransactionId /*oldest_xmin*/,
                                              double *liverows, double *deadrows,
                                              TupleTableSlot *slot) {
-  cbdb::Unused(&oldest_xmin);
-  return PaxScanDesc::ScanAnalyzeNextTuple(scan, liverows, deadrows, slot);
+  CBDB_TRY();
+  { return PaxScanDesc::ScanAnalyzeNextTuple(scan, liverows, deadrows, slot); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
-bool CCPaxAccessMethod::ScanBitmapNextBlock(TableScanDesc scan,
-                                            TBMIterateResult *tbmres) {
-  cbdb::Unused(scan, tbmres);
+bool CCPaxAccessMethod::ScanBitmapNextBlock(TableScanDesc /*scan*/,
+                                            TBMIterateResult * /*tbmres*/) {
   NOT_IMPLEMENTED_YET;
   return false;
 }
 
-bool CCPaxAccessMethod::ScanBitmapNextTuple(TableScanDesc scan,
-                                            TBMIterateResult *tbmres,
-                                            TupleTableSlot *slot) {
-  cbdb::Unused(scan, tbmres, slot);
+bool CCPaxAccessMethod::ScanBitmapNextTuple(TableScanDesc /*scan*/,
+                                            TBMIterateResult * /*tbmres*/,
+                                            TupleTableSlot * /*slot*/) {
   NOT_IMPLEMENTED_YET;
   return false;
 }
 
 bool CCPaxAccessMethod::ScanSampleNextBlock(TableScanDesc scan,
                                             SampleScanState *scanstate) {
-  return PaxScanDesc::ScanSampleNextBlock(scan, scanstate);
+  CBDB_TRY();
+  { return PaxScanDesc::ScanSampleNextBlock(scan, scanstate); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
 bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
-                                            SampleScanState *scanstate,
+                                            SampleScanState * /*scanstate*/,
                                             TupleTableSlot *slot) {
-  cbdb::Unused(scanstate);
-  return PaxScanDesc::ScanSampleNextTuple(scan, slot);
+  CBDB_TRY();
+  { return PaxScanDesc::ScanSampleNextTuple(scan, slot); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
 void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
@@ -318,7 +333,12 @@ void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
                                     BulkInsertState bistate) {
   CBDB_TRY();
   {
+    MemoryContext old_ctx;
+    Assert(cbdb::pax_memory_context);
+
+    old_ctx = MemoryContextSwitchTo(cbdb::pax_memory_context);
     CPaxInserter::MultiInsert(relation, slots, ntuples, cid, options, bistate);
+    MemoryContextSwitchTo(old_ctx);
   }
   CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
@@ -333,7 +353,11 @@ void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
   // xxx2", which would not call ExtDmlFini callback function and relies on
   // FinishBulkInsert callback function to cleanup its dml state.
   CBDB_TRY();
-  { pax::CPaxInserter::FinishBulkInsert(relation, options); }
+  {
+    // no need switch memory context
+    // cause it just call dml finish
+    pax::CPaxInserter::FinishBulkInsert(relation, options);
+  }
   CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
@@ -343,13 +367,15 @@ void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
 }
 
 void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
-  if (RELATION_IS_PAX(rel))
-    pax::CPaxDmlStateLocal::instance()->InitDmlState(rel, operation);
+  if (RELATION_IS_PAX(rel)) {
+    pax::CPaxDmlStateLocal::Instance()->InitDmlState(rel, operation);
+  }
 }
 
 void CCPaxAccessMethod::ExtDmlFini(Relation rel, CmdType operation) {
-  if (RELATION_IS_PAX(rel))
-    pax::CPaxDmlStateLocal::instance()->FinishDmlState(rel, operation);
+  if (RELATION_IS_PAX(rel)) {
+    pax::CPaxDmlStateLocal::Instance()->FinishDmlState(rel, operation);
+  }
 }
 
 }  // namespace pax
@@ -357,128 +383,120 @@ void CCPaxAccessMethod::ExtDmlFini(Relation rel, CmdType operation) {
 
 // access methods that are implemented in C
 namespace paxc {
-const TupleTableSlotOps *PaxAccessMethod::SlotCallbacks(Relation rel) noexcept {
-  cbdb::Unused(rel);
+const TupleTableSlotOps *PaxAccessMethod::SlotCallbacks(
+    Relation /*rel*/) noexcept {
   return &TTSOpsVirtual;
 }
 
-Size PaxAccessMethod::ParallelscanEstimate(Relation rel) {
-  cbdb::Unused(rel);
+Size PaxAccessMethod::ParallelscanEstimate(Relation /*rel*/) {
   NOT_IMPLEMENTED_YET;
   return 0;
 }
 
-Size PaxAccessMethod::ParallelscanInitialize(Relation rel,
-                                             ParallelTableScanDesc pscan) {
-  cbdb::Unused(rel, pscan);
+Size PaxAccessMethod::ParallelscanInitialize(Relation /*rel*/,
+                                             ParallelTableScanDesc /*pscan*/) {
   NOT_IMPLEMENTED_YET;
   return 0;
 }
 
-void PaxAccessMethod::ParallelscanReinitialize(Relation rel,
-                                               ParallelTableScanDesc pscan) {
-  cbdb::Unused(rel, pscan);
+void PaxAccessMethod::ParallelscanReinitialize(
+    Relation /*rel*/, ParallelTableScanDesc /*pscan*/) {
   NOT_IMPLEMENTED_YET;
 }
 
-struct IndexFetchTableData *PaxAccessMethod::IndexFetchBegin(Relation rel) {
-  cbdb::Unused(rel);
+struct IndexFetchTableData *PaxAccessMethod::IndexFetchBegin(Relation /*rel*/) {
   NOT_SUPPORTED_YET;
   return nullptr;
 }
 
-void PaxAccessMethod::IndexFetchEnd(IndexFetchTableData *data) {
-  cbdb::Unused(data);
+void PaxAccessMethod::IndexFetchEnd(IndexFetchTableData * /*data*/) {
   NOT_SUPPORTED_YET;
 }
 
-void PaxAccessMethod::IndexFetchReset(IndexFetchTableData *data) {
-  cbdb::Unused(data);
+void PaxAccessMethod::IndexFetchReset(IndexFetchTableData * /*data*/) {
   NOT_SUPPORTED_YET;
 }
 
-bool PaxAccessMethod::IndexFetchTuple(struct IndexFetchTableData *scan,
-                                      ItemPointer tid, Snapshot snapshot,
-                                      TupleTableSlot *slot, bool *call_again,
-                                      bool *all_dead) {
-  cbdb::Unused(scan, tid, snapshot, slot, call_again, all_dead);
+bool PaxAccessMethod::IndexFetchTuple(struct IndexFetchTableData * /*scan*/,
+                                      ItemPointer /*tid*/,
+                                      Snapshot /*snapshot*/,
+                                      TupleTableSlot * /*slot*/,
+                                      bool * /*call_again*/,
+                                      bool * /*all_dead*/) {
   NOT_SUPPORTED_YET;
   return false;
 }
 
-void PaxAccessMethod::TupleInsertSpeculative(Relation relation,
-                                             TupleTableSlot *slot,
-                                             CommandId cid, int options,
-                                             BulkInsertState bistate,
-                                             uint32 spec_token) {
-  cbdb::Unused(relation, slot, cid, options, bistate, spec_token);
+void PaxAccessMethod::TupleInsertSpeculative(Relation /*relation*/,
+                                             TupleTableSlot * /*slot*/,
+                                             CommandId /*cid*/, int /*options*/,
+                                             BulkInsertState /*bistate*/,
+                                             uint32 /*spec_token*/) {
   NOT_IMPLEMENTED_YET;
 }
 
-void PaxAccessMethod::TupleCompleteSpeculative(Relation relation,
-                                               TupleTableSlot *slot,
-                                               uint32 spec_token,
-                                               bool succeeded) {
-  cbdb::Unused(relation, slot, spec_token, succeeded);
+void PaxAccessMethod::TupleCompleteSpeculative(Relation /*relation*/,
+                                               TupleTableSlot * /*slot*/,
+                                               uint32 /*spec_token*/,
+                                               bool /*succeeded*/) {
   NOT_IMPLEMENTED_YET;
 }
 
-TM_Result PaxAccessMethod::TupleLock(Relation relation, ItemPointer tid,
-                                     Snapshot snapshot, TupleTableSlot *slot,
-                                     CommandId cid, LockTupleMode mode,
-                                     LockWaitPolicy wait_policy, uint8 flags,
-                                     TM_FailureData *tmfd) {
-  cbdb::Unused(relation, tid, snapshot, slot, cid, mode, wait_policy, flags, tmfd);
+TM_Result PaxAccessMethod::TupleLock(Relation /*relation*/, ItemPointer /*tid*/,
+                                     Snapshot /*snapshot*/,
+                                     TupleTableSlot * /*slot*/,
+                                     CommandId /*cid*/, LockTupleMode /*mode*/,
+                                     LockWaitPolicy /*wait_policy*/,
+                                     uint8 /*flags*/,
+                                     TM_FailureData * /*tmfd*/) {
   NOT_IMPLEMENTED_YET;
   return TM_Ok;
 }
 
-bool PaxAccessMethod::TupleFetchRowVersion(Relation relation, ItemPointer tid,
-                                           Snapshot snapshot,
-                                           TupleTableSlot *slot) {
-  cbdb::Unused(relation, tid, snapshot, slot);
+bool PaxAccessMethod::TupleFetchRowVersion(Relation /*relation*/,
+                                           ItemPointer /*tid*/,
+                                           Snapshot /*snapshot*/,
+                                           TupleTableSlot * /*slot*/) {
   NOT_IMPLEMENTED_YET;
   return false;
 }
 
-bool PaxAccessMethod::TupleTidValid(TableScanDesc scan, ItemPointer tid) {
-  cbdb::Unused(scan, tid);
+bool PaxAccessMethod::TupleTidValid(TableScanDesc /*scan*/,
+                                    ItemPointer /*tid*/) {
   NOT_IMPLEMENTED_YET;
   return false;
 }
 
-void PaxAccessMethod::TupleGetLatestTid(TableScanDesc sscan, ItemPointer tid) {
-  cbdb::Unused(sscan, tid);
+void PaxAccessMethod::TupleGetLatestTid(TableScanDesc /*sscan*/,
+                                        ItemPointer /*tid*/) {
   NOT_SUPPORTED_YET;
 }
 
-bool PaxAccessMethod::TupleSatisfiesSnapshot(Relation rel, TupleTableSlot *slot,
-                                             Snapshot snapshot) {
-  cbdb::Unused(rel, slot, snapshot);
+bool PaxAccessMethod::TupleSatisfiesSnapshot(Relation /*rel*/,
+                                             TupleTableSlot * /*slot*/,
+                                             Snapshot /*snapshot*/) {
   NOT_IMPLEMENTED_YET;
   return true;
 }
 
-TransactionId PaxAccessMethod::IndexDeleteTuples(Relation rel,
-                                                 TM_IndexDeleteOp *delstate) {
-  cbdb::Unused(rel, delstate);
+TransactionId PaxAccessMethod::IndexDeleteTuples(
+    Relation /*rel*/, TM_IndexDeleteOp * /*delstate*/) {
   NOT_SUPPORTED_YET;
   return 0;
 }
 
 void PaxAccessMethod::RelationCopyForCluster(
-    Relation old_heap, Relation new_heap, Relation old_index, bool use_sort,
-    TransactionId oldest_xmin, TransactionId *xid_cutoff,
-    MultiXactId *multi_cutoff, double *num_tuples, double *tups_vacuumed,
-    double *tups_recently_dead) {
-  cbdb::Unused(old_heap, new_heap, old_index, use_sort, oldest_xmin, xid_cutoff,
-                multi_cutoff,  num_tuples,  tups_vacuumed, tups_recently_dead);
+    Relation /*old_heap*/, Relation /*new_heap*/, Relation /*old_index*/,
+    bool /*use_sort*/, TransactionId /*oldest_xmin*/,
+    TransactionId * /*xid_cutoff*/, MultiXactId * /*multi_cutoff*/,
+    double * /*num_tuples*/, double * /*tups_vacuumed*/,
+    double * /*tups_recently_dead*/) {
   NOT_IMPLEMENTED_YET;
 }
 
-void PaxAccessMethod::RelationVacuum(Relation onerel, VacuumParams *params,
-                                     BufferAccessStrategy bstrategy) {
-  cbdb::Unused(onerel, params, bstrategy);
+void PaxAccessMethod::RelationVacuum(Relation /*onerel*/,
+                                     VacuumParams * /*params*/,
+                                     BufferAccessStrategy /*bstrategy*/) {
   NOT_IMPLEMENTED_YET;
 }
 
@@ -505,8 +523,8 @@ uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {
     // TODO(chenhongjie): Exactly what is needed and being obtained is
     // compressed size. Later, when the aux table supports size attributes
     // before/after compression, we need to distinguish two attributes by names.
-    Datum tup_datum = heap_getattr(aux_tup, Anum_pg_pax_block_tables_ptblocksize,
-                                  aux_tup_desc, &isnull);
+    Datum tup_datum = heap_getattr(
+        aux_tup, Anum_pg_pax_block_tables_ptblocksize, aux_tup_desc, &isnull);
 
     Assert(!isnull);
     pax_size += DatumGetUInt32(tup_datum);
@@ -518,9 +536,9 @@ uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {
   return pax_size;
 }
 
-bool PaxAccessMethod::RelationNeedsToastTable(Relation rel) {
+bool PaxAccessMethod::RelationNeedsToastTable(Relation /*rel*/) {
   // PAX never used the toasting, don't create the toast table from Cloudberry 7
-  cbdb::Unused(rel);
+
   return false;
 }
 
@@ -528,7 +546,7 @@ bool PaxAccessMethod::RelationNeedsToastTable(Relation rel) {
 // size can be read directly from the auxiliary table, and there is not much
 // space for optimization in estimating relsize. So this function is implemented
 // in the same way as pax_relation_size().
-void PaxAccessMethod::EstimateRelSize(Relation rel, int32 *attr_widths,
+void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
                                       BlockNumber *pages, double *tuples,
                                       double *allvisfrac) {
   Oid pax_aux_oid;
@@ -538,7 +556,6 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 *attr_widths,
   SysScanDesc aux_scan;
   uint32 total_tuples = 0;
   uint64 pax_size = 0;
-  cbdb::Unused(attr_widths);
 
   // Even an empty table takes at least one page,
   // but number of tuples for an empty table could be 0.
@@ -560,8 +577,8 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 *attr_widths,
     Datum ptblocksize_datum;
     bool isnull = false;
 
-    pttupcount_datum = heap_getattr(aux_tup, Anum_pg_pax_block_tables_pttupcount,
-                                   aux_tup_desc, &isnull);
+    pttupcount_datum = heap_getattr(
+        aux_tup, Anum_pg_pax_block_tables_pttupcount, aux_tup_desc, &isnull);
     Assert(!isnull);
     total_tuples += DatumGetUInt32(pttupcount_datum);
 
@@ -585,21 +602,20 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 *attr_widths,
 }
 
 double PaxAccessMethod::IndexBuildRangeScan(
-    Relation heap_relation, Relation index_relation, IndexInfo *index_info,
-    bool allow_sync, bool anyvisible, bool progress, BlockNumber start_blockno,
-    BlockNumber numblocks, IndexBuildCallback callback, void *callback_state,
-    TableScanDesc scan) {
-  cbdb::Unused(heap_relation, index_relation, index_info, allow_sync, anyvisible, progress,
-               start_blockno, numblocks, callback, callback_state, scan);
+    Relation /*heap_relation*/, Relation /*index_relation*/,
+    IndexInfo * /*index_info*/, bool /*allow_sync*/, bool /*anyvisible*/,
+    bool /*progress*/, BlockNumber /*start_blockno*/, BlockNumber /*numblocks*/,
+    IndexBuildCallback /*callback*/, void * /*callback_state*/,
+    TableScanDesc /*scan*/) {
   NOT_SUPPORTED_YET;
   return 0.0;
 }
 
-void PaxAccessMethod::IndexValidateScan(Relation heap_relation,
-                                        Relation index_relation,
-                                        IndexInfo *index_info, Snapshot snapshot,
-                                        ValidateIndexState *state) {
-  cbdb::Unused(heap_relation, index_relation, index_info, snapshot, state);
+void PaxAccessMethod::IndexValidateScan(Relation /*heap_relation*/,
+                                        Relation /*index_relation*/,
+                                        IndexInfo * /*index_info*/,
+                                        Snapshot /*snapshot*/,
+                                        ValidateIndexState * /*state*/) {
   NOT_IMPLEMENTED_YET;
 }
 
@@ -612,10 +628,10 @@ void PaxAccessMethod::IndexValidateScan(Relation heap_relation,
               reinterpret_cast<char *>(pax_opts) + pax_name_offset_,          \
               sizeof(pax_opts->pax_opt_name_));                               \
   } while (0)
-bytea *PaxAccessMethod::Amoptions(Datum reloptions, char relkind,
+bytea *PaxAccessMethod::Amoptions(Datum reloptions, char /*relkind*/,
                                   bool validate) {
   void *rdopts;
-  cbdb::Unused(&relkind);
+
   rdopts = build_reloptions(reloptions, validate, self_relopt_kind,
                             sizeof(PaxOptions), kSelfReloptTab,
                             lengthof(kSelfReloptTab));
@@ -627,48 +643,48 @@ bytea *PaxAccessMethod::Amoptions(Datum reloptions, char relkind,
 }
 #undef PAX_COPY_OPT
 
-void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2, TransactionId frozenXid, MultiXactId cutoffMulti) {
+void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2,
+                                        TransactionId frozen_xid,
+                                        MultiXactId cutoff_multi) {
   HeapTuple tuple1;
   HeapTuple tuple2;
-  Relation paxRel;
+  Relation pax_rel;
 
-  Oid bRelid1;
-  Oid bRelid2;
+  Oid b_relid1;
+  Oid b_relid2;
 
-
-  paxRel = table_open(PaxTablesRelationId, RowExclusiveLock);
+  pax_rel = table_open(PaxTablesRelationId, RowExclusiveLock);
 
   tuple1 = SearchSysCacheCopy1(PAXTABLESID, relid1);
   if (!HeapTupleIsValid(tuple1))
     ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                  errmsg("cache lookup failed with relid=%u for aux relation "
-                         "in pg_pax_tables.",
-                         relid1)));
+                    errmsg("cache lookup failed with relid=%u for aux relation "
+                           "in pg_pax_tables.",
+                           relid1)));
 
   tuple2 = SearchSysCacheCopy1(PAXTABLESID, relid2);
   if (!HeapTupleIsValid(tuple2))
     ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                  errmsg("cache lookup failed with relid=%u for aux relation "
-                         "in pg_pax_tables.",
-                         relid2)));
+                    errmsg("cache lookup failed with relid=%u for aux relation "
+                           "in pg_pax_tables.",
+                           relid2)));
 
   // swap the entries
   {
     Form_pg_pax_tables form1;
     Form_pg_pax_tables form2;
 
-    Oid temp_oid;
     int16 temp_compresslevel;
     NameData temp_compresstype;
 
-    form1 = (Form_pg_pax_tables) GETSTRUCT(tuple1);
-    form2 = (Form_pg_pax_tables) GETSTRUCT(tuple2);
+    form1 = (Form_pg_pax_tables)GETSTRUCT(tuple1);
+    form2 = (Form_pg_pax_tables)GETSTRUCT(tuple2);
 
-    Assert(((Form_pg_pax_tables) GETSTRUCT(tuple1))->relid == relid1);
-    Assert(((Form_pg_pax_tables) GETSTRUCT(tuple2))->relid == relid2);
+    Assert(((Form_pg_pax_tables)GETSTRUCT(tuple1))->relid == relid1);
+    Assert(((Form_pg_pax_tables)GETSTRUCT(tuple2))->relid == relid2);
 
-    bRelid1 = form1->blocksrelid;
-    bRelid2 = form2->blocksrelid;
+    b_relid1 = form1->blocksrelid;
+    b_relid2 = form2->blocksrelid;
 
     memcpy(&temp_compresstype, &form1->compresstype, sizeof(NameData));
     memcpy(&form1->compresstype, &form2->compresstype, sizeof(NameData));
@@ -682,33 +698,30 @@ void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2, TransactionId fr
   {
     CatalogIndexState indstate;
 
-    indstate = CatalogOpenIndexes(paxRel);
-    CatalogTupleUpdateWithInfo(paxRel, &tuple1->t_self, tuple1, indstate);
-    CatalogTupleUpdateWithInfo(paxRel, &tuple2->t_self, tuple2, indstate);
+    indstate = CatalogOpenIndexes(pax_rel);
+    CatalogTupleUpdateWithInfo(pax_rel, &tuple1->t_self, tuple1, indstate);
+    CatalogTupleUpdateWithInfo(pax_rel, &tuple2->t_self, tuple2, indstate);
     CatalogCloseIndexes(indstate);
   }
 
-  table_close(paxRel, NoLock);
+  table_close(pax_rel, NoLock);
 
   /* swap relation files for aux table */
   {
-    Relation bRel1;
-    Relation bRel2;
+    Relation b_rel1;
+    Relation b_rel2;
 
-    bRel1 = relation_open(bRelid1, AccessExclusiveLock);
-    bRel2 = relation_open(bRelid2, AccessExclusiveLock);
+    b_rel1 = relation_open(b_relid1, AccessExclusiveLock);
+    b_rel2 = relation_open(b_relid2, AccessExclusiveLock);
 
-    swap_relation_files(bRelid1, bRelid2, false, /* target_is_pg_class */
-        true, /* swap_toast_by_content */
-        true, /*swap_stats */
-        true, /* is_internal */
-        frozenXid,
-        cutoffMulti,
-        NULL
-        );
+    swap_relation_files(b_relid1, b_relid2, false, /* target_is_pg_class */
+                        true,                      /* swap_toast_by_content */
+                        true,                      /*swap_stats */
+                        true,                      /* is_internal */
+                        frozen_xid, cutoff_multi, NULL);
 
-    relation_close(bRel1, NoLock);
-    relation_close(bRel2, NoLock);
+    relation_close(b_rel1, NoLock);
+    relation_close(b_rel2, NoLock);
   }
 }
 
@@ -778,7 +791,7 @@ static const TableAmRoutine kPaxColumnMethods = {
 
 PG_MODULE_MAGIC;
 PG_FUNCTION_INFO_V1(pax_tableam_handler);
-Datum pax_tableam_handler(PG_FUNCTION_ARGS) { // NOLINT
+Datum pax_tableam_handler(PG_FUNCTION_ARGS) {  // NOLINT
   PG_RETURN_POINTER(&kPaxColumnMethods);
 }
 
@@ -833,6 +846,7 @@ static void PaxExecutorEnd(QueryDesc *query_desc) {
     prev_executor_end(query_desc);
   else
     standard_ExecutorEnd(query_desc);
+
   executor_run_ref_count--;
   Assert(executor_run_ref_count >= 0);
   if (executor_run_ref_count == 0) {
@@ -840,11 +854,10 @@ static void PaxExecutorEnd(QueryDesc *query_desc) {
   }
 }
 
-static void PaxXactCallback(XactEvent event, void *arg) {
+static void PaxXactCallback(XactEvent event, void * /*arg*/) {
   if (event == XACT_EVENT_COMMIT || event == XACT_EVENT_ABORT ||
       event == XACT_EVENT_PARALLEL_ABORT ||
       event == XACT_EVENT_PARALLEL_COMMIT) {
-    cbdb::Unused(arg);
     if (executor_run_ref_count > 0) {
       executor_run_ref_count = 0;
       paxc::release_command_resource();
@@ -852,7 +865,7 @@ static void PaxXactCallback(XactEvent event, void *arg) {
   }
 }
 
-void _PG_init(void) { // NOLINT
+void _PG_init(void) {  // NOLINT
   if (!process_shared_preload_libraries_in_progress) {
     ereport(ERROR, (errmsg("pax must be loaded via shared_preload_libraries")));
     return;

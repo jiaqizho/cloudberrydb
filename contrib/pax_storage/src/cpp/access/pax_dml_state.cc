@@ -3,36 +3,36 @@
 namespace pax {
 // class CPaxDmlStateLocal
 
-void CPaxDmlStateLocal::DmlStateResetCallback(void *_) {
-  pax::CPaxDmlStateLocal::instance()->Reset();
+void CPaxDmlStateLocal::DmlStateResetCallback(void * /*arg*/) {
+  pax::CPaxDmlStateLocal::Instance()->Reset();
 }
 
-void CPaxDmlStateLocal::InitDmlState(const Relation rel,
-                                     const CmdType operation) {
+void CPaxDmlStateLocal::InitDmlState(Relation rel, CmdType operation) {
   if (operation == CMD_UPDATE || operation == CMD_DELETE) {
     cbdb::InitCommandResource();
   }
 
-  if (!this->dml_descriptor_tab_) {
+  if (!dml_descriptor_tab_) {
     HASHCTL hash_ctl;
-    Assert(this->state_ctx_ == NULL);
-    this->state_ctx_ = cbdb::AllocSetCtxCreate(
-        CurrentMemoryContext, "Pax DML State Context", ALLOCSET_SMALL_SIZES);
-    cbdb::MemoryCtxRegisterResetCallback(state_ctx_, &this->cb_);
+    Assert(!cbdb::pax_memory_context);
+
+    cbdb::pax_memory_context = AllocSetContextCreate(
+        CurrentMemoryContext, "Pax Storage", PAX_ALLOCSET_DEFAULT_SIZES);
+
+    cbdb::MemoryCtxRegisterResetCallback(cbdb::pax_memory_context, &cb_);
 
     memset(&hash_ctl, 0, sizeof(hash_ctl));
     hash_ctl.keysize = sizeof(Oid);
     hash_ctl.entrysize = sizeof(PaxDmlState);
-    hash_ctl.hcxt = this->state_ctx_;
-    this->dml_descriptor_tab_ = cbdb::HashCreate(
+    hash_ctl.hcxt = cbdb::pax_memory_context;
+    dml_descriptor_tab_ = cbdb::HashCreate(
         "Pax DML state", 128, &hash_ctl, HASH_CONTEXT | HASH_ELEM | HASH_BLOBS);
   }
 
-  this->EntryDmlState(cbdb::RelationGetRelationId(rel));
+  EntryDmlState(cbdb::RelationGetRelationId(rel));
 }
 
-void CPaxDmlStateLocal::FinishDmlState(const Relation rel,
-                                       const CmdType operation) {
+void CPaxDmlStateLocal::FinishDmlState(Relation rel, CmdType /*operation*/) {
   PaxDmlState *state;
   state = RemoveDmlState(cbdb::RelationGetRelationId(rel));
 
@@ -50,14 +50,18 @@ void CPaxDmlStateLocal::FinishDmlState(const Relation rel,
   }
 
   if (state->inserter) {
-    // TODO(gongxun): inserter finish
+    MemoryContext old_ctx;
+    Assert(cbdb::pax_memory_context);
+
+    old_ctx = MemoryContextSwitchTo(cbdb::pax_memory_context);
     state->inserter->FinishInsert();
     delete state->inserter;
     state->inserter = nullptr;
+    MemoryContextSwitchTo(old_ctx);
   }
 }
 
-CPaxInserter *CPaxDmlStateLocal::GetInserter(const Relation rel) {
+CPaxInserter *CPaxDmlStateLocal::GetInserter(Relation rel) {
   PaxDmlState *state;
   state = FindDmlState(cbdb::RelationGetRelationId(rel));
   // TODO(gongxun): switch memory context??
@@ -67,8 +71,7 @@ CPaxInserter *CPaxDmlStateLocal::GetInserter(const Relation rel) {
   return state->inserter;
 }
 
-CPaxDeleter *CPaxDmlStateLocal::GetDeleter(const Relation rel,
-                                           const Snapshot snapshot) {
+CPaxDeleter *CPaxDmlStateLocal::GetDeleter(Relation rel, Snapshot snapshot) {
   PaxDmlState *state;
   state = FindDmlState(cbdb::RelationGetRelationId(rel));
   // TODO(gongxun): switch memory context??
@@ -80,16 +83,14 @@ CPaxDeleter *CPaxDmlStateLocal::GetDeleter(const Relation rel,
 
 void CPaxDmlStateLocal::Reset() {
   last_used_state_ = nullptr;
-  state_ctx_ = nullptr;
   dml_descriptor_tab_ = nullptr;
+  cbdb::pax_memory_context = nullptr;
 }
 
-CPaxDmlStateLocal::CPaxDmlStateLocal() {
-  dml_descriptor_tab_ = nullptr;
-  last_used_state_ = nullptr;
-  state_ctx_ = nullptr;
-  cb_ = {.func = DmlStateResetCallback, .arg = NULL};
-}
+CPaxDmlStateLocal::CPaxDmlStateLocal()
+    : last_used_state_(nullptr),
+      dml_descriptor_tab_(nullptr),
+      cb_{.func = DmlStateResetCallback, .arg = NULL} {}
 
 PaxDmlState *CPaxDmlStateLocal::EntryDmlState(const Oid &oid) {
   PaxDmlState *state;

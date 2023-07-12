@@ -49,7 +49,8 @@ class PaxAccessMethod final {
   /* unsupported DML now, may move to CCPaxAccessMethod */
   static void TupleInsertSpeculative(Relation relation, TupleTableSlot *slot,
                                      CommandId cid, int options,
-                                     BulkInsertState bistate, uint32 spec_token);
+                                     BulkInsertState bistate,
+                                     uint32 spec_token);
   static void TupleCompleteSpeculative(Relation relation, TupleTableSlot *slot,
                                        uint32 spec_token, bool succeeded);
   static TM_Result TupleLock(Relation relation, ItemPointer tid,
@@ -79,7 +80,9 @@ class PaxAccessMethod final {
 
   static bytea *Amoptions(Datum reloptions, char relkind, bool validate);
 
-  static void SwapRelationFiles(Oid relid1, Oid relid2, TransactionId frozenXid, MultiXactId cutoffMulti);
+  static void SwapRelationFiles(Oid relid1, Oid relid2,
+                                TransactionId frozen_xid,
+                                MultiXactId cutoff_multi);
 };
 
 }  // namespace paxc
@@ -116,16 +119,17 @@ class CCPaxAccessMethod final {
   static void RelationCopyData(Relation rel, const RelFileNode *newrnode);
 
   static void RelationSetNewFilenode(Relation rel, const RelFileNode *newrnode,
-                                     char persistence, TransactionId *freeze_xid,
+                                     char persistence,
+                                     TransactionId *freeze_xid,
                                      MultiXactId *minmulti);
 
   static void RelationNontransactionalTruncate(Relation rel);
 
   static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno,
                                    BufferAccessStrategy bstrategy);
-  static bool ScanAnalyzeNextTuple(TableScanDesc scan, TransactionId oldest_xmin,
-                                   double *liverows, double *deadrows,
-                                   TupleTableSlot *slot);
+  static bool ScanAnalyzeNextTuple(TableScanDesc scan,
+                                   TransactionId oldest_xmin, double *liverows,
+                                   double *deadrows, TupleTableSlot *slot);
   static bool ScanBitmapNextBlock(TableScanDesc scan, TBMIterateResult *tbmres);
   static bool ScanBitmapNextTuple(TableScanDesc scan, TBMIterateResult *tbmres,
                                   TupleTableSlot *slot);

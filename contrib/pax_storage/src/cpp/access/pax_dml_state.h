@@ -20,35 +20,34 @@ class CPaxDmlStateLocal final {
   friend class Singleton<CPaxDmlStateLocal>;
 
  public:
-  static CPaxDmlStateLocal *instance() {
+  static CPaxDmlStateLocal *Instance() {
     return Singleton<CPaxDmlStateLocal>::GetInstance();
   }
 
   ~CPaxDmlStateLocal() = default;
 
-  void InitDmlState(const Relation rel, const CmdType operation);
-  void FinishDmlState(const Relation rel, const CmdType operation);
+  void InitDmlState(Relation rel, CmdType operation);
+  void FinishDmlState(Relation rel, CmdType operation);
 
-  CPaxInserter *GetInserter(const Relation rel);
-  CPaxDeleter *GetDeleter(const Relation rel, const Snapshot snapshot);
+  CPaxInserter *GetInserter(Relation rel);
+  CPaxDeleter *GetDeleter(Relation rel, Snapshot snapshot);
 
   void Reset();
-
- private:
-  CPaxDmlStateLocal();
-  static void DmlStateResetCallback(void *);
-
-  PaxDmlState *EntryDmlState(const Oid &oid);
-  PaxDmlState *FindDmlState(const Oid &oid);
-  PaxDmlState *RemoveDmlState(const Oid &oid);
 
   CPaxDmlStateLocal(const CPaxDmlStateLocal &) = delete;
   CPaxDmlStateLocal &operator=(const CPaxDmlStateLocal &) = delete;
 
  private:
+  CPaxDmlStateLocal();
+  static void DmlStateResetCallback(void * /*arg*/);
+
+  PaxDmlState *EntryDmlState(const Oid &oid);
+  PaxDmlState *FindDmlState(const Oid &oid);
+  PaxDmlState *RemoveDmlState(const Oid &oid);
+
+ private:
   PaxDmlState *last_used_state_;
   HTAB *dml_descriptor_tab_;
-  MemoryContext state_ctx_;
   MemoryContextCallback cb_;
 };
 
