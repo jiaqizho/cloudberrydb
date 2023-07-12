@@ -8,50 +8,48 @@ namespace pax {
 
 class PaxScanDesc {
  public:
-  static TableScanDesc BeginScan(const Relation relation,
-                                 const Snapshot snapshot, const int nkeys,
-                                 const struct ScanKeyData *key,
-                                 const ParallelTableScanDesc pscan,
-                                 const uint32 flags);
+  static TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
+                                 int nkeys, const struct ScanKeyData *key,
+                                 ParallelTableScanDesc pscan, uint32 flags);
 
   static void ReScan(TableScanDesc scan);
   static void EndScan(TableScanDesc scan);
 
-  static bool ScanGetNextSlot(TableScanDesc scan,
-                              TupleTableSlot *slot);
+  static bool ScanGetNextSlot(TableScanDesc scan, TupleTableSlot *slot);
 
   static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno);
   static bool ScanAnalyzeNextTuple(TableScanDesc scan, double *liverows,
-                                   double *deadrows, TupleTableSlot *slot);
+                                   const double *deadrows,
+                                   TupleTableSlot *slot);
 
   static bool ScanSampleNextBlock(TableScanDesc scan,
                                   SampleScanState *scanstate);
 
-  static bool ScanSampleNextTuple(TableScanDesc scan,
-                                  TupleTableSlot *slot);
+  static bool ScanSampleNextTuple(TableScanDesc scan, TupleTableSlot *slot);
 
   uint32 GetMicroPartitionNumber() const;
 
   uint32 GetCurrentMicroPartitionTupleNumber() const;
 
-  bool SeekTuple(const uint64 target_tuple_id, uint64 *next_tuple_id);
+  bool SeekTuple(uint64 target_tuple_id, uint64 *next_tuple_id);
 
   ~PaxScanDesc() = default;
 
  private:
   PaxScanDesc() = default;
 
-  static inline PaxScanDesc *to_desc(TableScanDesc scan) {
-    PaxScanDesc *desc = reinterpret_cast<PaxScanDesc *>(scan);
+  static inline PaxScanDesc *ToDesc(TableScanDesc scan) {
+    auto desc = reinterpret_cast<PaxScanDesc *>(scan);
     return desc;
   }
 
  private:
-  TableScanDescData rs_base_;
-  const ScanKeyData *key_;
-  TableReader *reader_;
+  TableScanDescData rs_base_{};
+  const ScanKeyData *key_ = nullptr;
+  TableReader *reader_ = nullptr;
 
-  DataBuffer<char> *reused_buffer_;
+  DataBuffer<char> *reused_buffer_ = nullptr;
+  MemoryContext memory_context_ = nullptr;
 
   // Only used by `scan analyze` and `scan sample`
   uint64 next_tuple_id_ = 0;

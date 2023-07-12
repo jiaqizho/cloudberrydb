@@ -1,7 +1,6 @@
 #include "comm/cbdb_wrappers.h"
-#include "comm/paxc_utils.h"
-#include "storage/local_file_system.h"
 
+#include "storage/local_file_system.h"
 #include "storage/paxc_block_map_manager.h"
 extern "C" {
 const char *progname;
@@ -9,21 +8,23 @@ const char *progname;
 
 namespace cbdb {
 
+MemoryContext pax_memory_context = nullptr;
+
 CAutoExceptionStack::CAutoExceptionStack(void **global_exception_stack,
                                          void **global_error_context_stack)
-    : m_global_exception_stack(global_exception_stack),
-      m_global_error_context_stack(global_error_context_stack),
-      m_exception_stack(*global_exception_stack),
-      m_error_context_stack(*global_error_context_stack) {}
+    : m_global_exception_stack_(global_exception_stack),
+      m_global_error_context_stack_(global_error_context_stack),
+      m_exception_stack_(*global_exception_stack),
+      m_error_context_stack_(*global_error_context_stack) {}
 
 CAutoExceptionStack::~CAutoExceptionStack() {
-  *m_global_exception_stack = m_exception_stack;
-  *m_global_error_context_stack = m_error_context_stack;
+  *m_global_exception_stack_ = m_exception_stack_;
+  *m_global_error_context_stack_ = m_error_context_stack_;
 }
 
 // set the exception stack to the given address
 void CAutoExceptionStack::SetLocalJmp(void *local_jump) {
-  *m_global_exception_stack = local_jump;
+  *m_global_exception_stack_ = local_jump;
 }
 
 void *MemCtxAlloc(MemoryContext ctx, size_t size) {
@@ -116,7 +117,8 @@ void *cbdb::HashSearch(HTAB *hashp, const void *key_ptr, HASHACTION action,
 }
 
 MemoryContext cbdb::AllocSetCtxCreate(MemoryContext parent, const char *name,
-                                      Size min_context_size, Size init_block_size,
+                                      Size min_context_size,
+                                      Size init_block_size,
                                       Size max_block_size) {
   CBDB_WRAP_START;
   {
@@ -125,6 +127,12 @@ MemoryContext cbdb::AllocSetCtxCreate(MemoryContext parent, const char *name,
   }
   CBDB_WRAP_END;
   return nullptr;
+}
+
+void cbdb::MemoryCtxDelete(MemoryContext memory_context) {
+  CBDB_WRAP_START;
+  { MemoryContextDelete(memory_context); }
+  CBDB_WRAP_END;
 }
 
 void cbdb::MemoryCtxRegisterResetCallback(MemoryContext context,
@@ -141,7 +149,7 @@ Oid cbdb::RelationGetRelationId(Relation rel) {
 }
 
 #ifdef RUN_GTEST
-Datum cbdb::DatumFromCString(const char *src, const size_t length) {
+Datum cbdb::DatumFromCString(const char *src, size_t length) {
   CBDB_WRAP_START;
   {
     text *result = reinterpret_cast<text *>(palloc(length + VARHDRSZ));
@@ -221,11 +229,14 @@ paxc::PaxBlockId cbdb::GetBlockId(Oid table_rel_oid, uint8 table_no,
   CBDB_WRAP_END;
 }
 
-void cbdb::RelationCreateStorageDirectory(RelFileNode rnode, char relpersistence, SMgrImpl smgr_which) {
+void cbdb::RelationCreateStorageDirectory(RelFileNode rnode,
+                                          char relpersistence,
+                                          SMgrImpl smgr_which) {
   CBDB_WRAP_START;
   {
-      SMgrRelation srel = RelationCreateStorage(rnode, relpersistence, smgr_which);
-      smgrclose(srel);
+    SMgrRelation srel =
+        RelationCreateStorage(rnode, relpersistence, smgr_which);
+    smgrclose(srel);
   }
   CBDB_WRAP_END;
 }
@@ -260,7 +271,7 @@ void cbdb::ReleaseTupleCache(HeapTuple tupcache) {
   CBDB_WRAP_END;
 }
 
-void cbdb::PathNameDeleteDir(const char * path, bool delete_topleveldir) {
+void cbdb::PathNameDeleteDir(const char *path, bool delete_topleveldir) {
   CBDB_WRAP_START;
   { paxc::DeletePaxDirectoryPath(path, delete_topleveldir); }
   CBDB_WRAP_END;
@@ -284,15 +295,8 @@ char *cbdb::BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend) {
   CBDB_WRAP_END;
 }
 
-char *cbdb::BuildPaxFilePath(const Relation rel, const std::string &block_id) {
+char *cbdb::BuildPaxFilePath(Relation rel, const std::string &block_id) {
   CBDB_WRAP_START;
   { return paxc::BuildPaxFilePath(rel, block_id.c_str()); }
   CBDB_WRAP_END;
 }
-
-void cbdb::Unused(const void *args, ...) {
-  CBDB_WRAP_START;
-  {  paxc::Unused(args); }
-  CBDB_WRAP_END;
-}
-
