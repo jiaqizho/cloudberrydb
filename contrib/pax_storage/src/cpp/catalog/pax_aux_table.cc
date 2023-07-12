@@ -9,13 +9,12 @@
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
-#include "comm/paxc_utils.h"
 #include "storage/paxc_block_map_manager.h"
 
 namespace cbdb {
 void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
-                                            NameData *compresstype,
-                                            int *compresslevel) {
+                                      NameData *compresstype,
+                                      int *compresslevel) {
   CBDB_WRAP_START;
   {
     GetPaxTablesEntryAttributes(relid, blocksrelid, compresstype,
@@ -25,7 +24,7 @@ void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
 }
 
 void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
-                               int ptblocksize) {
+                         int ptblocksize) {
   Relation rel;
   HeapTuple tuple;
   NameData ptblockname;
@@ -68,9 +67,10 @@ void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
 }
 
 void GetAllBlockFileInfo_PG_PaxBlock_Relation(
-    std::vector<pax::MicroPartitionMetadata> &result,  // NOLINT(runtime/references)
-    const Relation relation,
-    Relation pg_blockfile_rel, const Snapshot pax_meta_data_snapshot) {
+    std::vector<pax::MicroPartitionMetadata>
+        &result,  // NOLINT(runtime/references)
+    const Relation relation, Relation pg_blockfile_rel,
+    const Snapshot pax_meta_data_snapshot) {
   TupleDesc pg_paxblock_dsc;
   HeapTuple tuple;
   SysScanDesc pax_scan;
@@ -90,8 +90,8 @@ void GetAllBlockFileInfo_PG_PaxBlock_Relation(
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
                         errmsg("got invalid segno value: NULL")));
 
-      std::string file_name = cbdb::BuildPaxFilePath(
-          relation, DatumGetName(blockid)->data);
+      std::string file_name =
+          cbdb::BuildPaxFilePath(relation, DatumGetName(blockid)->data);
 
       pax::MicroPartitionMetadata meta_info(DatumGetName(blockid)->data,
                                             file_name);
@@ -112,9 +112,10 @@ void GetAllBlockFileInfo_PG_PaxBlock_Relation(
   CBDB_WRAP_END;
 }
 
-void GetAllMicroPartitionMetadata(
-    const Relation parentrel, const Snapshot pax_meta_data_snapshot,
-    std::vector<pax::MicroPartitionMetadata> &result) {  // NOLINT(runtime/references)
+void GetAllMicroPartitionMetadata(const Relation parentrel,
+                                  const Snapshot pax_meta_data_snapshot,
+                                  std::vector<pax::MicroPartitionMetadata>
+                                      &result) {  // NOLINT(runtime/references)
   Relation pg_paxblock_rel;
   Oid block_rel_id;
 
@@ -139,9 +140,8 @@ void GetAllMicroPartitionMetadata(
   CBDB_WRAP_END;
 }
 
-void DeletePaxBlockEntry(const Oid relid,
-                               const Snapshot pax_meta_data_snapshot,
-                               const char *blockname) {
+void DeletePaxBlockEntry(const Oid relid, const Snapshot pax_meta_data_snapshot,
+                         const char *blockname) {
   Relation rel;
   ScanKeyData key[1];
   SysScanDesc scan;
@@ -156,8 +156,8 @@ void DeletePaxBlockEntry(const Oid relid,
                 BTEqualStrategyNumber, F_NAMEEQ, NameGetDatum(&ptblockname));
 
     // should add snapshot support
-    scan =
-        systable_beginscan(rel, InvalidOid, false, pax_meta_data_snapshot, 1, key);
+    scan = systable_beginscan(rel, InvalidOid, false, pax_meta_data_snapshot, 1,
+                              key);
 
     tuple = systable_getnext(scan);
     if (HeapTupleIsValid(tuple)) {
@@ -171,8 +171,8 @@ void DeletePaxBlockEntry(const Oid relid,
 }
 
 void DeleteMicroPartitionEntry(const Oid rel_oid,
-                                     const Snapshot pax_meta_data_snapshot,
-                                     const std::string block_id) {
+                               const Snapshot pax_meta_data_snapshot,
+                               const std::string block_id) {
   Oid pax_block_tables_rel_id;
   cbdb::GetMicroPartitionEntryAttributes(rel_oid, &pax_block_tables_rel_id,
                                          NULL, NULL);
@@ -190,25 +190,19 @@ void AddMicroPartitionEntry(const pax::WriteSummary &summary) {
 
 void PaxTransactionalTruncateTable(Oid aux_relid) {
   CBDB_WRAP_START;
-  {
-    paxc::CPaxTransactionalTruncateTable(aux_relid);
-  }
+  { paxc::CPaxTransactionalTruncateTable(aux_relid); }
   CBDB_WRAP_END;
 }
 
 void PaxNontransactionalTruncateTable(Relation rel) {
   CBDB_WRAP_START;
-  {
-    paxc::CPaxNontransactionalTruncateTable(rel);
-  }
+  { paxc::CPaxNontransactionalTruncateTable(rel); }
   CBDB_WRAP_END;
 }
 
 void PaxCreateMicroPartitionTable(const Relation rel) {
   CBDB_WRAP_START;
-  {
-    paxc::CPaxCreateMicroPartitionTable(rel);
-  }
+  { paxc::CPaxCreateMicroPartitionTable(rel); }
   CBDB_WRAP_END;
 }
 }  // namespace cbdb
@@ -232,8 +226,8 @@ void CCPaxAuxTable::PaxAuxRelationSetNewFilenode(Relation rel,
   }
 
   // Create pax table relfilenode file and database directory under path base/,
-  // The relfilenode created here is to be compatible with PG normal process logic
-  // instead of being used by pax storage.
+  // The relfilenode created here is to be compatible with PG normal process
+  // logic instead of being used by pax storage.
   cbdb::RelationCreateStorageDirectory(*newrnode, persistence, SMGR_MD);
   path = fs->BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!path.empty());
@@ -243,7 +237,8 @@ void CCPaxAuxTable::PaxAuxRelationSetNewFilenode(Relation rel,
 void CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(Relation rel) {
   cbdb::PaxNontransactionalTruncateTable(rel);
 
-  // Delete all micro partition file on non-transactional truncate  but reserve top level PAX file directory.
+  // Delete all micro partition file on non-transactional truncate  but reserve
+  // top level PAX file directory.
   PaxAuxRelationFileUnlink(rel->rd_node, rel->rd_backend, false);
 }
 
@@ -260,11 +255,12 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
 
   // get micropatition file source folder filename list for copying.
   filelist = fs->ListDirectory(src_path);
-  if (filelist.empty())
-    return;
+  if (filelist.empty()) return;
 
-  // create pg_pax_table relfilenode file and dbid directory under path pg_tblspc/.
-  cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence, SMGR_MD);
+  // create pg_pax_table relfilenode file and dbid directory under path
+  // pg_tblspc/.
+  cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
+                                       SMGR_MD);
 
   dst_path = fs->BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!dst_path.empty());
@@ -278,15 +274,16 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
     CBDB_RAISE(cbdb::CException::ExType::kExTypeFileOperationError);
 
   for (auto &iter : filelist) {
-      Assert(!iter.empty());
-      src_path.append("/");
-      src_path.append(iter);
-      dst_path.append("/");
-      dst_path.append(iter);
-      fs->CopyFile(src_path, dst_path);
+    Assert(!iter.empty());
+    src_path.append("/");
+    src_path.append(iter);
+    dst_path.append("/");
+    dst_path.append(iter);
+    fs->CopyFile(src_path, dst_path);
   }
 
-  // TODO(Tony) : here need to implement pending delete srcPath after set new tablespace.
+  // TODO(Tony) : here need to implement pending delete srcPath after set new
+  // tablespace.
 }
 
 void CCPaxAuxTable::PaxAuxRelationFileUnlink(RelFileNode node,
@@ -322,14 +319,13 @@ void CPaxNontransactionalTruncateTable(Relation rel) {
   HeapTuple tupcache;
   Relation aux_rel;
   Oid aux_relid;
-  cbdb::Unused(rel);
 
   tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(rel));
   if (!HeapTupleIsValid(tupcache))
     ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                  errmsg("cache lookup failed with relid=%u for aux relation "
-                         "in pg_pax_tables.",
-                         RelationGetRelid(rel))));
+                    errmsg("cache lookup failed with relid=%u for aux relation "
+                           "in pg_pax_tables.",
+                           RelationGetRelid(rel))));
   aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
 
   Assert(OidIsValid(aux_relid));
@@ -355,8 +351,8 @@ void CPaxCreateMicroPartitionTable(const Relation rel) {
   snprintf(aux_relname, sizeof(aux_relname), "pg_pax_blocks_%u", pax_relid);
   aux_namespace_id = PG_PAXAUX_NAMESPACE;
   aux_relid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId,
-                                  Anum_pg_class_oid,  // new line
-                                  aux_relname, aux_namespace_id);
+                                   Anum_pg_class_oid,  // new line
+                                   aux_relname, aux_namespace_id);
   tupdesc = CreateTemplateTupleDesc(Natts_pg_pax_block_tables);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblockname,
                      "ptblockname", NAMEOID, -1, 0);
@@ -403,4 +399,3 @@ void CPaxCreateMicroPartitionTable(const Relation rel) {
   }
 }
 }  // namespace paxc
-
