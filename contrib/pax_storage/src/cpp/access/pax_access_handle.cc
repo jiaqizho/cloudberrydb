@@ -190,11 +190,17 @@ void CCPaxAccessMethod::RelationFileUnlink(RelFileNodeBackend rnode) {
   CBDB_END_TRY();
 }
 
-void CCPaxAccessMethod::ScanRescan(TableScanDesc /*scan*/, ScanKey /*key*/,
+void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey /*key*/,
                                    bool /*set_params*/, bool /*allow_strat*/,
                                    bool /*allow_sync*/,
                                    bool /*allow_pagemode*/) {
-  NOT_IMPLEMENTED_YET;
+  CBDB_TRY();
+  { pax::PaxScanDesc::ReScan(scan); }
+  CBDB_CATCH_COMM();
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({
+  });
+  CBDB_END_TRY();
 }
 
 bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
