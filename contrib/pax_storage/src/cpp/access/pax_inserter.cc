@@ -19,8 +19,8 @@ CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
 }
 
 void CPaxInserter::InsertTuple(Relation relation, TupleTableSlot *slot,
-                               CommandId cid, int options,
-                               BulkInsertState bistate) {
+                               CommandId /*cid*/, int /*options*/,
+                               BulkInsertState /*bistate*/) {
   Assert(relation == rel_);
   slot->tts_tableOid = cbdb::RelationGetRelationId(relation);
 
@@ -36,20 +36,16 @@ void CPaxInserter::MultiInsert(Relation relation, TupleTableSlot **slots,
                                int ntuples, CommandId cid, int options,
                                BulkInsertState bistate) {
   CPaxInserter *inserter =
-      pax::CPaxDmlStateLocal::instance()->GetInserter(relation);
+      pax::CPaxDmlStateLocal::Instance()->GetInserter(relation);
   Assert(inserter != nullptr);
-  // TODO(Tony): implement bulk insert as AO/HEAP does with tuples iteration,
-  // which needs to be further optimized by using new feature like
-  // Parallelization or Vectorization.
 
-  // todo(jiaqizho),
   for (int i = 0; i < ntuples; i++) {
     inserter->InsertTuple(relation, slots[i], cid, options, bistate);
   }
 }
 
-void CPaxInserter::FinishBulkInsert(Relation relation, int options) {
-  pax::CPaxDmlStateLocal::instance()->FinishDmlState(relation, CMD_INSERT);
+void CPaxInserter::FinishBulkInsert(Relation relation, int /*options*/) {
+  pax::CPaxDmlStateLocal::Instance()->FinishDmlState(relation, CMD_INSERT);
 }
 
 void CPaxInserter::FinishInsert() {
@@ -61,7 +57,7 @@ void CPaxInserter::FinishInsert() {
 void CPaxInserter::TupleInsert(Relation relation, TupleTableSlot *slot,
                                CommandId cid, int options,
                                BulkInsertState bistate) {
-  CPaxInserter *inserter = CPaxDmlStateLocal::instance()->GetInserter(relation);
+  CPaxInserter *inserter = CPaxDmlStateLocal::Instance()->GetInserter(relation);
   Assert(inserter != nullptr);
 
   inserter->InsertTuple(relation, slot, cid, options, bistate);

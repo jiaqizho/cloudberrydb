@@ -19,7 +19,7 @@ TM_Result CPaxDeleter::DeleteTuple(const Relation relation,
                                    const Snapshot snapshot,
                                    TM_FailureData *tmfd) {
   CPaxDeleter *deleter =
-      CPaxDmlStateLocal::instance()->GetDeleter(relation, snapshot);
+      CPaxDmlStateLocal::Instance()->GetDeleter(relation, snapshot);
   // TODO(gongxun): need more graceful way to pass snapshot
   Assert(deleter != nullptr);
   TM_Result result;

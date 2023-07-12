@@ -5,18 +5,16 @@
 #include "access/pax_inserter.h"
 
 namespace pax {
-TM_Result CPaxUpdater::UpdateTuple(const Relation relation,
-                                   const ItemPointer otid, TupleTableSlot *slot,
-                                   const CommandId cid, const Snapshot snapshot,
-                                   const Snapshot crosscheck, const bool wait,
-                                   TM_FailureData *tmfd,
-                                   LockTupleMode *lockmode,
-                                   bool *update_indexes) {
+TM_Result CPaxUpdater::UpdateTuple(
+    const Relation relation, const ItemPointer otid, TupleTableSlot *slot,
+    const CommandId cid, const Snapshot snapshot, const Snapshot /*crosscheck*/,
+    const bool /*wait*/, TM_FailureData * /*tmfd*/,
+    LockTupleMode * /*lockmode*/, bool * /*update_indexes*/) {
   TM_Result result;
   CPaxDeleter *deleter =
-      CPaxDmlStateLocal::instance()->GetDeleter(relation, snapshot);
+      CPaxDmlStateLocal::Instance()->GetDeleter(relation, snapshot);
   Assert(deleter != nullptr);
-  CPaxInserter *inserter = CPaxDmlStateLocal::instance()->GetInserter(relation);
+  CPaxInserter *inserter = CPaxDmlStateLocal::Instance()->GetInserter(relation);
   Assert(inserter != nullptr);
 
   result = deleter->MarkDelete(otid);

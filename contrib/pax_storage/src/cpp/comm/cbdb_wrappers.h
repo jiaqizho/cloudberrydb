@@ -9,6 +9,15 @@
 #include "storage/pax_block_id.h"
 
 namespace cbdb {
+
+#define PAX_ALLOCSET_DEFAULT_MINSIZE ALLOCSET_DEFAULT_MINSIZE
+#define PAX_ALLOCSET_DEFAULT_INITSIZE (8 * 1024)
+#define PAX_ALLOCSET_DEFAULT_MAXSIZE (3 * 64 * 1024 * 1024)
+#define PAX_ALLOCSET_DEFAULT_SIZES                             \
+  PAX_ALLOCSET_DEFAULT_MINSIZE, PAX_ALLOCSET_DEFAULT_INITSIZE, \
+      PAX_ALLOCSET_DEFAULT_MAXSIZE
+extern MemoryContext pax_memory_context;
+
 //---------------------------------------------------------------------------
 //  @class:
 //      CAutoExceptionStack
@@ -18,19 +27,6 @@ namespace cbdb {
 //
 //---------------------------------------------------------------------------
 class CAutoExceptionStack final {
- private:
-  // address of the global exception stack value
-  void **m_global_exception_stack;
-
-  // address of the global error context stack value
-  void **m_global_error_context_stack;
-
-  // value of exception stack when object is created
-  void *m_exception_stack;
-
-  // value of error context stack when object is created
-  void *m_error_context_stack;
-
  public:
   CAutoExceptionStack(const CAutoExceptionStack &) = delete;
   CAutoExceptionStack(CAutoExceptionStack &&) = delete;
@@ -46,6 +42,19 @@ class CAutoExceptionStack final {
 
   // set the exception stack to the given address
   void SetLocalJmp(void *local_jump);
+
+ private:
+  // address of the global exception stack value
+  void **m_global_exception_stack_;
+
+  // address of the global error context stack value
+  void **m_global_error_context_stack_;
+
+  // value of exception stack when object is created
+  void *m_exception_stack_;
+
+  // value of error context stack when object is created
+  void *m_error_context_stack_;
 };  // class CAutoExceptionStack
 
 void *MemCtxAlloc(MemoryContext ctx, size_t size);
@@ -54,6 +63,81 @@ void *Palloc0(size_t size);
 void *RePalloc(void *ptr, size_t size);
 void Pfree(void *ptr);
 
+HTAB *HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
+                 int flags);
+void *HashSearch(HTAB *hashp, const void *key_ptr, HASHACTION action,
+                 bool *found_ptr);
+MemoryContext AllocSetCtxCreate(MemoryContext parent, const char *name,
+                                Size min_context_size, Size init_block_size,
+                                Size max_block_size);
+void MemoryCtxDelete(MemoryContext memory_context);
+void MemoryCtxRegisterResetCallback(MemoryContext context,
+                                    MemoryContextCallback *cb);
+
+Oid RelationGetRelationId(Relation rel);
+
+static inline void *PointerFromDatum(Datum d) noexcept {
+  return DatumGetPointer(d);
+}
+
+static inline int8 DatumToInt8(Datum d) noexcept { return DatumGetInt8(d); }
+
+static inline int16 DatumToInt16(Datum d) noexcept { return DatumGetInt16(d); }
+
+static inline int32 DatumToInt32(Datum d) noexcept { return DatumGetInt32(d); }
+
+static inline int64 DatumToInt64(Datum d) noexcept { return DatumGetInt64(d); }
+
+static inline Datum Int8ToDatum(int8 d) noexcept { return Int8GetDatum(d); }
+
+static inline int16 Int16ToDatum(int16 d) noexcept { return Int16GetDatum(d); }
+
+static inline int32 Int32ToDatum(int32 d) noexcept { return Int32GetDatum(d); }
+
+static inline int64 Int64ToDatum(int64 d) noexcept { return Int64GetDatum(d); }
+
+void *PointerAndLenFromDatum(Datum d, int *len);
+
+#ifdef RUN_GTEST
+Datum DatumFromCString(const char *src, size_t length);
+
+Datum DatumFromPointer(const void *p, int16 typlen);
+#endif
+
+struct varlena *PgDeToastDatumPacked(struct varlena *datum);
+
+// pax ctid mapping functions
+void InitCommandResource();
+void ReleaseCommandResource();
+void GetTableIndexAndTableNumber(Oid table_rel_oid, uint8 *table_no,
+                                 uint32 *table_index);
+uint32 GetBlockNumber(Oid table_rel_oid, uint32 table_index,
+                      paxc::PaxBlockId block_id);
+paxc::PaxBlockId GetBlockId(Oid table_rel_oid, uint8 table_no,
+                            uint32 block_number);
+
+void RelationCreateStorageDirectory(RelFileNode rnode, char relpersistence,
+                                    SMgrImpl smgr_which);
+
+bool TupleIsValid(HeapTuple tupcache);
+
+void ReleaseTupleCache(HeapTuple tupcache);
+
+void RelationDropStorageDirectory(Relation rel);
+
+int PathNameCreateDir(const char *path);
+
+HeapTuple SearchSysCache(Relation rel, SysCacheIdentifier id);
+
+void PathNameDeleteDir(const char *path, bool delete_topleveldir);
+
+void CopyFile(const char *srcsegpath, const char *dstsegpath);
+
+void MakedirRecursive(const char *path);
+
+char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
+
+char *BuildPaxFilePath(Relation rel, const std::string &block_id);
 }  // namespace cbdb
 
 // clang-format off
@@ -85,79 +169,3 @@ extern void operator delete[](void *ptr);
 // specify memory context for this allocation without switching memory context
 extern void *operator new(std::size_t size, MemoryContext ctx);
 extern void *operator new[](std::size_t size, MemoryContext ctx);
-
-namespace cbdb {
-HTAB *HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
-                 int flags);
-void *HashSearch(HTAB *hashp, const void *key_ptr, HASHACTION action,
-                 bool *found_ptr);
-MemoryContext AllocSetCtxCreate(MemoryContext parent, const char *name,
-                                Size min_context_size, Size init_block_size,
-                                Size max_block_size);
-void MemoryCtxRegisterResetCallback(MemoryContext context,
-                                    MemoryContextCallback *cb);
-
-Oid RelationGetRelationId(Relation rel);
-
-static inline void *PointerFromDatum(Datum d) noexcept {
-  return DatumGetPointer(d);
-}
-
-static inline int8 DatumToInt8(Datum d) noexcept { return DatumGetInt8(d); }
-
-static inline int16 DatumToInt16(Datum d) noexcept { return DatumGetInt16(d); }
-
-static inline int32 DatumToInt32(Datum d) noexcept { return DatumGetInt32(d); }
-
-static inline int64 DatumToInt64(Datum d) noexcept { return DatumGetInt64(d); }
-
-static inline Datum Int8ToDatum(int8 d) noexcept { return Int8GetDatum(d); }
-
-static inline int16 Int16ToDatum(int16 d) noexcept { return Int16GetDatum(d); }
-
-static inline int32 Int32ToDatum(int32 d) noexcept { return Int32GetDatum(d); }
-
-static inline int64 Int64ToDatum(int64 d) noexcept { return Int64GetDatum(d); }
-
-void *PointerAndLenFromDatum(Datum d, int *len);
-
-Datum DatumFromCString(const char *src, const size_t length);
-
-Datum DatumFromPointer(const void *p, int16 typlen);
-
-struct varlena *PgDeToastDatumPacked(struct varlena *datum);
-
-// pax ctid mapping functions
-void InitCommandResource();
-void ReleaseCommandResource();
-void GetTableIndexAndTableNumber(Oid table_rel_oid, uint8 *table_no,
-                                 uint32 *table_index);
-uint32 GetBlockNumber(Oid table_rel_oid, uint32 table_index,
-                      paxc::PaxBlockId block_id);
-paxc::PaxBlockId GetBlockId(Oid table_rel_oid, uint8 table_no,
-                            uint32 block_number);
-
-void RelationCreateStorageDirectory(RelFileNode rnode, char relpersistence, SMgrImpl smgr_which);
-
-bool TupleIsValid(HeapTuple tupcache);
-
-void ReleaseTupleCache(HeapTuple tupcache);
-
-void RelationDropStorageDirectory(Relation rel);
-
-int PathNameCreateDir(const char *path);
-
-HeapTuple SearchSysCache(Relation rel, SysCacheIdentifier id);
-
-void PathNameDeleteDir(const char * path, bool delete_topleveldir);
-
-void CopyFile(const char *srcsegpath, const char *dstsegpath);
-
-void MakedirRecursive(const char *path);
-
-char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
-
-char *BuildPaxFilePath(const Relation rel, const std::string &block_id);
-
-void Unused(const void *args, ...);
-}  // namespace cbdb

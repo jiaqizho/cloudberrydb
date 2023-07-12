@@ -95,8 +95,7 @@ endif(BUILD_GTEST)
 
 set(pax_comm_src
     comm/bitmap.cc
-    comm/cbdb_wrappers.cc
-    comm/paxc_utils.cc)
+    comm/cbdb_wrappers.cc)
 
 set(pax_exceptions_src
     exceptions/CException.cc)
