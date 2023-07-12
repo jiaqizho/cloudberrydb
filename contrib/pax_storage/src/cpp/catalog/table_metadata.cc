@@ -6,8 +6,6 @@
 
 namespace pax {
 
-static const char *k_path_sperator = "/";
-
 TableMetadata *TableMetadata::Create(const Relation parent_relation,
                                      const Snapshot snapshot) {
   return new TableMetadata(parent_relation, snapshot);
