@@ -3,6 +3,7 @@ set -exo pipefail
 CBDB_PAX_SRC_PATH="/code/gpdb_pax_src"
 CBDB_PAX_DEV_BRANCH="origin/dev"
 CBDB_PAX_EXT=("*\.cc" "*\.h")
+CBDB_PAXC_GREP="paxc_"
 CLANG_TIDY_OUT_FILE_NAME="clang-tidy.result"
 
 modified_exts=()
@@ -17,8 +18,8 @@ function do_git_diff() {
 
     modified_files=$(git diff --name-only $CBDB_PAX_DEV_BRANCH)
     for extension in "${CBDB_PAX_EXT[@]}"; do
-        if echo "$modified_files" | grep -q -E -e "$extension"; then
-            files=$(echo "$modified_files" | grep -E -e "$extension")
+        if echo "$modified_files" | grep -E -e "$extension" | grep -q -v "$CBDB_PAXC_GREP"; then
+            files=$(echo "$modified_files" | grep -E -e "$extension" | grep -v "$CBDB_PAXC_GREP")
             if [ -z "$files" ]; then
                 continue
             fi
