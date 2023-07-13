@@ -54,13 +54,13 @@ void init_shmem_locks() {
   pax_hash_lock = GetNamedLWLockTranche("pax_hash_lock");
 }
 
-void pax_shmem_request() {
+void paxc_shmem_request() {
   max_procs = MaxConnections;
   RequestAddinShmemSpace(pax_mem_size());
   RequestNamedLWLockTranche("pax_hash_lock", 1);
 }
 
-void pax_shmem_startup() {
+void paxc_shmem_startup() {
   bool found;
   current_xact_shared_pax_ss = NULL;
   pax_block_mapping_context = AllocSetContextCreate(

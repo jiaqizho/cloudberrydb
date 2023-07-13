@@ -835,7 +835,7 @@ static uint32 executor_run_ref_count = 0;
 void PaxShmemInit() {
   if (prev_shmem_startup_hook) prev_shmem_startup_hook();
 
-  paxc::pax_shmem_startup();
+  paxc::paxc_shmem_startup();
 }
 
 static void PaxExecutorStart(QueryDesc *query_desc, int eflags) {
@@ -877,7 +877,7 @@ void _PG_init(void) {  // NOLINT
     return;
   }
 
-  paxc::pax_shmem_request();
+  paxc::paxc_shmem_request();
 
   prev_shmem_startup_hook = shmem_startup_hook;
   shmem_startup_hook = PaxShmemInit;

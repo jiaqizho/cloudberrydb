@@ -67,8 +67,8 @@ struct PaxSharedState {
   int pax_xact_lock_tranche_id_;
 };
 
-void pax_shmem_request();
-void pax_shmem_startup();
+void paxc_shmem_request();
+void paxc_shmem_startup();
 
 void init_command_resource();
 void release_command_resource();
