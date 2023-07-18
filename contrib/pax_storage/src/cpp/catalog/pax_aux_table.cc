@@ -362,13 +362,12 @@ void CPaxCreateMicroPartitionTable(const Relation rel) {
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblocksize,
                      "ptblocksize", INT4OID, -1, 0);
   relid = heap_create_with_catalog(
-      aux_relname, aux_namespace_id, rel->rd_rel->reltablespace, aux_relid,
-      InvalidOid, InvalidOid, rel->rd_rel->relowner, HEAP_TABLE_AM_OID, tupdesc,
-      NIL, RELKIND_RELATION, rel->rd_rel->relpersistence,
-      rel->rd_rel->relisshared, RelationIsMapped(rel), ONCOMMIT_NOOP,
-      NULL,                         /* GP Policy */
-      (Datum)0, false,              /* use _user_acl */
-      true, true, InvalidOid, NULL, /* typeaddress */
+      aux_relname, aux_namespace_id, InvalidOid, aux_relid, InvalidOid,
+      InvalidOid, rel->rd_rel->relowner, HEAP_TABLE_AM_OID, tupdesc, NIL,
+      RELKIND_RELATION, rel->rd_rel->relpersistence, rel->rd_rel->relisshared,
+      RelationIsMapped(rel), ONCOMMIT_NOOP, NULL, /* GP Policy */
+      (Datum)0, false,                            /* use _user_acl */
+      true, true, InvalidOid, NULL,               /* typeaddress */
       false /* valid_opts */);
   Assert(relid == aux_relid);
   table_close(pg_class_desc, NoLock);
