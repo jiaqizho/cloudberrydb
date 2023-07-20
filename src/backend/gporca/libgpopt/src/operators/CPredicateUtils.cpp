@@ -1295,6 +1295,29 @@ CPredicateUtils::FCompareIdentToConstArray(CExpression *pexpr)
 	return CUtils::FScalarConstArray(pexprArray);
 }
 
+// is the given ScalarArrayCmp a valid index qual
+BOOL
+CPredicateUtils::IsScalarArrayCmpValidIndexQual(CExpression *pexpr,
+												CColRefArray *pdrgpcrIndex)
+{
+	GPOS_ASSERT(nullptr != pexpr);
+	CColRef *pcrFirstIndexKey = (*pdrgpcrIndex)[0];
+	CExpression *pexprScalar = (*pexpr)[0];
+
+	// returns true if ScalarArrayCmp Ident is the first index key col id.
+	// A ScalarArrayCmp is a valid index clause only if it's on the first index column to
+	// ensure that ORCA doesn't assume its ordered and skip on adding a sort when there is
+	// order by clause. If it's not on the first index key column, the qual will be considered
+	// as a filter instead of being part of the index qual.
+	return (
+		(CUtils::FScalarIdent(pexprScalar) &&
+		 pcrFirstIndexKey->Id() ==
+			 CScalarIdent::PopConvert(pexprScalar->Pop())->Pcr()->Id()) ||
+		(CCastUtils::FBinaryCoercibleCastedScId(pexprScalar) &&
+		 pcrFirstIndexKey->Id() ==
+			 CScalarIdent::PopConvert((*pexprScalar)[0]->Pop())->Pcr()->Id()));
+}
+
 CExpression *
 CPredicateUtils::ValidatePartPruningExpr(CMemoryPool *mp, CExpression *expr,
 										 CColRef *pcrPartKey,
@@ -1910,12 +1933,10 @@ CPredicateUtils::FColumnDisjunctionOfConst(CConstraintInterval *pcnstrInterval,
 
 // helper to create index lookup comparison predicate with index key on left side
 CExpression *
-CPredicateUtils::PexprIndexLookupKeyOnLeft(CMemoryPool *mp,
-										   CMDAccessor *md_accessor,
-										   CExpression *pexprScalar,
-										   const IMDIndex *pmdindex,
-										   CColRefArray *pdrgpcrIndex,
-										   CColRefSet *outer_refs)
+CPredicateUtils::PexprIndexLookupKeyOnLeft(
+	CMemoryPool *mp, CMDAccessor *md_accessor, CExpression *pexprScalar,
+	const IMDIndex *pmdindex, CColRefArray *pdrgpcrIndex,
+	CColRefSet *outer_refs, BOOL allowArrayCmpIndexQual)
 {
 	GPOS_ASSERT(nullptr != pexprScalar);
 
@@ -1923,6 +1944,14 @@ CPredicateUtils::PexprIndexLookupKeyOnLeft(CMemoryPool *mp,
 	CExpression *pexprRight = (*pexprScalar)[1];
 
 	CColRefSet *pcrsIndex = GPOS_NEW(mp) CColRefSet(mp, pdrgpcrIndex);
+	if (!allowArrayCmpIndexQual &&
+		IMDIndex::EmdindBtree == pmdindex->IndexType() &&
+		CUtils::FScalarArrayCmp(pexprScalar) &&
+		!IsScalarArrayCmpValidIndexQual(pexprScalar, pdrgpcrIndex))
+	{
+		pcrsIndex->Release();
+		return nullptr;
+	}
 
 	if ((CUtils::FScalarIdent(pexprLeft) &&
 		 pcrsIndex->FMember(
@@ -1970,12 +1999,10 @@ CPredicateUtils::PexprIndexLookupKeyOnLeft(CMemoryPool *mp,
 
 // helper to create index lookup comparison predicate with index key on right side
 CExpression *
-CPredicateUtils::PexprIndexLookupKeyOnRight(CMemoryPool *mp,
-											CMDAccessor *md_accessor,
-											CExpression *pexprScalar,
-											const IMDIndex *pmdindex,
-											CColRefArray *pdrgpcrIndex,
-											CColRefSet *outer_refs)
+CPredicateUtils::PexprIndexLookupKeyOnRight(
+	CMemoryPool *mp, CMDAccessor *md_accessor, CExpression *pexprScalar,
+	const IMDIndex *pmdindex, CColRefArray *pdrgpcrIndex,
+	CColRefSet *outer_refs, BOOL allowArrayCmpIndexQual)
 {
 	GPOS_ASSERT(nullptr != pexprScalar);
 
@@ -1993,9 +2020,9 @@ CPredicateUtils::PexprIndexLookupKeyOnRight(CMemoryPool *mp,
 			pexprLeft->AddRef();
 			CExpression *pexprCommuted = GPOS_NEW(mp)
 				CExpression(mp, popScCmpCommute, pexprRight, pexprLeft);
-			CExpression *pexprIndexCond =
-				PexprIndexLookupKeyOnLeft(mp, md_accessor, pexprCommuted,
-										  pmdindex, pdrgpcrIndex, outer_refs);
+			CExpression *pexprIndexCond = PexprIndexLookupKeyOnLeft(
+				mp, md_accessor, pexprCommuted, pmdindex, pdrgpcrIndex,
+				outer_refs, allowArrayCmpIndexQual);
 			pexprCommuted->Release();
 
 			return pexprIndexCond;
@@ -2019,7 +2046,7 @@ CPredicateUtils::PexprIndexLookup(CMemoryPool *mp, CMDAccessor *md_accessor,
 								  const IMDIndex *pmdindex,
 								  CColRefArray *pdrgpcrIndex,
 								  CColRefSet *outer_refs,
-								  BOOL considerBitmapAltForArrayCmp)
+								  BOOL allowArrayCmpIndexQual)
 {
 	GPOS_ASSERT(nullptr != pexprScalar);
 	GPOS_ASSERT(nullptr != pdrgpcrIndex);
@@ -2034,11 +2061,11 @@ CPredicateUtils::PexprIndexLookup(CMemoryPool *mp, CMDAccessor *md_accessor,
 			 CScalarArrayCmp::EarrcmpAny ==
 				 CScalarArrayCmp::PopConvert(pexprScalar->Pop())->Earrcmpt() &&
 			 (IMDIndex::EmdindBitmap == pmdindex->IndexType() ||
-			  (considerBitmapAltForArrayCmp &&
-			   (IMDIndex::EmdindBtree == pmdindex->IndexType() ||
-				IMDIndex::EmdindHash == pmdindex->IndexType()))))
+			  IMDIndex::EmdindBtree == pmdindex->IndexType() ||
+			  (allowArrayCmpIndexQual &&
+			   IMDIndex::EmdindHash == pmdindex->IndexType())))
 	{
-		// array cmps are always allowed on bitmap indexes and when requested on btree/hash indexes
+		// array cmps are always allowed on bitmap/btree indexes and when requested on hash indexes
 		cmptype = CUtils::ParseCmpType(
 			CScalarArrayCmp::PopConvert(pexprScalar->Pop())->MdIdOp());
 	}
@@ -2062,14 +2089,16 @@ CPredicateUtils::PexprIndexLookup(CMemoryPool *mp, CMDAccessor *md_accessor,
 	}
 
 	CExpression *pexprIndexLookupKeyOnLeft = PexprIndexLookupKeyOnLeft(
-		mp, md_accessor, pexprScalar, pmdindex, pdrgpcrIndex, outer_refs);
+		mp, md_accessor, pexprScalar, pmdindex, pdrgpcrIndex, outer_refs,
+		allowArrayCmpIndexQual);
 	if (nullptr != pexprIndexLookupKeyOnLeft)
 	{
 		return pexprIndexLookupKeyOnLeft;
 	}
 
 	CExpression *pexprIndexLookupKeyOnRight = PexprIndexLookupKeyOnRight(
-		mp, md_accessor, pexprScalar, pmdindex, pdrgpcrIndex, outer_refs);
+		mp, md_accessor, pexprScalar, pmdindex, pdrgpcrIndex, outer_refs,
+		allowArrayCmpIndexQual);
 	if (nullptr != pexprIndexLookupKeyOnRight)
 	{
 		return pexprIndexLookupKeyOnRight;
@@ -2087,7 +2116,7 @@ CPredicateUtils::ExtractIndexPredicates(
 	CExpressionArray *pdrgpexprResidual,
 	CColRefSet *
 		pcrsAcceptedOuterRefs,	// outer refs that are acceptable in an index predicate
-	BOOL considerBitmapAltForArrayCmp)
+	BOOL allowArrayCmpIndexQual)
 {
 	const ULONG length = pdrgpexprPredicate->Size();
 
@@ -2144,7 +2173,7 @@ CPredicateUtils::ExtractIndexPredicates(
 			// attempt building index lookup predicate
 			CExpression *pexprLookupPred = PexprIndexLookup(
 				mp, md_accessor, pexprCond, pmdindex, pdrgpcrIndex,
-				pcrsAcceptedOuterRefs, considerBitmapAltForArrayCmp);
+				pcrsAcceptedOuterRefs, allowArrayCmpIndexQual);
 			if (nullptr != pexprLookupPred)
 			{
 				pexprCond->Release();
