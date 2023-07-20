@@ -491,19 +491,32 @@ TransactionId PaxAccessMethod::IndexDeleteTuples(
   return 0;
 }
 
+/*
+ * Used by rebuild_relation, like CLUSTER, VACUUM FULL, etc.
+ *
+ * PAX does not have dead tuples, but the core framework requires
+ * to implement this callback to do CLUSTER/VACUUM FULL/etc.
+ * PAX may have re-organize semantics for this function.
+ *
+ * TODO: how to split the set of micro-partitions to several QE handlers.
+ */
 void PaxAccessMethod::RelationCopyForCluster(
-    Relation /*old_heap*/, Relation /*new_heap*/, Relation /*old_index*/,
+    Relation old_heap, Relation new_heap, Relation /*old_index*/,
     bool /*use_sort*/, TransactionId /*oldest_xmin*/,
     TransactionId * /*xid_cutoff*/, MultiXactId * /*multi_cutoff*/,
     double * /*num_tuples*/, double * /*tups_vacuumed*/,
     double * /*tups_recently_dead*/) {
+  Assert(RELATION_IS_PAX(old_heap));
+  if (!RELATION_IS_PAX(new_heap))
+    ereport(ERROR, (errmsg("PAX: can't convert pax to non-pax table")));
+
   NOT_IMPLEMENTED_YET;
 }
 
 void PaxAccessMethod::RelationVacuum(Relation /*onerel*/,
                                      VacuumParams * /*params*/,
                                      BufferAccessStrategy /*bstrategy*/) {
-  NOT_IMPLEMENTED_YET;
+  /* PAX: micro-partitions have no dead tuples, so vacuum is empty */
 }
 
 uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {

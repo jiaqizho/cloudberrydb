@@ -24,6 +24,7 @@
 #undef printf
 #endif
 
+#define PAX_COMMENT "column-optimized PAX table access method handler"
 int main() {
 
   printf("-- insert pax catalog values\n");
@@ -70,6 +71,9 @@ int main() {
          PAX_AMNAME,         /* pg_am.amname */
          PAX_AM_HANDLER_OID, /* pg_am.amhandler: pg_proc.oid */
          't' /* pg_am.amtype: TABLE */);
+
+  printf("COMMENT ON FUNCTION %s IS '%s';\n",
+         PAX_AM_HANDLER_NAME, PAX_COMMENT);
 
   return 0;
 }
