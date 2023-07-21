@@ -13,7 +13,7 @@ function do_git_diff() {
     dev_branch_commit=$(git rev-parse $CBDB_PAX_DEV_BRANCH)
     if [ "$current_commit" = "$dev_branch_commit" ]; then
         echo "Current commit is the '$CBDB_PAX_DEV_BRANCH' branch."
-        exit 1
+        exit 0
     fi
 
     modified_files=$(git diff --name-only $CBDB_PAX_DEV_BRANCH)
