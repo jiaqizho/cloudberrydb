@@ -28,7 +28,7 @@ set(PROTOBUF_CONFIGURE CONFIGURE_COMMAND "${THIRDPARTY_CONFIGURE_COMMAND}" ${PRO
                                              "${CMAKE_CURRENT_BINARY_DIR}/protobuf_ep-prefix/src/protobuf_ep/cmake")
 
 ExternalProject_Add(protobuf_ep
-    URL "https://artifactory.hashdata.xyz/artifactory/utility/protobuf-3.5.1.tar.gz"
+    URL "https://artifactory.hashdata.xyz/artifactory/utility/protobuf-3.6.1.tar.gz"
     ${PROTOBUF_CONFIGURE}
     ${THIRDPARTY_LOG_OPTIONS}
     BUILD_BYPRODUCTS "${PROTOBUF_STATIC_LIB}" "${PROTOC_STATIC_LIB}")
@@ -90,7 +90,7 @@ link_directories($ENV{GPHOME}/lib)
 add_executable(test_main ${TEST_CASE_SOURCES})
 add_dependencies(test_main gtest gmock gtest_main)
 target_include_directories(test_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include)
-target_link_libraries(test_main gtest gmock gtest_main postgres pax_storage)
+target_link_libraries(test_main gtest gmock gtest_main postgres pax)
 endif(BUILD_GTEST)
 
 set(pax_comm_src
@@ -103,13 +103,14 @@ set(pax_exceptions_src
 set(pax_storage_src
     storage/local_file_system.cc
     storage/micro_partition.cc
+    storage/micro_partition_file_factory.cc
     storage/pax.cc
     storage/pax_buffer.cc
     storage/pax_column.cc
-    storage/strategy.cc
-    storage/orc/protobuf_stream.cc
     storage/paxc_block_map_manager.cc
-    storage/orc/orc.cc)
+    storage/orc/orc.cc
+    storage/orc/protobuf_stream.cc
+    storage/strategy.cc)
 
 set(pax_access_src
     access/pax_access_handle.cc
@@ -124,10 +125,12 @@ set(pax_catalog_src
     catalog/table_metadata.cc)
 
 link_directories($ENV{GPHOME}/lib)
-add_library(pax_storage SHARED ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
-target_include_directories(pax_storage PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
-target_link_libraries(pax_storage PUBLIC uuid orc_protobuf postgres)
-add_dependencies(pax_storage generate_protobuf)
-add_custom_command(TARGET pax_storage POST_BUILD
+add_library(pax SHARED ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
+set_target_properties(pax PROPERTIES 
+OUTPUT_NAME pax)
+target_include_directories(pax PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
+target_link_libraries(pax PUBLIC uuid orc_protobuf postgres)
+add_dependencies(pax generate_protobuf)
+add_custom_command(TARGET pax POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E
-                       copy_if_different $<TARGET_FILE:pax_storage> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
+                       copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)

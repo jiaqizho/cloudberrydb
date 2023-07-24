@@ -1,4 +1,4 @@
-#include "postgres.h" // NOLINT
+#include "postgres.h"  // NOLINT
 
 #include <stdio.h>
 
@@ -26,7 +26,6 @@
 
 #define PAX_COMMENT "column-optimized PAX table access method handler"
 int main() {
-
   printf("-- insert pax catalog values\n");
   printf(
       "INSERT INTO pg_proc "
@@ -64,7 +63,7 @@ int main() {
       /* proconfig: null */
       /* proacl: null */
       'n', /* prodataaccess */
-      'a'  /* proexeclocation: all */);
+      'a' /* proexeclocation: all */);
 
   printf("INSERT INTO pg_am   VALUES(%u,'%s',%u,'%c');\n",
          PAX_TABLE_AM_OID,   /* pg_am.oid */
@@ -72,8 +71,7 @@ int main() {
          PAX_AM_HANDLER_OID, /* pg_am.amhandler: pg_proc.oid */
          't' /* pg_am.amtype: TABLE */);
 
-  printf("COMMENT ON FUNCTION %s IS '%s';\n",
-         PAX_AM_HANDLER_NAME, PAX_COMMENT);
+  printf("COMMENT ON FUNCTION %s IS '%s';\n", PAX_AM_HANDLER_NAME, PAX_COMMENT);
 
   return 0;
 }

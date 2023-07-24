@@ -7,7 +7,7 @@
 #include "catalog/micro_partition_metadata.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
-#include "storage/orc/orc.h"
+#include "storage/micro_partition_file_factory.h"
 
 namespace pax {
 
@@ -78,8 +78,11 @@ void TableWriter::Open() {
   options.block_id = std::move(block_id);
   options.file_name = std::move(file_path);
 
-  writer_ = OrcWriter::CreateWriter(Singleton<LocalFileSystem>::GetInstance(),
-                                    std::move(options));
+  File *file =
+      Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name);
+
+  writer_ = MicroPartitionFileFactory::CreateMicroPartitionWriter(
+      MICRO_PARTITION_TYPE_PAX, file, std::move(options));
 
   writer_->SetWriteSummaryCallback(summary_callback_);
 }

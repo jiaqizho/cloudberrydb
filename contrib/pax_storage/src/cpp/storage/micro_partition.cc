@@ -2,10 +2,12 @@
 
 #include <utility>
 
+#include "storage/pax_itemptr.h"
+
 namespace pax {
 
 CTupleSlot::CTupleSlot(TupleTableSlot *tuple_slot)
-    : slot_(tuple_slot), offset_(0) {}
+    : slot_(tuple_slot), table_no_(0), block_number_(0), offset_(0) {}
 
 void CTupleSlot::StoreVirtualTuple() {
   // TODO(gongxun): set tts_tid, how to get block number from block id
