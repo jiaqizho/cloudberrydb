@@ -280,7 +280,7 @@ void PaxNonFixedColumn::SetMemTakeOver(bool take_over) {
   lengths_->SetMemTakeOver(take_over);
 }
 
-PaxColumns::PaxColumns(std::vector<orc::proto::Type_Kind> types)
+PaxColumns::PaxColumns(const std::vector<orc::proto::Type_Kind>& types)
     : row_nums_(0) {
   data_ = new DataBuffer<char>(0);
   for (auto &type : types) {

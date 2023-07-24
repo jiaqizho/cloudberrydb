@@ -295,7 +295,7 @@ char *cbdb::BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend) {
   CBDB_WRAP_END;
 }
 
-char *cbdb::BuildPaxFilePath(Relation rel, const std::string &block_id) {
+char *cbdb::BuildPaxFilePath(const Relation rel, const std::string &block_id) {
   CBDB_WRAP_START;
   { return paxc::BuildPaxFilePath(rel, block_id.c_str()); }
   CBDB_WRAP_END;
