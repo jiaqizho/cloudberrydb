@@ -25,7 +25,7 @@ class LocalFile final : public File {
   size_t FileLength() const override;
   void Close() override;
   void Flush() override;
-  const std::string &GetPath() const override;
+  std::string GetPath() const override;
 
  private:
   int fd_;
@@ -45,7 +45,7 @@ class LocalFileSystem final : public FileSystem {
   void CreateDirectory(const std::string &path) const override;
   void DeleteDirectory(const std::string &path, bool delete_topleveldir) const override;
   std::string BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend) const override;
-  std::string BuildPaxFilePath(const Relation rel, const std::string &block_id) const override;
+  std::string BuildPaxFilePath(Relation rel, const std::string &block_id) const override;
 
  private:
   LocalFileSystem() = default;
@@ -57,5 +57,5 @@ void CopyFile(const char *srcsegpath, const char *dstsegpath);
 void DeletePaxDirectoryPath(const char *dirname, bool delete_topleveldir);
 void MakedirRecursive(const char *path);
 char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
-char *BuildPaxFilePath(const Relation rel, const char *block_id);
+char *BuildPaxFilePath(Relation rel, const char *block_id);
 };  // namespace paxc

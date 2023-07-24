@@ -13,7 +13,7 @@ namespace pax {
 
 OrcWriter::OrcWriter(
     const MicroPartitionWriter::WriterOptions &orc_writer_options,
-    const std::vector<orc::proto::Type_Kind> column_types, File *file)
+    const std::vector<orc::proto::Type_Kind> &column_types, File *file)
     : MicroPartitionWriter(orc_writer_options),
       column_types_(column_types),
       file_(file),

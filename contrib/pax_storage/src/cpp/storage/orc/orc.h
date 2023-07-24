@@ -14,6 +14,7 @@
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_defer.h"
 #include "exceptions/CException.h"
+#include "storage/file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/pax_column.h"
 
@@ -29,6 +30,9 @@ namespace pax {
 
 class OrcWriter : public MicroPartitionWriter {
  public:
+  OrcWriter(const MicroPartitionWriter::WriterOptions &orc_writer_options,
+            const std::vector<orc::proto::Type_Kind> &column_types, File *file);
+
   ~OrcWriter() override;
 
   void Flush() override;
@@ -88,25 +92,9 @@ class OrcWriter : public MicroPartitionWriter {
     return type_kinds;
   }
 
-  static MicroPartitionWriter *CreateWriter(
-      FileSystem *fs, const MicroPartitionWriter::WriterOptions options) {
-    File *file = fs->Open(options.file_name);
-    Assert(file != nullptr);
-    auto types = BuildSchema(options.desc);
-
-    return CreateWriter(file, std::move(types), options);
-  }
-
 #ifndef RUN_GTEST
  protected:  // NOLINT
 #endif
-
-  // Only for test
-  static MicroPartitionWriter *CreateWriter(
-      File *file, const std::vector<orc::proto::Type_Kind> column_types,
-      const MicroPartitionWriter::WriterOptions options) {
-    return new OrcWriter(options, column_types, file);
-  }
 
   // after create a new writer or old stripe have been flushed
   // stripe_info_ in memory should reinit
@@ -117,9 +105,6 @@ class OrcWriter : public MicroPartitionWriter {
   void WriteMetadata(BufferedOutputStream *buffer_mem_stream);
   void WriteFileFooter(BufferedOutputStream *buffer_mem_stream);
   void WritePostscript(BufferedOutputStream *buffer_mem_stream);
-
-  OrcWriter(const MicroPartitionWriter::WriterOptions &orc_writer_options,
-            std::vector<orc::proto::Type_Kind> column_types, File *file);
 
  protected:
   PaxColumns *pax_columns_;
@@ -178,10 +163,6 @@ class OrcReader : public MicroPartitionReader {
     return new OrcReader(file);
   }
 
-#ifndef RUN_GTEST
- protected:  // NOLINT
-#endif
-
   // there is an optimization here, in standard ORC, A single ORC
   // file will read
   // follow these step:
@@ -194,6 +175,9 @@ class OrcReader : public MicroPartitionReader {
   // footer information
   explicit OrcReader(File *file);
 
+#ifndef RUN_GTEST
+ protected:  // NOLINT
+#endif
   void ReadMetadata(ssize_t file_length, uint64 post_script_len);
 
   void BuildProtoTypes();

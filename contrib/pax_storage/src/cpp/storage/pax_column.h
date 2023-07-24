@@ -162,7 +162,7 @@ class PaxNonFixedColumn : public PaxColumn {
 // Inheriting PaxCommColumn use to be able to nest itself
 class PaxColumns : public PaxColumn {
  public:
-  explicit PaxColumns(std::vector<orc::proto::Type_Kind> types);
+  explicit PaxColumns(const std::vector<orc::proto::Type_Kind> &types);
 
   PaxColumns();
 
