@@ -20,40 +20,6 @@ using ::testing::Return;
 const char *pax_file_name = "./test.pax";
 #define COLUMN_NUMS 2
 
-TupleTableSlot *MakeTupleTableSlot(TupleDesc tuple_desc,
-                                   const TupleTableSlotOps *tts_ops) {
-  Size basesz, allocsz;
-  TupleTableSlot *slot;
-
-  basesz = tts_ops->base_slot_size;
-
-  if (tuple_desc)
-    allocsz = MAXALIGN(basesz) + MAXALIGN(tuple_desc->natts * sizeof(Datum)) +
-              MAXALIGN(tuple_desc->natts * sizeof(bool));
-  else
-    allocsz = basesz;
-
-  slot = reinterpret_cast<TupleTableSlot *>(cbdb::Palloc0(allocsz));
-  *((const TupleTableSlotOps **)&slot->tts_ops) = tts_ops;
-  slot->type = T_TupleTableSlot;
-  slot->tts_flags |= TTS_FLAG_EMPTY;
-  if (tuple_desc) slot->tts_flags |= TTS_FLAG_FIXED;
-  slot->tts_tupleDescriptor = tuple_desc;
-  slot->tts_mcxt = CurrentMemoryContext;
-  slot->tts_nvalid = 0;
-
-  if (tuple_desc) {
-    slot->tts_values = reinterpret_cast<Datum *>(
-        (reinterpret_cast<char *>(slot)) + MAXALIGN(basesz));
-    slot->tts_isnull = reinterpret_cast<bool *>(
-        (reinterpret_cast<char *>(slot)) + MAXALIGN(basesz) +
-        MAXALIGN(tuple_desc->natts * sizeof(Datum)));
-  }
-  slot->tts_ops->init(slot);
-
-  return slot;
-}
-
 CTupleSlot *CreateFakeCTupleSlot(bool with_value) {
   TupleTableSlot *tuple_slot;
 
@@ -71,7 +37,7 @@ CTupleSlot *CreateFakeCTupleSlot(bool with_value) {
       .attbyval = true,
   };
 
-  tuple_slot = pax::tests::MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
+  tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
 
   if (with_value) {
     bool *fake_is_null = new bool[COLUMN_NUMS];
@@ -147,9 +113,22 @@ class MockWriter : public TableWriter {
 
 class PaxWriterTest : public ::testing::Test {
  public:
-  void SetUp() override { Singleton<LocalFileSystem>::GetInstance(); }
+  void SetUp() override {
+    Singleton<LocalFileSystem>::GetInstance();
+    CurrentResourceOwner = ResourceOwnerCreate(NULL, "OrcTestResourceOwner");
+  }
 
-  void TearDown() override { std::remove(pax_file_name); }
+  void TearDown() override {
+    std::remove(pax_file_name);
+    ResourceOwner tmp_resource_owner = CurrentResourceOwner;
+    CurrentResourceOwner = NULL;
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS, false,
+                         true);
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false, true);
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS, false,
+                         true);
+    ResourceOwnerDelete(tmp_resource_owner);
+  }
 };
 
 TEST_F(PaxWriterTest, WriteReadTuple) {
