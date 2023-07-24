@@ -9,10 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "catalog/table_metadata.h"
 #include "storage/file_system.h"
-#include "storage/pax_buffer.h"
-#include "storage/pax_itemptr.h"
 #include "storage/statistics.h"
 
 namespace pax {
@@ -101,6 +98,8 @@ class MicroPartitionWriter {
   StatsCollector *collector_ = nullptr;
 };
 
+template <typename T>
+class DataBuffer;
 class MicroPartitionReader {
  public:
   struct ReaderOptions {

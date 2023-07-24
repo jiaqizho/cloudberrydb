@@ -41,7 +41,7 @@ size_t LocalFile::FileLength() const {
 
 void LocalFile::Flush() { fsync(fd_); }
 
-const std::string &LocalFile::GetPath() const { return file_path_; }
+std::string LocalFile::GetPath() const { return file_path_; }
 
 File *LocalFileSystem::Open(const std::string &file_path) {
   LocalFile *local_file;
