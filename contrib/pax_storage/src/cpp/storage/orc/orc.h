@@ -28,9 +28,7 @@ class MicroPartitionStats;
 class OrcWriter : public MicroPartitionWriter {
  public:
   OrcWriter(const MicroPartitionWriter::WriterOptions &orc_writer_options,
-            const std::vector<orc::proto::Type_Kind> &column_types,
-            const std::vector<ColumnEncoding_Kind> &column_encoding_types,
-            File *file);
+            const std::vector<orc::proto::Type_Kind> &column_types, File *file);
 
   ~OrcWriter() override;
 
@@ -47,9 +45,7 @@ class OrcWriter : public MicroPartitionWriter {
 
   size_t PhysicalSize() const override;
 
-  static std::pair<std::vector<orc::proto::Type_Kind>,
-                   std::vector<ColumnEncoding_Kind>>
-  BuildSchema(const MicroPartitionWriter::WriterOptions &options);
+  static std::vector<orc::proto::Type_Kind> BuildSchema(TupleDesc desc);
 
 #ifndef RUN_GTEST
  protected:  // NOLINT
@@ -57,16 +53,18 @@ class OrcWriter : public MicroPartitionWriter {
 
   // only for test
   static MicroPartitionWriter *CreateWriter(
-      const MicroPartitionWriter::WriterOptions &options,
-      const std::vector<orc::proto::Type_Kind> &column_types, File *file) {
-    std::vector<ColumnEncoding_Kind> all_no_encoding_types;
+      MicroPartitionWriter::WriterOptions options,
+      const std::vector<orc::proto::Type_Kind> column_types, File *file) {
+    std::vector<std::tuple<ColumnEncoding_Kind, int>> all_no_encoding_types;
     for (auto _ : column_types) {
       (void)_;
-      all_no_encoding_types.emplace_back(
-          ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
+      all_no_encoding_types.emplace_back(std::make_tuple(
+          ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED, 0));
     }
 
-    return new OrcWriter(options, column_types, all_no_encoding_types, file);
+    options.encoding_opts = all_no_encoding_types;
+
+    return new OrcWriter(options, column_types, file);
   }
 
   // after create a new writer or old stripe have been flushed
@@ -82,7 +80,6 @@ class OrcWriter : public MicroPartitionWriter {
  protected:
   PaxColumns *pax_columns_;
   const std::vector<orc::proto::Type_Kind> column_types_;
-  const std::vector<ColumnEncoding_Kind> column_encoding_types_;
   File *file_;
   WriteSummary summary_;
 

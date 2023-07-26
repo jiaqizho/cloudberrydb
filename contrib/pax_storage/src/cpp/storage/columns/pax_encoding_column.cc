@@ -183,7 +183,7 @@ std::pair<char *, size_t> PaxEncodingColumn<T>::GetBuffer() {
       size_t c_size = compressor_->Compress(
           shared_data_->Start(), shared_data_->Capacity(),
           PaxCommColumn<T>::data_->Start(), PaxCommColumn<T>::data_->Used(),
-          encoder_options_.compress_lvl);
+          encoder_options_.compress_level);
 
       if (compressor_->IsError(c_size)) {
         // log error with `compressor_->ErrorName(c_size)`

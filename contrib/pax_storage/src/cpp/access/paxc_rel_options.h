@@ -2,6 +2,7 @@
 
 #include "comm/cbdb_api.h"
 
+#include "exceptions/CException.h"
 #include "storage/proto/proto_wrappers.h"  // for ColumnEncoding_Kind
 
 namespace paxc {
@@ -86,3 +87,21 @@ List *paxc_transform_column_encoding_clauses(List *encoding_opts, bool validate,
                                              bool fromType);
 
 }  // namespace paxc
+
+namespace pax {
+
+// use to transform compress type str to encoding kind
+static inline ColumnEncoding_Kind CompressKeyToColumnEncodingKind(
+    const char *encoding_str) {
+  Assert(encoding_str);
+
+  for (size_t i = 0; i < lengthof(paxc::kSelfRelCompressMap); i++) {
+    if (encoding_str &&
+        strcmp(paxc::kSelfRelCompressMap[i].optname, encoding_str) == 0) {
+      return paxc::kSelfRelCompressMap[i].kind;
+    }
+  }
+
+  CBDB_RAISE(cbdb::CException::kExTypeLogicError);
+}
+}  // namespace pax

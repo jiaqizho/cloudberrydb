@@ -55,6 +55,7 @@ class MicroPartitionWriter {
     std::string block_id;
     TupleDesc desc;
     Oid rel_oid;
+    std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
   };
 
   explicit MicroPartitionWriter(const WriterOptions &writer_options);
