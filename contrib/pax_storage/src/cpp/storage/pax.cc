@@ -2,11 +2,13 @@
 
 #include <uuid/uuid.h>
 
+#include <map>
 #include <utility>
 
 #include "access/paxc_rel_options.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/cbdb_wrappers.h"
+#include "storage/columns/pax_encoding.h"
 #include "storage/micro_partition_file_factory.h"
 #include "storage/micro_partition_metadata.h"
 #include "storage/micro_partition_stats.h"
@@ -73,6 +75,37 @@ std::string TableWriter::GenFilePath(const std::string &block_id) {
   return cbdb::BuildPaxFilePath(relation_, block_id);
 }
 
+std::vector<std::tuple<ColumnEncoding_Kind, int>>
+TableWriter::GetRelEncodingOptions() {
+  size_t nattrs = 0;
+  paxc::PaxOptions **pax_options = nullptr;
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
+
+  CBDB_WRAP_START;
+  { pax_options = paxc::paxc_relation_get_attribute_options(relation_); }
+  CBDB_WRAP_END;
+  Assert(pax_options);
+
+  nattrs = relation_->rd_att->natts;
+
+  for (size_t index = 0; index < nattrs; index++) {
+    if (pax_options[index]) {
+      encoding_opts.emplace_back(std::make_tuple(
+          CompressKeyToColumnEncodingKind(pax_options[index]->compress_type),
+          pax_options[index]->compress_level));
+    } else {
+      // TODO(jiaqizho): In pax, we will fill a `DEF_ENCODED` if user not set
+      // the encoding clause. Need a GUC to decide whether we should use
+      // `NO_ENCODE` or keep use `DEF_ENCODED` also may allow user define
+      // different default encoding type for the different pg_type?
+      encoding_opts.emplace_back(
+          std::make_tuple(ColumnEncoding_Kind_DEF_ENCODED, 0));
+    }
+  }
+  cbdb::Pfree(pax_options);
+  return encoding_opts;
+}
+
 void TableWriter::Open() {
   MicroPartitionWriter::WriterOptions options;
   std::string file_path;
@@ -89,6 +122,7 @@ void TableWriter::Open() {
   options.desc = relation_->rd_att;
   options.block_id = std::move(block_id);
   options.file_name = std::move(file_path);
+  options.encoding_opts = std::move(GetRelEncodingOptions());
 
   File *file =
       Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name);

@@ -50,6 +50,9 @@ class TableWriter {
  protected:
   virtual std::string GenFilePath(const std::string &block_id);
 
+  virtual std::vector<std::tuple<ColumnEncoding_Kind, int>>
+  GetRelEncodingOptions();
+
  protected:
   const Relation relation_ = nullptr;
   MicroPartitionWriter *writer_ = nullptr;

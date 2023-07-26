@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <map>
+
 #include "comm/cbdb_wrappers.h"
 #include "storage/columns/pax_encoding_utils.h"
 #include "storage/pax_buffer.h"
@@ -14,13 +16,13 @@ class PaxEncoder {
   struct EncodingOption {
     ColumnEncoding_Kind column_encode_type;
     bool is_sign;
-    int compress_lvl;
+    int compress_level;
 
     EncodingOption()
         : column_encode_type(
               ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED),
           is_sign(true),
-          compress_lvl(0) {}
+          compress_level(0) {}
   };
 
  public:

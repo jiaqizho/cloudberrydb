@@ -102,7 +102,7 @@ std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetBuffer() {
       auto c_size = compressor_->Compress(
           shared_data_->Start(), shared_data_->Capacity(),
           PaxNonFixedColumn::data_->Start(), PaxNonFixedColumn::data_->Used(),
-          encoder_options_.compress_lvl);
+          encoder_options_.compress_level);
 
       if (compressor_->IsError(c_size)) {
         // log error with `compressor_->ErrorName(d_size)`

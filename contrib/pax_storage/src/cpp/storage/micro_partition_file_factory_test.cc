@@ -46,11 +46,12 @@ class MicroPartitionFileFactoryTest : public ::testing::Test {
     Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
     ResourceOwner tmp_resource_owner = CurrentResourceOwner;
     CurrentResourceOwner = NULL;
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS, false,
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS,
+                         false, true);
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false,
                          true);
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false, true);
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS, false,
-                         true);
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS,
+                         false, true);
     ResourceOwnerDelete(tmp_resource_owner);
   }
 
@@ -166,8 +167,17 @@ TEST_F(MicroPartitionFileFactoryTest, CreateMicroPartitionWriter) {
   auto file_ptr = local_fs->Open(file_name_);
   EXPECT_NE(nullptr, file_ptr);
 
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> types_encoding;
+  types_encoding.emplace_back(
+      std::make_tuple(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED, 0));
+  types_encoding.emplace_back(
+      std::make_tuple(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED, 0));
+  types_encoding.emplace_back(
+      std::make_tuple(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED, 0));
+
   MicroPartitionWriter::WriterOptions writer_options;
   writer_options.desc = tuple_slot->GetTupleDesc();
+  writer_options.encoding_opts = types_encoding;
 
   auto writer = MicroPartitionFileFactory::CreateMicroPartitionWriter(
       pax_format, file_ptr, writer_options);
@@ -191,9 +201,17 @@ TEST_F(MicroPartitionFileFactoryTest, CreateMicroPartitionReader) {
   auto file_ptr = local_fs->Open(file_name_);
   EXPECT_NE(nullptr, file_ptr);
 
-  MicroPartitionWriter::WriterOptions writer_options;
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> types_encoding;
+  types_encoding.emplace_back(
+      std::make_tuple(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED, 0));
+  types_encoding.emplace_back(
+      std::make_tuple(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED, 0));
+  types_encoding.emplace_back(
+      std::make_tuple(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED, 0));
 
+  MicroPartitionWriter::WriterOptions writer_options;
   writer_options.desc = tuple_slot->GetTupleDesc();
+  writer_options.encoding_opts = types_encoding;
 
   auto writer = MicroPartitionFileFactory::CreateMicroPartitionWriter(
       pax_format, file_ptr, writer_options);
