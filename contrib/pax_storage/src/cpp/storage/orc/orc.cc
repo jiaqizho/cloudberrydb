@@ -14,39 +14,23 @@
 #include "storage/pax_filter.h"
 namespace pax {
 
-std::pair<std::vector<orc::proto::Type_Kind>, std::vector<ColumnEncoding_Kind>>
-OrcWriter::BuildSchema(const MicroPartitionWriter::WriterOptions &options) {
+std::vector<orc::proto::Type_Kind> OrcWriter::BuildSchema(TupleDesc desc) {
   std::vector<orc::proto::Type_Kind> type_kinds;
-  std::vector<ColumnEncoding_Kind> encoding_types;
-  TupleDesc desc;
-
-  desc = options.desc;
-  Assert(desc);
-
   for (int i = 0; i < desc->natts; i++) {
     auto *attr = &desc->attrs[i];
     if (attr->attbyval) {
       switch (attr->attlen) {
         case 1:
           type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_BYTE);
-          encoding_types.emplace_back(
-              ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
           break;
         case 2:
           type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_SHORT);
-          encoding_types.emplace_back(
-              ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
           break;
         case 4:
           type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-          encoding_types.emplace_back(
-              ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
           break;
         case 8:
           type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
-          // TODO: parse options
-          encoding_types.emplace_back(
-              ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2);
           break;
         default:
           Assert(!"should not be here! pg_type which attbyval=true only have typlen of "
@@ -55,26 +39,20 @@ OrcWriter::BuildSchema(const MicroPartitionWriter::WriterOptions &options) {
     } else {
       Assert(attr->attlen > 0 || attr->attlen == -1);
       type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-      encoding_types.emplace_back(
-          ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
     }
   }
 
-  Assert(type_kinds.size() == encoding_types.size());
-
-  return std::make_pair(type_kinds, encoding_types);
+  return type_kinds;
 }
 
 OrcWriter::OrcWriter(
     const MicroPartitionWriter::WriterOptions &orc_writer_options,
-    const std::vector<orc::proto::Type_Kind> &column_types,
-    const std::vector<ColumnEncoding_Kind> &column_encoding_types, File *file)
+    const std::vector<orc::proto::Type_Kind> &column_types, File *file)
     : MicroPartitionWriter(orc_writer_options),
       column_types_(column_types),
-      column_encoding_types_(column_encoding_types),
       file_(file),
       current_offset_(0) {
-  pax_columns_ = new PaxColumns(column_types, column_encoding_types);
+  pax_columns_ = new PaxColumns(column_types, orc_writer_options.encoding_opts);
 
   summary_.rel_oid = orc_writer_options.rel_oid;
   summary_.block_id = orc_writer_options.block_id;
@@ -236,8 +214,14 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
 
   PaxColumns::ColumnEncodingFunc column_encoding_func =
       [&encoding_kinds](const ColumnEncoding_Kind &encoding_kind,
-                        size_t origin_len) {
+                        int64 origin_len) {
         ColumnEncoding column_encoding;
+        Assert(encoding_kind !=
+               ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED);
+        if (encoding_kind != ColumnEncoding_Kind_NO_ENCODED &&
+            origin_len == NO_ENCODE_ORIGIN_LEN) {
+          CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+        }
         column_encoding.set_kind(encoding_kind);
         column_encoding.set_length(origin_len);
 

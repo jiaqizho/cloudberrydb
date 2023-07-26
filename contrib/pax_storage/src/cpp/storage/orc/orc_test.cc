@@ -567,6 +567,8 @@ class OrcEncodingTest : public ::testing::TestWithParam<ColumnEncoding_Kind> {
   const std::string file_name_ = "./test_encoding.file";
 };
 
+class OrcCompressTest : public OrcEncodingTest {};
+
 TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
   TupleTableSlot *tuple_slot = nullptr;
   auto encoding_kind = GetParam();
@@ -605,12 +607,13 @@ TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
   std::vector<orc::proto::Type_Kind> types;
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
-  std::vector<ColumnEncoding_Kind> types_encoding;
-  types_encoding.emplace_back(encoding_kind);
-  types_encoding.emplace_back(encoding_kind);
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> types_encoding;
+  types_encoding.emplace_back(std::make_tuple(encoding_kind, 0));
+  types_encoding.emplace_back(std::make_tuple(encoding_kind, 0));
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.encoding_opts = types_encoding;
 
-  auto writer = new OrcWriter(writer_options, types, types_encoding, file_ptr);
+  auto writer = new OrcWriter(writer_options, types, file_ptr);
 
   for (size_t i = 0; i < 10000; i++) {
     ctuple_slot->GetTupleTableSlot()->tts_values[0] = Int64GetDatum(i);
@@ -644,6 +647,102 @@ INSTANTIATE_TEST_CASE_P(
                     ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
                     ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2));
 
+TEST_P(OrcCompressTest, ReadTupleWithCompress) {
+  TupleTableSlot *tuple_slot = nullptr;
+  auto encoding_kind = GetParam();
+  char column_buff_str[COLUMN_SIZE];
+
+  auto tuple_desc = reinterpret_cast<TupleDescData *>(
+      cbdb::Palloc0(sizeof(TupleDescData) + sizeof(FormData_pg_attribute) * 2));
+
+  tuple_desc->natts = 2;
+  tuple_desc->attrs[0] = {
+      .attlen = -1,
+      .attbyval = false,
+  };
+
+  tuple_desc->attrs[1] = {
+      .attlen = -1,
+      .attbyval = false,
+  };
+
+  tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
+  bool *fake_is_null =
+      reinterpret_cast<bool *>(cbdb::Palloc0(sizeof(bool) * COLUMN_NUMS));
+  fake_is_null[0] = false;
+  fake_is_null[1] = false;
+
+  tuple_slot->tts_isnull = fake_is_null;
+  auto ctuple_slot = new CTupleSlot(tuple_slot);
+
+  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto file_ptr = local_fs->Open(file_name_);
+  EXPECT_NE(nullptr, file_ptr);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> types_encoding;
+  types_encoding.emplace_back(std::make_tuple(encoding_kind, 5));
+  types_encoding.emplace_back(std::make_tuple(encoding_kind, 5));
+  MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.encoding_opts = types_encoding;
+
+  auto writer = new OrcWriter(writer_options, types, file_ptr);
+
+  for (size_t i = 0; i < COLUMN_SIZE; i++) {
+    column_buff_str[i] = i;
+  }
+
+  for (size_t i = 0; i < 1000; i++) {
+    ctuple_slot->GetTupleTableSlot()->tts_values[0] =
+        cbdb::DatumFromCString(column_buff_str, COLUMN_SIZE);
+    ctuple_slot->GetTupleTableSlot()->tts_values[1] =
+        cbdb::DatumFromCString(column_buff_str, COLUMN_SIZE);
+    writer->WriteTuple(ctuple_slot);
+  }
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name_);
+
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
+
+  ASSERT_EQ(1, reader->GetNumberOfStripes());
+  auto columns = reader->ReadStripe(0);
+
+  ASSERT_EQ(2, columns->GetColumns());
+
+  auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
+  ASSERT_EQ(1000, column1->GetNonNullRows());
+
+  auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[1]);
+  ASSERT_EQ(1000, column2->GetNonNullRows());
+
+  for (size_t i = 0; i < 1000; i++) {
+    EXPECT_EQ(0, std::memcmp(column1->GetBuffer(i).first + VARHDRSZ,
+                             column_buff_str, COLUMN_SIZE));
+
+    EXPECT_EQ(0, std::memcmp(column2->GetBuffer(i).first + VARHDRSZ,
+                             column_buff_str, COLUMN_SIZE));
+  }
+
+  reader->Close();
+
+  delete columns;
+  OrcTest::DeleteCTupleSlot(ctuple_slot);
+  delete writer;
+  delete reader;
+}
+
+INSTANTIATE_TEST_CASE_P(
+    OrcEncodingTestCombine, OrcCompressTest,
+    testing::Values(ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZSTD,
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZLIB));
+
 TEST_F(OrcTest, ReadTupleDefaultColumn) {
   CTupleSlot *tuple_slot = CreateFakeCTupleSlot(true);
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
@@ -669,6 +768,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
   EXPECT_EQ(1, reader->GetNumberOfStripes());
+
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
   TupleTableSlot *slot = tuple_slot_empty->GetTupleTableSlot();

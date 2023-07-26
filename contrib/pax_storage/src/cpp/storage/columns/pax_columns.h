@@ -12,8 +12,9 @@ namespace pax {
 // Inheriting PaxCommColumn use to be able to nest itself
 class PaxColumns : public PaxColumn {
  public:
-  explicit PaxColumns(std::vector<orc::proto::Type_Kind> types,
-                      std::vector<ColumnEncoding_Kind> column_encoding_types);
+  explicit PaxColumns(const std::vector<orc::proto::Type_Kind> &types,
+                      const std::vector<std::tuple<ColumnEncoding_Kind, int>>
+                          &column_encoding_types);
 
   PaxColumns();
 

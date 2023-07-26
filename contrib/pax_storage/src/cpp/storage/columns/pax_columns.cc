@@ -12,19 +12,21 @@
 
 namespace pax {
 
-PaxColumns::PaxColumns(
-    const std::vector<orc::proto::Type_Kind> types,
-    const std::vector<ColumnEncoding_Kind> column_encoding_types)
+PaxColumns::PaxColumns(const std::vector<orc::proto::Type_Kind> &types,
+                       const std::vector<std::tuple<ColumnEncoding_Kind, int>>
+                           &column_encoding_types)
     : row_nums_(0) {
+  Assert(types.size() == column_encoding_types.size());
   data_ = new DataBuffer<char>(0);
   for (size_t i = 0; i < types.size(); i++) {
     auto type = types[i];
     switch (type) {
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
         PaxEncoder::EncodingOption encoding_option;
-        encoding_option.column_encode_type = column_encoding_types[i];
+        encoding_option.column_encode_type =
+            std::get<0>(column_encoding_types[i]);
         encoding_option.is_sign = false;
-        encoding_option.compress_lvl = column_encoding_types[i];
+        encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
 
         auto pax_non_fixed_column = new PaxNonFixedEncodingColumn(  //
             DEFAULT_CAPACITY, std::move(encoding_option));
@@ -40,24 +42,30 @@ PaxColumns::PaxColumns(
       }
       case (orc::proto::Type_Kind::Type_Kind_SHORT): {  // len 2 integer
         PaxEncoder::EncodingOption encoding_option;
-        encoding_option.column_encode_type = column_encoding_types[i];
+        encoding_option.column_encode_type =
+            std::get<0>(column_encoding_types[i]);
         encoding_option.is_sign = true;
+        encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
         columns_.emplace_back(
             new PaxIntColumn<int16>(std::move(encoding_option)));
         break;
       }
       case (orc::proto::Type_Kind::Type_Kind_INT): {  // len 4 integer
         PaxEncoder::EncodingOption encoding_option;
-        encoding_option.column_encode_type = column_encoding_types[i];
+        encoding_option.column_encode_type =
+            std::get<0>(column_encoding_types[i]);
         encoding_option.is_sign = true;
+        encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
         columns_.emplace_back(
             new PaxIntColumn<int32>(std::move(encoding_option)));
         break;
       }
       case (orc::proto::Type_Kind::Type_Kind_LONG): {  // len 8 integer
         PaxEncoder::EncodingOption encoding_option;
-        encoding_option.column_encode_type = column_encoding_types[i];
+        encoding_option.column_encode_type =
+            std::get<0>(column_encoding_types[i]);
         encoding_option.is_sign = true;
+        encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
         columns_.emplace_back(
             new PaxIntColumn<int64>(std::move(encoding_option)));
 
