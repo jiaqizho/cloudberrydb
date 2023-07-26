@@ -21,11 +21,9 @@ MicroPartitionWriter *MicroPartitionFileFactory::CreateMicroPartitionWriter(
     const MicroPartitionWriter::WriterOptions &options) {
   if (type == MICRO_PARTITION_TYPE_PAX) {
     std::vector<orc::proto::Type_Kind> type_kinds;
-    std::vector<ColumnEncoding_Kind> encoding_types;
     MicroPartitionWriter *writer = nullptr;
-    std::tie(type_kinds, encoding_types) = OrcWriter::BuildSchema(options);
-    writer = new OrcWriter(std::move(options), std::move(type_kinds),
-                           std::move(encoding_types), file);
+    type_kinds = OrcWriter::BuildSchema(options.desc);
+    writer = new OrcWriter(std::move(options), std::move(type_kinds), file);
     return writer;
   }
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);

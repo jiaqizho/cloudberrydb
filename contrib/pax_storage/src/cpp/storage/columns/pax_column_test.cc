@@ -317,7 +317,7 @@ TEST_P(PaxColumnCompressTest, FixedCompressColumnGetRangeTest) {
 
   PaxEncoder::EncodingOption encoding_option;
   encoding_option.column_encode_type = kind;
-  encoding_option.compress_lvl = 5;
+  encoding_option.compress_level = 5;
   encoding_option.is_sign = true;
 
   int_column = CreateEncodeColumn(bits, std::move(encoding_option));
@@ -497,7 +497,7 @@ TEST_P(PaxColumnCompressTest, PaxEncodingColumnCompressDecompress) {
 
   PaxEncoder::EncodingOption encoding_option;
   encoding_option.column_encode_type = kind;
-  encoding_option.compress_lvl = 5;
+  encoding_option.compress_level = 5;
   encoding_option.is_sign = true;
 
   int_column = CreateEncodeColumn(bits, std::move(encoding_option));
@@ -543,7 +543,7 @@ TEST_P(PaxNonFixedColumnCompressTest,
 
   PaxEncoder::EncodingOption encoding_option;
   encoding_option.column_encode_type = kind;
-  encoding_option.compress_lvl = 5;
+  encoding_option.compress_level = 5;
   encoding_option.is_sign = true;
 
   non_fixed_column =
