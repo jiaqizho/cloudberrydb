@@ -84,6 +84,8 @@ class MockWriter : public TableWriter {
   }
 
   MOCK_METHOD(std::string, GenFilePath, (const std::string &), (override));
+  MOCK_METHOD((std::vector<std::tuple<ColumnEncoding_Kind, int>>),
+              GetRelEncodingOptions, (), (override));
 };
 
 class PaxWriterTest : public ::testing::Test {
@@ -109,6 +111,7 @@ class PaxWriterTest : public ::testing::Test {
 
 TEST_F(PaxWriterTest, WriteReadTuple) {
   CTupleSlot *slot = CreateFakeCTupleSlot(true);
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
 
   auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
   relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
@@ -123,6 +126,14 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   EXPECT_CALL(*writer, GenFilePath(_))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(pax_file_name));
+
+  for (size_t i = 0; i < COLUMN_NUMS; i++) {
+    encoding_opts.emplace_back(
+        std::make_tuple(ColumnEncoding_Kind_NO_ENCODED, 0));
+  }
+  EXPECT_CALL(*writer, GetRelEncodingOptions())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(encoding_opts));
 
   writer->Open();
 
@@ -164,6 +175,7 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
 
 TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   CTupleSlot *slot = CreateFakeCTupleSlot(true);
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
   auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
 
   relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
@@ -181,6 +193,13 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
       .WillRepeatedly(testing::Invoke([&call_times]() -> std::string {
         return pax_file_name + std::to_string(call_times++);
       }));
+  for (size_t i = 0; i < COLUMN_NUMS; i++) {
+    encoding_opts.emplace_back(
+        std::make_tuple(ColumnEncoding_Kind_NO_ENCODED, 0));
+  }
+  EXPECT_CALL(*writer, GetRelEncodingOptions())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(encoding_opts));
 
   writer->Open();
 

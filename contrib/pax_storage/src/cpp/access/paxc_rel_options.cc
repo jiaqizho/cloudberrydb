@@ -85,6 +85,8 @@ PaxOptions **paxc_relation_get_attribute_options(Relation rel) {
   PaxOptions **opts;
   int i;
 
+  Assert(rel && OidIsValid(RelationGetRelid(rel)));
+
   opts = (PaxOptions **)palloc0(RelationGetNumberOfAttributes(rel) *
                                 sizeof(PaxOptions *));
 

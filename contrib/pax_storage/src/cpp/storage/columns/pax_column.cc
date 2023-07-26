@@ -224,7 +224,7 @@ template class PaxCommColumn<float>;
 template class PaxCommColumn<double>;
 
 PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity) : estimated_size_(0) {
-  data_ = new DataBuffer<char>(capacity * sizeof(char) * 100);
+  data_ = new DataBuffer<char>(capacity * sizeof(char));
   lengths_ = new DataBuffer<int64>(capacity * sizeof(char));
 }
 
