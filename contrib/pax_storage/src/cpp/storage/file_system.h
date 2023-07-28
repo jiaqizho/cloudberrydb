@@ -7,17 +7,39 @@
 
 namespace pax {
 
+/*
+ * The IO functions may have error that have two different ways
+ * to handle errors. In C style, the function returns -1 and set
+ * the errno. The other style likes Java that any error will throw
+ * an exception.
+ * The IO functions provided by postgres will raise an ERROR
+ * if unexpected behavior happens.
+ *
+ * The following IO functions use the same behavior like postgres,
+ * but we throw an exception in C++ code.
+ */
 class File {
  public:
   virtual ~File() = default;
+
+  // The following [P]Read/[P]Write may partially read/write
   virtual ssize_t Read(void *ptr, size_t n) = 0;
   virtual ssize_t Write(const void *ptr, size_t n) = 0;
-  virtual ssize_t PWrite(const void *buf, size_t count, size_t offset) = 0;
-  virtual ssize_t PRead(void *buf, size_t count, size_t offset) = 0;
-  virtual size_t FileLength() const = 0;
+  virtual ssize_t PWrite(const void *buf, size_t count, off_t offset) = 0;
+  virtual ssize_t PRead(void *buf, size_t count, off_t offset) = 0;
+
+  // The *N version of Read/Write means that R/W must read/write complete
+  // number of bytes, or the function should throw an exception.
+  // These 4 methods have default implementation that simply calls  read/write
+  // and check the returned number of bytes.
+  virtual void ReadN(void *ptr, size_t n);
+  virtual void WriteN(const void *ptr, size_t n);
+  virtual void PWriteN(const void *buf, size_t count, off_t offset);
+  virtual void PReadN(void *buf, size_t count, off_t offset);
+
   virtual void Flush() = 0;
   virtual void Close() = 0;
-
+  virtual size_t FileLength() const = 0;
   virtual std::string GetPath() const = 0;
 };
 

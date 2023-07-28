@@ -101,6 +101,7 @@ set(pax_exceptions_src
     exceptions/CException.cc)
 
 set(pax_storage_src
+    storage/file_system.cc
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
