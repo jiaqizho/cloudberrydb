@@ -54,9 +54,9 @@ void OrcWriter::Flush() {
   BufferedOutputStream buffer_mem_stream(nullptr, 2048);
   if (WriteStripe(&buffer_mem_stream)) {
     Assert(current_offset_ >= buffer_mem_stream.GetDataBuffer()->Used());
-    file_->PWrite(buffer_mem_stream.GetDataBuffer()->GetBuffer(),
-                  buffer_mem_stream.GetDataBuffer()->Used(),
-                  current_offset_ - buffer_mem_stream.GetDataBuffer()->Used());
+    file_->PWriteN(buffer_mem_stream.GetDataBuffer()->GetBuffer(),
+                   buffer_mem_stream.GetDataBuffer()->Used(),
+                   current_offset_ - buffer_mem_stream.GetDataBuffer()->Used());
     file_->Flush();
     pax_columns_->Clear();
   }
@@ -231,8 +231,8 @@ void OrcWriter::Close() {
     summary_callback_(summary_);
   }
 
-  file_->PWrite(buffer_mem_stream.GetDataBuffer()->GetBuffer(),
-                buffer_mem_stream.GetDataBuffer()->Used(), file_offset);
+  file_->PWriteN(buffer_mem_stream.GetDataBuffer()->GetBuffer(),
+                 buffer_mem_stream.GetDataBuffer()->Used(), file_offset);
   file_->Flush();
   file_->Close();
   if (!not_empty_stripe) {
@@ -321,10 +321,8 @@ OrcReader::OrcReader(File *file)
   size_t file_length = file_->FileLength();
   uint64 post_script_len = 0;
 
-  CBDB_CHECK(
-      file_->PRead(&post_script_len, ORC_POST_SCRIPT_SIZE,
-                   file_length - ORC_POST_SCRIPT_SIZE) == ORC_POST_SCRIPT_SIZE,
-      cbdb::CException::ExType::kExTypeInvalidORCFormat);
+  file_->PRead(&post_script_len, ORC_POST_SCRIPT_SIZE,
+               (off_t)(file_length - ORC_POST_SCRIPT_SIZE));
 
   ReadPostScript(file_length, post_script_len);
 
@@ -344,12 +342,13 @@ OrcReader::~OrcReader() { delete file_; }
 void OrcReader::ReadMetadata(ssize_t file_length, uint64 post_script_len) {
   uint64 meta_len = post_script_.metadatalength();
   uint64 footer_len = post_script_.footerlength();
-  uint64 meta_start = file_length - meta_len - footer_len - post_script_len -
-                      ORC_POST_SCRIPT_SIZE;
+  off_t meta_start = file_length - meta_len - footer_len - post_script_len -
+                     ORC_POST_SCRIPT_SIZE;
   char read_buffer[meta_len];
   SeekableInputStream input_stream(read_buffer, meta_len);
 
-  file_->PRead(read_buffer, meta_len, meta_start);
+  Assert(meta_start >= 0);
+  file_->PReadN(read_buffer, meta_len, meta_start);
 
   CBDB_CHECK(meta_data_.ParseFromZeroCopyStream(&input_stream),
              cbdb::CException::ExType::kExTypeIOError);
@@ -386,7 +385,7 @@ void OrcReader::BuildProtoTypes() {
 void OrcReader::ReadFooter(size_t footer_offset, size_t footer_len) {
   char buffer[footer_len];
 
-  file_->PRead(&buffer, footer_len, footer_offset);
+  file_->PReadN(&buffer, footer_len, footer_offset);
 
   SeekableInputStream input_stream(buffer, footer_len);
   CBDB_CHECK(file_footer_.ParseFromZeroCopyStream(&input_stream),
@@ -399,9 +398,12 @@ void OrcReader::ReadFooter(size_t footer_offset, size_t footer_len) {
 
 void OrcReader::ReadPostScript(size_t file_size, uint64 post_script_len) {
   char post_script_buffer[post_script_len];
+  off_t offset;
 
-  file_->PRead(post_script_buffer, post_script_len,
-               file_size - ORC_POST_SCRIPT_SIZE - post_script_len);
+  offset = (off_t)(file_size - ORC_POST_SCRIPT_SIZE - post_script_len);
+  Assert(offset >= 0);
+
+  file_->PReadN(post_script_buffer, post_script_len, offset);
 
   post_script_.ParseFromArray(&post_script_buffer,
                               static_cast<int>(post_script_len));
@@ -440,8 +442,8 @@ PaxColumns *OrcReader::ReadStripe(size_t index) {
   pax_columns->Set(data_buffer);
 
   Assert(stripe_info->index_length == 0);
-  file_->PRead(data_buffer->GetBuffer(), stripe_info->footer_length,
-               stripe_info->offset);
+  file_->PReadN(data_buffer->GetBuffer(), stripe_info->footer_length,
+                stripe_info->offset);
 
   SeekableInputStream input_stream(
       data_buffer->GetBuffer() + stripe_footer_offset,
@@ -749,7 +751,8 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
       continue;
     }
 
-    // In case column is droped, then set its value as null without reading data tuples.
+    // In case column is droped, then set its value as null without reading data
+    // tuples.
     if (unlikely(slot->tts_tupleDescriptor->attrs[index].attisdropped)) {
       slot->tts_isnull[index] = true;
       continue;
