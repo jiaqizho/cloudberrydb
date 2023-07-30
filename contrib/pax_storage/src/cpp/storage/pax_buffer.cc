@@ -3,6 +3,9 @@
 #include "exceptions/CException.h"
 
 namespace pax {
+
+#define MEMORY_RESIZE_LIMIT (768UL * 1024 * 1024)
+
 BlockBuffer::BlockBuffer(char *begin_offset, char *end_offset)
     : begin_offset_(begin_offset), end_offset_(end_offset) {}
 
@@ -12,6 +15,7 @@ BlockBufferBase::BlockBufferBase(char *ptr, size_t size, size_t offset)
 }
 
 void BlockBufferBase::Set(char *ptr, size_t size, size_t offset) {
+  Assert(offset <= size);
   block_buffer_ = BlockBuffer(ptr, ptr + size);
   block_pos_ = ptr + offset;
 }
@@ -22,8 +26,7 @@ void BlockBufferBase::Set(char *ptr, size_t size) {
 }
 
 void BlockBufferBase::Write(char *ptr, size_t size) {
-  Assert(Available() > size && Available() >= 0 && Available() < Capacity());
-  Assert(Used() > 0 && Used() < Capacity());
+  Assert(block_pos_ + size <= block_buffer_.End());
   memcpy(block_pos_, ptr, size);
 }
 
@@ -81,19 +84,19 @@ void DataBuffer<T>::Set(char *ptr, size_t size) {
 
 template <typename T>
 void DataBuffer<T>::Write(T value) {
-  Assert(Available() >= sizeof(T) && Available() <= Capacity());
+  Assert(block_pos_ + sizeof(T) <= block_buffer_.End());
   *(reinterpret_cast<T *>(block_pos_)) = value;
 }
 
 template <typename T>
 void DataBuffer<T>::Write(T *ptr, size_t size) {
-  Assert(Available() >= size && Available() <= Capacity());
+  Assert(size % sizeof(T) == 0 && (block_pos_ + size) <= block_buffer_.End());
   memcpy(block_pos_, reinterpret_cast<const char *>(ptr), size);
 }
 
 template <typename T>
 void DataBuffer<T>::Write(const T *ptr, size_t size) {
-  Assert(Available() >= size && Available() <= Capacity());
+  Assert(size % sizeof(T) == 0 && (block_pos_ + size) <= block_buffer_.End());
   memcpy(block_pos_, reinterpret_cast<const char *>(ptr), size);
 }
 
@@ -123,6 +126,10 @@ template <typename T>
 void DataBuffer<T>::ReSize(size_t size) {
   if (!mem_take_over_) {
     CBDB_RAISE(cbdb::CException::ExType::kExTypeInvalidMemoryOperation);
+  }
+
+  if (unlikely(size > MEMORY_RESIZE_LIMIT)) {
+    CBDB_RAISE(cbdb::CException::ExType::kExTypeOOM);
   }
 
   size_t used = Used();
@@ -159,5 +166,76 @@ template class DataBuffer<int64>;
 template class DataBuffer<float>;
 template class DataBuffer<double>;
 template class DataBuffer<bool>;
+
+template <typename T>
+UntreatedDataBuffer<T>::UntreatedDataBuffer(size_t size)
+    : DataBuffer<T>(nullptr, size, false, true) {
+  untreated_pos_ = BlockBufferBase::block_buffer_.Start();
+}
+
+template <typename T>
+void UntreatedDataBuffer<T>::BrushUnTreated(size_t size) {
+  Assert(size >= 0);
+  Assert(untreated_pos_ + size <= BlockBufferBase::block_pos_);
+  untreated_pos_ += size;
+}
+
+template <typename T>
+void UntreatedDataBuffer<T>::BrushBackUnTreated(size_t size) {
+  size_t new_offset = UnTreated() - size;
+  Assert(new_offset >= 0 && UnTreated() <= BlockBufferBase::Used());
+
+  untreated_pos_ = BlockBufferBase::block_buffer_.Start() + new_offset;
+}
+
+template <typename T>
+void UntreatedDataBuffer<T>::TreatedAll() {
+  Assert(UnTreated() <= BlockBufferBase::Used());
+  size_t treated = UnTreated();
+  size_t untouched = UnTouched();
+  if (untouched <= treated) {
+    memcpy(BlockBufferBase::block_buffer_.Start(), untreated_pos_, untouched);
+    untreated_pos_ = BlockBufferBase::block_buffer_.Start();
+    BlockBufferBase::block_pos_ = untreated_pos_ + untouched;
+    return;
+  }
+
+  char *write_pos = BlockBufferBase::block_buffer_.Start();
+  size_t batch_size = 0;
+  while (untouched != 0) {
+    batch_size = untouched > treated ? treated : untouched;
+
+    memcpy(write_pos, untreated_pos_, batch_size);
+    untreated_pos_ = untreated_pos_ + batch_size;
+    write_pos = write_pos + batch_size;
+
+    untouched -= batch_size;
+  }
+
+  BlockBufferBase::block_pos_ = write_pos;
+  untreated_pos_ = BlockBufferBase::block_buffer_.Start();
+}
+
+template <typename T>
+void UntreatedDataBuffer<T>::ReSize(size_t size) {
+  size_t untreated = UnTreated();
+  DataBuffer<T>::ReSize(size);
+  untreated_pos_ = BlockBufferBase::block_buffer_.Start() + untreated;
+}
+
+template class UntreatedDataBuffer<char>;
+template class UntreatedDataBuffer<int64>;
+
+template <typename T>
+TreatedDataBuffer<T>::TreatedDataBuffer(T *data_buffer, size_t size)
+    : DataBuffer<T>(data_buffer, size, false, false) {
+  Assert(data_buffer);
+  Assert(size != 0);
+  BlockBufferBase::Brush(size);
+  treated_pos_ = BlockBufferBase::block_buffer_.Start();
+}
+
+template class TreatedDataBuffer<char>;
+template class TreatedDataBuffer<int64>;
 
 }  // namespace pax
