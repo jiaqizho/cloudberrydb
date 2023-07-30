@@ -1,0 +1,49 @@
+#pragma once
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "comm/cbdb_wrappers.h"
+#include "storage/columns/pax_decoding.h"
+#include "storage/columns/pax_encoding_utils.h"
+#include "storage/pax_buffer.h"
+
+namespace pax {
+
+class PaxOrcDecoder final : public PaxDecoder {
+ public:
+  PaxOrcDecoder(const DecodingOption &encoder_options, char *raw_buffer,
+                size_t buffer_len);
+
+  ~PaxOrcDecoder() override;
+
+  size_t Next(const char *not_null) override;
+
+  size_t Decoding() override;
+
+  size_t Decoding(const char *not_null, size_t not_null_len) override;
+
+ private:
+  uint64 NextShortRepeats(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+                          uint64 offset, const char *not_null);
+  uint64 NextDirect(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+                    uint64 offset, const char *not_null);
+  uint64 NextPatched(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+                     uint64 offset, const char *not_null);
+  uint64 NextDelta(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+                   uint64 offset, const char *not_null);
+
+ private:
+  TreatedDataBuffer<int64> *data_buffer_;
+  // Used to fill null field
+  DataBuffer<int64> *copy_data_buffer_;
+  // Used by PATCHED_BASE
+  DataBuffer<int64> *unpacked_data_;
+};
+
+#ifdef RUN_GTEST
+void ReadLongs(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+               uint64 offset, uint64 len, uint64 fbs, uint32 *bits_left);
+#endif
+
+}  // namespace pax

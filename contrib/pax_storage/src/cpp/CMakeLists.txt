@@ -93,6 +93,14 @@ target_include_directories(test_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_
 target_link_libraries(test_main gtest gmock gtest_main postgres pax)
 endif(BUILD_GTEST)
 
+# ztsd
+set(ZSTD_BUILD_PROGRAMS OFF)
+set(ZSTD_BUILD_TESTS OFF)
+set(ZSTD_BUILD_CONTRIB)
+add_subdirectory(contrib/zstd/build/cmake/)
+set(ZTSD_HEADER contrib/zstd/lib)
+
+
 set(pax_comm_src
     comm/bitmap.cc
     comm/cbdb_wrappers.cc)
@@ -101,13 +109,22 @@ set(pax_exceptions_src
     exceptions/CException.cc)
 
 set(pax_storage_src
+    storage/columns/pax_column.cc
+    storage/columns/pax_compress.cc
+    storage/columns/pax_columns.cc
+    storage/columns/pax_encoding_utils.cc
+    storage/columns/pax_decoding.cc
+    storage/columns/pax_encoding.cc
+    storage/columns/pax_rlev2_decoding.cc
+    storage/columns/pax_rlev2_encoding.cc
     storage/file_system.cc
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
     storage/pax.cc
-    storage/pax_buffer.cc
-    storage/pax_column.cc
+    storage/pax_buffer.cc  
+    storage/strategy.cc
+    storage/orc/protobuf_stream.cc
     storage/paxc_block_map_manager.cc
     storage/orc/orc.cc
     storage/orc/protobuf_stream.cc
@@ -129,8 +146,8 @@ link_directories($ENV{GPHOME}/lib)
 add_library(pax SHARED ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
 set_target_properties(pax PROPERTIES 
 OUTPUT_NAME pax)
-target_include_directories(pax PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
-target_link_libraries(pax PUBLIC uuid orc_protobuf postgres)
+target_include_directories(pax PUBLIC ${ZTSD_HEADER}  ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
+target_link_libraries(pax PUBLIC uuid orc_protobuf zstd z postgres)
 add_dependencies(pax generate_protobuf)
 add_custom_command(TARGET pax POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E
