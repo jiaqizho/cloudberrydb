@@ -55,6 +55,8 @@ class BlockBufferBase {
 
   inline void BrushBackAll() { block_pos_ = block_buffer_.Start(); }
 
+  inline char *Start() const { return block_buffer_.Start(); }
+
   inline size_t Used() const {
     return size_t(block_pos_ - block_buffer_.Start());
   }
@@ -115,6 +117,8 @@ class DataBuffer : public BlockBufferBase {
   // Direct access elements of internal buffer
   T &operator[](size_t i);
 
+  T *StartT() const { return data_buffer_; }
+
   // Get size of elements of internal buffer
   size_t GetSize();
 
@@ -129,16 +133,16 @@ class DataBuffer : public BlockBufferBase {
 
   // Direct write a element into available buffer
   // Should call `Brush` after write
-  void Write(T value);
+  virtual void Write(T value);
 
-  void Write(T *ptr, size_t size);
+  virtual void Write(T *ptr, size_t size);
 
-  void Write(const T *ptr, size_t size);
+  virtual void Write(const T *ptr, size_t size);
 
   // Read all to dst pointer
-  void Read(T *dst);
+  virtual void Read(T *dst);
 
-  void Read(void *dst, size_t n);
+  virtual void Read(void *dst, size_t n);
 
   // Get the internal buffer pointer
   T *GetBuffer() const;
@@ -148,7 +152,7 @@ class DataBuffer : public BlockBufferBase {
 
   // Resize the internal buffer, size should bigger than capacity of internal
   // buffer `mem_take_over` should be true
-  void ReSize(size_t size);
+  virtual void ReSize(size_t size);
 
   // Is current internal buffer take over by DataBuffer
   bool IsMemTakeOver() const;
@@ -157,12 +161,13 @@ class DataBuffer : public BlockBufferBase {
 
   // Clear up the DataBuffer
   // Caller should call `Set` to reuse current `DataBuffer` after call `Clear`
-  void Clear();
+  virtual void Clear();
 
  private:
   bool mem_take_over_;
   T *data_buffer_ = nullptr;
 };
+
 extern template class DataBuffer<char>;
 extern template class DataBuffer<int16>;
 extern template class DataBuffer<int32>;
@@ -171,4 +176,67 @@ extern template class DataBuffer<float>;
 extern template class DataBuffer<double>;
 extern template class DataBuffer<bool>;
 
-};  // namespace pax
+template <typename T>
+class UntreatedDataBuffer final : public DataBuffer<T> {
+ public:
+  explicit UntreatedDataBuffer(size_t size);
+
+  void ReSize(size_t size) override;
+
+  void BrushUnTreated(size_t size);
+
+  inline void BrushUnTreatedAll() {
+    untreated_pos_ = BlockBufferBase::block_pos_;
+  }
+
+  void BrushBackUnTreated(size_t size);
+
+  void TreatedAll();
+
+  inline size_t UnTreated() const {
+    return size_t(untreated_pos_ - BlockBufferBase::block_buffer_.Start());
+  }
+
+  inline size_t UnTouched() const {
+    return size_t(BlockBufferBase::block_pos_ - untreated_pos_);
+  }
+
+ private:
+  char *untreated_pos_ = nullptr;
+};
+
+extern template class UntreatedDataBuffer<char>;
+extern template class UntreatedDataBuffer<int64>;
+
+template <typename T>
+class TreatedDataBuffer final : public DataBuffer<T> {
+ public:
+  TreatedDataBuffer(T *data_buffer, size_t size);
+
+  inline void BrushTreated(size_t size) {
+    Assert(treated_pos_ + size <= BlockBufferBase::block_pos_);
+    treated_pos_ += size;
+  }
+
+  inline char *GetTreatedRawBuffer() const { return treated_pos_; }
+
+  inline T *GetTreatedBuffer() const { return (T *)treated_pos_; }
+
+  inline size_t Treated() const {
+    Assert(treated_pos_);
+    return size_t(treated_pos_ - BlockBufferBase::block_buffer_.Start());
+  }
+
+  inline size_t UnTreated() const {
+    Assert(treated_pos_);
+    return size_t(BlockBufferBase::block_pos_ - treated_pos_);
+  }
+
+ private:
+  char *treated_pos_ = nullptr;
+};
+
+extern template class TreatedDataBuffer<char>;
+extern template class TreatedDataBuffer<int64>;
+
+}  // namespace pax

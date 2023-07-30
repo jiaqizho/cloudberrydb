@@ -1,4 +1,4 @@
-#include "storage/pax_column.h"
+#include "storage/columns/pax_column.h"
 
 #include <cstring>
 #include <sstream>
@@ -7,11 +7,14 @@
 #include <vector>
 
 #include "comm/pax_defer.h"
-#include "exceptions/CException.h"
 
 namespace pax {
 
-PaxColumn::PaxColumn() : null_bitmap_(nullptr), is_encoded_(false) {}
+PaxColumn::PaxColumn()
+    : null_bitmap_(nullptr),
+      encoded_type_(PaxColumnEncodeType::kTypeDefaultEncoded),
+      compress_type_(PaxColumnCompressType::kTypeDefaultCompress),
+      storage_type_(PaxColumnStorageType::kTypeStorageNonVec) {}
 
 PaxColumn::~PaxColumn() {
   if (null_bitmap_) {
@@ -74,6 +77,28 @@ void PaxColumn::Append([[maybe_unused]] char *buffer,
     }
     null_bitmap_->Brush(sizeof(bool));
   }
+}
+
+PaxColumn *PaxColumn::SetColumnEncodeType(PaxColumnEncodeType encoding_type) {
+  encoded_type_ = encoding_type;
+  return this;
+}
+
+PaxColumn *PaxColumn::SetColumnCompressType(
+    PaxColumnCompressType compress_type) {
+  compress_type_ = compress_type;
+  return this;
+}
+
+PaxColumn *PaxColumn::SetColumnStorageType(PaxColumnStorageType storage_type) {
+  storage_type_ = storage_type;
+  return this;
+}
+
+PaxColumnEncodeType PaxColumn::GetEncodingType() const { return encoded_type_; }
+
+PaxColumnCompressType PaxColumn::GetCompressType() const {
+  return compress_type_;
 }
 
 template <typename T>
@@ -148,16 +173,14 @@ size_t PaxCommColumn<T>::EstimatedSize() const {
 
 template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer() {
-  return std::make_pair(data_->Buffer().Start(), data_->Used());
+  return std::make_pair(data_->Start(), data_->Used());
 }
 
 template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
-  if (position >= GetNonNullRows()) {
-    CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
-  }
-  return std::make_pair(data_->Buffer().Start() + (sizeof(T) * position),
-                        sizeof(T));
+  CBDB_CHECK(position < GetNonNullRows(),
+             cbdb::CException::ExType::kExTypeOutOfRange);
+  return std::make_pair(data_->Start() + (sizeof(T) * position), sizeof(T));
 }
 
 template class PaxCommColumn<char>;
@@ -278,208 +301,6 @@ bool PaxNonFixedColumn::IsMemTakeOver() const {
 void PaxNonFixedColumn::SetMemTakeOver(bool take_over) {
   data_->SetMemTakeOver(take_over);
   lengths_->SetMemTakeOver(take_over);
-}
-
-PaxColumns::PaxColumns(const std::vector<orc::proto::Type_Kind>& types)
-    : row_nums_(0) {
-  data_ = new DataBuffer<char>(0);
-  for (auto &type : types) {
-    switch (type) {
-      case (orc::proto::Type_Kind::Type_Kind_STRING): {
-        auto pax_non_fixed_column = new PaxNonFixedColumn();
-        // current memory will copy from tuple, so should take over it
-        pax_non_fixed_column->SetMemTakeOver(true);
-        columns_.emplace_back(pax_non_fixed_column);
-        break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_BOOLEAN):
-      case (orc::proto::Type_Kind::Type_Kind_BYTE): {  // len 1 integer
-        columns_.emplace_back(new PaxCommColumn<char>());
-        break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_SHORT): {  // len 2 integer
-        columns_.emplace_back(new PaxCommColumn<int16>());
-        break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_INT): {  // len 4 integer
-        columns_.emplace_back(new PaxCommColumn<int32>());
-        break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_LONG): {
-        columns_.emplace_back(new PaxCommColumn<int64>());  // len 8 integer
-        break;
-      }
-      default:
-        // TODO(jiaqizho): support other column type
-        // but now should't be here
-        Assert(!"non-implemented column type");
-        break;
-    }
-  }
-}
-
-PaxColumns::PaxColumns() : row_nums_(0) { data_ = new DataBuffer<char>(0); }
-
-PaxColumns::~PaxColumns() {
-  for (auto column : columns_) {
-    delete column;
-  }
-  delete data_;
-}
-
-void PaxColumns::Clear() {
-  row_nums_ = 0;
-  for (auto column : columns_) {
-    column->Clear();
-  }
-
-  data_->Clear();
-}
-
-PaxColumn *PaxColumns::operator[](uint64 i) { return columns_[i]; }
-
-void PaxColumns::Append(PaxColumn *column) { columns_.emplace_back(column); }
-
-void PaxColumns::Append([[maybe_unused]] char *buffer,
-                        [[maybe_unused]] size_t size) {
-  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
-}
-
-void PaxColumns::Set(DataBuffer<char> *data) {
-  Assert(data_->GetBuffer() == nullptr);
-
-  delete data_;
-  data_ = data;
-}
-
-size_t PaxColumns::GetNonNullRows() const {
-  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
-}
-
-size_t PaxColumns::EstimatedSize() const {
-  size_t total_size = 0;
-  for (auto column : columns_) {
-    total_size += column->EstimatedSize();
-  }
-  return total_size;
-}
-
-size_t PaxColumns::GetColumns() const { return columns_.size(); }
-
-std::pair<char *, size_t> PaxColumns::GetBuffer() {
-  PaxColumns::PreCalcBufferFunc func_null;
-  auto data_buffer = GetDataBuffer(func_null);
-  return std::make_pair(data_buffer->GetBuffer(), data_buffer->Used());
-}
-
-std::pair<char *, size_t> PaxColumns::GetBuffer(size_t position) {
-  if (position >= GetColumns()) {
-    CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
-  }
-  return columns_[position]->GetBuffer();
-}
-
-DataBuffer<char> *PaxColumns::GetDataBuffer(const PreCalcBufferFunc &func) {
-  size_t buffer_len = 0;
-
-  if (data_->GetBuffer() != nullptr) {
-    // warning here: better not call GetDataBuffer twice
-    // memcpy will happen in GetDataBuffer
-    data_->Clear();
-  }
-
-  buffer_len = MeasureDataBuffer(func);
-  data_->Set(reinterpret_cast<char *>(cbdb::Palloc(buffer_len)), buffer_len, 0);
-  CombineDataBuffer();
-  return data_;
-}
-
-size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
-  size_t buffer_len = 0;
-
-  for (auto column : columns_) {
-    // has null will generate a bitmap in current stripe
-    if (column->HasNull()) {
-      size_t non_null_length = column->GetNulls()->Used();
-      buffer_len += non_null_length;
-      pre_calc_func(orc::proto::Stream_Kind_PRESENT, column->GetRows(),
-                    non_null_length);
-    }
-
-    size_t column_size = column->GetNonNullRows();
-
-    switch (column->GetPaxColumnTypeInMem()) {
-      case kTypeNonFixed: {
-        size_t lengths_size = column_size * sizeof(int64);
-
-        buffer_len += lengths_size;
-        pre_calc_func(orc::proto::Stream_Kind_LENGTH, column_size,
-                      lengths_size);
-
-        auto length_data = column->GetBuffer().second;
-        buffer_len += length_data;
-
-        pre_calc_func(orc::proto::Stream_Kind_DATA, column_size, length_data);
-
-        break;
-      }
-      case kTypeFixed: {
-        auto length_data = column->GetBuffer().second;
-        buffer_len += length_data;
-        pre_calc_func(orc::proto::Stream_Kind_DATA, column_size, length_data);
-
-        break;
-      }
-      case kTypeInvalid:
-      default: {
-        CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
-        break;
-      }
-    }
-  }
-  return buffer_len;
-}
-
-void PaxColumns::CombineDataBuffer() {
-  char *buffer = nullptr;
-  size_t buffer_len = 0;
-
-  for (auto column : columns_) {
-    if (column->HasNull()) {
-      auto null_data_buffer = column->GetNulls();
-      size_t non_null_length = null_data_buffer->Used();
-
-      data_->Write(reinterpret_cast<char *>(null_data_buffer->GetBuffer()),
-                   non_null_length);
-      data_->Brush(non_null_length);
-    }
-
-    switch (column->GetPaxColumnTypeInMem()) {
-      case kTypeNonFixed: {
-        auto no_fixed_column = reinterpret_cast<PaxNonFixedColumn *>(column);
-        auto length_data_buffer = no_fixed_column->GetLengthBuffer();
-
-        memcpy(data_->GetAvailableBuffer(), length_data_buffer->GetBuffer(),
-               length_data_buffer->Used());
-        data_->Brush(length_data_buffer->Used());
-
-        std::tie(buffer, buffer_len) = column->GetBuffer();
-        data_->Write(buffer, buffer_len);
-        data_->Brush(buffer_len);
-
-        break;
-      }
-      case kTypeFixed: {
-        std::tie(buffer, buffer_len) = column->GetBuffer();
-        data_->Write(buffer, buffer_len);
-        data_->Brush(buffer_len);
-        break;
-      }
-      case kTypeInvalid:
-      default:
-        break;
-    }
-  }
 }
 
 };  // namespace pax
