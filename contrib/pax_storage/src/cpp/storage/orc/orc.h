@@ -14,9 +14,10 @@
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_defer.h"
 #include "exceptions/CException.h"
+#include "storage/columns/pax_column.h"
+#include "storage/columns/pax_columns.h"
 #include "storage/file_system.h"
 #include "storage/micro_partition.h"
-#include "storage/pax_column.h"
 
 namespace pax {
 
