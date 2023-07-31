@@ -919,9 +919,9 @@ explain (costs off)
                                           QUERY PLAN                                          
 ----------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: (NULL::integer)
+   Merge Key: share0_ref2.a
    ->  Sort
-         Sort Key: (NULL::integer)
+         Sort Key: share0_ref2.a
          ->  Sequence
                ->  Shared Scan (share slice:id 1:0)
                      ->  Seq Scan on gstest2
