@@ -13,11 +13,11 @@ namespace cbdb {
 
 #ifdef __GNUC__
 
-static const char *EMPTY_MSG = "  <empty stack>\n";
-static const char *FUNC_NAME_MSG = "  %s: %s + %s\n";
-static const char *NO_FUNC_NAME_MSG = "  %s: <symbol not found> + %s\n";
-static const char *BEGIN_NAME_MSG = "  %s: %s() + %s\n";
-static const char *SYMBOL_NAME = "  %s\n";
+static const char *empty_msg = "  <empty stack>\n";
+static const char *func_name_msg = "  %s: %s + %s\n";
+static const char *no_func_name_msg = "  %s: <symbol not found> + %s\n";
+static const char *begin_name_msg = "  %s: %s() + %s\n";
+static const char *symbol_name = "  %s\n";
 
 static inline int Append(char *dst, size_t count, const char *format, ...) {
   va_list ap;
@@ -46,7 +46,7 @@ static inline void StackTrace(char *stack_buffer,
 
   addr_len = backtrace(addr_list, sizeof(addr_list) / sizeof(void *));
   if (addr_len == 0) {
-    Append(stack_buffer, DEFAULT_STACK_MAX_SIZE, EMPTY_MSG);
+    Append(stack_buffer, DEFAULT_STACK_MAX_SIZE, empty_msg);
     return;
   }
 
@@ -86,7 +86,7 @@ static inline void StackTrace(char *stack_buffer,
         // realloc happen
         // should not allow realloc in `abi::__cxa_demangle`
         // just return and make sure origin_func_name_size big enough
-        free(func_name);
+        free(func_name);  // NOLINT
         goto finish;
       }
       if (status == 0) {
@@ -94,26 +94,26 @@ static inline void StackTrace(char *stack_buffer,
           continue;
         }
         memcpy(func_name, ret, func_name_size);
-        single_buffer_size = strlen(FUNC_NAME_MSG) + strlen(symbol_list[i]) +
+        single_buffer_size = strlen(func_name_msg) + strlen(symbol_list[i]) +
                              func_name_size + strlen(begin_offset);
         if (index > DEFAULT_STACK_MAX_SIZE ||
             DEFAULT_STACK_MAX_SIZE - index < single_buffer_size) {
           goto finish;
         }
         index += Append(stack_buffer + index, DEFAULT_STACK_MAX_SIZE - index,
-                        FUNC_NAME_MSG, symbol_list[i], func_name, begin_offset);
+                        func_name_msg, symbol_list[i], func_name, begin_offset);
       } else {
         if (begin_name[0] == '\0') {
-          single_buffer_size = strlen(NO_FUNC_NAME_MSG) +
+          single_buffer_size = strlen(no_func_name_msg) +
                                strlen(symbol_list[i]) + strlen(begin_offset);
           if (index > DEFAULT_STACK_MAX_SIZE ||
               DEFAULT_STACK_MAX_SIZE - index < single_buffer_size) {
             goto finish;
           }
           index += Append(stack_buffer + index, DEFAULT_STACK_MAX_SIZE - index,
-                          NO_FUNC_NAME_MSG, symbol_list[i], begin_offset);
+                          no_func_name_msg, symbol_list[i], begin_offset);
         } else {
-          single_buffer_size = strlen(BEGIN_NAME_MSG) + strlen(symbol_list[i]) +
+          single_buffer_size = strlen(begin_name_msg) + strlen(symbol_list[i]) +
                                strlen(begin_name) + strlen(begin_offset);
           if (index >= DEFAULT_STACK_MAX_SIZE ||
               DEFAULT_STACK_MAX_SIZE - index < single_buffer_size) {
@@ -121,17 +121,17 @@ static inline void StackTrace(char *stack_buffer,
           }
           index +=
               Append(stack_buffer + index, DEFAULT_STACK_MAX_SIZE - index,
-                     BEGIN_NAME_MSG, symbol_list[i], begin_name, begin_offset);
+                     begin_name_msg, symbol_list[i], begin_name, begin_offset);
         }
       }
     } else {
-      single_buffer_size = strlen(SYMBOL_NAME) + strlen(symbol_list[i]);
+      single_buffer_size = strlen(symbol_name) + strlen(symbol_list[i]);
       if (index >= DEFAULT_STACK_MAX_SIZE ||
           DEFAULT_STACK_MAX_SIZE - index < single_buffer_size) {
         goto finish;
       }
       index += Append(stack_buffer + index, DEFAULT_STACK_MAX_SIZE - index,
-                      SYMBOL_NAME, symbol_list[i]);
+                      symbol_name, symbol_list[i]);
     }
   }
 
@@ -139,23 +139,23 @@ finish:
   if (index < DEFAULT_STACK_MAX_SIZE) {
     stack_buffer[index] = '\0';
   }
-  free(symbol_list);
+  free(symbol_list);  // NOLINT
 }
 
 #endif
 
-ErrorMessage::ErrorMessage() {
+ErrorMessage::ErrorMessage() {  // NOLINT
   index_ = 0;
   message_[0] = '\0';
 }
 
-ErrorMessage::ErrorMessage(const ErrorMessage &message) {
+ErrorMessage::ErrorMessage(const ErrorMessage &message) {  // NOLINT
   index_ = message.index_;
   std::memcpy(message_, message.message_, static_cast<size_t>(message.index_));
 }
 
 void ErrorMessage::Append(const char *format, ...) noexcept {
-  unsigned index = (unsigned)index_;
+  auto index = (unsigned)index_;
   if (index < sizeof(message_)) {
     va_list ap;
     int n;
@@ -167,7 +167,7 @@ void ErrorMessage::Append(const char *format, ...) noexcept {
 }
 
 void ErrorMessage::AppendV(const char *format, va_list ap) noexcept {
-  unsigned index = (unsigned)index_;
+  auto index = (unsigned)index_;
   if (index < sizeof(message_)) {
     int n;
     n = vsnprintf(&message_[index], sizeof(message_) - index, format, ap);
@@ -184,24 +184,26 @@ void CException::Raise(CException ex, bool reraise) {
     StackTrace(&ex.stack_[0]);
   }
 #endif
-  throw ex;
+  throw ex;  // NOLINT
 }
 
-CException::CException(ExType extype)
-    : m_filename(nullptr), m_lineno(0), m_extype(extype) {}
+CException::CException(ExType extype)  // NOLINT
+    : m_filename_(nullptr), m_lineno_(0), m_extype_(extype) {}
 
-CException::CException(const char *filename, int lineno, ExType extype)
-    : m_filename(filename), m_lineno(lineno), m_extype(extype) {}
+CException::CException(const char *filename, int lineno,  // NOLINT
+                       ExType extype)
+    : m_filename_(filename), m_lineno_(lineno), m_extype_(extype) {}
 
-const char *CException::Filename() const { return m_filename; }
+const char *CException::Filename() const { return m_filename_; }
 
-int CException::Lineno() const { return m_lineno; }
+int CException::Lineno() const { return m_lineno_; }
 
-CException::ExType CException::EType() const { return m_extype; }
+CException::ExType CException::EType() const { return m_extype_; }
 
 std::string CException::What() const {
   std::ostringstream buffer;
-  buffer << m_filename << ":" << m_lineno << " " << exception_names[m_extype];
+  buffer << m_filename_ << ":" << m_lineno_ << " "
+         << exception_names[m_extype_];
   return buffer.str();
 }
 
@@ -224,6 +226,7 @@ const char *CException::exception_names[] = {"Invalid ExType",
                                              "Invalid memory operation",
                                              "Schema not match",
                                              "Invalid orc format",
-                                             "Out of range"};
+                                             "Out of range",
+                                             "File operation got error"};
 
 }  // namespace cbdb
