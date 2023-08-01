@@ -1997,6 +1997,9 @@ readNodeBinary(void)
 			case T_DynamicIndexScan:
 				return_value = _readDynamicIndexScan();
 				break;
+			case T_DynamicIndexOnlyScan:
+				return_value = _readDynamicIndexOnlyScan();
+				break;
 			case T_BitmapIndexScan:
 				return_value = _readBitmapIndexScan();
 				break;

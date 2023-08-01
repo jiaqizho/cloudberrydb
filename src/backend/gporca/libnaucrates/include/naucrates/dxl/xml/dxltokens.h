@@ -737,6 +737,7 @@ enum Edxltoken
 	EdxltokenIndexTypeBrin,
 
 	EdxltokenForeignServerOid,
+	EdxltokenPhysicalDynamicIndexOnlyScan,
 
 	EdxltokenSentinel
 };
