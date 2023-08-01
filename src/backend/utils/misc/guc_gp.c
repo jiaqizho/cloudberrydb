@@ -347,6 +347,7 @@ bool		optimizer_enable_dml_constraints;
 bool		optimizer_enable_master_only_queries;
 bool		optimizer_enable_hashjoin;
 bool		optimizer_enable_dynamictablescan;
+bool		optimizer_enable_dynamicindexonlyscan;
 bool		optimizer_enable_indexscan;
 bool		optimizer_enable_indexonlyscan;
 bool		optimizer_enable_tablescan;
@@ -2301,6 +2302,17 @@ struct config_bool ConfigureNamesBool_gp[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
 		&optimizer_enable_indexscan,
+		true,
+		NULL, NULL, NULL
+	},
+
+	{
+		{"optimizer_enable_dynamicindexonlyscan", PGC_USERSET, QUERY_TUNING_METHOD,
+			gettext_noop("Enables the optimizer's use of plans with dynamic index only scan."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&optimizer_enable_dynamicindexonlyscan,
 		true,
 		NULL, NULL, NULL
 	},

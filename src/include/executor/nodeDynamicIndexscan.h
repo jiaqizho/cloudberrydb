@@ -21,6 +21,4 @@ extern TupleTableSlot *ExecDynamicIndexScan(PlanState *node);
 extern void ExecEndDynamicIndexScan(DynamicIndexScanState *node);
 extern void ExecReScanDynamicIndex(DynamicIndexScanState *node);
 
-extern AttrMap *IndexScan_GetColumnMapping(Oid oldOid, Oid newOid);
-
 #endif

@@ -956,6 +956,9 @@ _outNode(StringInfo str, void *obj)
 			case T_DynamicIndexScan:
 				_outDynamicIndexScan(str, obj);
 				break;
+			case T_DynamicIndexOnlyScan:
+				_outDynamicIndexOnlyScan(str, obj);
+				break;
 			case T_BitmapIndexScan:
 				_outBitmapIndexScan(str, obj);
 				break;
