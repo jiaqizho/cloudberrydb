@@ -6,7 +6,8 @@
 namespace cbdb {
 
 #define DEFAULT_STACK_MAX_DEPTH 63
-#define DEFAULT_STACK_MAX_SIZE (DEFAULT_STACK_MAX_DEPTH + 1) * PIPE_MAX_PAYLOAD
+#define DEFAULT_STACK_MAX_SIZE \
+  ((DEFAULT_STACK_MAX_DEPTH + 1) * PIPE_MAX_PAYLOAD)
 // error message buffer
 class ErrorMessage final {
  public:
@@ -62,9 +63,9 @@ class CException {
  private:
   char stack_[DEFAULT_STACK_MAX_SIZE];
   static const char *exception_names[];
-  const char *m_filename;
-  int m_lineno;
-  ExType m_extype;
+  const char *m_filename_;
+  int m_lineno_;
+  ExType m_extype_;
 };
 
 }  // namespace cbdb
