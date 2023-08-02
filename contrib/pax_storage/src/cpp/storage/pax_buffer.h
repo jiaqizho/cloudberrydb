@@ -169,6 +169,7 @@ class DataBuffer : public BlockBufferBase {
 };
 
 extern template class DataBuffer<char>;
+extern template class DataBuffer<int8>;
 extern template class DataBuffer<int16>;
 extern template class DataBuffer<int32>;
 extern template class DataBuffer<int64>;
