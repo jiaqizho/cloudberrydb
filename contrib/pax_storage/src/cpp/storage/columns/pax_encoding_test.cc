@@ -14,6 +14,34 @@
 
 namespace pax::tests {
 
+PaxDecoder *GetDecoderByBits(
+    uint8 data_bits, DataBuffer<char> *shared_data,
+    const PaxDecoder::DecodingOption &decoder_options) {
+  PaxDecoder *decoder = nullptr;
+  switch (data_bits) {
+    case 8:
+      decoder = PaxDecoder::CreateDecoder<int8>(
+          decoder_options, shared_data->GetBuffer(), shared_data->Used());
+      break;
+    case 16:
+      decoder = PaxDecoder::CreateDecoder<int16>(
+          decoder_options, shared_data->GetBuffer(), shared_data->Used());
+      break;
+    case 32:
+      decoder = PaxDecoder::CreateDecoder<int32>(
+          decoder_options, shared_data->GetBuffer(), shared_data->Used());
+      break;
+    case 64:
+      decoder = PaxDecoder::CreateDecoder<int64>(
+          decoder_options, shared_data->GetBuffer(), shared_data->Used());
+      break;
+    default:
+      decoder = nullptr;
+      break;
+  }
+  return decoder;
+}
+
 class PaxEncodingTest : public ::testing::Test {
   void SetUp() override {
     MemoryContext pax_encoding_memory_context = AllocSetContextCreate(
@@ -35,8 +63,20 @@ class PaxEncodingRangeTest
   }
 };
 
-class PaxEncodingShortRepeatRangeTest : public PaxEncodingRangeTest {};
-class PaxEncodingDeltaRangeTest : public PaxEncodingRangeTest {};
+class PaxEncodingRangeWithBitsTest
+    : public ::testing::TestWithParam<::testing::tuple<uint64, bool, uint8>> {
+ public:
+  void SetUp() override {
+    MemoryContext pax_encoding_memory_context = AllocSetContextCreate(
+        (MemoryContext)NULL, "PaxCompressTestMemoryContext", 1 * 1024 * 1024,
+        1 * 1024 * 1024, 1 * 1024 * 1024);
+
+    MemoryContextSwitchTo(pax_encoding_memory_context);
+  }
+};
+
+class PaxEncodingShortRepeatRangeTest : public PaxEncodingRangeWithBitsTest {};
+class PaxEncodingDeltaRangeTest : public PaxEncodingRangeWithBitsTest {};
 class PaxEncodingWriteReadLongsRangeTest : public PaxEncodingRangeTest {};
 
 class PaxEncodingDeltaIncDecRangeTest
@@ -53,7 +93,8 @@ class PaxEncodingDeltaIncDecRangeTest
 class PaxEncodingDirectRangeTest : public PaxEncodingDeltaIncDecRangeTest {};
 
 class PaxEncodingRawDataTest
-    : public testing::TestWithParam<std::vector<int64>> {
+    : public testing::TestWithParam<
+          ::testing::tuple<std::vector<int64>, uint8>> {
   void SetUp() override {
     MemoryContext pax_encoding_memory_context = AllocSetContextCreate(
         (MemoryContext)NULL, "PaxCompressTestMemoryContext", 200 * 1024 * 1024,
@@ -172,6 +213,7 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
   auto shared_dst_data = new DataBuffer<char>(10240);
   auto sr_len = ::testing::get<0>(GetParam());
   auto sign = ::testing::get<1>(GetParam());
+  auto data_bits = ::testing::get<2>(GetParam());
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
@@ -204,23 +246,65 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+
+  PaxDecoder *decoder =
+      GetDecoderByBits(data_bits, shared_data, std::move(decoder_options));
+  EXPECT_TRUE(decoder);
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
 
-  EXPECT_EQ(shared_dst_data->Used(), sr_len * sizeof(int64));
+  EXPECT_EQ(shared_dst_data->Used(), sr_len * data_bits / 8);
 
-  auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
-                            shared_dst_data->Used(), false, false);
+  switch (data_bits) {
+    case 8: {
+      auto result_dst_data = new DataBuffer<int8>(
+          reinterpret_cast<int8 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
 
-  for (size_t i = 0; i < sr_len; i++) {
-    EXPECT_EQ((*result_dst_data)[i], *data);
+      for (size_t i = 0; i < sr_len; i++) {
+        EXPECT_EQ((*result_dst_data)[i], *data);
+      }
+      delete result_dst_data;
+      break;
+    }
+    case 16: {
+      auto result_dst_data = new DataBuffer<int16>(
+          reinterpret_cast<int16 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
+
+      for (size_t i = 0; i < sr_len; i++) {
+        EXPECT_EQ((*result_dst_data)[i], *data);
+      }
+      delete result_dst_data;
+      break;
+    }
+    case 32: {
+      auto result_dst_data = new DataBuffer<int32>(
+          reinterpret_cast<int32 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
+
+      for (size_t i = 0; i < sr_len; i++) {
+        EXPECT_EQ((*result_dst_data)[i], *data);
+      }
+      delete result_dst_data;
+      break;
+    }
+    case 64: {
+      auto result_dst_data = new DataBuffer<int64>(
+          reinterpret_cast<int64 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
+
+      for (size_t i = 0; i < sr_len; i++) {
+        EXPECT_EQ((*result_dst_data)[i], *data);
+      }
+      delete result_dst_data;
+      break;
+    }
+    default:
+      break;
   }
 
-  delete result_dst_data;
   delete data;
   delete shared_data;
   delete shared_dst_data;
@@ -232,13 +316,16 @@ INSTANTIATE_TEST_CASE_P(PaxEncodingRangeTestCombine,
                         PaxEncodingShortRepeatRangeTest,
                         testing::Combine(testing::Values(3, 4, 5, 6, 7, 8, 9,
                                                          10),
-                                         testing::Values(true, false)));
+                                         testing::Values(true, false),
+                                         testing::Values(8, 16, 32, 64)));
 
 TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
   PaxEncoder *encoder;
   int64 *data;
   auto delta_len = ::testing::get<0>(GetParam());
   auto sign = ::testing::get<1>(GetParam());
+  auto data_bits = ::testing::get<2>(GetParam());
+
   auto shared_data = new DataBuffer<char>(delta_len * sizeof(int64));
   auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
 
@@ -274,23 +361,65 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+
+  PaxDecoder *decoder =
+      GetDecoderByBits(data_bits, shared_data, std::move(decoder_options));
+  EXPECT_TRUE(decoder);
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
 
-  EXPECT_EQ(shared_dst_data->Used(), delta_len * sizeof(int64));
+  EXPECT_EQ(shared_dst_data->Used(), delta_len * data_bits / 8);
 
-  auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
-                            shared_dst_data->Used(), false, false);
+  switch (data_bits) {
+    case 8: {
+      auto result_dst_data = new DataBuffer<int8>(
+          reinterpret_cast<int8 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
 
-  for (size_t i = 0; i < delta_len; i++) {
-    EXPECT_EQ((*result_dst_data)[i], *data);
+      for (size_t i = 0; i < delta_len; i++) {
+        EXPECT_EQ((*result_dst_data)[i], *data);
+      }
+      delete result_dst_data;
+      break;
+    }
+    case 16: {
+      auto result_dst_data = new DataBuffer<int16>(
+          reinterpret_cast<int16 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
+
+      for (size_t i = 0; i < delta_len; i++) {
+        EXPECT_EQ((*result_dst_data)[i], *data);
+      }
+      delete result_dst_data;
+      break;
+    }
+    case 32: {
+      auto result_dst_data = new DataBuffer<int32>(
+          reinterpret_cast<int32 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
+
+      for (size_t i = 0; i < delta_len; i++) {
+        EXPECT_EQ((*result_dst_data)[i], *data);
+      }
+      delete result_dst_data;
+      break;
+    }
+    case 64: {
+      auto result_dst_data = new DataBuffer<int64>(
+          reinterpret_cast<int64 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
+
+      for (size_t i = 0; i < delta_len; i++) {
+        EXPECT_EQ((*result_dst_data)[i], *data);
+      }
+      delete result_dst_data;
+      break;
+    }
+    default:
+      break;
   }
 
-  delete result_dst_data;
   delete data;
   delete shared_data;
   delete shared_dst_data;
@@ -301,7 +430,8 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
 INSTANTIATE_TEST_CASE_P(PaxEncodingRangeTestCombine, PaxEncodingDeltaRangeTest,
                         testing::Combine(testing::Values(11, 100, 256, 345, 511,
                                                          512),
-                                         testing::Values(true, false)));
+                                         testing::Values(true, false),
+                                         testing::Values(16, 32, 64)));
 
 TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
   PaxEncoder *encoder;
@@ -349,7 +479,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder(
+  auto decoder = PaxDecoder::CreateDecoder<int64>(
       decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
@@ -418,7 +548,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder(
+  auto decoder = PaxDecoder::CreateDecoder<int64>(
       decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
@@ -490,7 +620,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder(
+  auto decoder = PaxDecoder::CreateDecoder<int64>(
       decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
@@ -562,7 +692,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder(
+  auto decoder = PaxDecoder::CreateDecoder<int64>(
       decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
@@ -624,7 +754,7 @@ TEST_P(PaxEncodingWriteReadLongsRangeTest, TestOrcDirectWriteReadLong) {
   read_src_buffer->Brush(write_dst_buffer->Used());
 
   uint32 bits_left = 0;
-  ReadLongs(read_src_buffer, result, 0, 3, bits_align, &bits_left);
+  ReadLongs<int64>(read_src_buffer, result, 0, 3, bits_align, &bits_left);
 
   ASSERT_EQ(result[0], data[0]);
   ASSERT_EQ(result[1], data[1]);
@@ -707,7 +837,7 @@ TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder(
+  auto decoder = PaxDecoder::CreateDecoder<int64>(
       decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
@@ -739,7 +869,8 @@ INSTANTIATE_TEST_CASE_P(
 
 TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
   PaxEncoder *encoder;
-  auto data_vec = GetParam();
+  auto data_vec = ::testing::get<0>(GetParam());
+  auto data_bits = ::testing::get<1>(GetParam());
   auto data_lens = data_vec.size();
   auto shared_data = new DataBuffer<char>(data_lens * sizeof(int64));
   auto shared_dst_data = new DataBuffer<char>(data_lens * sizeof(int64));
@@ -767,23 +898,43 @@ TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = true;
-  auto decoder = PaxDecoder::CreateDecoder(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+
+  auto decoder =
+      GetDecoderByBits(data_bits, shared_data, std::move(decoder_options));
+  EXPECT_TRUE(decoder);
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
 
-  EXPECT_EQ(shared_dst_data->Used(), 20 * sizeof(int64));
+  EXPECT_EQ(shared_dst_data->Used(), 20 * data_bits / 8);
 
-  auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
-                            shared_dst_data->Used(), false, false);
+  switch (data_bits) {
+    case 32: {
+      auto result_dst_data = new DataBuffer<int32>(
+          reinterpret_cast<int32 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
 
-  for (size_t i = 0; i < 20; i++) {
-    EXPECT_EQ((*result_dst_data)[i], data_vec[i]);
+      for (size_t i = 0; i < 20; i++) {
+        EXPECT_EQ((*result_dst_data)[i], data_vec[i]);
+      }
+      delete result_dst_data;
+      break;
+    }
+    case 64: {
+      auto result_dst_data = new DataBuffer<int64>(
+          reinterpret_cast<int64 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
+
+      for (size_t i = 0; i < 20; i++) {
+        EXPECT_EQ((*result_dst_data)[i], data_vec[i]);
+      }
+      delete result_dst_data;
+      break;
+    }
+    default:
+      break;
   }
 
-  delete result_dst_data;
   delete shared_data;
   delete shared_dst_data;
   delete encoder;
@@ -792,20 +943,23 @@ TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
 
 INSTANTIATE_TEST_CASE_P(
     PaxEncodingRangeTestCombine, PaxEncodingPBTest,
-    testing::Values(
-        std::vector<int64>{2030, 2000, 2020, 1000000, 2040, 2050, 2060,
-                           2070, 2080, 2090, 2100,    2110, 2120, 2130,
-                           2140, 2150, 2160, 2170,    2180, 2190},
-        std::vector<int64>{2030, 2000, 2020, 2040,    2050, 2060, 2070,
-                           2080, 2090, 2100, 1000000, 2110, 2120, 2130,
-                           2140, 2150, 2160, 2170,    2180, 2190},
-        std::vector<int64>{2030, 3333, 1111, 4444,    9991, 33213, 3213,
-                           1,    2090, 2100, 1000000, 2110, 2120,  2130,
-                           2140, 11,   2160, 2170,    2180, 2190}));
+    testing::Combine(
+        testing::Values(
+            std::vector<int64>{2030, 2000, 2020, 1000000, 2040, 2050, 2060,
+                               2070, 2080, 2090, 2100,    2110, 2120, 2130,
+                               2140, 2150, 2160, 2170,    2180, 2190},
+            std::vector<int64>{2030, 2000, 2020, 2040,    2050, 2060, 2070,
+                               2080, 2090, 2100, 1000000, 2110, 2120, 2130,
+                               2140, 2150, 2160, 2170,    2180, 2190},
+            std::vector<int64>{2030, 3333, 1111, 4444,    9991, 33213, 3213,
+                               1,    2090, 2100, 1000000, 2110, 2120,  2130,
+                               2140, 11,   2160, 2170,    2180, 2190}),
+        testing::Values(32, 64)));
 
 TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
   PaxEncoder *encoder;
-  auto data_vec = GetParam();
+  auto data_vec = ::testing::get<0>(GetParam());
+  auto data_bits = ::testing::get<1>(GetParam());
   auto data_lens = data_vec.size();
   auto shared_data = new DataBuffer<char>(data_lens * sizeof(int64));
   auto shared_dst_data = new DataBuffer<char>(data_lens * sizeof(int64));
@@ -834,23 +988,43 @@ TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = true;
-  auto decoder = PaxDecoder::CreateDecoder(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+
+  auto decoder =
+      GetDecoderByBits(data_bits, shared_data, std::move(decoder_options));
+  EXPECT_TRUE(decoder);
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
 
-  EXPECT_EQ(shared_dst_data->Used(), data_lens * sizeof(int64));
+  EXPECT_EQ(shared_dst_data->Used(), data_lens * data_bits / 8);
 
-  auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
-                            shared_dst_data->Used(), false, false);
+  switch (data_bits) {
+    case 32: {
+      auto result_dst_data = new DataBuffer<int32>(
+          reinterpret_cast<int32 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
 
-  for (size_t i = 0; i < data_lens; i++) {
-    EXPECT_EQ((*result_dst_data)[i], data_vec[i]);
+      for (size_t i = 0; i < data_lens; i++) {
+        EXPECT_EQ((*result_dst_data)[i], data_vec[i]);
+      }
+      delete result_dst_data;
+      break;
+    }
+    case 64: {
+      auto result_dst_data = new DataBuffer<int64>(
+          reinterpret_cast<int64 *>(shared_dst_data->Start()),
+          shared_dst_data->Used(), false, false);
+
+      for (size_t i = 0; i < data_lens; i++) {
+        EXPECT_EQ((*result_dst_data)[i], data_vec[i]);
+      }
+      delete result_dst_data;
+      break;
+    }
+    default:
+      break;
   }
 
-  delete result_dst_data;
   delete shared_data;
   delete shared_dst_data;
   delete encoder;
@@ -859,43 +1033,47 @@ TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
 
 INSTANTIATE_TEST_CASE_P(
     PaxEncodingRangeTestCombine, PaxEncodingRawDataTest,
-    testing::Values(
-        std::vector<int64>{1, 23, 4, 5123, 123123, 3213214, 543123, 3213, 34,
-                           123, 5213, 23, 52},
-        std::vector<int64>{-1, -23, -4, -5123, -123123, -3213214, -543123,
-                           -3213, -34, -123, -5213, -23, -52},
-        std::vector<int64>{1, 2, 3, 4, 5, 123, 3, 3, 3, 3, 4, 4, 4, 5, 55, 5},
-        std::vector<int64>{-1, -2, -3, -4, -5, -123, -3, -3, -3, -3, -4, -4, -4,
-                           -5, -55, -5},
-        std::vector<int64>{2030, 2000, 2020, 1000000, 2040, 2050, 2060,
-                           2070, 2080, 2090, 2100,    2110, 2120, 2130,
-                           2140, 2150, 2160, 2170,    2180, 2190},
-        std::vector<int64>{-2030, -2000, -2020, -1000000, -2040, -2050, -2060,
-                           -2070, -2080, -2090, -2100,    -2110, -2120, -2130,
-                           -2140, -2150, -2160, -2170,    -2180, -2190},
-        std::vector<int64>{1, 2, 3, 4, 5, 123, 3, 3, 3, 3, 3, 3,  3, 3,
-                           3, 3, 3, 3, 3, 3,   3, 4, 4, 4, 5, 55, 5},
-        std::vector<int64>{-1, -2, -3, -4, -5, -123, -3, -3,  -3,
-                           -3, -3, -3, -3, -3, -3,   -3, -3,  -3,
-                           -3, -3, -3, -4, -4, -4,   -5, -55, -5},
-        std::vector<int64>{1, 2, 3, 4, 5, 123, 3, 3, 3, 3, 3,  3, 3, 3,
-                           3, 3, 3, 3, 3, 3,   3, 4, 4, 4, 4,  4, 4, 4,
-                           4, 4, 4, 4, 4, 4,   4, 4, 4, 5, 55, 5},
-        std::vector<int64>{-1, -2, -3, -4, -5, -123, -3, -3, -3,  -3,
-                           -3, -3, -3, -3, -3, -3,   -3, -3, -3,  -3,
-                           -3, -4, -4, -4, -4, -4,   -4, -4, -4,  -4,
-                           -4, -4, -4, -4, -4, -4,   -4, -5, -55, -5},
-        std::vector<int64>{1, 2, 3, 4,   5, 123, 3, 3, 3, 3, 3,  3,   3, 3,
-                           3, 3, 3, 3,   3, 3,   3, 4, 4, 4, 4,  333, 4, 4,
-                           4, 4, 4, 823, 4, 4,   4, 4, 4, 5, 55, 5},
-        std::vector<int64>{-1, -2,   -3, -4, -5, -123, -3, -3, -3,  -3,
-                           -3, -3,   -3, -3, -3, -3,   -3, -3, -3,  -3,
-                           -3, -4,   -4, -4, -4, -333, -4, -4, -4,  -4,
-                           -4, -823, -4, -4, -4, -4,   -4, -5, -55, -5},
-        std::vector<int64>{-1, -2,   -3, -4, -5, 123, -3, -3, -3,  -3,
-                           -3, -3,   -3, 3,  -3, 3,   -3, -3, -3,  -3,
-                           -3, -4,   4,  -4, -4, 333, -4, -4, -4,  -4,
-                           -4, -823, -4, -4, 4,  -4,  -4, -5, -55, -5}));
+    testing::Combine(
+        testing::Values(
+            std::vector<int64>{1, 23, 4, 5123, 123123, 3213214, 543123, 3213,
+                               34, 123, 5213, 23, 52},
+            std::vector<int64>{-1, -23, -4, -5123, -123123, -3213214, -543123,
+                               -3213, -34, -123, -5213, -23, -52},
+            std::vector<int64>{1, 2, 3, 4, 5, 123, 3, 3, 3, 3, 4, 4, 4, 5, 55,
+                               5},
+            std::vector<int64>{-1, -2, -3, -4, -5, -123, -3, -3, -3, -3, -4, -4,
+                               -4, -5, -55, -5},
+            std::vector<int64>{2030, 2000, 2020, 1000000, 2040, 2050, 2060,
+                               2070, 2080, 2090, 2100,    2110, 2120, 2130,
+                               2140, 2150, 2160, 2170,    2180, 2190},
+            std::vector<int64>{-2030, -2000, -2020, -1000000, -2040,
+                               -2050, -2060, -2070, -2080,    -2090,
+                               -2100, -2110, -2120, -2130,    -2140,
+                               -2150, -2160, -2170, -2180,    -2190},
+            std::vector<int64>{1, 2, 3, 4, 5, 123, 3, 3, 3, 3, 3, 3,  3, 3,
+                               3, 3, 3, 3, 3, 3,   3, 4, 4, 4, 5, 55, 5},
+            std::vector<int64>{-1, -2, -3, -4, -5, -123, -3, -3,  -3,
+                               -3, -3, -3, -3, -3, -3,   -3, -3,  -3,
+                               -3, -3, -3, -4, -4, -4,   -5, -55, -5},
+            std::vector<int64>{1, 2, 3, 4, 5, 123, 3, 3, 3, 3, 3,  3, 3, 3,
+                               3, 3, 3, 3, 3, 3,   3, 4, 4, 4, 4,  4, 4, 4,
+                               4, 4, 4, 4, 4, 4,   4, 4, 4, 5, 55, 5},
+            std::vector<int64>{-1, -2, -3, -4, -5, -123, -3, -3, -3,  -3,
+                               -3, -3, -3, -3, -3, -3,   -3, -3, -3,  -3,
+                               -3, -4, -4, -4, -4, -4,   -4, -4, -4,  -4,
+                               -4, -4, -4, -4, -4, -4,   -4, -5, -55, -5},
+            std::vector<int64>{1, 2, 3, 4,   5, 123, 3, 3, 3, 3, 3,  3,   3, 3,
+                               3, 3, 3, 3,   3, 3,   3, 4, 4, 4, 4,  333, 4, 4,
+                               4, 4, 4, 823, 4, 4,   4, 4, 4, 5, 55, 5},
+            std::vector<int64>{-1, -2,   -3, -4, -5, -123, -3, -3, -3,  -3,
+                               -3, -3,   -3, -3, -3, -3,   -3, -3, -3,  -3,
+                               -3, -4,   -4, -4, -4, -333, -4, -4, -4,  -4,
+                               -4, -823, -4, -4, -4, -4,   -4, -5, -55, -5},
+            std::vector<int64>{-1, -2,   -3, -4, -5, 123, -3, -3, -3,  -3,
+                               -3, -3,   -3, 3,  -3, 3,   -3, -3, -3,  -3,
+                               -3, -4,   4,  -4, -4, 333, -4, -4, -4,  -4,
+                               -4, -823, -4, -4, 4,  -4,  -4, -5, -55, -5}),
+        testing::Values(32, 64)));
 
 TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
   PaxEncoder *encoder;
@@ -943,7 +1121,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder(
+    auto decoder = PaxDecoder::CreateDecoder<int64>(
         decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
@@ -981,7 +1159,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder(
+    auto decoder = PaxDecoder::CreateDecoder<int64>(
         decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
@@ -1020,7 +1198,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder(
+    auto decoder = PaxDecoder::CreateDecoder<int64>(
         decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
@@ -1097,7 +1275,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder(
+    auto decoder = PaxDecoder::CreateDecoder<int64>(
         decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
@@ -1135,7 +1313,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder(
+    auto decoder = PaxDecoder::CreateDecoder<int64>(
         decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
@@ -1173,7 +1351,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder(
+    auto decoder = PaxDecoder::CreateDecoder<int64>(
         decoder_options, shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
@@ -1218,7 +1396,7 @@ TEST_F(PaxEncodingTest, TestEncodingWithAllNULL) {
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
   decoder_options.is_sign = true;
-  auto decoder = PaxDecoder::CreateDecoder(decoder_options, nullptr, 0);
+  auto decoder = PaxDecoder::CreateDecoder<int64>(decoder_options, nullptr, 0);
 
   decoder->SetDataBuffer(shared_dst_data);
   auto n_read = decoder->Decoding(not_null.data(), 20);

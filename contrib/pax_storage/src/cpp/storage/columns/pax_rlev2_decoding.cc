@@ -7,8 +7,9 @@
 namespace pax {
 
 #ifndef RUN_GTEST
-void ReadLongs(TreatedDataBuffer<int64> *data_buffer, int64 *data,
-               uint64 offset, uint64 len, uint64 fbs, uint32 *bits_left);
+template <typename T>
+void ReadLongs(TreatedDataBuffer<int64> *data_buffer, T *data, uint64 offset,
+               uint64 len, uint64 fbs, uint32 *bits_left);
 #endif
 
 unsigned char ReadByte(TreatedDataBuffer<int64> *data_buffer);
@@ -56,8 +57,12 @@ void AdjustGapAndPatch(DataBuffer<int64> *unpacked, uint32 patch_bits,
 /*
  * copy temp data to data which will skip the null field
  */
-uint64 CopyData(int64 *data, int64 *temp_data, uint64 len, uint64 offset,
+template <typename T>
+uint64 CopyData(T *data, const int64 *temp_data, uint64 len, uint64 offset,
                 const char *not_null);
+
+template uint64 CopyData(int64 *data, const int64 *temp_data, uint64 len,
+                         uint64 offset, const char *not_null);
 
 unsigned char ReadByte(TreatedDataBuffer<int64> *data_buffer) {
   unsigned char result = data_buffer->GetTreatedRawBuffer()[0];
@@ -82,7 +87,7 @@ int64 ReadLongBE(TreatedDataBuffer<int64> *data_buffer, uint64 bsz) {
 }
 
 int64 ReadSignedLong(TreatedDataBuffer<int64> *data_buffer) {
-  return UnZigZag(ReadUnsignedLong(data_buffer));
+  return UnZigZag<uint64>(ReadUnsignedLong(data_buffer));
 }
 
 uint64 ReadUnsignedLong(TreatedDataBuffer<int64> *data_buffer) {
@@ -96,7 +101,8 @@ uint64 ReadUnsignedLong(TreatedDataBuffer<int64> *data_buffer) {
   return ret;
 }
 
-void UnrolledUnpack4(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack4(TreatedDataBuffer<int64> *data_buffer, T *data,
                      uint64 offset, uint64 len, uint32 *bits_left) {
   uint64 cur_idx = offset;
   uint32 cur_byte = 0;
@@ -136,7 +142,8 @@ void UnrolledUnpack4(TreatedDataBuffer<int64> *data_buffer, int64 *data,
   }
 }
 
-void UnrolledUnpack8(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack8(TreatedDataBuffer<int64> *data_buffer, T *data,
                      uint64 offset, uint64 len) {
   uint64 cur_idx = offset;
   int64 buff_len;
@@ -159,7 +166,8 @@ void UnrolledUnpack8(TreatedDataBuffer<int64> *data_buffer, int64 *data,
   }
 }
 
-void UnrolledUnpack16(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack16(TreatedDataBuffer<int64> *data_buffer, T *data,
                       uint64 offset, uint64 len) {
   uint64 cur_idx = offset;
   int64 buff_len;
@@ -187,7 +195,8 @@ void UnrolledUnpack16(TreatedDataBuffer<int64> *data_buffer, int64 *data,
   }
 }
 
-void UnrolledUnpack24(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack24(TreatedDataBuffer<int64> *data_buffer, T *data,
                       uint64 offset, uint64 len) {
   uint64 cur_idx = offset;
   int64 buff_len;
@@ -203,7 +212,7 @@ void UnrolledUnpack24(TreatedDataBuffer<int64> *data_buffer, int64 *data,
       b1 = static_cast<uint32>(*(buffer + 1));
       b2 = static_cast<uint32>(*(buffer + 2));
       buffer += 3;
-      data[cur_idx++] = static_cast<int64>((b0 << 16) | (b1 << 8) | b2);
+      data[cur_idx++] = static_cast<T>((b0 << 16) | (b1 << 8) | b2);
     }
     data_buffer->BrushTreated(buff_len * 3);
 
@@ -212,11 +221,12 @@ void UnrolledUnpack24(TreatedDataBuffer<int64> *data_buffer, int64 *data,
     b0 = ReadByte(data_buffer);
     b1 = ReadByte(data_buffer);
     b2 = ReadByte(data_buffer);
-    data[cur_idx++] = static_cast<int64>((b0 << 16) | (b1 << 8) | b2);
+    data[cur_idx++] = static_cast<T>((b0 << 16) | (b1 << 8) | b2);
   }
 }
 
-void UnrolledUnpack32(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack32(TreatedDataBuffer<int64> *data_buffer, T *data,
                       uint64 offset, uint64 len) {
   uint64 cur_idx = offset;
   int64 buff_len;
@@ -235,7 +245,7 @@ void UnrolledUnpack32(TreatedDataBuffer<int64> *data_buffer, int64 *data,
       b3 = static_cast<uint32>(*(buffer + 3));
       buffer += 4;
       data[cur_idx++] =
-          static_cast<int64>((b0 << 24) | (b1 << 16) | (b2 << 8) | b3);
+          static_cast<T>((b0 << 24) | (b1 << 16) | (b2 << 8) | b3);
     }
 
     data_buffer->BrushTreated(reinterpret_cast<const char *>(buffer) -
@@ -246,12 +256,12 @@ void UnrolledUnpack32(TreatedDataBuffer<int64> *data_buffer, int64 *data,
     b1 = ReadByte(data_buffer);
     b2 = ReadByte(data_buffer);
     b3 = ReadByte(data_buffer);
-    data[cur_idx++] =
-        static_cast<int64>((b0 << 24) | (b1 << 16) | (b2 << 8) | b3);
+    data[cur_idx++] = static_cast<T>((b0 << 24) | (b1 << 16) | (b2 << 8) | b3);
   }
 }
 
-void UnrolledUnpack40(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack40(TreatedDataBuffer<int64> *data_buffer, T *data,
                       uint64 offset, uint64 len) {
   uint64 cur_idx = offset;
   int64 buff_len;
@@ -270,8 +280,8 @@ void UnrolledUnpack40(TreatedDataBuffer<int64> *data_buffer, int64 *data,
       b3 = static_cast<uint32>(*(buffer + 3));
       b4 = static_cast<uint32>(*(buffer + 4));
       buffer += 5;
-      data[cur_idx++] = static_cast<int64>((b0 << 32) | (b1 << 24) |
-                                           (b2 << 16) | (b3 << 8) | b4);
+      data[cur_idx++] =
+          static_cast<T>((b0 << 32) | (b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
     }
 
     data_buffer->BrushTreated(reinterpret_cast<const char *>(buffer) -
@@ -283,12 +293,13 @@ void UnrolledUnpack40(TreatedDataBuffer<int64> *data_buffer, int64 *data,
     b2 = ReadByte(data_buffer);
     b3 = ReadByte(data_buffer);
     b4 = ReadByte(data_buffer);
-    data[cur_idx++] = static_cast<int64>((b0 << 32) | (b1 << 24) | (b2 << 16) |
-                                         (b3 << 8) | b4);
+    data[cur_idx++] =
+        static_cast<T>((b0 << 32) | (b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
   }
 }
 
-void UnrolledUnpack48(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack48(TreatedDataBuffer<int64> *data_buffer, T *data,
                       uint64 offset, uint64 len) {
   uint64 cur_idx = offset;
   int64 buff_len;
@@ -308,8 +319,8 @@ void UnrolledUnpack48(TreatedDataBuffer<int64> *data_buffer, int64 *data,
       b4 = static_cast<uint32>(*(buffer + 4));
       b5 = static_cast<uint32>(*(buffer + 5));
       buffer += 6;
-      data[cur_idx++] = static_cast<int64>(
-          (b0 << 40) | (b1 << 32) | (b2 << 24) | (b3 << 16) | (b4 << 8) | b5);
+      data[cur_idx++] = static_cast<T>((b0 << 40) | (b1 << 32) | (b2 << 24) |
+                                       (b3 << 16) | (b4 << 8) | b5);
     }
 
     data_buffer->BrushTreated(reinterpret_cast<const char *>(buffer) -
@@ -322,12 +333,13 @@ void UnrolledUnpack48(TreatedDataBuffer<int64> *data_buffer, int64 *data,
     b3 = ReadByte(data_buffer);
     b4 = ReadByte(data_buffer);
     b5 = ReadByte(data_buffer);
-    data[cur_idx++] = static_cast<int64>((b0 << 40) | (b1 << 32) | (b2 << 24) |
-                                         (b3 << 16) | (b4 << 8) | b5);
+    data[cur_idx++] = static_cast<T>((b0 << 40) | (b1 << 32) | (b2 << 24) |
+                                     (b3 << 16) | (b4 << 8) | b5);
   }
 }
 
-void UnrolledUnpack56(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack56(TreatedDataBuffer<int64> *data_buffer, T *data,
                       uint64 offset, uint64 len) {
   uint64 cur_idx = offset;
   int64 buff_len;
@@ -349,8 +361,8 @@ void UnrolledUnpack56(TreatedDataBuffer<int64> *data_buffer, int64 *data,
       b6 = static_cast<uint32>(*(buffer + 6));
       buffer += 7;
       data[cur_idx++] =
-          static_cast<int64>((b0 << 48) | (b1 << 40) | (b2 << 32) | (b3 << 24) |
-                             (b4 << 16) | (b5 << 8) | b6);
+          static_cast<T>((b0 << 48) | (b1 << 40) | (b2 << 32) | (b3 << 24) |
+                         (b4 << 16) | (b5 << 8) | b6);
     }
 
     data_buffer->BrushTreated(reinterpret_cast<const char *>(buffer) -
@@ -364,13 +376,13 @@ void UnrolledUnpack56(TreatedDataBuffer<int64> *data_buffer, int64 *data,
     b4 = ReadByte(data_buffer);
     b5 = ReadByte(data_buffer);
     b6 = ReadByte(data_buffer);
-    data[cur_idx++] =
-        static_cast<int64>((b0 << 48) | (b1 << 40) | (b2 << 32) | (b3 << 24) |
-                           (b4 << 16) | (b5 << 8) | b6);
+    data[cur_idx++] = static_cast<T>((b0 << 48) | (b1 << 40) | (b2 << 32) |
+                                     (b3 << 24) | (b4 << 16) | (b5 << 8) | b6);
   }
 }
 
-void UnrolledUnpack64(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnrolledUnpack64(TreatedDataBuffer<int64> *data_buffer, T *data,
                       uint64 offset, uint64 len) {
   uint64 cur_idx = offset;
   int64 buff_len;
@@ -393,8 +405,8 @@ void UnrolledUnpack64(TreatedDataBuffer<int64> *data_buffer, int64 *data,
       b7 = static_cast<uint32>(*(buffer + 7));
       buffer += 8;
       data[cur_idx++] =
-          static_cast<int64>((b0 << 56) | (b1 << 48) | (b2 << 40) | (b3 << 32) |
-                             (b4 << 24) | (b5 << 16) | (b6 << 8) | b7);
+          static_cast<T>((b0 << 56) | (b1 << 48) | (b2 << 40) | (b3 << 32) |
+                         (b4 << 24) | (b5 << 16) | (b6 << 8) | b7);
     }
 
     data_buffer->BrushTreated(reinterpret_cast<const char *>(buffer) -
@@ -410,12 +422,13 @@ void UnrolledUnpack64(TreatedDataBuffer<int64> *data_buffer, int64 *data,
     b6 = ReadByte(data_buffer);
     b7 = ReadByte(data_buffer);
     data[cur_idx++] =
-        static_cast<int64>((b0 << 56) | (b1 << 48) | (b2 << 40) | (b3 << 32) |
-                           (b4 << 24) | (b5 << 16) | (b6 << 8) | b7);
+        static_cast<T>((b0 << 56) | (b1 << 48) | (b2 << 40) | (b3 << 32) |
+                       (b4 << 24) | (b5 << 16) | (b6 << 8) | b7);
   }
 }
 
-void UnpackNonAlignedLongs(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+template <typename T>
+void UnpackNonAlignedLongs(TreatedDataBuffer<int64> *data_buffer, T *data,
                            uint64 offset, uint64 len, uint64 fbs,
                            uint32 *bits_left) {
   unsigned char cur_byte = data_buffer->GetTreatedRawBuffer()[0];
@@ -437,43 +450,58 @@ void UnpackNonAlignedLongs(TreatedDataBuffer<int64> *data_buffer, int64 *data,
       *bits_left -= static_cast<uint32>(bits_left_to_read);
       result |= (cur_byte >> *bits_left) & ((1 << bits_left_to_read) - 1);
     }
-    data[i] = static_cast<int64>(result);
+    data[i] = static_cast<T>(result);
   }
 }
 
-void ReadLongs(TreatedDataBuffer<int64> *data_buffer, int64 *data,
-               uint64 offset, uint64 len, uint64 fbs, uint32 *bits_left) {
+template <typename T>
+void ReadLongs(TreatedDataBuffer<int64> *data_buffer, T *data, uint64 offset,
+               uint64 len, uint64 fbs, uint32 *bits_left) {
   switch (fbs) {
     case 4:
-      UnrolledUnpack4(data_buffer, data, offset, len, bits_left);
+      UnrolledUnpack4<T>(data_buffer, data, offset, len, bits_left);
       return;
     case 8:
-      UnrolledUnpack8(data_buffer, data, offset, len);
+      UnrolledUnpack8<T>(data_buffer, data, offset, len);
       return;
-    case 16:
-      UnrolledUnpack16(data_buffer, data, offset, len);
+    case 16: {
+      Assert(sizeof(T) >= 2);
+      UnrolledUnpack16<T>(data_buffer, data, offset, len);
       return;
-    case 24:
-      UnrolledUnpack24(data_buffer, data, offset, len);
+    }
+    case 24: {
+      Assert(sizeof(T) >= 3);
+      UnrolledUnpack24<T>(data_buffer, data, offset, len);
       return;
-    case 32:
-      UnrolledUnpack32(data_buffer, data, offset, len);
+    }
+    case 32: {
+      Assert(sizeof(T) >= 4);
+      UnrolledUnpack32<T>(data_buffer, data, offset, len);
       return;
-    case 40:
-      UnrolledUnpack40(data_buffer, data, offset, len);
+    }
+    case 40: {
+      Assert(sizeof(T) >= 5);
+      UnrolledUnpack40<T>(data_buffer, data, offset, len);
       return;
-    case 48:
-      UnrolledUnpack48(data_buffer, data, offset, len);
+    }
+    case 48: {
+      Assert(sizeof(T) >= 6);
+      UnrolledUnpack48<T>(data_buffer, data, offset, len);
       return;
-    case 56:
-      UnrolledUnpack56(data_buffer, data, offset, len);
+    }
+    case 56: {
+      Assert(sizeof(T) >= 7);
+      UnrolledUnpack56<T>(data_buffer, data, offset, len);
       return;
-    case 64:
-      UnrolledUnpack64(data_buffer, data, offset, len);
+    }
+    case 64: {
+      Assert(sizeof(T) >= 8);
+      UnrolledUnpack64<T>(data_buffer, data, offset, len);
       return;
+    }
     default:
       // Fallback to the default implementation for deprecated bit size.
-      UnpackNonAlignedLongs(data_buffer, data, offset, len, fbs, bits_left);
+      UnpackNonAlignedLongs<T>(data_buffer, data, offset, len, fbs, bits_left);
       return;
   }
 }
@@ -502,8 +530,9 @@ void AdjustGapAndPatch(DataBuffer<int64> *unpacked, uint32 patch_bits,
   *patch_idx = idx;
 }
 
-uint64 CopyData(int64 *data, int64 *temp_data, uint64 len, uint64 offset,
-                const char *not_null) {
+template <typename T>
+uint64 CopyData(T *data, const int64 *const temp_data, uint64 len,
+                uint64 offset, const char *not_null) {
   if (not_null) {
     size_t already_fill = 0;
 
@@ -518,7 +547,9 @@ uint64 CopyData(int64 *data, int64 *temp_data, uint64 len, uint64 offset,
     }
     return already_fill + len;
   } else {
-    memcpy(data, temp_data, len * sizeof(int64));
+    for (size_t i = 0; i < len; i++) {
+      data[i] = static_cast<T>(temp_data[i]);
+    }
     return len;
   }
 
@@ -526,8 +557,10 @@ uint64 CopyData(int64 *data, int64 *temp_data, uint64 len, uint64 offset,
   Assert(false);
 }
 
-PaxOrcDecoder::PaxOrcDecoder(const DecodingOption &encoder_options,
-                             char *raw_buffer, size_t buffer_len)
+template <typename T>
+PaxOrcDecoder<T>::PaxOrcDecoder(
+    const PaxDecoder::DecodingOption &encoder_options, char *raw_buffer,
+    size_t buffer_len)
     : PaxDecoder(encoder_options),
       data_buffer_(raw_buffer
                        ? new TreatedDataBuffer<int64>(
@@ -537,7 +570,8 @@ PaxOrcDecoder::PaxOrcDecoder(const DecodingOption &encoder_options,
           new DataBuffer<int64>(ORC_MAX_LITERAL_SIZE * sizeof(int64))),
       unpacked_data_(nullptr) {}
 
-PaxOrcDecoder::~PaxOrcDecoder() {
+template <typename T>
+PaxOrcDecoder<T>::~PaxOrcDecoder() {
   if (data_buffer_) delete data_buffer_;
   delete copy_data_buffer_;
   if (unpacked_data_) {
@@ -545,7 +579,8 @@ PaxOrcDecoder::~PaxOrcDecoder() {
   }
 }
 
-size_t PaxOrcDecoder::Next(const char *const not_null) {
+template <typename T>
+size_t PaxOrcDecoder<T>::Next(const char *const not_null) {
   size_t n_read = result_buffer_->Used();
   uint64 read_round = 0;
 
@@ -564,51 +599,55 @@ size_t PaxOrcDecoder::Next(const char *const not_null) {
   // brush the null field
 
   if (not_null) {
-    uint64 null_index = n_read / sizeof(int64);
+    uint64 null_index = n_read / sizeof(T);
     uint64 null_read = n_read;
     while (!not_null[null_index++]) {
-      n_read += sizeof(int64);
+      n_read += sizeof(T);
     }
 
     null_read = n_read - null_read;
     result_buffer_->Brush(null_read);
   }
-  Assert(n_read % sizeof(int64) == 0);
+  Assert(n_read % sizeof(T) == 0);
 
   auto enc = static_cast<EncodingType>((first_byte >> 6) & 0x03);
   auto result_data =
-      reinterpret_cast<int64 *>(result_buffer_->GetAvailableBuffer());
+      reinterpret_cast<T *>(result_buffer_->GetAvailableBuffer());
   switch (enc) {
     case EncodingType::kShortRepeat:
       read_round = NextShortRepeats(data_buffer_, result_data,
-                                    n_read / sizeof(int64), not_null);
+                                    n_read / sizeof(T), not_null);
       break;
     case EncodingType::kDirect:
-      read_round = NextDirect(data_buffer_, result_data, n_read / sizeof(int64),
-                              not_null);
+      read_round =
+          NextDirect(data_buffer_, result_data, n_read / sizeof(T), not_null);
       break;
     case EncodingType::kPatchedBase:
-      read_round = NextPatched(data_buffer_, result_data,
-                               n_read / sizeof(int64), not_null);
+      read_round =
+          NextPatched(data_buffer_, result_data, n_read / sizeof(T), not_null);
       break;
     case EncodingType::kDelta:
-      read_round = NextDelta(data_buffer_, result_data, n_read / sizeof(int64),
-                             not_null);
+      read_round =
+          NextDelta(data_buffer_, result_data, n_read / sizeof(T), not_null);
       break;
     default:
       Assert(false);
   }
 
-  result_buffer_->Brush(read_round * sizeof(int64));
+  result_buffer_->Brush(read_round * sizeof(T));
   n_read += read_round;
 
   return n_read;
 }
 
-size_t PaxOrcDecoder::Decoding() { return Decoding(nullptr, 0); }
+template <typename T>
+size_t PaxOrcDecoder<T>::Decoding() {
+  return Decoding(nullptr, 0);
+}
 
-size_t PaxOrcDecoder::Decoding(const char *const not_null,
-                               size_t not_null_len) {
+template <typename T>
+size_t PaxOrcDecoder<T>::Decoding(const char *const not_null,
+                                  size_t not_null_len) {
   size_t n_read = 0;
   size_t last_read = 0;
   size_t result_cap = result_buffer_->Available();
@@ -626,29 +665,30 @@ size_t PaxOrcDecoder::Decoding(const char *const not_null,
   }
 
   if (not_null) {
-    Assert(n_read <= (not_null_len * sizeof(int64)));
+    Assert(n_read <= (not_null_len * sizeof(T)));
 
-    if (n_read < (not_null_len * sizeof(int64))) {
-      uint64 null_index = n_read / sizeof(int64);
+    if (n_read < (not_null_len * sizeof(T))) {
+      uint64 null_index = n_read / sizeof(T);
       uint64 null_read = n_read;
       while (!not_null[null_index] && null_index < not_null_len) {
-        n_read += sizeof(int64);
+        n_read += sizeof(T);
         null_index++;
       }
 
       null_read = n_read - null_read;
       result_buffer_->Brush(null_read);
     }
-    Assert(n_read == (not_null_len * sizeof(int64)));
+    Assert(n_read == (not_null_len * sizeof(T)));
   }
 
   Assert(result_buffer_->Available() >= 0);
   return n_read;
 }
 
-uint64 PaxOrcDecoder::NextShortRepeats(TreatedDataBuffer<int64> *data_buffer,
-                                       int64 *const data, uint64 offset,
-                                       const char *const not_null) {
+template <typename T>
+uint64 PaxOrcDecoder<T>::NextShortRepeats(TreatedDataBuffer<int64> *data_buffer,
+                                          T *const data, uint64 offset,
+                                          const char *const not_null) {
   int64 value = 0;
   uint16 data_lens = 0;  // 3 - 10
 
@@ -666,7 +706,7 @@ uint64 PaxOrcDecoder::NextShortRepeats(TreatedDataBuffer<int64> *data_buffer,
   value = ReadLongBE(data_buffer, byte_size);
 
   if (decoder_options_.is_sign) {
-    value = UnZigZag(static_cast<uint64>(value));
+    value = UnZigZag<uint64>(static_cast<uint64>(value));
   }
 
   // It different with orc
@@ -680,7 +720,7 @@ uint64 PaxOrcDecoder::NextShortRepeats(TreatedDataBuffer<int64> *data_buffer,
         // should never add offset, cause not data is not from start();
         already_fill++;
       } else {
-        data[pos + already_fill] = value;
+        data[pos + already_fill] = static_cast<T>(value);
         pos++;
       }
     }
@@ -688,14 +728,15 @@ uint64 PaxOrcDecoder::NextShortRepeats(TreatedDataBuffer<int64> *data_buffer,
   }
 
   for (uint64 pos = 0; pos < data_lens; ++pos) {
-    data[pos] = value;
+    data[pos] = static_cast<T>(value);
   }
   return data_lens;
 }
 
-uint64 PaxOrcDecoder::NextDirect(TreatedDataBuffer<int64> *data_buffer,
-                                 int64 *const data, uint64 offset,
-                                 const char *const not_null) {
+template <typename T>
+uint64 PaxOrcDecoder<T>::NextDirect(TreatedDataBuffer<int64> *data_buffer,
+                                    T *const data, uint64 offset,
+                                    const char *const not_null) {
   // extract the number of fixed bits
   unsigned char first_byte = ReadByte(data_buffer);
   unsigned char fbo = (first_byte >> 1) & 0x1f;
@@ -711,10 +752,10 @@ uint64 PaxOrcDecoder::NextDirect(TreatedDataBuffer<int64> *data_buffer,
   data_lens += 1;
 
   if (!not_null) {
-    ReadLongs(data_buffer, data, 0, data_lens, bits, &bits_left);
+    ReadLongs<T>(data_buffer, data, 0, data_lens, bits, &bits_left);
     if (decoder_options_.is_sign) {
       for (uint64 i = 0; i < data_lens; ++i) {
-        data[i] = UnZigZag(static_cast<uint64>(data[i]));
+        data[i] = UnZigZagWithUnsigned<T>(data[i]);
       }
     }
 
@@ -727,7 +768,7 @@ uint64 PaxOrcDecoder::NextDirect(TreatedDataBuffer<int64> *data_buffer,
   if (decoder_options_.is_sign) {
     for (uint64 i = 0; i < data_lens; ++i) {
       (*copy_data_buffer_)[i] =
-          UnZigZag(static_cast<uint64>((*copy_data_buffer_)[i]));
+          UnZigZag<uint64>(static_cast<uint64>((*copy_data_buffer_)[i]));
     }
   }
 
@@ -735,9 +776,10 @@ uint64 PaxOrcDecoder::NextDirect(TreatedDataBuffer<int64> *data_buffer,
                   not_null);
 }
 
-uint64 PaxOrcDecoder::NextDelta(TreatedDataBuffer<int64> *data_buffer,
-                                int64 *data, uint64 offset,
-                                const char *const not_null) {
+template <typename T>
+uint64 PaxOrcDecoder<T>::NextDelta(TreatedDataBuffer<int64> *data_buffer,
+                                   T *data, uint64 offset,
+                                   const char *const not_null) {
   unsigned char first_byte = ReadByte(data_buffer);
 
   // extract the number of fixed bits
@@ -753,20 +795,57 @@ uint64 PaxOrcDecoder::NextDelta(TreatedDataBuffer<int64> *data_buffer,
   data_lens |= ReadByte(data_buffer);
   ++data_lens;  // account for first value
 
-  // read the first value stored as vint
+  // it is safe to make no copy here
+  if (!not_null) {
+    // read the first value stored as int
+    T prev_val = decoder_options_.is_sign
+                     ? static_cast<T>(ReadSignedLong(data_buffer))
+                     : static_cast<T>(ReadUnsignedLong(data_buffer));
+
+    data[0] = static_cast<T>(prev_val);
+    int64 delta_base = ReadSignedLong(data_buffer);
+
+    if (bits == 0) {
+      // add fixed deltas to adjacent values
+      for (uint64 i = 1; i < data_lens; ++i) {
+        data[i] = data[i - 1] + delta_base;
+      }
+    } else {
+      prev_val = data[1] = prev_val + delta_base;
+      if (data_lens < 2) {
+        CBDB_RAISE(cbdb::CException::ExType::kExTypeInvalidORCFormat);
+      }
+
+      // write the unpacked values, add it to previous value and store final
+      // value to result buffer. if the delta base value is negative then it
+      // is a decreasing sequence else an increasing sequence.
+      // read deltas using the curr_literals buffer.
+      ReadLongs<T>(data_buffer, data, 2, data_lens - 2, bits, &bits_left);
+      if (delta_base < 0) {
+        for (uint64 i = 2; i < data_lens; ++i) {
+          prev_val = data[i] = prev_val - data[i];
+        }
+      } else {
+        for (uint64 i = 2; i < data_lens; ++i) {
+          prev_val = data[i] = prev_val + data[i];
+        }
+      }
+    }
+
+    return data_lens;
+  }
+
   int64 prev_val = decoder_options_.is_sign
                        ? ReadSignedLong(data_buffer)
                        : static_cast<int64>(ReadUnsignedLong(data_buffer));
 
-  int64 *curr_literals = !not_null ? data : copy_data_buffer_->StartT();
-
+  int64 *curr_literals = copy_data_buffer_->StartT();
   curr_literals[0] = prev_val;
 
-  // read the fixed delta value stored as vint (deltas can be negative even
-  // if all number are positive)
   int64 delta_base = ReadSignedLong(data_buffer);
 
   if (bits == 0) {
+    // TODO: still can no copy here
     // add fixed deltas to adjacent values
     for (uint64 i = 1; i < data_lens; ++i) {
       curr_literals[i] = curr_literals[i - 1] + delta_base;
@@ -777,10 +856,6 @@ uint64 PaxOrcDecoder::NextDelta(TreatedDataBuffer<int64> *data_buffer,
       CBDB_RAISE(cbdb::CException::ExType::kExTypeInvalidORCFormat);
     }
 
-    // write the unpacked values, add it to previous value and store final
-    // value to result buffer. if the delta base value is negative then it
-    // is a decreasing sequence else an increasing sequence.
-    // read deltas using the curr_literals buffer.
     ReadLongs(data_buffer, curr_literals, 2, data_lens - 2, bits, &bits_left);
     if (delta_base < 0) {
       for (uint64 i = 2; i < data_lens; ++i) {
@@ -793,16 +868,13 @@ uint64 PaxOrcDecoder::NextDelta(TreatedDataBuffer<int64> *data_buffer,
     }
   }
 
-  if (!not_null) {
-    return data_lens;
-  }
-
   return CopyData(data, curr_literals, data_lens, offset, not_null);
 }
 
-uint64 PaxOrcDecoder::NextPatched(TreatedDataBuffer<int64> *data_buffer,
-                                  int64 *const data, uint64 offset,
-                                  const char *const not_null) {
+template <typename T>
+uint64 PaxOrcDecoder<T>::NextPatched(TreatedDataBuffer<int64> *data_buffer,
+                                     T *const data, uint64 offset,
+                                     const char *const not_null) {
   unsigned char first_byte = ReadByte(data_buffer);
   unsigned char fbo = (first_byte >> 1) & 0x1f;
   uint32 bits = DecodeBits(fbo);
@@ -907,5 +979,10 @@ uint64 PaxOrcDecoder::NextPatched(TreatedDataBuffer<int64> *data_buffer,
   return CopyData(data, copy_data_buffer_->StartT(), data_lens, offset,
                   not_null);
 }
+
+template class PaxOrcDecoder<int64>;
+template class PaxOrcDecoder<int32>;
+template class PaxOrcDecoder<int16>;
+template class PaxOrcDecoder<int8>;
 
 }  // namespace pax

@@ -102,8 +102,36 @@ inline int64 ZigZag(int64 value) {  //
   return (value << 1) ^ (value >> 63);
 }
 
-inline int64 UnZigZag(uint64 value) {  //
+template <typename T>
+inline int64 UnZigZag(T value) {  //
   return (value >> 1) ^ -(value & 1);
+}
+
+template <typename T>
+inline int64 UnZigZagWithUnsigned(T value) {  //
+
+  switch (sizeof(T)) {
+    case 1: {
+      auto us_value = static_cast<uint8>(value);
+      return (us_value >> 1) ^ -(us_value & 1);
+    }
+    case 2: {
+      auto us_value = static_cast<uint16>(value);
+      return (us_value >> 1) ^ -(us_value & 1);
+    }
+    case 4: {
+      auto us_value = static_cast<uint32>(value);
+      return (us_value >> 1) ^ -(us_value & 1);
+    }
+    case 8: {
+      auto us_value = static_cast<uint64>(value);
+      return (us_value >> 1) ^ -(us_value & 1);
+    }
+    default: {
+      CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+    }
+  }
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
 void ZigZagBuffers(int64_t *input, int64_t *output, size_t number);
