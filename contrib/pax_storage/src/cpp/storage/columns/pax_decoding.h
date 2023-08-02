@@ -36,6 +36,7 @@ class PaxDecoder {
 
   virtual size_t GetBufferSize() const;
 
+  template <typename T>
   static PaxDecoder *CreateDecoder(const DecodingOption &decoder_options,
                                    char *raw_buffer, size_t buffer_len);
 
@@ -43,5 +44,14 @@ class PaxDecoder {
   const DecodingOption &decoder_options_;
   DataBuffer<char> *result_buffer_;
 };
+
+extern template PaxDecoder *PaxDecoder::CreateDecoder<int64>(
+    const DecodingOption &, char *, size_t);
+extern template PaxDecoder *PaxDecoder::CreateDecoder<int32>(
+    const DecodingOption &, char *, size_t);
+extern template PaxDecoder *PaxDecoder::CreateDecoder<int16>(
+    const DecodingOption &, char *, size_t);
+extern template PaxDecoder *PaxDecoder::CreateDecoder<int8>(
+    const DecodingOption &, char *, size_t);
 
 }  // namespace pax

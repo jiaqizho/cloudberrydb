@@ -10,10 +10,11 @@
 
 namespace pax {
 
+template <typename T>
 class PaxOrcDecoder final : public PaxDecoder {
  public:
-  PaxOrcDecoder(const DecodingOption &encoder_options, char *raw_buffer,
-                size_t buffer_len);
+  PaxOrcDecoder(const PaxDecoder::DecodingOption &encoder_options,
+                char *raw_buffer, size_t buffer_len);
 
   ~PaxOrcDecoder() override;
 
@@ -24,13 +25,13 @@ class PaxOrcDecoder final : public PaxDecoder {
   size_t Decoding(const char *not_null, size_t not_null_len) override;
 
  private:
-  uint64 NextShortRepeats(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+  uint64 NextShortRepeats(TreatedDataBuffer<int64> *data_buffer, T *data,
                           uint64 offset, const char *not_null);
-  uint64 NextDirect(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+  uint64 NextDirect(TreatedDataBuffer<int64> *data_buffer, T *data,
                     uint64 offset, const char *not_null);
-  uint64 NextPatched(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+  uint64 NextPatched(TreatedDataBuffer<int64> *data_buffer, T *data,
                      uint64 offset, const char *not_null);
-  uint64 NextDelta(TreatedDataBuffer<int64> *data_buffer, int64 *data,
+  uint64 NextDelta(TreatedDataBuffer<int64> *data_buffer, T *data,
                    uint64 offset, const char *not_null);
 
  private:
@@ -41,9 +42,15 @@ class PaxOrcDecoder final : public PaxDecoder {
   DataBuffer<int64> *unpacked_data_;
 };
 
+extern template class PaxOrcDecoder<int64>;
+extern template class PaxOrcDecoder<int32>;
+extern template class PaxOrcDecoder<int16>;
+extern template class PaxOrcDecoder<int8>;
+
 #ifdef RUN_GTEST
-void ReadLongs(TreatedDataBuffer<int64> *data_buffer, int64 *data,
-               uint64 offset, uint64 len, uint64 fbs, uint32 *bits_left);
+template <typename T>
+void ReadLongs(TreatedDataBuffer<int64> *data_buffer, T *data, uint64 offset,
+               uint64 len, uint64 fbs, uint32 *bits_left);
 #endif
 
 }  // namespace pax
