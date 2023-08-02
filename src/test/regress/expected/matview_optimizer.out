@@ -29,7 +29,7 @@ EXPLAIN (costs off)
          ->  Redistribute Motion 3:3  (slice1; segments: 3)
                Hash Key: type
                ->  Seq Scan on mvtest_t
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (8 rows)
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS mvtest_tm AS SELECT type, sum(amt) AS totamt FROM mvtest_t GROUP BY type WITH NO DATA distributed by(type);
@@ -75,7 +75,7 @@ NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entr
                            ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                  Hash Key: type
                                  ->  Seq Scan on mvtest_t
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (12 rows)
 
 CREATE MATERIALIZED VIEW mvtest_tvm AS SELECT * FROM mvtest_tv ORDER BY type;
@@ -110,7 +110,7 @@ EXPLAIN (costs off)
                                        ->  Redistribute Motion 3:3  (slice3; segments: 3)
                                              Hash Key: type
                                              ->  Seq Scan on mvtest_t
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (13 rows)
 
 CREATE MATERIALIZED VIEW mvtest_tvvm AS SELECT * FROM mvtest_tvv;

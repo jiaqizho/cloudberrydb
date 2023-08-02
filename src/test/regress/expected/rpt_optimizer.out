@@ -1036,6 +1036,7 @@ ___________
                      Group Key: generate_series
                      ->  Result
                            ->  Function Scan on generate_series
+ Optimizer: Pivotal Optimizer (GPORCA)
 GP_IGNORE:(9 rows)
 
 -- update & delete

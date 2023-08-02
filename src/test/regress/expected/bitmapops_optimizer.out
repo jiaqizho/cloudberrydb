@@ -160,7 +160,7 @@ EXPLAIN SELECT count(*) FROM bmscantest_ao WHERE a = 1 AND (b = 1 OR c = 1) AND 
                                  Index Cond: (d = 1)
                            ->  Bitmap Index Scan on i_bmtest_ao_a  (cost=0.00..0.00 rows=0 width=0)
                                  Index Cond: (a = 1)
- Optimizer: Pivotal Optimizer (GPORCA) version 3.72.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (16 rows)
 
 SELECT count(*) FROM bmscantest_ao WHERE a = 1 AND (b = 1 OR c = 1) AND d = 1;
