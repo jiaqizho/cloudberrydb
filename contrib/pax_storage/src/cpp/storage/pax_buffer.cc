@@ -160,6 +160,7 @@ void DataBuffer<T>::Clear() {
 }
 
 template class DataBuffer<char>;
+template class DataBuffer<int8>;
 template class DataBuffer<int16>;
 template class DataBuffer<int32>;
 template class DataBuffer<int64>;
