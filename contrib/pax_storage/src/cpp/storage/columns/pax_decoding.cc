@@ -4,8 +4,10 @@
 
 namespace pax {
 
+template <typename T>
 PaxDecoder *PaxDecoder::CreateDecoder(const DecodingOption &decoder_options,
-                                      char *raw_buffer, size_t buffer_len) {
+                                      char *const raw_buffer,  // NOLINT
+                                      size_t buffer_len) {
   PaxDecoder *decoder = nullptr;
   switch (decoder_options.column_encode_type) {
     case PaxColumnEncodeType::kTypeNoEncoded: {
@@ -13,7 +15,7 @@ PaxDecoder *PaxDecoder::CreateDecoder(const DecodingOption &decoder_options,
       break;
     }
     case PaxColumnEncodeType::kTypeRLEV2: {
-      decoder = new PaxOrcDecoder(decoder_options, raw_buffer, buffer_len);
+      decoder = new PaxOrcDecoder<T>(decoder_options, raw_buffer, buffer_len);
       break;
     }
     case PaxColumnEncodeType::kTypeDirectDelta: {
@@ -28,6 +30,15 @@ PaxDecoder *PaxDecoder::CreateDecoder(const DecodingOption &decoder_options,
 
   return decoder;
 }
+
+template PaxDecoder *PaxDecoder::CreateDecoder<int64>(const DecodingOption &,
+                                                      char *, size_t);
+template PaxDecoder *PaxDecoder::CreateDecoder<int32>(const DecodingOption &,
+                                                      char *, size_t);
+template PaxDecoder *PaxDecoder::CreateDecoder<int16>(const DecodingOption &,
+                                                      char *, size_t);
+template PaxDecoder *PaxDecoder::CreateDecoder<int8>(const DecodingOption &,
+                                                     char *, size_t);
 
 PaxDecoder::PaxDecoder(const DecodingOption &decoder_options)
     : decoder_options_(decoder_options), result_buffer_(nullptr) {}
