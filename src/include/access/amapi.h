@@ -289,6 +289,7 @@ typedef struct IndexAmRoutine
 extern bool IsIndexAccessMethod(Oid relam, Oid indexAccessMethod);
 extern IndexAmRoutine *GetIndexAmRoutine(Oid amhandler);
 extern IndexAmRoutine *GetIndexAmRoutineByAmId(Oid amoid, bool noerror);
+extern char *GetAmName(Oid amoid);
 
 /* Hook for plugins to get control in appendonly_delete() */
 typedef void (*appendonly_delete_hook_type) (Relation rel, ItemPointer tid);
