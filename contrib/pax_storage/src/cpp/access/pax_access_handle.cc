@@ -121,7 +121,7 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
                                            uint32 flags) {
   CBDB_TRY();
   {
-    return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags);
+    return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags, nullptr);
   }
   CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
@@ -139,6 +139,20 @@ void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
       // FIXME: destroy PaxScanDesc?
   });
   CBDB_END_TRY();
+}
+
+TableScanDesc CCPaxAccessMethod::ScanExtractColumns(Relation rel, Snapshot snapshot,
+                                                    List *targetlist, List *qual,
+                                                    uint32 flags) {
+  CBDB_TRY();
+  {
+    return pax::PaxScanDesc::BeginScanExtractColumns(rel, snapshot, targetlist, qual, flags);
+  }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({
+  });
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
 void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
@@ -753,6 +767,7 @@ static const TableAmRoutine kPaxColumnMethods = {
     .type = T_TableAmRoutine,
     .slot_callbacks = paxc::PaxAccessMethod::SlotCallbacks,
     .scan_begin = pax::CCPaxAccessMethod::ScanBegin,
+    .scan_begin_extractcolumns = pax::CCPaxAccessMethod::ScanExtractColumns,
     .scan_end = pax::CCPaxAccessMethod::ScanEnd,
     .scan_rescan = pax::CCPaxAccessMethod::ScanRescan,
     .scan_getnextslot = pax::CCPaxAccessMethod::ScanGetNextSlot,

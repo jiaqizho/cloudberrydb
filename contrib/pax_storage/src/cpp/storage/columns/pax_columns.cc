@@ -209,5 +209,4 @@ void PaxColumns::CombineDataBuffer() {
     }
   }
 }
-
 }  //  namespace pax

@@ -221,7 +221,7 @@ class TreatedDataBuffer final : public DataBuffer<T> {
 
   inline char *GetTreatedRawBuffer() const { return treated_pos_; }
 
-  inline T *GetTreatedBuffer() const { return (T *)treated_pos_; }
+  inline T *GetTreatedBuffer() const { return reinterpret_cast<T *>(treated_pos_); }
 
   inline size_t Treated() const {
     Assert(treated_pos_);

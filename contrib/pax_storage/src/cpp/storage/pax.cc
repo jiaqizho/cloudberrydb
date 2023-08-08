@@ -59,7 +59,7 @@ const FileSplitStrategy *TableWriter::GetFileSplitStrategy() const {
 }
 
 std::string TableWriter::GenFilePath(const std::string &block_id) {
-  return file_system->BuildPaxFilePath(relation_, block_id);
+  return file_system_->BuildPaxFilePath(relation_, block_id);
 }
 
 void TableWriter::Open() {
@@ -267,10 +267,10 @@ void TableReader::OpenNextFile() {
 }
 
 TableDeleter::TableDeleter(
-    const Relation rel,
+    Relation rel,
     std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
     std::map<std::string, std::unique_ptr<DynamicBitmap>> &&delete_bitmap,
-    const Snapshot snapshot)
+    Snapshot snapshot)
     : rel_(rel),
       iterator_(std::move(iterator)),
       delete_bitmap_(std::move(delete_bitmap)),

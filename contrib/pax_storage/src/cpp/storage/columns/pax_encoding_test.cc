@@ -3,6 +3,7 @@
 #include <cmath>
 #include <random>
 #include <vector>
+#include <utility>
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/gtest_wrappers.h"
@@ -1106,7 +1107,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
   EXPECT_EQ(static_cast<EncodingType>((encoding_buff[0] >> 6) & 0x03),
             EncodingType::kShortRepeat);
 
-  char *cpy_data = (char *)palloc(shared_data->Used());
+  char *cpy_data = reinterpret_cast<char *>(palloc(shared_data->Used()));
   memcpy(cpy_data, shared_data->GetBuffer(), shared_data->Used());
 
   {
@@ -1260,7 +1261,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
   EXPECT_EQ(static_cast<EncodingType>((encoding_buff[0] >> 6) & 0x03),
             EncodingType::kDelta);
 
-  char *cpy_data = (char *)palloc(shared_data->Used());
+  char *cpy_data = reinterpret_cast<char *>(palloc(shared_data->Used()));
   memcpy(cpy_data, shared_data->GetBuffer(), shared_data->Used());
 
   {
@@ -1383,7 +1384,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
   delete data;
   delete shared_data;
   delete encoder;
-};
+}
 
 TEST_F(PaxEncodingTest, TestEncodingWithAllNULL) {
   auto shared_dst_data = new DataBuffer<char>(10240);

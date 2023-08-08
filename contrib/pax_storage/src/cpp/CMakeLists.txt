@@ -117,12 +117,15 @@ set(pax_storage_src
     storage/columns/pax_encoding.cc
     storage/columns/pax_rlev2_decoding.cc
     storage/columns/pax_rlev2_encoding.cc
+    storage/column_read_info.cc
+    storage/column_projection_info.cc
     storage/file_system.cc
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
     storage/pax.cc
-    storage/pax_buffer.cc  
+    storage/pax_filter.cc
+    storage/pax_buffer.cc
     storage/strategy.cc
     storage/orc/protobuf_stream.cc
     storage/paxc_block_map_manager.cc

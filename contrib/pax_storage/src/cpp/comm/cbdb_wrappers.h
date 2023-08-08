@@ -138,6 +138,10 @@ void MakedirRecursive(const char *path);
 char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
 
 char *BuildPaxFilePath(Relation rel, const std::string &block_id);
+
+int RelationGetAttributesNumber(Relation rel);
+
+bool ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts);
 }  // namespace cbdb
 
 // clang-format off

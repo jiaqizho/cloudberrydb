@@ -5,7 +5,6 @@
 #include "exceptions/CException.h"
 
 namespace pax {
-
 TableMetadata *TableMetadata::Create(const Relation parent_relation,
                                      const Snapshot snapshot) {
   return new TableMetadata(parent_relation, snapshot);

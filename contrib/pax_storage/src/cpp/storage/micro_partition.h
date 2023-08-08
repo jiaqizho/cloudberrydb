@@ -9,7 +9,10 @@
 #include <string>
 #include <vector>
 
+#include "catalog/micro_partition_metadata.h"
+#include "storage/column_projection_info.h"
 #include "storage/file_system.h"
+#include "storage/pax_filter.h"
 #include "storage/statistics.h"
 
 namespace pax {
@@ -37,6 +40,8 @@ class CTupleSlot {
   TupleDesc GetTupleDesc() const;
 
   TupleTableSlot *GetTupleTableSlot() const;
+
+  int GetTupleTableColumnsNum();
 
  private:
   TupleTableSlot *slot_;
@@ -137,11 +142,13 @@ class MicroPartitionReader {
 
   virtual void SetReadBuffer(DataBuffer<char> *data_buffer) = 0;
 
-  using Filter = std::vector<uint16>;
-  virtual void SetFilter(Filter *filter) = 0;
+  inline void SetFilter(MicroPartitionFilter *filter) { filter_ = filter; }
+
+  inline MicroPartitionFilter* GetFilter() const { return filter_; }
 
  protected:
   FileSystem *file_system_ = nullptr;
+  MicroPartitionFilter *filter_ = nullptr;
 };
 
 }  // namespace pax
