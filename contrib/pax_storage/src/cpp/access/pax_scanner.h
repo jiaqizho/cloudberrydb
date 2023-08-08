@@ -1,21 +1,30 @@
 #pragma once
 
 #include "comm/cbdb_api.h"
-
+#include "storage/column_projection_info.h"
 #include "storage/pax.h"
+#include "storage/pax_filter.h"
 
 namespace pax {
 
 class PaxScanDesc {
  public:
-  static TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
-                                 int nkeys, const struct ScanKeyData *key,
-                                 ParallelTableScanDesc pscan, uint32 flags);
+  static TableScanDesc BeginScan(Relation relation,
+                                 Snapshot snapshot, int nkeys,
+                                 struct ScanKeyData *key,
+                                 ParallelTableScanDesc pscan,
+                                 uint32 flags,
+                                 bool *proj);
 
   static void ReScan(TableScanDesc scan);
   static void EndScan(TableScanDesc scan);
 
-  static bool ScanGetNextSlot(TableScanDesc scan, TupleTableSlot *slot);
+  static TableScanDesc BeginScanExtractColumns(Relation rel, Snapshot snapshot,
+                                               List *targetlist, List *qual,
+                                               uint32 flags);
+
+  static bool ScanGetNextSlot(TableScanDesc scan,
+                              TupleTableSlot *slot);
 
   static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno);
   static bool ScanAnalyzeNextTuple(TableScanDesc scan, double *liverows,
@@ -33,12 +42,16 @@ class PaxScanDesc {
 
   bool SeekTuple(uint64 target_tuple_id, uint64 *next_tuple_id);
 
+  inline MicroPartitionFilter* GetFilter() const { return filter_;}
+
+  inline void SetFilter(MicroPartitionFilter *filter) { filter_ =  filter;}
+
   ~PaxScanDesc() = default;
 
  private:
   PaxScanDesc() = default;
 
-  static inline PaxScanDesc *ToDesc(TableScanDesc scan) {
+  static inline PaxScanDesc* ScanToDesc(TableScanDesc scan) {
     auto desc = reinterpret_cast<PaxScanDesc *>(scan);
     return desc;
   }
@@ -49,6 +62,7 @@ class PaxScanDesc {
   TableReader *reader_ = nullptr;
 
   DataBuffer<char> *reused_buffer_ = nullptr;
+
   MemoryContext memory_context_ = nullptr;
 
   // Only used by `scan analyze` and `scan sample`
@@ -58,6 +72,9 @@ class PaxScanDesc {
   // Only used by `scan sample`
   uint64 fetch_tuple_id_ = 0;
   uint64 total_tuples_ = 0;
+
+  // Column filter info
+  MicroPartitionFilter *filter_ = nullptr;
 };  // class PaxScanDesc
 
 }  // namespace pax

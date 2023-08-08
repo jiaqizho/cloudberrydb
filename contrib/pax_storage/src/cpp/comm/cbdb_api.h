@@ -28,6 +28,7 @@ extern "C" {
 #include "common/file_utils.h"
 #include "executor/executor.h"
 #include "executor/tuptable.h"
+#include "nodes/nodeFuncs.h"
 #include "postmaster/syslogger.h"  // for PIPE_CHUNK_SIZE
 #include "storage/block.h"
 #include "storage/bufmgr.h"
@@ -45,8 +46,10 @@ extern "C" {
 #include "utils/syscache.h"
 
 // no header file in cbdb
-extern BlockNumber system_nextsampleblock(SampleScanState *node,
+extern BlockNumber system_nextsampleblock(SampleScanState *node,  // NOLINT
                                           BlockNumber nblocks);
+extern bool extractcolumns_from_node(Node *expr, bool *cols, AttrNumber natts);  //NOLINT
+
 #ifdef __cplusplus
 }
 #endif

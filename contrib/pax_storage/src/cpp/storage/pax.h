@@ -51,7 +51,7 @@ class TableWriter {
   MicroPartitionWriter *writer_;
   const FileSplitStrategy *strategy_;
   WriteSummaryCallback summary_callback_;
-  const FileSystem *file_system = Singleton<LocalFileSystem>::GetInstance();
+  const FileSystem *file_system_ = Singleton<LocalFileSystem>::GetInstance();
 
   size_t num_tuples_ = 0;
   size_t total_tuples_ = 0;
@@ -89,6 +89,8 @@ class TableReader final {
 
   bool SeekTuple(uint64 targettupleid, uint64 *nexttupleid);
 
+  inline void SetFilter(MicroPartitionFilter* filter) { reader_->SetFilter(filter); }
+
  private:
   void SeekCurrentMicroPartitionTupleOffset(int tuple_offset);
 
@@ -116,10 +118,10 @@ class TableReader final {
 class TableDeleter final {
  public:
   TableDeleter(
-      const Relation rel,
+      Relation rel,
       std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
       std::map<std::string, std::unique_ptr<DynamicBitmap>> &&delete_bitmap,
-      const Snapshot snapshot);
+      Snapshot snapshot);
 
   ~TableDeleter();
 
