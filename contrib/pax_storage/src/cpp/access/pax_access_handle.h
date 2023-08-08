@@ -103,6 +103,10 @@ class CCPaxAccessMethod final {
   static bool ScanGetNextSlot(TableScanDesc scan, ScanDirection direction,
                               TupleTableSlot *slot);
 
+  static TableScanDesc ScanExtractColumns(Relation rel, Snapshot snapshot,
+                                          List *targetlist, List *qual,
+                                          uint32 flags);
+
   /* Manipulations of physical tuples. */
   static void TupleInsert(Relation relation, TupleTableSlot *slot,
                           CommandId cid, int options, BulkInsertState bistate);

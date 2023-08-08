@@ -1,12 +1,12 @@
 #pragma once
 #include <utility>
 #include <vector>
+#include <map>
 
 #include "exceptions/CException.h"
 #include "storage/columns/pax_column.h"
 
 namespace pax {
-
 // PaxColumns are similar to the kind_struct in orc
 // It is designed to be nested and some interfaces have semantic differences
 // Inheriting PaxCommColumn use to be able to nest itself

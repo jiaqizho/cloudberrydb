@@ -845,7 +845,7 @@ uint64 PaxOrcDecoder<T>::NextDelta(TreatedDataBuffer<int64> *data_buffer,
   int64 delta_base = ReadSignedLong(data_buffer);
 
   if (bits == 0) {
-    // TODO: still can no copy here
+    // TODO(jiaqi zhou): still can no copy here
     // add fixed deltas to adjacent values
     for (uint64 i = 1; i < data_lens; ++i) {
       curr_literals[i] = curr_literals[i - 1] + delta_base;
