@@ -35,19 +35,22 @@ get_pg_config(PG_INCLUDEDIR --includedir)
 # TODO check exists if this is needed
 set(CBDB_INCLUDE_DIR ${PG_INCLUDEDIR}/postgresql/server)
 
-# TODO: support build thirdparty library
-
 # Debug options
 option(ENBALE_DEBUG "Enable debug" ON)
 
 # Build gtest options
 option(BUILD_GTEST "Build with google test" ON)
 
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
 if (ENBALE_DEBUG)
+  ADD_DEFINITIONS(-DENBALE_DEBUG)
 	SET(CMAKE_BUILD_TYPE "Debug")
-	SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
-	SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+else()
+  SET(CMAKE_BUILD_TYPE "Release")
+  # no need build gtest in release mode
+  SET(BUILD_GTEST OFF)
 endif(ENBALE_DEBUG)
 
 add_subdirectory(src/cpp)
