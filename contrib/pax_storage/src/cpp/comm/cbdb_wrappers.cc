@@ -300,3 +300,16 @@ char *cbdb::BuildPaxFilePath(const Relation rel, const std::string &block_id) {
   { return paxc::BuildPaxFilePath(rel, block_id.c_str()); }
   CBDB_WRAP_END;
 }
+
+int cbdb::RelationGetAttributesNumber(Relation rel) {
+  CBDB_WRAP_START;
+  { return RelationGetNumberOfAttributes(rel); }
+  CBDB_WRAP_END;
+}
+
+bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts) {
+  CBDB_WRAP_START;
+  { return extractcolumns_from_node(expr, cols, natts); }
+  CBDB_WRAP_END;
+}
+
