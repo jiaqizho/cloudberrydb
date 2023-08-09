@@ -231,11 +231,11 @@ paxc::PaxBlockId cbdb::GetBlockId(Oid table_rel_oid, uint8 table_no,
 
 void cbdb::RelationCreateStorageDirectory(RelFileNode rnode,
                                           char relpersistence,
-                                          SMgrImpl smgr_which) {
+                                          SMgrImpl smgr_which, Relation rel) {
   CBDB_WRAP_START;
   {
     SMgrRelation srel =
-        RelationCreateStorage(rnode, relpersistence, smgr_which);
+        RelationCreateStorage(rnode, relpersistence, smgr_which, rel);
     smgrclose(srel);
   }
   CBDB_WRAP_END;
@@ -312,4 +312,3 @@ bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts) {
   { return extractcolumns_from_node(expr, cols, natts); }
   CBDB_WRAP_END;
 }
-
