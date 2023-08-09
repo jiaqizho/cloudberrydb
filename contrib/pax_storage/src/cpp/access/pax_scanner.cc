@@ -9,11 +9,10 @@
 #include "storage/pax_buffer.h"
 
 namespace pax {
-TableScanDesc PaxScanDesc::BeginScan(Relation relation,
-                                     Snapshot snapshot, int nkeys,
-                                     struct ScanKeyData *key,
-                                     ParallelTableScanDesc pscan,
-                                     uint32 flags, bool *proj) {
+TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
+                                     int nkeys, struct ScanKeyData *key,
+                                     ParallelTableScanDesc pscan, uint32 flags,
+                                     bool *proj) {
   PaxScanDesc *desc;
   TableMetadata *meta_info;
   MemoryContext old_ctx;
@@ -88,7 +87,8 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
 
   MicroPartitionFilter *micropartition_filter = desc->GetFilter();
   if (micropartition_filter) {
-    ColumnProjectionInfo *projection_info = micropartition_filter->GetProjectionInfo();
+    ColumnProjectionInfo *projection_info =
+        micropartition_filter->GetProjectionInfo();
     if (projection_info) {
       delete projection_info;
     }
@@ -106,29 +106,30 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
   delete desc;
 }
 
-TableScanDesc PaxScanDesc::BeginScanExtractColumns(Relation rel, Snapshot snapshot,
-                                                   List *targetlist, List *qual,
-                                                   uint32 flags) {
+TableScanDesc PaxScanDesc::BeginScanExtractColumns(
+    Relation rel, Snapshot snapshot, ParallelTableScanDesc parallel_scan,
+    List *targetlist, List *qual, uint32 flags) {
   TableScanDesc paxscan;
   auto natts = cbdb::RelationGetAttributesNumber(rel);
   bool *cols = new bool[natts];
   bool found = false;
   memset(cols, false, natts);
 
-  found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(targetlist), cols, natts);
-  found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(qual), cols, natts) || found;
+  found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(targetlist),
+                                       cols, natts);
+  found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(qual), cols,
+                                       natts) ||
+          found;
 
   // In some cases (for example, count(*)), targetlist and qual may be null,
   // extractcolumns_walker will return immediately, so no columns are specified.
   // We always scan the first column.
-  if (!found)
-    cols[0] = true;
+  if (!found) cols[0] = true;
 
-  paxscan = BeginScan(rel, snapshot, 0, nullptr, nullptr, flags, cols);
+  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, cols);
 
   return paxscan;
 }
-
 
 // FIXME: shall we take these parameters into account?
 void PaxScanDesc::ReScan(TableScanDesc scan) {
@@ -255,8 +256,7 @@ uint32 PaxScanDesc::GetCurrentMicroPartitionTupleNumber() const {
   return reader_->GetCurrentMicroPartitionTupleNumber();
 }
 
-bool PaxScanDesc::SeekTuple(uint64 target_tuple_id,
-                            uint64 *next_tuple_id) {
+bool PaxScanDesc::SeekTuple(uint64 target_tuple_id, uint64 *next_tuple_id) {
   MemoryContext old_ctx;
   bool ok = false;
 
