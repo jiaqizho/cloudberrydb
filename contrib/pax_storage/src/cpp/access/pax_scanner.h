@@ -1,6 +1,7 @@
 #pragma once
 
 #include "comm/cbdb_api.h"
+
 #include "storage/column_projection_info.h"
 #include "storage/pax.h"
 #include "storage/pax_filter.h"
@@ -9,22 +10,19 @@ namespace pax {
 
 class PaxScanDesc {
  public:
-  static TableScanDesc BeginScan(Relation relation,
-                                 Snapshot snapshot, int nkeys,
-                                 struct ScanKeyData *key,
-                                 ParallelTableScanDesc pscan,
-                                 uint32 flags,
+  static TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
+                                 int nkeys, struct ScanKeyData *key,
+                                 ParallelTableScanDesc pscan, uint32 flags,
                                  bool *proj);
 
   static void ReScan(TableScanDesc scan);
   static void EndScan(TableScanDesc scan);
 
-  static TableScanDesc BeginScanExtractColumns(Relation rel, Snapshot snapshot,
-                                               List *targetlist, List *qual,
-                                               uint32 flags);
+  static TableScanDesc BeginScanExtractColumns(
+      Relation rel, Snapshot snapshot, ParallelTableScanDesc parallel_scan,
+      List *targetlist, List *qual, uint32 flags);
 
-  static bool ScanGetNextSlot(TableScanDesc scan,
-                              TupleTableSlot *slot);
+  static bool ScanGetNextSlot(TableScanDesc scan, TupleTableSlot *slot);
 
   static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno);
   static bool ScanAnalyzeNextTuple(TableScanDesc scan, double *liverows,
@@ -42,16 +40,16 @@ class PaxScanDesc {
 
   bool SeekTuple(uint64 target_tuple_id, uint64 *next_tuple_id);
 
-  inline MicroPartitionFilter* GetFilter() const { return filter_;}
+  inline MicroPartitionFilter *GetFilter() const { return filter_; }
 
-  inline void SetFilter(MicroPartitionFilter *filter) { filter_ =  filter;}
+  inline void SetFilter(MicroPartitionFilter *filter) { filter_ = filter; }
 
   ~PaxScanDesc() = default;
 
  private:
   PaxScanDesc() = default;
 
-  static inline PaxScanDesc* ScanToDesc(TableScanDesc scan) {
+  static inline PaxScanDesc *ScanToDesc(TableScanDesc scan) {
     auto desc = reinterpret_cast<PaxScanDesc *>(scan);
     return desc;
   }

@@ -117,7 +117,7 @@ paxc::PaxBlockId GetBlockId(Oid table_rel_oid, uint8 table_no,
                             uint32 block_number);
 
 void RelationCreateStorageDirectory(RelFileNode rnode, char relpersistence,
-                                    SMgrImpl smgr_which);
+                                    SMgrImpl smgr_which, Relation rel);
 
 bool TupleIsValid(HeapTuple tupcache);
 

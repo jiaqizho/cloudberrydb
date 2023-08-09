@@ -104,6 +104,7 @@ class CCPaxAccessMethod final {
                               TupleTableSlot *slot);
 
   static TableScanDesc ScanExtractColumns(Relation rel, Snapshot snapshot,
+                                          ParallelTableScanDesc parallel_scan,
                                           List *targetlist, List *qual,
                                           uint32 flags);
 

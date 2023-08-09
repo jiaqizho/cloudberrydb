@@ -228,7 +228,7 @@ void CCPaxAuxTable::PaxAuxRelationSetNewFilenode(Relation rel,
   // Create pax table relfilenode file and database directory under path base/,
   // The relfilenode created here is to be compatible with PG normal process
   // logic instead of being used by pax storage.
-  cbdb::RelationCreateStorageDirectory(*newrnode, persistence, SMGR_MD);
+  cbdb::RelationCreateStorageDirectory(*newrnode, persistence, SMGR_MD, rel);
   path = fs->BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!path.empty());
   fs->CreateDirectory(path);
@@ -260,7 +260,7 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
   // create pg_pax_table relfilenode file and dbid directory under path
   // pg_tblspc/.
   cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
-                                       SMGR_MD);
+                                       SMGR_MD, rel);
 
   dst_path = fs->BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!dst_path.empty());

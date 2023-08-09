@@ -121,7 +121,8 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
                                            uint32 flags) {
   CBDB_TRY();
   {
-    return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags, nullptr);
+    return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags,
+                                  nullptr);
   }
   CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
@@ -141,16 +142,16 @@ void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
   CBDB_END_TRY();
 }
 
-TableScanDesc CCPaxAccessMethod::ScanExtractColumns(Relation rel, Snapshot snapshot,
-                                                    List *targetlist, List *qual,
-                                                    uint32 flags) {
+TableScanDesc CCPaxAccessMethod::ScanExtractColumns(
+    Relation rel, Snapshot snapshot, ParallelTableScanDesc parallel_scan,
+    List *targetlist, List *qual, uint32 flags) {
   CBDB_TRY();
   {
-    return pax::PaxScanDesc::BeginScanExtractColumns(rel, snapshot, targetlist, qual, flags);
+    return pax::PaxScanDesc::BeginScanExtractColumns(
+        rel, snapshot, parallel_scan, targetlist, qual, flags);
   }
   CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({
-  });
+  CBDB_FINALLY({});
   CBDB_END_TRY();
   pg_unreachable();
 }
@@ -212,8 +213,7 @@ void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey /*key*/,
   { pax::PaxScanDesc::ReScan(scan); }
   CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({
-  });
+  CBDB_FINALLY({});
   CBDB_END_TRY();
 }
 
