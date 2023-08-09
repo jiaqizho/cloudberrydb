@@ -203,9 +203,9 @@ class OrcTest : public ::testing::Test {
     else
       EXPECT_EQ(COLUMN_NUMS, columns->GetColumns());
 
-    if (projection_info &&
-        ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
-        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED) {
+    if (!projection_info ||
+        (ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
+        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED)) {
       auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[index++]);
       EXPECT_EQ(1, column1->GetNonNullRows());
       char *column1_buffer = column1->GetBuffer(0).first;
@@ -224,9 +224,9 @@ class OrcTest : public ::testing::Test {
       EXPECT_EQ(read_data, column1_buffer + VARHDRSZ);
     }
 
-    if (projection_info &&
-        ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
-        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED) {
+    if (!projection_info ||
+        (ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
+        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED)) {
       auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[index++]);
       char *column2_buffer = column2->GetBuffer(0).first;
       EXPECT_EQ(1, column2->GetNonNullRows());
@@ -242,9 +242,9 @@ class OrcTest : public ::testing::Test {
       EXPECT_EQ(read_data, column2_buffer + VARHDRSZ);
     }
 
-    if (projection_info &&
-        ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
-        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED) {
+    if (!projection_info  ||
+        (ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
+        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED)) {
       auto column3 = reinterpret_cast<PaxCommColumn<int32> *>((*columns)[index++]);
       auto column3_buffer = column3->GetDataBuffer();
       EXPECT_EQ(1, column3_buffer->GetSize());
