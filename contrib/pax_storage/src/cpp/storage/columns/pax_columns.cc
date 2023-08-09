@@ -50,7 +50,7 @@ PaxColumns::PaxColumns() : row_nums_(0) { data_ = new DataBuffer<char>(0); }
 
 PaxColumns::~PaxColumns() {
   for (auto column : columns_) {
-    delete column;
+    if (column) delete column;
   }
   delete data_;
 }
@@ -58,7 +58,7 @@ PaxColumns::~PaxColumns() {
 void PaxColumns::Clear() {
   row_nums_ = 0;
   for (auto column : columns_) {
-    column->Clear();
+    if (column) column->Clear();
   }
 
   data_->Clear();
@@ -87,7 +87,7 @@ size_t PaxColumns::GetNonNullRows() const {
 size_t PaxColumns::EstimatedSize() const {
   size_t total_size = 0;
   for (auto column : columns_) {
-    total_size += column->EstimatedSize();
+    if (column) total_size += column->EstimatedSize();
   }
   return total_size;
 }
@@ -104,7 +104,11 @@ std::pair<char *, size_t> PaxColumns::GetBuffer(size_t position) {
   if (position >= GetColumns()) {
     CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
   }
-  return columns_[position]->GetBuffer();
+  if (columns_[position]) {
+    return columns_[position]->GetBuffer();
+  } else {
+    return std::make_pair(nullptr, 0);
+  }
 }
 
 DataBuffer<char> *PaxColumns::GetDataBuffer(const PreCalcBufferFunc &func) {
@@ -126,6 +130,10 @@ size_t PaxColumns::MeasureDataBuffer(const PreCalcBufferFunc &pre_calc_func) {
   size_t buffer_len = 0;
 
   for (auto column : columns_) {
+    if (!column) {
+      continue;
+    }
+
     // has null will generate a bitmap in current stripe
     if (column->HasNull()) {
       size_t non_null_length = column->GetNulls()->Used();
@@ -173,6 +181,10 @@ void PaxColumns::CombineDataBuffer() {
   size_t buffer_len = 0;
 
   for (auto column : columns_) {
+    if (!column) {
+      continue;
+    }
+
     if (column->HasNull()) {
       auto null_data_buffer = column->GetNulls();
       size_t non_null_length = null_data_buffer->Used();

@@ -12,7 +12,7 @@ namespace pax {
 TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
                                      int nkeys, struct ScanKeyData *key,
                                      ParallelTableScanDesc pscan, uint32 flags,
-                                     bool *proj) {
+                                     PaxFilter *filter) {
   PaxScanDesc *desc;
   TableMetadata *meta_info;
   MemoryContext old_ctx;
@@ -37,28 +37,12 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   desc->rs_base_.rs_parallel = pscan;
   desc->key_ = key;
   desc->reused_buffer_ = new DataBuffer<char>(32 * 1024 * 1024);  // 32mb
+  desc->filter_ = filter;
 
   // init shared memory
   cbdb::InitCommandResource();
 
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
-
-  // Build Pax Filter for data read I/O optimization.
-  auto micropartition_filter = new MicroPartitionFilter();
-
-  // We get an array of booleans to indicate which columns are needed. But
-  // if you have a very wide table, and you only select a few columns from
-  // it, just scanning the boolean array to figure out which columns are
-  // needed can incur a noticeable overhead in ScanGetNextSlot. So convert it
-  // into an array of the attribute numbers of the required columns.
-  // However, if no array is given, then let it get lazily initialized when
-  // needed since all the attributes will be fetched.
-  if (proj != nullptr) {
-    auto natts = cbdb::RelationGetAttributesNumber(relation);
-    Assert(natts > 0);
-    auto projection_info = new ColumnProjectionInfo(natts, proj);
-    micropartition_filter->SetProjectionInfo(projection_info);
-  }
 
   // build reader
   meta_info = TableMetadata::Create(relation, snapshot);
@@ -66,15 +50,14 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
 
   micro_partition_reader = new OrcIteratorReader(file_system);
   micro_partition_reader->SetReadBuffer(desc->reused_buffer_);
-  micro_partition_reader->SetFilter(micropartition_filter);
 
   reader_options.build_bitmap = true;
   reader_options.rel_oid = desc->rs_base_.rs_rd->rd_id;
+  reader_options.filter = filter;
 
   desc->reader_ = new TableReader(micro_partition_reader,
                                   meta_info->NewIterator(), reader_options);
   desc->reader_->Open();
-  desc->SetFilter(micropartition_filter);
 
   MemoryContextSwitchTo(old_ctx);
   return &desc->rs_base_;
@@ -84,21 +67,11 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
   PaxScanDesc *desc = ScanToDesc(scan);
 
   Assert(desc->reader_);
-
-  MicroPartitionFilter *micropartition_filter = desc->GetFilter();
-  if (micropartition_filter) {
-    ColumnProjectionInfo *projection_info =
-        micropartition_filter->GetProjectionInfo();
-    if (projection_info) {
-      delete projection_info;
-    }
-    delete micropartition_filter;
-  }
-
   desc->reader_->Close();
 
   delete desc->reused_buffer_;
   delete desc->reader_;
+  if (desc->filter_) delete desc->filter_;
 
   // TODO(jiaqizho): please double check with abort transaction @gongxun
   Assert(desc->memory_context_);
@@ -110,9 +83,14 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
     Relation rel, Snapshot snapshot, ParallelTableScanDesc parallel_scan,
     List *targetlist, List *qual, uint32 flags) {
   TableScanDesc paxscan;
+  PaxFilter *filter;
   auto natts = cbdb::RelationGetAttributesNumber(rel);
-  bool *cols = new bool[natts];
+  bool *cols;
   bool found = false;
+
+  filter = new PaxFilter();
+
+  cols = new bool[natts];
   memset(cols, false, natts);
 
   found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(targetlist),
@@ -126,7 +104,9 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
   // We always scan the first column.
   if (!found) cols[0] = true;
 
-  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, cols);
+  // The `cols` life cycle will be bound to `PaxFilter`
+  filter->SetColumnProjection(cols);
+  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter);
 
   return paxscan;
 }
