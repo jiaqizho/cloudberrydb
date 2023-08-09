@@ -258,6 +258,7 @@ void TableReader::OpenFile() {
     current_block_number_ = block_number;
   }
   options.file_name = it.GetFileName();
+  options.filter = reader_options_.filter;
   reader_->Open(options);
 }
 

@@ -2,7 +2,6 @@
 
 #include "comm/cbdb_api.h"
 
-#include "storage/column_projection_info.h"
 #include "storage/pax.h"
 #include "storage/pax_filter.h"
 
@@ -13,7 +12,7 @@ class PaxScanDesc {
   static TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
                                  int nkeys, struct ScanKeyData *key,
                                  ParallelTableScanDesc pscan, uint32 flags,
-                                 bool *proj);
+                                 PaxFilter *filter);
 
   static void ReScan(TableScanDesc scan);
   static void EndScan(TableScanDesc scan);
@@ -39,10 +38,6 @@ class PaxScanDesc {
   uint32 GetCurrentMicroPartitionTupleNumber() const;
 
   bool SeekTuple(uint64 target_tuple_id, uint64 *next_tuple_id);
-
-  inline MicroPartitionFilter *GetFilter() const { return filter_; }
-
-  inline void SetFilter(MicroPartitionFilter *filter) { filter_ = filter; }
 
   ~PaxScanDesc() = default;
 
@@ -71,8 +66,8 @@ class PaxScanDesc {
   uint64 fetch_tuple_id_ = 0;
   uint64 total_tuples_ = 0;
 
-  // Column filter info
-  MicroPartitionFilter *filter_ = nullptr;
+  // filter used to do column projection
+  PaxFilter *filter_ = nullptr;
 };  // class PaxScanDesc
 
 }  // namespace pax
