@@ -1,21 +1,19 @@
 #pragma once
-#include "storage/column_projection_info.h"
 
 namespace pax {
-class PaxAbstractFilter {
- public:
-  PaxAbstractFilter() = default;
-  virtual ~PaxAbstractFilter() = default;
-};
 
-class MicroPartitionFilter final : public PaxAbstractFilter {
+class PaxFilter final {
  public:
-  MicroPartitionFilter() = default;
-  ~MicroPartitionFilter() override = default;
-  ColumnProjectionInfo* GetProjectionInfo();
-  void SetProjectionInfo(ColumnProjectionInfo *projection_info);
+  PaxFilter();
+
+  ~PaxFilter();
+
+  bool *GetColumnProjection();
+
+  void SetColumnProjection(bool *proj);
+
  private:
-  ColumnProjectionInfo *projection_info_ = nullptr;
-};
-}  // namespace pax
+  bool *proj_;
+};  // class PaxFilter
 
+}  // namespace pax

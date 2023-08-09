@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "catalog/micro_partition_metadata.h"
-#include "storage/column_projection_info.h"
 #include "storage/file_system.h"
 #include "storage/pax_filter.h"
 #include "storage/statistics.h"
@@ -112,6 +111,8 @@ class MicroPartitionReader {
     std::string file_name;
     // additioinal info to initialize a reader.
     std::string block_id;
+
+    PaxFilter *filter = nullptr;
   };
 
   explicit MicroPartitionReader(FileSystem *fs);
@@ -142,13 +143,8 @@ class MicroPartitionReader {
 
   virtual void SetReadBuffer(DataBuffer<char> *data_buffer) = 0;
 
-  inline void SetFilter(MicroPartitionFilter *filter) { filter_ = filter; }
-
-  inline MicroPartitionFilter* GetFilter() const { return filter_; }
-
  protected:
   FileSystem *file_system_ = nullptr;
-  MicroPartitionFilter *filter_ = nullptr;
 };
 
 }  // namespace pax

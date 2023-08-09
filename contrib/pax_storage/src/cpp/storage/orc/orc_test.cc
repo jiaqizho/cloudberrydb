@@ -9,7 +9,6 @@
 #include "comm/cbdb_wrappers.h"
 #include "comm/gtest_wrappers.h"
 #include "exceptions/CException.h"
-#include "storage/column_read_info.h"
 #include "storage/local_file_system.h"
 
 namespace pax::tests {
@@ -21,41 +20,6 @@ namespace pax::tests {
 #define INT32_COLUMN_VALUE_DEFAULT 0x001
 #define PROJECTION_COLUMN 2
 #define PROJECTION_COLUMN_SINGLE 1
-
-static bool k_proj_noseq[COLUMN_NUMS] =
-                              {true, false, true};
-static int k_proj_noseq_atts[PROJECTION_COLUMN] =
-                              {0, 2};
-
-static bool k_proj_noseq_left[COLUMN_NUMS] =
-                              {true, false, false};
-static int k_proj_noseq_atts_left[PROJECTION_COLUMN] =
-                              {0};
-
-static bool k_proj_noseq_middle[COLUMN_NUMS] =
-                              {false, true, false};
-static int k_proj_noseq_atts_middle[PROJECTION_COLUMN] =
-                              {1};
-
-static bool k_proj_noseq_right[COLUMN_NUMS] =
-                              {false, false, true};
-static int k_proj_noseq_atts_right[PROJECTION_COLUMN] =
-                              {2};
-
-static bool k_proj_seq1[COLUMN_NUMS] =
-                              {false, true, true};
-static int k_proj_seq_atts1[PROJECTION_COLUMN] =
-                              {1, 2};
-
-static bool k_proj_seq2[COLUMN_NUMS] =
-                              {true, true, false};
-static int k_proj_seq_atts2[PROJECTION_COLUMN] =
-                              {0, 1};
-
-static bool k_proj_seq3[COLUMN_NUMS] =
-                              {true, true, true};
-static int k_proj_seq_atts3[COLUMN_NUMS] =
-                              {0, 1, 2};
 
 static void GenFakeBuffer(char *buffer, size_t length) {
   for (size_t i = 0; i < length; i++) {
@@ -81,15 +45,15 @@ class OrcTest : public ::testing::Test {
     Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
     ResourceOwner tmp_resource_owner = CurrentResourceOwner;
     CurrentResourceOwner = NULL;
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS, false,
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS,
+                         false, true);
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false,
                          true);
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false, true);
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS, false,
-                         true);
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS,
+                         false, true);
     ResourceOwnerDelete(tmp_resource_owner);
   }
 
- protected:
   static CTupleSlot *CreateFakeCTupleSlot(bool with_value = true) {
     TupleTableSlot *tuple_slot = nullptr;
 
@@ -180,37 +144,33 @@ class OrcTest : public ::testing::Test {
     delete ctuple_slot;
   }
 
-  static void GenerateTestColumnStats(::orc::proto::StripeStatistics &stripe_statistics,  // NOLINT
-                                                             int column_number, bool *hasnull) {
+  static void GenerateTestColumnStats(
+      ::orc::proto::StripeStatistics &stripe_statistics,  // NOLINT
+      int column_number, bool *hasnull) {
     for (int i = 0; i < column_number; i++) {
       auto pb_stats = stripe_statistics.add_colstats();
       pb_stats->set_hasnull(hasnull[i]);
     }
   }
 
-  static void VerifySingleStripe(PaxColumns *columns, ColumnProjectionInfo *projection_info = nullptr) {
+  static void VerifySingleStripe(PaxColumns *columns,
+                                 const bool *const proj_map = nullptr) {
     char column_buff[COLUMN_SIZE];
     struct varlena *vl = nullptr;
     struct varlena *tunpacked = nullptr;
     int read_len = -1;
     char *read_data = nullptr;
-    size_t index = 0;
 
     GenFakeBuffer(column_buff, COLUMN_SIZE);
 
-    if (projection_info)
-      EXPECT_TRUE(projection_info->GetProjectionAttsNum() <= COLUMN_NUMS);
-    else
-      EXPECT_EQ(COLUMN_NUMS, columns->GetColumns());
+    EXPECT_EQ(COLUMN_NUMS, columns->GetColumns());
 
-    if (!projection_info ||
-        (ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
-        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED)) {
-      auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[index++]);
+    if (!proj_map || proj_map[0]) {
+      auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
       EXPECT_EQ(1, column1->GetNonNullRows());
       char *column1_buffer = column1->GetBuffer(0).first;
-      EXPECT_EQ(0,
-                std::memcmp(column1_buffer + VARHDRSZ, column_buff, COLUMN_SIZE));
+      EXPECT_EQ(
+          0, std::memcmp(column1_buffer + VARHDRSZ, column_buff, COLUMN_SIZE));
       vl = (struct varlena *)DatumGetPointer(column1_buffer);
       tunpacked = pg_detoast_datum_packed(vl);
       EXPECT_EQ((Pointer)vl, (Pointer)tunpacked);
@@ -224,14 +184,12 @@ class OrcTest : public ::testing::Test {
       EXPECT_EQ(read_data, column1_buffer + VARHDRSZ);
     }
 
-    if (!projection_info ||
-        (ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
-        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED)) {
-      auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[index++]);
+    if (!proj_map || proj_map[1]) {
+      auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[1]);
       char *column2_buffer = column2->GetBuffer(0).first;
       EXPECT_EQ(1, column2->GetNonNullRows());
-      EXPECT_EQ(0,
-                std::memcmp(column2_buffer + VARHDRSZ, column_buff, COLUMN_SIZE));
+      EXPECT_EQ(
+          0, std::memcmp(column2_buffer + VARHDRSZ, column_buff, COLUMN_SIZE));
       vl = (struct varlena *)DatumGetPointer(column2_buffer);
       tunpacked = pg_detoast_datum_packed(vl);
       EXPECT_EQ((Pointer)vl, (Pointer)tunpacked);
@@ -242,14 +200,31 @@ class OrcTest : public ::testing::Test {
       EXPECT_EQ(read_data, column2_buffer + VARHDRSZ);
     }
 
-    if (!projection_info  ||
-        (ColumnReadInfo::GetReadColumnIndex(projection_info->GetProjectionAttsArray(),
-        projection_info->GetProjectionAttsNum(), index) != PAX_COLUMN_READ_INDEX_NOT_DEFINED)) {
-      auto column3 = reinterpret_cast<PaxCommColumn<int32> *>((*columns)[index++]);
+    if (!proj_map || proj_map[2]) {
+      auto column3 = reinterpret_cast<PaxCommColumn<int32> *>((*columns)[2]);
       auto column3_buffer = column3->GetDataBuffer();
       EXPECT_EQ(1, column3_buffer->GetSize());
       EXPECT_EQ(INT32_COLUMN_VALUE, (*column3_buffer)[0]);
     }
+  }
+
+ protected:
+  const std::string file_name_ = "./test.file";
+};
+
+class OrcTestProjection
+    : public ::testing::TestWithParam<::testing::tuple<uint8, bool>> {
+ public:
+  void SetUp() override {
+    Singleton<LocalFileSystem>::GetInstance();
+    remove(file_name_.c_str());
+
+    MemoryContext orc_test_memory_context = AllocSetContextCreate(
+        (MemoryContext)NULL, "OrcTestMemoryContext", 80 * 1024 * 1024,
+        80 * 1024 * 1024, 80 * 1024 * 1024);
+
+    MemoryContextSwitchTo(orc_test_memory_context);
+    CurrentResourceOwner = ResourceOwnerCreate(NULL, "OrcTestResourceOwner");
   }
 
  protected:
@@ -1158,10 +1133,23 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   delete writer;
 }
 
-TEST_F(OrcTest, ReadTupleWithProjectionColumn) {
-  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
+TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
+  CTupleSlot *tuple_slot = OrcTest::CreateFakeCTupleSlot();
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
+  bool proj_map[COLUMN_NUMS] = {false, false, false};
+  size_t proj_index = ::testing::get<0>(GetParam());
+  auto reversal = ::testing::get<1>(GetParam());
+
+  ASSERT_LE(proj_index, COLUMN_NUMS);
+  ASSERT_GE(proj_index, 0);
+  if (reversal) {
+    memset(proj_map, true, COLUMN_NUMS);
+  }
+
+  if (proj_index < COLUMN_NUMS) {
+    proj_map[proj_index] = !proj_map[proj_index];
+  }
 
   auto file_ptr = local_fs->Open(file_name_);
   EXPECT_NE(nullptr, file_ptr);
@@ -1189,398 +1177,22 @@ TEST_F(OrcTest, ReadTupleWithProjectionColumn) {
 
   EXPECT_EQ(2, reader->GetNumberOfStripes());
 
-  auto projection_info =
-          new pax::ColumnProjectionInfo(COLUMN_NUMS, k_proj_noseq);
-  std::vector<std::pair<int, int>> column_read_info =
-  ColumnReadInfo::BuildupColumnReadInfo(k_proj_noseq, COLUMN_NUMS);
-  ASSERT_TRUE(column_read_info.size() == PROJECTION_COLUMN);
-  auto iter = column_read_info.begin();
-  for (int i = 0; i < PROJECTION_COLUMN; i++) { // NOLINT
-    ASSERT_EQ(iter->first, k_proj_noseq_atts[i]);
-    ASSERT_EQ(iter->second, k_proj_noseq_atts[i]);
-    iter++;
-  }
-
-  auto columns1 = reader->ReadStripe(0, column_read_info);
-  auto columns2 = reader->ReadStripe(1, column_read_info);
-  OrcTest::VerifySingleStripe(columns1, projection_info);
-  OrcTest::VerifySingleStripe(columns2, projection_info);
+  auto stripe1 = reader->ReadStripe(0, proj_map, COLUMN_NUMS);
+  auto stripe2 = reader->ReadStripe(1, proj_map, COLUMN_NUMS);
+  OrcTest::VerifySingleStripe(stripe1, proj_map);
+  OrcTest::VerifySingleStripe(stripe2, proj_map);
   reader->Close();
 
-  for (int i = 0; i < PROJECTION_COLUMN; i++) {
-    int idx = projection_info->GetProjectionAtts(i);
-    ASSERT_EQ(idx, k_proj_noseq_atts[i]);
-  }
+  delete stripe1;
+  delete stripe2;
 
-  delete columns1;
-  delete columns2;
-
-  DeleteCTupleSlot(tuple_slot);
+  OrcTest::DeleteCTupleSlot(tuple_slot);
   delete writer;
   delete reader;
 }
 
-TEST_F(OrcTest, ReadTupleWithProjectionColumnSingleLeft) {
-  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
-  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
-  ASSERT_NE(nullptr, local_fs);
+INSTANTIATE_TEST_CASE_P(OrcTestProjectionCombine, OrcTestProjection,
+                        testing::Combine(testing::Values(0, 1, 2, 3),
+                                         testing::Values(false, true)));
 
-  auto file_ptr = local_fs->Open(file_name_);
-  EXPECT_NE(nullptr, file_ptr);
-
-  std::vector<orc::proto::Type_Kind> types;
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-  MicroPartitionWriter::WriterOptions writer_options;
-
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
-
-  writer->WriteTuple(tuple_slot);
-  writer->Flush();
-
-  writer->WriteTuple(tuple_slot);
-  writer->Close();
-
-  file_ptr = local_fs->Open(file_name_);
-
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
-  pax::MicroPartitionReader::ReaderOptions options;
-  reader->Open(options);
-
-  EXPECT_EQ(2, reader->GetNumberOfStripes());
-
-  auto projection_info =
-          new pax::ColumnProjectionInfo(COLUMN_NUMS, k_proj_noseq_left);
-  std::vector<std::pair<int, int>> column_read_info =
-  ColumnReadInfo::BuildupColumnReadInfo(k_proj_noseq_left, COLUMN_NUMS);
-  ASSERT_TRUE(column_read_info.size() == PROJECTION_COLUMN_SINGLE);
-  auto iter = column_read_info.begin();
-  for (int i = 0; i < PROJECTION_COLUMN_SINGLE; i++) {
-    ASSERT_EQ(iter->first, k_proj_noseq_atts_left[i]);
-    ASSERT_EQ(iter->second, k_proj_noseq_atts_left[i]);
-    iter++;
-  }
-
-  auto columns1 = reader->ReadStripe(0, column_read_info);
-  auto columns2 = reader->ReadStripe(1, column_read_info);
-  OrcTest::VerifySingleStripe(columns1, projection_info);
-  OrcTest::VerifySingleStripe(columns2, projection_info);
-  reader->Close();
-
-  for (int i = 0; i < PROJECTION_COLUMN_SINGLE; i++) {
-    int idx = projection_info->GetProjectionAtts(i);
-    ASSERT_EQ(idx, k_proj_noseq_atts_left[i]);
-  }
-
-  delete columns1;
-  delete columns2;
-
-  DeleteCTupleSlot(tuple_slot);
-  delete writer;
-  delete reader;
-}
-
-TEST_F(OrcTest, ReadTupleWithProjectionColumnSingleMiddle) {
-  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
-  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
-  ASSERT_NE(nullptr, local_fs);
-
-  auto file_ptr = local_fs->Open(file_name_);
-  EXPECT_NE(nullptr, file_ptr);
-
-  std::vector<orc::proto::Type_Kind> types;
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-  MicroPartitionWriter::WriterOptions writer_options;
-
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
-
-  writer->WriteTuple(tuple_slot);
-  writer->Flush();
-
-  writer->WriteTuple(tuple_slot);
-  writer->Close();
-
-  file_ptr = local_fs->Open(file_name_);
-
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
-  pax::MicroPartitionReader::ReaderOptions options;
-  reader->Open(options);
-
-  EXPECT_EQ(2, reader->GetNumberOfStripes());
-
-  auto projection_info =
-          new pax::ColumnProjectionInfo(COLUMN_NUMS, k_proj_noseq_middle);
-  std::vector<std::pair<int, int>> column_read_info =
-  ColumnReadInfo::BuildupColumnReadInfo(k_proj_noseq_middle, COLUMN_NUMS);
-  ASSERT_TRUE(column_read_info.size() == PROJECTION_COLUMN_SINGLE);
-  auto iter = column_read_info.begin();
-  for (int i = 0; i < PROJECTION_COLUMN_SINGLE; i++) {
-    ASSERT_EQ(iter->first, k_proj_noseq_atts_middle[i]);
-    ASSERT_EQ(iter->second, k_proj_noseq_atts_middle[i]);
-    iter++;
-  }
-
-  auto columns1 = reader->ReadStripe(0, column_read_info);
-  auto columns2 = reader->ReadStripe(1, column_read_info);
-  OrcTest::VerifySingleStripe(columns1, projection_info);
-  OrcTest::VerifySingleStripe(columns2, projection_info);
-  reader->Close();
-
-  for (int i = 0; i < PROJECTION_COLUMN_SINGLE; i++) {
-    int idx = projection_info->GetProjectionAtts(i);
-    ASSERT_EQ(idx, k_proj_noseq_atts_middle[i]);
-  }
-
-  delete columns1;
-  delete columns2;
-
-  DeleteCTupleSlot(tuple_slot);
-  delete writer;
-  delete reader;
-}
-
-TEST_F(OrcTest, ReadTupleWithProjectionColumnSingleRight) {
-  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
-  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
-  ASSERT_NE(nullptr, local_fs);
-
-  auto file_ptr = local_fs->Open(file_name_);
-  EXPECT_NE(nullptr, file_ptr);
-
-  std::vector<orc::proto::Type_Kind> types;
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-  MicroPartitionWriter::WriterOptions writer_options;
-
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
-
-  writer->WriteTuple(tuple_slot);
-  writer->Flush();
-
-  writer->WriteTuple(tuple_slot);
-  writer->Close();
-
-  file_ptr = local_fs->Open(file_name_);
-
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
-  pax::MicroPartitionReader::ReaderOptions options;
-  reader->Open(options);
-
-  EXPECT_EQ(2, reader->GetNumberOfStripes());
-
-  auto projection_info =
-          new pax::ColumnProjectionInfo(COLUMN_NUMS, k_proj_noseq_right);
-  std::vector<std::pair<int, int>> column_read_info =
-  ColumnReadInfo::BuildupColumnReadInfo(k_proj_noseq_right, COLUMN_NUMS);
-  ASSERT_TRUE(column_read_info.size() == PROJECTION_COLUMN_SINGLE);
-  auto iter = column_read_info.begin();
-  for (int i = 0; i < PROJECTION_COLUMN_SINGLE; i++) {
-    ASSERT_EQ(iter->first, k_proj_noseq_atts_right[i]);
-    ASSERT_EQ(iter->second, k_proj_noseq_atts_right[i]);
-    iter++;
-  }
-
-  auto columns1 = reader->ReadStripe(0, column_read_info);
-  auto columns2 = reader->ReadStripe(1, column_read_info);
-  OrcTest::VerifySingleStripe(columns1, projection_info);
-  OrcTest::VerifySingleStripe(columns2, projection_info);
-  reader->Close();
-
-  for (int i = 0; i < PROJECTION_COLUMN_SINGLE; i++) {
-    int idx = projection_info->GetProjectionAtts(i);
-    ASSERT_EQ(idx, k_proj_noseq_atts_right[i]);
-  }
-
-  delete columns1;
-  delete columns2;
-
-  DeleteCTupleSlot(tuple_slot);
-  delete writer;
-  delete reader;
-}
-
-
-TEST_F(OrcTest, ReadTupleWithSeqProjectionColumn1) {
-  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
-  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
-  ASSERT_NE(nullptr, local_fs);
-
-  auto file_ptr = local_fs->Open(file_name_);
-  EXPECT_NE(nullptr, file_ptr);
-
-  std::vector<orc::proto::Type_Kind> types;
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-  MicroPartitionWriter::WriterOptions writer_options;
-
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
-
-  writer->WriteTuple(tuple_slot);
-  writer->Flush();
-
-  writer->WriteTuple(tuple_slot);
-  writer->Close();
-
-  file_ptr = local_fs->Open(file_name_);
-
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
-  pax::MicroPartitionReader::ReaderOptions options;
-  reader->Open(options);
-
-  EXPECT_EQ(2, reader->GetNumberOfStripes());
-
-  auto projection_info =
-          new pax::ColumnProjectionInfo(COLUMN_NUMS, k_proj_seq1);
-  std::vector<std::pair<int, int>> column_read_info =
-  ColumnReadInfo::BuildupColumnReadInfo(k_proj_seq1, COLUMN_NUMS);
-  auto iter = column_read_info.begin();
-
-  ASSERT_EQ(iter->first, k_proj_seq_atts1[0]);
-  ASSERT_EQ(iter->second, k_proj_seq_atts1[1]);
-
-  auto columns1 = reader->ReadStripe(0, column_read_info);
-  auto columns2 = reader->ReadStripe(1, column_read_info);
-  OrcTest::VerifySingleStripe(columns1, projection_info);
-  OrcTest::VerifySingleStripe(columns2, projection_info);
-  reader->Close();
-
-  for (int i = 0; i < PROJECTION_COLUMN; i++) {
-    int idx = projection_info->GetProjectionAtts(i);
-    ASSERT_EQ(idx, k_proj_seq_atts1[i]);
-  }
-
-  delete columns1;
-  delete columns2;
-
-  DeleteCTupleSlot(tuple_slot);
-  delete writer;
-  delete reader;
-}
-
-TEST_F(OrcTest, ReadTupleWithSeqProjectionColumn2) {
-  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
-  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
-  ASSERT_NE(nullptr, local_fs);
-
-  auto file_ptr = local_fs->Open(file_name_);
-  EXPECT_NE(nullptr, file_ptr);
-
-  std::vector<orc::proto::Type_Kind> types;
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-  MicroPartitionWriter::WriterOptions writer_options;
-
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
-
-  writer->WriteTuple(tuple_slot);
-  writer->Flush();
-
-  writer->WriteTuple(tuple_slot);
-  writer->Close();
-
-  file_ptr = local_fs->Open(file_name_);
-
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
-  pax::MicroPartitionReader::ReaderOptions options;
-  reader->Open(options);
-
-  EXPECT_EQ(2, reader->GetNumberOfStripes());
-
-  auto projection_info =
-          new pax::ColumnProjectionInfo(COLUMN_NUMS, k_proj_seq2);
-  std::vector<std::pair<int, int>> column_read_info =
-  ColumnReadInfo::BuildupColumnReadInfo(k_proj_seq2, COLUMN_NUMS);
-  auto iter = column_read_info.begin();
-
-  ASSERT_EQ(iter->first, k_proj_seq_atts2[0]);
-  ASSERT_EQ(iter->second, k_proj_seq_atts2[1]);
-
-  auto columns1 = reader->ReadStripe(0, column_read_info);
-  auto columns2 = reader->ReadStripe(1, column_read_info);
-  OrcTest::VerifySingleStripe(columns1, projection_info);
-  OrcTest::VerifySingleStripe(columns2, projection_info);
-  reader->Close();
-
-  for (int i = 0; i < PROJECTION_COLUMN; i++) {
-    int idx = projection_info->GetProjectionAtts(i);
-    ASSERT_EQ(idx, k_proj_seq_atts2[i]);
-  }
-
-  delete columns1;
-  delete columns2;
-
-  DeleteCTupleSlot(tuple_slot);
-  delete writer;
-  delete reader;
-}
-
-TEST_F(OrcTest, ReadTupleWithSeqProjectionColumn3) {
-  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
-  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
-  ASSERT_NE(nullptr, local_fs);
-
-  auto file_ptr = local_fs->Open(file_name_);
-  EXPECT_NE(nullptr, file_ptr);
-
-  std::vector<orc::proto::Type_Kind> types;
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-  MicroPartitionWriter::WriterOptions writer_options;
-
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
-
-  writer->WriteTuple(tuple_slot);
-  writer->Flush();
-
-  writer->WriteTuple(tuple_slot);
-  writer->Close();
-
-  file_ptr = local_fs->Open(file_name_);
-
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
-  pax::MicroPartitionReader::ReaderOptions options;
-  reader->Open(options);
-
-  EXPECT_EQ(2, reader->GetNumberOfStripes());
-
-  auto projection_info =
-          new pax::ColumnProjectionInfo(COLUMN_NUMS, k_proj_seq3);
-  std::vector<std::pair<int, int>> column_read_info =
-  ColumnReadInfo::BuildupColumnReadInfo(k_proj_seq3, COLUMN_NUMS);
-  auto iter = column_read_info.begin();
-
-  ASSERT_EQ(iter->first, k_proj_seq_atts3[0]);
-  ASSERT_EQ(iter->second, k_proj_seq_atts3[2]);
-
-  auto columns1 = reader->ReadStripe(0, column_read_info);
-  auto columns2 = reader->ReadStripe(1, column_read_info);
-  OrcTest::VerifySingleStripe(columns1, projection_info);
-  OrcTest::VerifySingleStripe(columns2, projection_info);
-  reader->Close();
-
-  for (int i = 0; i < COLUMN_NUMS; i++) {
-    int idx = projection_info->GetProjectionAtts(i);
-    ASSERT_EQ(idx, k_proj_seq_atts3[i]);
-  }
-
-  delete columns1;
-  delete columns2;
-
-  DeleteCTupleSlot(tuple_slot);
-  delete writer;
-  delete reader;
-}
 }  // namespace pax::tests

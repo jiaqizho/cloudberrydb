@@ -317,7 +317,8 @@ OrcReader::OrcReader(File *file)
     : file_(file),
       reused_buffer_(nullptr),
       working_pax_columns_(nullptr),
-      num_of_stripes_(0) {
+      num_of_stripes_(0),
+      proj_map_(nullptr) {
   size_t file_length = file_->FileLength();
   uint64 post_script_len = 0;
 
@@ -337,9 +338,7 @@ OrcReader::OrcReader(File *file)
     ReadMetadata(file_length, post_script_len);
 }
 
-OrcReader::~OrcReader() {
-  delete file_;
-}
+OrcReader::~OrcReader() { delete file_; }
 
 void OrcReader::ReadMetadata(ssize_t file_length, uint64 post_script_len) {
   uint64 meta_len = post_script_.metadatalength();
@@ -412,16 +411,134 @@ void OrcReader::ReadPostScript(size_t file_size, uint64 post_script_len) {
   // TODO(jiaqizho): verify orc format here
 }
 
-PaxColumns *OrcReader::ReadStripe(size_t index, std::vector<std::pair<int , int>> read_columns) {
+static bool ProjShouldReadAll(const bool *const proj_map, size_t proj_len) {
+  if (!proj_map) {
+    return true;
+  }
+
+  for (size_t i = 0; i < proj_len; i++) {
+    if (!proj_map[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+orc::proto::StripeFooter OrcReader::ReadStripeWithProjection(
+    DataBuffer<char> *data_buffer, OrcReader::StripeInformation *stripe_info,
+    const bool *const proj_map, size_t proj_len) {
+  size_t stripe_footer_offset = 0;
+  orc::proto::StripeFooter stripe_footer;
+  size_t streams_index = 0;
+  uint64_t batch_len = 0;
+  uint64_t batch_offset = 0;
+  size_t index = 0;
+
+  stripe_footer_offset = stripe_info->data_length + stripe_info->index_length;
+
+  /* Check all column projection is true.
+   * If no need do column projection, read all
+   * buffer(data + stripe footer) from stripe and decode stripe footer.
+   */
+  if (ProjShouldReadAll(proj_map, proj_len)) {
+    file_->PReadN(data_buffer->GetBuffer(), stripe_info->footer_length,
+                  stripe_info->offset);
+    SeekableInputStream input_stream(
+        data_buffer->GetBuffer() + stripe_footer_offset,
+        stripe_info->footer_length - stripe_footer_offset);
+    if (!stripe_footer.ParseFromZeroCopyStream(&input_stream)) {
+      // fail to do memory io with protobuf
+      CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
+    }
+
+    return stripe_footer;
+  }
+
+  Assert(stripe_info->index_length == 0);
+
+  /* If need do column projection here
+   * Then read stripe footer and decode it before read data part
+   */
+  file_->PReadN(data_buffer->GetBuffer(),
+                stripe_info->footer_length - stripe_footer_offset,
+                stripe_info->offset + stripe_footer_offset);
+
+  SeekableInputStream input_stream(
+      data_buffer->GetBuffer(),
+      stripe_info->footer_length - stripe_footer_offset);
+
+  if (!stripe_footer.ParseFromZeroCopyStream(&input_stream)) {
+    CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
+  }
+
+  data_buffer->BrushBackAll();
+
+  batch_offset = stripe_info->offset;
+
+  while (index < column_types_.size()) {
+    // Current column have been skipped
+    // Move `batch_offset` and `streams_index` to the right position
+    if (!proj_map[index]) {
+      index++;
+
+      const orc::proto::Stream *n_stream = nullptr;
+      do {
+        n_stream = &stripe_footer.streams(streams_index++);
+        batch_offset += n_stream->length();
+      } while (n_stream->kind() != ::orc::proto::Stream_Kind::Stream_Kind_DATA);
+
+      continue;
+    }
+
+    batch_len = 0;
+
+    /* Current column should be read
+     * In this case, did a greedy algorithm to combine io: while
+     * the current column is being read, it is necessary
+     * to ensure that subsequent columns will be read in the same io.
+     *
+     * So in `do...while`, only the `batch_size` which io needs to read
+     * is calculated, until meet a column which needs to be skipped.
+     */
+    do {
+      bool has_null = stripe_info->stripe_statistics.colstats(index).hasnull();
+      if (has_null) {
+        const orc::proto::Stream &non_null_stream =
+            stripe_footer.streams(streams_index++);
+        batch_len += non_null_stream.length();
+      }
+
+      const orc::proto::Stream *len_or_data_stream =
+          &stripe_footer.streams(streams_index++);
+      batch_len += len_or_data_stream->length();
+
+      if (len_or_data_stream->kind() ==
+          ::orc::proto::Stream_Kind::Stream_Kind_LENGTH) {
+        len_or_data_stream = &stripe_footer.streams(streams_index++);
+        batch_len += len_or_data_stream->length();
+      }
+
+    } while ((++index) < column_types_.size() && proj_map[index]);
+
+    file_->PReadN(data_buffer->GetAvailableBuffer(), batch_len, batch_offset);
+    data_buffer->Brush(batch_len);
+    batch_offset += batch_len;
+  }
+
+  return stripe_footer;
+}
+
+PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
+                                  size_t proj_len) {
   auto stripe_info = GetStripeInfo(index);
   auto pax_columns = new PaxColumns();
   DataBuffer<char> *data_buffer = nullptr;
-  size_t stripe_footer_offset = 0;
   orc::proto::StripeFooter stripe_footer;
+  size_t streams_index = 0;
   size_t streams_size = 0;
-  size_t column_num = 0;
-  PaxColumnReadInfo column_info;
 
+  Assert(stripe_info->index_length == 0);
   pax_columns->AddRows(stripe_info->numbers_of_row);
 
   DEFER({ delete stripe_info; });
@@ -430,272 +547,59 @@ PaxColumns *OrcReader::ReadStripe(size_t index, std::vector<std::pair<int , int>
     return pax_columns;
   }
 
-  Assert(stripe_info->index_length == 0);
-  stripe_footer_offset = stripe_info->data_length + stripe_info->index_length;
-
-  // 1. Create an internal pax file read buffer.
-  data_buffer = CreateStripeDataBuffer(pax_columns, stripe_info);
-
-  // 2. Load data from pax file to internal data buffer, filtering data by projection info if exists.
-  ReadDataBufferFromStripe(data_buffer, read_columns, stripe_info,
-                           &stripe_footer, stripe_footer_offset, pax_columns, &column_info);
-
-  // Sanity check for stripe footer read from pax file.
-  streams_size = stripe_footer.streams_size();
-  // TODO(Tony) Need to verify the case when reading empty file with 0 column case.
-  if (unlikely(streams_size == 0 && column_types_.empty())) {
-    return pax_columns;
-  }
-
-  column_num = (ColumnReadInfo::GetReadColumnNum(column_info.data_type_columns) == 0) ?
-              column_types_.size() : ColumnReadInfo::GetReadColumnNum(column_info.data_type_columns);
-
-  // 3. Reading data from internal databuffer, filter data with projection info if exists.
-  ReadColumnsFromDataBuffer(data_buffer, pax_columns, stripe_info, &stripe_footer, &column_info, column_num);
-
-  return pax_columns;
-}
-
-DataBuffer<char> *OrcReader::CreateStripeDataBuffer(PaxColumns *pax_columns,
-                                                    StripeInformation *stripe_info) {
-  DataBuffer<char> *data_buffer = nullptr;
   if (reused_buffer_) {
     while (reused_buffer_->Capacity() < stripe_info->footer_length) {
       reused_buffer_->ReSize(reused_buffer_->Capacity() / 2 * 3);
     }
     data_buffer = new DataBuffer<char>(
         reused_buffer_->GetBuffer(), reused_buffer_->Capacity(), false, false);
+
   } else {
     data_buffer = new DataBuffer<char>(stripe_info->footer_length);
   }
   pax_columns->Set(data_buffer);
-  return data_buffer;
-}
 
-// If projection_info is specified then reading stripe data with every single column in projection_info,
-// otherwise read whole stripe data with all columns in pax file.
-// TODO(Tony): Currently column projection filetering maintains the same data layout length in read buffer,
-// as the read buffer with column projection filtering will still leave "holes" inside buffer in case skipping
-// column data reading with projection filter, it is better to do the read buffer memory compation to save the
-// memory consumption. For example:
-// select b,c from A, which contains column a,b,c,d.
-// read buffer: data(b),  data(c), hole(),  hole(), stripe_footer
-//                |         |         |       |
-// pax file:    data(a),  data(b), data(c), data(d), strip_footer
-void OrcReader::ReadDataBufferFromStripe(DataBuffer<char> *data_buffer,
-                                         const std::vector<std::pair<int , int>>& read_columns,
-                                         StripeInformation *stripe_info,
-                                         orc::proto::StripeFooter *stripe_footer,
-                                         size_t stripe_footer_offset,
-                                         PaxColumns *pax_columns,
-                                         PaxColumnReadInfo *column_info) {
-  if (ColumnReadInfo::CheckFullColumnsRead(read_columns, column_types_.size())) {
-     // Case without explicitly pass read columns info, then reading the whole stripe data from pax file in one shot,
-     // which contains user data + stripe footer meta info.
-    file_->PReadN(data_buffer->GetBuffer(), stripe_info->footer_length, stripe_info->offset);
-    SeekableInputStream input_stream(
-      data_buffer->GetBuffer() + stripe_footer_offset,
-      stripe_info->footer_length - stripe_footer_offset);
+  /* `ReadStripeWithProjection` will read the column memory which filter by
+   * `proj_map`, and initialize `stripe_footer`
+   *
+   * Notice that: should catch `kExTypeIOError` then delete pax columns
+   * But for now we will destroy memory context if exception happen.
+   * And we don't have a decision that should we use `try...catch` at yet,
+   * so it's ok that we just no catch here.
+   */
+  stripe_footer =
+      ReadStripeWithProjection(data_buffer, stripe_info, proj_map, proj_len);
 
-    if (!stripe_footer->ParseFromZeroCopyStream(&input_stream)) {
-      delete pax_columns;
-      file_->Close();
-      CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
-    }
-  } else {
-    size_t offset = stripe_info->offset;
-    size_t stream_index = 0;
-    int column_size = column_types_.size();
-    // Read Pax file stripe footer only, which first retrives meta data info and process reading data
-    // filtering by column, for later returning data with column granularity.
-    file_->PReadN(data_buffer->GetBuffer() + stripe_footer_offset,
-                               stripe_info->footer_length - stripe_footer_offset,
-                               stripe_info->offset + stripe_footer_offset);
-
-    SeekableInputStream input_stream(
-      data_buffer->GetBuffer() + stripe_footer_offset,
-      stripe_info->footer_length - stripe_footer_offset);
-
-    if (unlikely(!stripe_footer->ParseFromZeroCopyStream(&input_stream))) {
-      delete pax_columns;
-      file_->Close();
-      CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
-    }
-
-    auto iter = read_columns.begin();
-    size_t read_counter = 0;
-    // Here start to process reading data by column projection filtering.
-    for (int index = 0; index < column_size; index++) {
-      if ((iter != read_columns.end()) && (index >= iter->first && index <= iter->second)) {
-        // Check if current index has possible sequal column index, if exists then get its upper bond
-        // column index for merge read to archieve better IO performance.
-        if (index < iter->second) {
-          continue;
-        }
-        if (index == iter->second) {
-          ReadRangeColumnDataFromStreams(data_buffer, stripe_info, stripe_footer, iter->first, iter->second,
-              stream_index, offset, read_counter, column_info);
-          iter++;
-        }
-      } else {
-        ReadRangeColumnDataFromStreams(data_buffer, stripe_info, stripe_footer, index, index, stream_index,
-             offset, read_counter, column_info, false);
-      }
-    }
-    //  Reset data buffer to its begin offset for next parsing usage after loading data as column projection.
-    data_buffer->BrushBackAll();
+  streams_size = stripe_footer.streams_size();
+  if (unlikely(streams_size == 0 && column_types_.empty())) {
+    return pax_columns;
   }
-}
 
-// Read data specified by a sequal column range.
-void OrcReader::ReadRangeColumnDataFromStreams(DataBuffer<char> *data_buffer,
-                                               StripeInformation *stripe_info,
-                                               orc::proto::StripeFooter *stripe_footer,
-                                               size_t index_start, size_t index_end,
-                                               size_t &stream_index, size_t &offset,
-                                               size_t &read_count,
-                                               PaxColumnReadInfo *column_info,
-                                               bool read_data) {
-  bool is_mread = false;
-  size_t mread_length = 0;
-  size_t mread_offset = offset;
-  uint64_t stream_length = 0;
-  Assert(index_start <= index_end);
+  data_buffer->BrushBackAll();
 
-  if (index_start < index_end)
-    is_mread = true;
+  AssertImply(proj_len != 0, column_types_.size() <= proj_len);
 
-  for (size_t index = index_start; index <= index_end; index++) {
-    // Read data indicates that the related index has projection filtering, then read it by column stripe,
-    // and reserve column projection index with its actual stream index and datatype statistics relationship.
-    // Other wise just records the data offset and skip loading data from disk.
-    if (read_data) {
-      ColumnReadInfo::SetReadColumnStreamIndex(column_info->stream_read_columns, index, stream_index);
-      ColumnReadInfo::SetReadColumnDataTypeIndex(column_info->data_type_columns, read_count, index);
-      read_count++;
+  for (size_t index = 0; index < column_types_.size(); index++) {
+    /* Skip read current column, just move `streams_index` after
+     * `Stream_Kind_DATA` but still need append nullptr into `PaxColumns` to
+     * make sure sizeof pax_columns eq with column number
+     */
+    if (proj_map && !proj_map[index]) {
+      const orc::proto::Stream *n_stream = nullptr;
+      do {
+        n_stream = &stripe_footer.streams(streams_index++);
+      } while (n_stream->kind() != ::orc::proto::Stream_Kind::Stream_Kind_DATA);
+
+      pax_columns->Append(nullptr);
+      continue;
     }
 
-    // Process Null-value column.
+    DataBuffer<bool> *non_null_bitmap = nullptr;
     bool has_null = stripe_info->stripe_statistics.colstats(index).hasnull();
     if (has_null) {
       uint64 non_null_length = 0;
       const orc::proto::Stream &non_null_stream =
-          stripe_footer->streams(stream_index++);
-      non_null_length = static_cast<uint32>(non_null_stream.length());
-      if (is_mread) {
-        mread_length += non_null_length;
-      } else {
-        if (read_data) {
-          file_->PReadN(data_buffer->Position(), stream_length, offset);
-          data_buffer->Brush(non_null_length);
-        }
-        offset += non_null_length;
-      }
-    }
-
-    switch (column_types_[index]) {
-      case (orc::proto::Type_Kind::Type_Kind_STRING): {
-        uint32 column_lens_size = 0;
-        uint64 column_lens_len = 0;
-        uint64 total_column_len = 0;
-        DataBuffer<int64> *column_len_buffer = nullptr;
-        const orc::proto::Stream &len_stream =
-              stripe_footer->streams(stream_index++);
-        const orc::proto::Stream &data_stream =
-              stripe_footer->streams(stream_index++);
-        column_lens_len = static_cast<uint64>(len_stream.length());
-        column_lens_size = static_cast<uint32>(len_stream.column());
-
-        Assert(static_cast<uint32>(data_stream.column()) == column_lens_size);
-
-        file_->PReadN(data_buffer->Position(), column_lens_len, offset);
-
-        column_len_buffer = new DataBuffer<int64>(
-              reinterpret_cast<int64 *>(data_buffer->Position()),
-              column_lens_len, false, false);
-        column_len_buffer->BrushAll();
-        for (size_t i = 0; i < column_len_buffer->GetSize(); i++) {
-          total_column_len += (*column_len_buffer)[i];
-        }
-
-        // For projection column merge read, just calculate total stream length for seq-column read,
-        // otherwise set stream lenth as column data length for singe-column read.
-        if (is_mread) {
-          stream_length = total_column_len + column_lens_len;
-        } else {
-          if (read_data) {
-            data_buffer->Brush(column_lens_len);
-          }
-          offset += column_lens_len;
-          stream_length = total_column_len;
-        }
-        break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_INT):
-      case (orc::proto::Type_Kind::Type_Kind_BOOLEAN):
-      case (orc::proto::Type_Kind::Type_Kind_BYTE):
-      case (orc::proto::Type_Kind::Type_Kind_SHORT):
-      case (orc::proto::Type_Kind::Type_Kind_LONG): {
-        const orc::proto::Stream& stream = stripe_footer->streams(stream_index++);
-        stream_length = stream.length();
-        break;
-      }
-      default:
-        // should't be here
-        Assert(!"should't be here, non-implemented type");
-        break;
-    }
-
-    if (is_mread) {
-      // For column merge read case, just record the total stream_length without
-      // loading data from disk, and read all sequential column data in one shot.
-      mread_length +=  stream_length;
-    } else {
-      // Check for every single column if the column has related projection info,
-      // If no projection information found then just skip the column data reading.
-      if (read_data) {
-        file_->PReadN(data_buffer->Position(), stream_length, offset);
-        data_buffer->Brush(stream_length);
-      }
-      offset += stream_length;
-    }
-  }
-
-  // Perform projection column merge read.
-  if (is_mread) {
-    Assert(mread_length > 0);
-    file_->PReadN(data_buffer->Position(), mread_length, mread_offset);
-    data_buffer->Brush(mread_length);
-    offset += mread_length;
-  }
-}
-
-void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
-                                          PaxColumns *pax_columns,
-                                          StripeInformation *stripe_info,
-                                          orc::proto::StripeFooter *stripe_footer,
-                                          PaxColumnReadInfo *column_info,
-                                          size_t column_num) {
-  size_t streams_index = 0;
-  size_t column_type_index = 0;
-  size_t null_index = 0;
-  for (size_t index = 0; index < column_num; index++) {
-    // If projection info found, recaculate the column_type_index and streams_index
-    // according to the projection index mapping relationship.
-    null_index = index;
-    if (ColumnReadInfo::GetReadColumnNum(column_info->data_type_columns) != 0) {
-      column_type_index = ColumnReadInfo::GetReadColumnDataTypeIndex(column_info->data_type_columns, index);
-      if (column_type_index >= column_types_.size())
-        continue;
-      streams_index = ColumnReadInfo::GetReadColumnStreamIndex(column_info->stream_read_columns, column_type_index);
-      null_index = column_type_index;
-    }
-    DataBuffer<bool> *non_null_bitmap = nullptr;
-    bool has_null = stripe_info->stripe_statistics.colstats(null_index).hasnull();
-    if (has_null) {
-      uint64 non_null_length = 0;
-      const orc::proto::Stream &non_null_stream =
-          stripe_footer->streams(streams_index++);
+          stripe_footer.streams(streams_index++);
       non_null_length = static_cast<uint32>(non_null_stream.length());
 
       non_null_bitmap = new DataBuffer<bool>(
@@ -705,7 +609,7 @@ void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
       data_buffer->Brush(non_null_length);
     }
 
-    switch (column_types_[column_type_index++]) {
+    switch (column_types_[index]) {
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
         uint32 column_lens_size = 0;
         uint64 column_lens_len = 0;
@@ -715,9 +619,9 @@ void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
         PaxNonFixedColumn *pax_column = nullptr;
 
         const orc::proto::Stream &len_stream =
-            stripe_footer->streams(streams_index++);
+            stripe_footer.streams(streams_index++);
         const orc::proto::Stream &data_stream =
-            stripe_footer->streams(streams_index++);
+            stripe_footer.streams(streams_index++);
 
         column_lens_size = static_cast<uint32>(len_stream.column());
         column_lens_len = static_cast<uint64>(len_stream.length());
@@ -738,7 +642,9 @@ void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
         data_buffer->Brush(total_column_len);
 
         Assert(static_cast<uint32>(data_stream.column()) == column_lens_size);
+
         pax_column = new PaxNonFixedColumn(0);
+
         // current memory will be freed in pax_columns->data_
         pax_column->Set(column_data_buffer, column_len_buffer,
                         total_column_len);
@@ -748,7 +654,7 @@ void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
       }
       case (orc::proto::Type_Kind::Type_Kind_INT): {
         const orc::proto::Stream &data_stream =
-            stripe_footer->streams(streams_index++);
+            stripe_footer.streams(streams_index++);
         uint32 column_data_size = 0;
         uint64 column_data_len = 0;
         DataBuffer<int32> *column_data_buffer = nullptr;
@@ -773,7 +679,7 @@ void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
       case (orc::proto::Type_Kind::Type_Kind_BOOLEAN):
       case (orc::proto::Type_Kind::Type_Kind_BYTE): {
         const orc::proto::Stream &data_stream =
-            stripe_footer->streams(streams_index++);
+            stripe_footer.streams(streams_index++);
         uint32 column_data_size = 0;
         uint64 column_data_len = 0;
         DataBuffer<char> *column_data_buffer = nullptr;
@@ -796,7 +702,7 @@ void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
       }
       case (orc::proto::Type_Kind::Type_Kind_SHORT): {
         const orc::proto::Stream &data_stream =
-            stripe_footer->streams(streams_index++);
+            stripe_footer.streams(streams_index++);
         uint32 column_data_size = 0;
         uint64 column_data_len = 0;
         DataBuffer<int16> *column_data_buffer = nullptr;
@@ -819,7 +725,7 @@ void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
       }
       case (orc::proto::Type_Kind::Type_Kind_LONG): {
         const orc::proto::Stream &data_stream =
-            stripe_footer->streams(streams_index++);
+            stripe_footer.streams(streams_index++);
         uint32 column_data_size = 0;
         uint64 column_data_len = 0;
         DataBuffer<int64> *column_data_buffer = nullptr;
@@ -853,6 +759,9 @@ void OrcReader::ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
       last_column->SetNulls(non_null_bitmap);
     }
   }
+
+  Assert(streams_size == streams_index);
+  return pax_columns;
 }
 
 OrcReader::StripeInformation *OrcReader::GetStripeInfo(size_t index) const {
@@ -881,7 +790,9 @@ OrcReader::StripeInformation *OrcReader::GetStripeInfo(size_t index) const {
 
 size_t OrcReader::GetNumberOfStripes() const { return num_of_stripes_; }
 
-void OrcReader::Open(const ReaderOptions &options) { reader_options_ = options; }
+void OrcReader::Open(const ReaderOptions &options) {
+  if (options.filter) proj_map_ = options.filter->GetColumnProjection();
+}
 
 void OrcReader::ResetCurrentReading() {
   if (working_pax_columns_) {
@@ -909,46 +820,27 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
   size_t index = 0;
   size_t nattrs = 0;
   AttrMissing *attrmiss = nullptr;
-  ColumnProjectionInfo *projection_info = nullptr;
-  MicroPartitionFilter *micropartition_filter = nullptr;
-  bool *proj_array = nullptr;
-  int *proj_atts = nullptr;
-  int proj_atts_num = 0;
-  std::vector<std::pair<int, int>> read_columns;
 
   slot = cslot->GetTupleTableSlot();
-  micropartition_filter = GetFilter();
-  if (micropartition_filter) {
-    projection_info = micropartition_filter->GetProjectionInfo();
-    if (projection_info) {
-      proj_array = projection_info->GetProjectionArray();
-      proj_atts = projection_info->GetProjectionAttsArray();
-      proj_atts_num = projection_info->GetProjectionAttsNum();
-    }
-  }
-
-  // Build up possible projection read columns information for later data filtering by columns.
-  column_numbers = column_types_.size();
-  read_columns = ColumnReadInfo::BuildupColumnReadInfo(proj_array, column_numbers);
 
   while (true) {
+    nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
+
     if (!working_pax_columns_) {
       // no data remain
       if (current_stripe_index_ >= GetNumberOfStripes()) {
         return false;
       }
 
-      working_pax_columns_ = ReadStripe(current_stripe_index_++, read_columns);
-
+      working_pax_columns_ =
+          ReadStripe(current_stripe_index_++, proj_map_, nattrs);
       current_row_index_ = 0;
       for (size_t i = 0; i < column_types_.size(); i++) {
         current_nulls_[i] = 0;
       }
     }
 
-    column_numbers = column_types_.size();
-
-    nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
+    column_numbers = working_pax_columns_->GetColumns();
 
     // The column number in Pax file meta could be smaller than the column
     // number in TupleSlot in case after alter table add column DDL operation
@@ -976,6 +868,10 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
     attrmiss = slot->tts_tupleDescriptor->constr->missing;
 
   for (index = 0; index < nattrs; index++) {
+    if (proj_map_ && !proj_map_[index]) {
+      continue;
+    }
+
     // handle PAX columns number inconsistent with pg catalog nattrs in case
     // data not been inserted yet or read pax file conserved before last add
     // column DDL is done, for these cases it is normal that pg catalog schema
@@ -1001,13 +897,7 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
       continue;
     }
 
-    // Recalculate the column index in case some column already filtered by column projection filtering.
-    int column_index =(proj_atts == nullptr) ?
-       index : ColumnReadInfo::GetReadColumnIndex(proj_atts, proj_atts_num, index);
-    if (column_index == PAX_COLUMN_READ_INDEX_NOT_DEFINED)
-       continue;
-
-    PaxColumn *column = ((*working_pax_columns_)[column_index]);
+    PaxColumn *column = ((*working_pax_columns_)[index]);
 
     // set default is not null
     slot->tts_isnull[index] = false;
@@ -1141,11 +1031,13 @@ void OrcIteratorReader::Open(const ReaderOptions &options) {
   Assert(reader_ == nullptr);
 
   reader_ = OrcReader::CreateReader(file);
-  reader_->Open(options);
   if (reused_buffer_) {
     reader_->SetReadBuffer(reused_buffer_);
   }
-  reader_->SetFilter(filter_);
+  // TODO(jiaqizho): should remove OrcIteratorReader
+  // and create micro partition writer/reader by a builder.
+  // Then we won't pass the options to anywhere
+  reader_->Open(options);
   closed_ = false;
 }
 
