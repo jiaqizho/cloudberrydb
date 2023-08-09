@@ -1,11 +1,15 @@
 #include "storage/pax_filter.h"
 
 namespace pax {
-ColumnProjectionInfo* MicroPartitionFilter::GetProjectionInfo() {
-  return projection_info_;
+
+PaxFilter::PaxFilter() : proj_(nullptr) {}
+
+PaxFilter::~PaxFilter() {
+  if (proj_) delete proj_;
 }
 
-void MicroPartitionFilter::SetProjectionInfo(ColumnProjectionInfo *projection_info) {
-  projection_info_ = projection_info;
-}
+bool *PaxFilter::GetColumnProjection() { return proj_; }
+
+void PaxFilter::SetColumnProjection(bool *proj) { proj_ = proj; }
+
 }  // namespace pax
