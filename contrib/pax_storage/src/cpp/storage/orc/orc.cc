@@ -920,9 +920,11 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
   micropartition_filter = GetFilter();
   if (micropartition_filter) {
     projection_info = micropartition_filter->GetProjectionInfo();
-    proj_array = projection_info->GetProjectionArray();
-    proj_atts = projection_info->GetProjectionAttsArray();
-    proj_atts_num = projection_info->GetProjectionAttsNum();
+    if (projection_info) {
+      proj_array = projection_info->GetProjectionArray();
+      proj_atts = projection_info->GetProjectionAttsArray();
+      proj_atts_num = projection_info->GetProjectionAttsNum();
+    }
   }
 
   // Build up possible projection read columns information for later data filtering by columns.
