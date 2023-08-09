@@ -16,6 +16,7 @@
 #include "storage/micro_partition.h"
 #include "storage/orc/orc.h"
 #include "storage/pax_block_id.h"
+#include "storage/pax_filter.h"
 #include "storage/paxc_block_map_manager.h"
 #include "storage/strategy.h"
 
@@ -60,8 +61,12 @@ class TableWriter {
 class TableReader final {
  public:
   struct ReaderOptions {
-    bool build_bitmap;
-    Oid rel_oid;
+    bool build_bitmap = false;
+    Oid rel_oid = 0;
+
+    // Will not used in TableReader
+    // But pass into micro partition reader
+    PaxFilter *filter = nullptr;
   };
 
   TableReader(MicroPartitionReader *reader,
@@ -88,8 +93,6 @@ class TableReader final {
   uint32 GetCurrentMicroPartitionTupleOffset();
 
   bool SeekTuple(uint64 targettupleid, uint64 *nexttupleid);
-
-  inline void SetFilter(MicroPartitionFilter* filter) { reader_->SetFilter(filter); }
 
  private:
   void SeekCurrentMicroPartitionTupleOffset(int tuple_offset);

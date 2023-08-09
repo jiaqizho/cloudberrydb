@@ -10,13 +10,12 @@
 #include "storage/orc/protobuf_stream.h"
 #define FATAL 22
 
+#include "catalog/micro_partition_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_defer.h"
 #include "exceptions/CException.h"
 #include "storage/columns/pax_column.h"
 #include "storage/columns/pax_columns.h"
-#include "storage/column_read_info.h"
-#include "storage/column_projection_info.h"
 #include "storage/file_system.h"
 #include "storage/micro_partition.h"
 
@@ -143,35 +142,8 @@ class OrcReader : public MicroPartitionReader {
 
   StripeInformation *GetStripeInfo(size_t index) const;
 
-  PaxColumns *ReadStripe(size_t index,
-           std::vector<std::pair<int , int>> read_columns = std::vector<std::pair<int , int>>());
-
-  DataBuffer<char> *CreateStripeDataBuffer(PaxColumns *pax_columns,
-                                           StripeInformation *stripe_info);
-
-  void ReadDataBufferFromStripe(DataBuffer<char> *data_buffer,
-                                const std::vector<std::pair<int , int>> &read_columns,
-                                StripeInformation *stripe_info,
-                                orc::proto::StripeFooter *stripe_footer,
-                                size_t stripe_footer_offset,
-                                PaxColumns *pax_columns,
-                                PaxColumnReadInfo *column_info);
-
-  void ReadColumnsFromDataBuffer(DataBuffer<char> *data_buffer,
-                                 PaxColumns *pax_columns,
-                                 StripeInformation *stripe_info,
-                                 orc::proto::StripeFooter *stripe_footer,
-                                 PaxColumnReadInfo *column_info,
-                                 size_t column_num);
-
-void ReadRangeColumnDataFromStreams(DataBuffer<char> *data_buffer,
-                                 StripeInformation *stripe_info,
-                                 orc::proto::StripeFooter *stripe_footer,
-                                 size_t index_start, size_t index_end,
-                                 size_t &stream_index, size_t &offset,  //NOLINT
-                                 size_t &read_count,  // NOLINT
-                                 PaxColumnReadInfo *column_info,
-                                 bool read_data = true);
+  PaxColumns *ReadStripe(size_t index, bool *proj_map = nullptr,
+                         size_t proj_len = 0);
 
   size_t GetNumberOfStripes() const;
 
@@ -206,6 +178,11 @@ void ReadRangeColumnDataFromStreams(DataBuffer<char> *data_buffer,
 #ifndef RUN_GTEST
  protected:  // NOLINT
 #endif
+
+  orc::proto::StripeFooter ReadStripeWithProjection(
+      DataBuffer<char> *data_buffer, OrcReader::StripeInformation *stripe_info,
+      const bool *proj_map, size_t proj_len);
+
   void ReadMetadata(ssize_t file_length, uint64 post_script_len);
 
   void BuildProtoTypes();
@@ -238,7 +215,7 @@ void ReadRangeColumnDataFromStreams(DataBuffer<char> *data_buffer,
   orc::proto::Metadata meta_data_;
 
   size_t num_of_stripes_;
-  ReaderOptions reader_options_;
+  bool *proj_map_;
 };
 
 class OrcIteratorReader final : public MicroPartitionReader {
