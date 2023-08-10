@@ -4,7 +4,7 @@
 
 #include <utility>
 
-#include "catalog/micro_partition_metadata.h"
+#include "storage/micro_partition_metadata.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/micro_partition_file_factory.h"

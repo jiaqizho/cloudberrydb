@@ -14,7 +14,7 @@ Thumbs.db
 # Temp files dir
 .tmp/**
 build*/**
-
+clang-tidy.result
 # pb
 **/*.pb.h
 **/*.pb.cc

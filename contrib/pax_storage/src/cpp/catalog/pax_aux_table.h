@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "catalog/micro_partition_metadata.h"
+#include "storage/micro_partition_metadata.h"
 #include "catalog/pax_aux_table.h"
 #include "storage/local_file_system.h"
 

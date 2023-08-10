@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-#include "catalog/micro_partition_metadata.h"
+#include "storage/micro_partition_metadata.h"
 #include "catalog/table_metadata.h"
 #include "comm/bitmap.h"
 #include "comm/iterator.h"
