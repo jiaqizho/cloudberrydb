@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "comm/cbdb_wrappers.h"
-
 namespace pax {
 
 /*
@@ -56,11 +54,6 @@ class FileSystem {
   virtual void CreateDirectory(const std::string &path) const = 0;
   virtual void DeleteDirectory(const std::string &path,
                                bool delete_topleveldir) const = 0;
-  virtual std::string BuildPaxDirectoryPath(RelFileNode rd_node,
-                                            BackendId rd_backend) const = 0;
-  virtual std::string BuildPaxFilePath(Relation rel,
-                                       const std::string &block_id) const = 0;
-
  protected:
 };
 

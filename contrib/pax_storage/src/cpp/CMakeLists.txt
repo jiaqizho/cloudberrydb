@@ -103,6 +103,7 @@ set(ZTSD_HEADER contrib/zstd/lib)
 
 set(pax_comm_src
     comm/bitmap.cc
+    comm/paxc_wrappers.cc
     comm/cbdb_wrappers.cc)
 
 set(pax_exceptions_src
@@ -140,8 +141,8 @@ set(pax_access_src
     access/pax_scanner.cc)
 set(pax_catalog_src
     catalog/micro_partition_metadata.cc
-    catalog/pax_aux_table.cc
-    catalog/table_metadata.cc)
+    catalog/table_metadata.cc
+    catalog/pax_aux_table.cc)
 
 link_directories($ENV{GPHOME}/lib)
 add_library(pax SHARED ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
