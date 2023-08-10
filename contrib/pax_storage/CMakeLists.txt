@@ -41,12 +41,15 @@ option(ENBALE_DEBUG "Enable debug" ON)
 # Build gtest options
 option(BUILD_GTEST "Build with google test" ON)
 
-SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
-SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+# Build pax format lib
+option(BUILD_PAX_FORMAT "Build pax format lib" OFF)
+
 
 if (ENBALE_DEBUG)
   ADD_DEFINITIONS(-DENBALE_DEBUG)
 	SET(CMAKE_BUILD_TYPE "Debug")
+  SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
+  SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 else()
   SET(CMAKE_BUILD_TYPE "Release")
   # no need build gtest in release mode

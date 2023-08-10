@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include "catalog/micro_partition_metadata.h"
 #include "storage/file_system.h"
+#include "storage/micro_partition_metadata.h"
 #include "storage/pax_filter.h"
 #include "storage/statistics.h"
 

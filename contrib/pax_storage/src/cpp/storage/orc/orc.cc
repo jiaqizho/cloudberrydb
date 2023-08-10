@@ -518,7 +518,6 @@ orc::proto::StripeFooter OrcReader::ReadStripeWithProjection(
         len_or_data_stream = &stripe_footer.streams(streams_index++);
         batch_len += len_or_data_stream->length();
       }
-
     } while ((++index) < column_types_.size() && proj_map[index]);
 
     file_->PReadN(data_buffer->GetAvailableBuffer(), batch_len, batch_offset);
