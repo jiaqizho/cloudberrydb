@@ -18604,7 +18604,7 @@ ATExecExpandTableCTAS(AlterTableCmd *rootCmd, Relation rel, AlterTableCmd *cmd, 
 
 		/* Step (a) */
 		/*
-		 * Force the use of Postgres query optimizer, since Pivotal Optimizer (GPORCA) will not
+		 * Force the use of Postgres based planner, since GPORCA will not
 		 * redistribute the tuples if the current and required distributions
 		 * are both RANDOM even when reorganize is set to "true"
 		 */
@@ -19103,7 +19103,7 @@ ATExecSetDistributedBy(Relation rel, Node *node, AlterTableCmd *cmd)
 			/*
 			 * Make sure the redistribution happens for a randomly distributed table.
 			 *
-			 * Force the use of Postgres query optimizer, since Pivotal Optimizer (GPORCA) will not
+			 * Force the use of Postgres based planner, since GPORCA will not
 			 * redistribute the tuples if the current and required distributions
 			 * are both RANDOM even when reorganize is set to "true"
 			 * Also set gp_force_random_redistribution to true.

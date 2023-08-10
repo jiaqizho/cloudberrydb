@@ -880,7 +880,7 @@ ExplainPrintSettings(ExplainState *es, PlanGenerator planGen)
 			ExplainPropertyStringInfo("Optimizer", es, "Postgres query optimizer");
 #ifdef USE_ORCA
 		else
-			ExplainPropertyStringInfo("Optimizer", es, "Pivotal Optimizer (GPORCA)");
+			ExplainPropertyStringInfo("Optimizer", es, "GPORCA");
 #endif
 
 		for (int i = 0; i < num; i++)
