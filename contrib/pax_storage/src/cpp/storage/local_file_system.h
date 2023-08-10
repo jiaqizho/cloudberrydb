@@ -45,7 +45,6 @@ class LocalFileSystem final : public FileSystem {
   void CreateDirectory(const std::string &path) const override;
   void DeleteDirectory(const std::string &path,
                        bool delete_topleveldir) const override;
-
  private:
   LocalFileSystem() = default;
 };

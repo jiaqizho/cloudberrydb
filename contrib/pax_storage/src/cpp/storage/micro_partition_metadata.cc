@@ -1,27 +1,16 @@
-#include "catalog/micro_partition_metadata.h"
+#include "storage/micro_partition_metadata.h"
 
 namespace pax {
 
-WriteSummary::WriteSummary() : file_size(0), num_tuples(0) {}
-WriteSummary::WriteSummary(const WriteSummary &summary)
-    : file_name(summary.file_name),
-      block_id(summary.block_id),
-      file_size(summary.file_size),
-      num_tuples(summary.num_tuples),
-      rel_oid(summary.rel_oid) {}
+WriteSummary::WriteSummary()
+    : file_size(0), num_tuples(0), rel_oid(InvalidOid) {}
 
 MicroPartitionMetadata::MicroPartitionMetadata(std::string micro_partition_id,
                                                std::string filename)
     : micro_partition_id_(micro_partition_id), file_name_(filename) {}
 
 MicroPartitionMetadata::MicroPartitionMetadata(
-    const MicroPartitionMetadata &other)
-    : micro_partition_id_(other.micro_partition_id_),
-      file_name_(other.file_name_),
-      tuple_count_(other.tuple_count_),
-      file_size_(other.file_size_) {}
-
-MicroPartitionMetadata::MicroPartitionMetadata(MicroPartitionMetadata &&other) {
+    MicroPartitionMetadata &&other) noexcept {
   micro_partition_id_ = std::move(other.micro_partition_id_);
   file_name_ = std::move(other.file_name_);
   tuple_count_ = other.tuple_count_;
@@ -29,16 +18,7 @@ MicroPartitionMetadata::MicroPartitionMetadata(MicroPartitionMetadata &&other) {
 }
 
 MicroPartitionMetadata &MicroPartitionMetadata::operator=(
-    const MicroPartitionMetadata &other) {
-  micro_partition_id_ = other.micro_partition_id_;
-  file_name_ = other.file_name_;
-  tuple_count_ = other.tuple_count_;
-  file_size_ = other.file_size_;
-  return *this;
-}
-
-MicroPartitionMetadata &MicroPartitionMetadata::operator=(
-    MicroPartitionMetadata &&other) {
+    MicroPartitionMetadata &&other) noexcept {
   micro_partition_id_ = std::move(other.micro_partition_id_);
   file_name_ = std::move(other.file_name_);
   tuple_count_ = other.tuple_count_;

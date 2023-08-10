@@ -8,7 +8,6 @@ extern "C" {
 
 #include "access/genam.h"
 #include "access/heapam.h"
-#include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sdir.h"
 #include "access/tableam.h"
@@ -21,7 +20,10 @@ extern "C" {
 #include "catalog/oid_dispatch.h"
 #include "catalog/pg_am.h"
 #include "catalog/pg_namespace.h"
+#ifndef BUILD_PAX_FORMAT
+#include "access/reloptions.h"
 #include "catalog/pg_pax_tables.h"
+#endif
 #include "catalog/storage.h"
 #include "cdb/cdbvars.h"
 #include "commands/cluster.h"
