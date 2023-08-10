@@ -136,7 +136,6 @@ set(pax_storage_src
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
     storage/micro_partition_metadata.cc
-    storage/pax.cc
     storage/pax_buffer.cc  
     storage/proto/protobuf_stream.cc
     storage/pax_filter.cc
@@ -168,7 +167,7 @@ link_directories($ENV{GPHOME}/lib)
 if(BUILD_PAX_FORMAT)
 # paxformat.so
 ADD_DEFINITIONS(-DBUILD_PAX_FORMAT)
-add_library(paxformat SHARED ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src}  ${pax_comm_src} )
+add_library(paxformat SHARED ${orc_proto_src} ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src}  ${pax_comm_src} )
 target_include_directories(paxformat PUBLIC ${ZTSD_HEADER}  ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
 target_link_libraries(paxformat PUBLIC uuid orc_protobuf zstd z)
 set_target_properties(paxformat PROPERTIES 
