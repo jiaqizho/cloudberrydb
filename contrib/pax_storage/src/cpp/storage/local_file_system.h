@@ -9,10 +9,7 @@
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
 #include "storage/file_system.h"
-#include "utils/wait_event.h"
 
-#define PAX_MICROPARTITION_NAME_LENGTH 2048
-#define PAX_MICROPARTITION_DIR_POSTFIX "_pax"
 
 namespace pax {
 class LocalFile final : public File {
@@ -48,20 +45,9 @@ class LocalFileSystem final : public FileSystem {
   void CreateDirectory(const std::string &path) const override;
   void DeleteDirectory(const std::string &path,
                        bool delete_topleveldir) const override;
-  std::string BuildPaxDirectoryPath(RelFileNode rd_node,
-                                    BackendId rd_backend) const override;
-  std::string BuildPaxFilePath(Relation rel,
-                               const std::string &block_id) const override;
 
  private:
   LocalFileSystem() = default;
 };
 }  // namespace pax
 
-namespace paxc {
-void CopyFile(const char *srcsegpath, const char *dstsegpath);
-void DeletePaxDirectoryPath(const char *dirname, bool delete_topleveldir);
-void MakedirRecursive(const char *path);
-char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
-char *BuildPaxFilePath(Relation rel, const char *block_id);
-};  // namespace paxc

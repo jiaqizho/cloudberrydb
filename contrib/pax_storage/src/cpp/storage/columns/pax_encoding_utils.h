@@ -108,7 +108,7 @@ inline int64 UnZigZag(T value) {  //
 }
 
 template <typename T>
-inline int64 UnZigZagWithUnsigned(T value) {  //
+inline int64 UnZigZagWithUnsigned(T value) {
   switch (sizeof(T)) {
     case 1: {
       auto us_value = static_cast<uint8>(value);
