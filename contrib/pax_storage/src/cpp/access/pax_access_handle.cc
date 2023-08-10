@@ -557,7 +557,7 @@ uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {
     // compressed size. Later, when the aux table supports size attributes
     // before/after compression, we need to distinguish two attributes by names.
     Datum tup_datum = heap_getattr(
-        aux_tup, Anum_pg_pax_block_tables_ptblocksize, aux_tup_desc, &isnull);
+        aux_tup, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE, aux_tup_desc, &isnull);
 
     Assert(!isnull);
     pax_size += DatumGetUInt32(tup_datum);
@@ -611,7 +611,7 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
     bool isnull = false;
 
     pttupcount_datum = heap_getattr(
-        aux_tup, Anum_pg_pax_block_tables_pttupcount, aux_tup_desc, &isnull);
+        aux_tup, ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT, aux_tup_desc, &isnull);
     Assert(!isnull);
     total_tuples += DatumGetUInt32(pttupcount_datum);
 
@@ -621,7 +621,7 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
     // supports size attributes before/after compression, this needs to
     // be corrected.
     ptblocksize_datum = heap_getattr(
-        aux_tup, Anum_pg_pax_block_tables_ptblocksize, aux_tup_desc, &isnull);
+        aux_tup, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE, aux_tup_desc, &isnull);
 
     Assert(!isnull);
     pax_size += DatumGetUInt32(ptblocksize_datum);

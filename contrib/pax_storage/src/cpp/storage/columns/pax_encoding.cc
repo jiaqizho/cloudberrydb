@@ -1,8 +1,8 @@
 #include "storage/columns/pax_encoding.h"
 
-#include "storage/columns/pax_rlev2_encoding.h"
-
 #include <utility>
+
+#include "storage/columns/pax_rlev2_encoding.h"
 
 namespace pax {
 
@@ -43,4 +43,3 @@ char *PaxEncoder::GetBuffer() const { return result_buffer_->GetBuffer(); }
 size_t PaxEncoder::GetBufferSize() const { return result_buffer_->Used(); }
 
 }  // namespace pax
-
