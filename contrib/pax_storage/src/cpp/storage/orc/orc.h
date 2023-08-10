@@ -10,7 +10,6 @@
 #include "storage/orc/protobuf_stream.h"
 #define FATAL 22
 
-#include "catalog/micro_partition_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_defer.h"
 #include "exceptions/CException.h"
@@ -18,6 +17,7 @@
 #include "storage/columns/pax_columns.h"
 #include "storage/file_system.h"
 #include "storage/micro_partition.h"
+#include "storage/micro_partition_metadata.h"
 
 namespace pax {
 
