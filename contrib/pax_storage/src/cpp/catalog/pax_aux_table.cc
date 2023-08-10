@@ -34,22 +34,22 @@ void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
   CBDB_WRAP_START;
   {
     rel = table_open(relid, RowExclusiveLock);
-    natts = Natts_pg_pax_block_tables;
+    natts = NATTS_PG_PAX_BLOCK_TABLES;
     values = reinterpret_cast<Datum *>(palloc(sizeof(Datum) * natts));
     nulls = reinterpret_cast<bool *>(palloc0(sizeof(bool) * natts));
 
     Assert(blockname);
     namestrcpy(&ptblockname, blockname);
 
-    values[Anum_pg_pax_block_tables_ptblockname - 1] =
+    values[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1] =
         NameGetDatum(&ptblockname);
-    nulls[Anum_pg_pax_block_tables_ptblockname - 1] = false;
+    nulls[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1] = false;
 
-    values[Anum_pg_pax_block_tables_pttupcount - 1] = Int32GetDatum(pttupcount);
-    nulls[Anum_pg_pax_block_tables_pttupcount - 1] = false;
-    values[Anum_pg_pax_block_tables_ptblocksize - 1] =
+    values[ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT - 1] = Int32GetDatum(pttupcount);
+    nulls[ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT - 1] = false;
+    values[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE - 1] =
         Int32GetDatum(ptblocksize);
-    nulls[Anum_pg_pax_block_tables_ptblocksize - 1] = false;
+    nulls[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE - 1] = false;
     tuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
     // insert a new tuple
@@ -66,7 +66,7 @@ void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
   CBDB_WRAP_END;
 }
 
-void GetAllBlockFileInfo_PG_PaxBlock_Relation(
+void GetAllBlockFileInfoPgPaxBlockRelation(
     std::vector<pax::MicroPartitionMetadata>
         &result,  // NOLINT(runtime/references)
     const Relation relation, Relation pg_blockfile_rel,
@@ -84,7 +84,7 @@ void GetAllBlockFileInfo_PG_PaxBlock_Relation(
                                   pax_meta_data_snapshot, 0, NULL);
 
     while ((tuple = systable_getnext(pax_scan)) != NULL) {
-      blockid = heap_getattr(tuple, Anum_pg_pax_block_tables_ptblockname,
+      blockid = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME,
                              pg_paxblock_dsc, &is_null);
       if (is_null)
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -96,7 +96,7 @@ void GetAllBlockFileInfo_PG_PaxBlock_Relation(
       pax::MicroPartitionMetadata meta_info(DatumGetName(blockid)->data,
                                             file_name);
 
-      tup_count = heap_getattr(tuple, Anum_pg_pax_block_tables_pttupcount,
+      tup_count = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT,
                                pg_paxblock_dsc, &is_null);
       if (is_null)
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -132,7 +132,7 @@ void GetAllMicroPartitionMetadata(const Relation parentrel,
 
     pg_paxblock_rel = table_open(block_rel_id, AccessShareLock);
 
-    GetAllBlockFileInfo_PG_PaxBlock_Relation(result, parentrel, pg_paxblock_rel,
+    GetAllBlockFileInfoPgPaxBlockRelation(result, parentrel, pg_paxblock_rel,
                                              pax_meta_data_snapshot);
 
     table_close(pg_paxblock_rel, AccessShareLock);
@@ -152,7 +152,7 @@ void DeletePaxBlockEntry(const Oid relid, const Snapshot pax_meta_data_snapshot,
   {
     rel = table_open(relid, RowExclusiveLock);
     namestrcpy(&ptblockname, blockname);
-    ScanKeyInit(&key[0], Anum_pg_pax_block_tables_ptblockname,
+    ScanKeyInit(&key[0], ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME,
                 BTEqualStrategyNumber, F_NAMEEQ, NameGetDatum(&ptblockname));
 
     // should add snapshot support
@@ -229,7 +229,7 @@ void CCPaxAuxTable::PaxAuxRelationSetNewFilenode(Relation rel,
   // The relfilenode created here is to be compatible with PG normal process
   // logic instead of being used by pax storage.
   cbdb::RelationCreateStorageDirectory(*newrnode, persistence, SMGR_MD, rel);
-  path = fs->BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
+  path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!path.empty());
   fs->CreateDirectory(path);
 }
@@ -250,7 +250,7 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
 
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
 
-  src_path = fs->BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend);
+  src_path = cbdb::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend);
   Assert(!src_path.empty());
 
   // get micropatition file source folder filename list for copying.
@@ -262,11 +262,10 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
   cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
                                        SMGR_MD, rel);
 
-  dst_path = fs->BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
+  dst_path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!dst_path.empty());
 
-  if (src_path.empty() || src_path.length() >= PAX_MICROPARTITION_NAME_LENGTH ||
-      dst_path.empty() || dst_path.length() >= PAX_MICROPARTITION_NAME_LENGTH)
+  if (src_path.empty() || dst_path.empty())
     CBDB_RAISE(cbdb::CException::ExType::kExTypeFileOperationError);
 
   // create micropartition file destination folder for copying.
@@ -292,7 +291,7 @@ void CCPaxAuxTable::PaxAuxRelationFileUnlink(RelFileNode node,
   std::string relpath;
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
   // Delete all micro partition file directory.
-  relpath = fs->BuildPaxDirectoryPath(node, backend);
+  relpath = cbdb::BuildPaxDirectoryPath(node, backend);
   fs->DeleteDirectory(relpath, delete_topleveldir);
 }
 }  // namespace pax
@@ -353,13 +352,13 @@ void CPaxCreateMicroPartitionTable(const Relation rel) {
   aux_relid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId,
                                    Anum_pg_class_oid,  // new line
                                    aux_relname, aux_namespace_id);
-  tupdesc = CreateTemplateTupleDesc(Natts_pg_pax_block_tables);
-  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblockname,
+  tupdesc = CreateTemplateTupleDesc(NATTS_PG_PAX_BLOCK_TABLES);
+  TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME,
                      "ptblockname", NAMEOID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_pttupcount,
+  TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT,
                      "pttupcount", INT4OID, -1, 0);
   // TODO(chenhongjie): uncompressed and compressed ptblocksize are needed.
-  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_pg_pax_block_tables_ptblocksize,
+  TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE,
                      "ptblocksize", INT4OID, -1, 0);
   relid = heap_create_with_catalog(
       aux_relname, aux_namespace_id, InvalidOid, aux_relid, InvalidOid,

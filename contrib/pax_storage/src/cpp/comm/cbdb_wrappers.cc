@@ -1,6 +1,6 @@
 #include "comm/cbdb_wrappers.h"
 
-#include "storage/local_file_system.h"
+#include "comm/paxc_wrappers.h"
 #include "storage/paxc_block_map_manager.h"
 extern "C" {
 const char *progname;
@@ -289,15 +289,27 @@ void cbdb::MakedirRecursive(const char *path) {
   CBDB_WRAP_END;
 }
 
-char *cbdb::BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend) {
+std::string cbdb::BuildPaxDirectoryPath(RelFileNode rd_node,
+                                        BackendId rd_backend) {
   CBDB_WRAP_START;
-  { return paxc::BuildPaxDirectoryPath(rd_node, rd_backend); }
+  {
+    char *tmp_str = paxc::BuildPaxDirectoryPath(rd_node, rd_backend);
+    std::string ret_str(tmp_str);
+    pfree(tmp_str);
+    return ret_str;
+  }
   CBDB_WRAP_END;
 }
 
-char *cbdb::BuildPaxFilePath(const Relation rel, const std::string &block_id) {
+std::string cbdb::BuildPaxFilePath(const Relation rel,
+                                   const std::string &block_id) {
   CBDB_WRAP_START;
-  { return paxc::BuildPaxFilePath(rel, block_id.c_str()); }
+  {
+    char *tmp_str = paxc::BuildPaxFilePath(rel, block_id.c_str());
+    std::string ret_str(tmp_str);
+    pfree(tmp_str);
+    return ret_str;
+  }
   CBDB_WRAP_END;
 }
 
