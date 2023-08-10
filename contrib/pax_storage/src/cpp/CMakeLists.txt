@@ -78,7 +78,7 @@ add_custom_command(OUTPUT ${pax_proto_src}
   ${pax_proto_file})
 add_custom_target(generate_protobuf DEPENDS ${pax_proto_src})
 
-if (BUILD_GTEST)
+if (BUILD_GTEST AND NOT BUILD_PAX_FORMAT)
 
 add_subdirectory(contrib/googletest)
 ADD_DEFINITIONS(-DRUN_GTEST)
@@ -91,7 +91,7 @@ add_executable(test_main ${TEST_CASE_SOURCES})
 add_dependencies(test_main gtest gmock gtest_main)
 target_include_directories(test_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include)
 target_link_libraries(test_main gtest gmock gtest_main postgres pax)
-endif(BUILD_GTEST)
+endif(BUILD_GTEST AND NOT BUILD_PAX_FORMAT)
 
 # ztsd
 set(ZSTD_BUILD_PROGRAMS OFF)
@@ -123,14 +123,22 @@ set(pax_storage_src
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
+    storage/micro_partition_metadata.cc
     storage/pax.cc
     storage/pax_buffer.cc
+    storage/pax_filter.cc
     storage/strategy.cc
     storage/orc/protobuf_stream.cc
     storage/paxc_block_map_manager.cc
     storage/orc/orc.cc
     storage/orc/protobuf_stream.cc
     storage/strategy.cc)
+
+if(NOT BUILD_PAX_FORMAT) 
+  set(pax_storage_src ${pax_storage_src} storage/pax.cc)
+endif(NOT BUILD_PAX_FORMAT)
+ 
+
 
 set(pax_access_src
     access/pax_access_handle.cc
@@ -139,12 +147,50 @@ set(pax_access_src
     access/pax_inserter.cc
     access/pax_updater.cc
     access/pax_scanner.cc)
+
 set(pax_catalog_src
-    catalog/micro_partition_metadata.cc
-    catalog/table_metadata.cc
-    catalog/pax_aux_table.cc)
+    catalog/pax_aux_table.cc
+    catalog/table_metadata.cc)
 
 link_directories($ENV{GPHOME}/lib)
+
+if(BUILD_PAX_FORMAT)
+# paxformat.so
+ADD_DEFINITIONS(-DBUILD_PAX_FORMAT)
+add_library(paxformat SHARED ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src}  ${pax_comm_src} )
+target_include_directories(paxformat PUBLIC ${ZTSD_HEADER}  ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
+target_link_libraries(paxformat PUBLIC uuid orc_protobuf zstd z)
+set_target_properties(paxformat PROPERTIES 
+OUTPUT_NAME paxformat)
+add_dependencies(paxformat generate_protobuf)
+
+
+# export headers
+set(PAX_COMM_HEADERS
+  comm/cbdb_api.h
+)
+
+
+
+## install dynamic libraray 
+install(TARGETS paxformat
+  LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+
+# TODO(gongxun): 
+# We should explicitly specify the headers 
+# that need to be exported, and use the syntax of 
+# install(FILES,...) to install the header files
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/storage
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/pax
+  FILES_MATCHING
+  PATTERN "*.h"
+)
+
+install(FILES ${PAX_COMM_HEADERS}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/include/pax/comm
+)
+
+else()
 add_library(pax SHARED ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
 set_target_properties(pax PROPERTIES 
 OUTPUT_NAME pax)
@@ -154,3 +200,5 @@ add_dependencies(pax generate_protobuf)
 add_custom_command(TARGET pax POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E
                        copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
+endif(BUILD_PAX_FORMAT)
+

@@ -14,7 +14,7 @@ struct WriteSummary {
   size_t num_tuples;
   unsigned int rel_oid;
   WriteSummary();
-  WriteSummary(const WriteSummary &summary);
+  WriteSummary(const WriteSummary &summary) = default;
 };
 
 class MicroPartitionMetadata {
@@ -23,13 +23,14 @@ class MicroPartitionMetadata {
 
   ~MicroPartitionMetadata() = default;
 
-  MicroPartitionMetadata(const MicroPartitionMetadata &other);
+  MicroPartitionMetadata(const MicroPartitionMetadata &other) = default;
 
-  MicroPartitionMetadata(MicroPartitionMetadata &&other);
+  MicroPartitionMetadata(MicroPartitionMetadata &&other) noexcept;
 
-  MicroPartitionMetadata &operator=(const MicroPartitionMetadata &other);
+  MicroPartitionMetadata &operator=(const MicroPartitionMetadata &other) =
+      default;
 
-  MicroPartitionMetadata &operator=(MicroPartitionMetadata &&other);
+  MicroPartitionMetadata &operator=(MicroPartitionMetadata &&other) noexcept;
 
   const std::string &GetMicroPartitionId() const;
 

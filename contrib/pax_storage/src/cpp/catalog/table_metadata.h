@@ -7,22 +7,21 @@
 #include <string>
 #include <vector>
 
-#include "catalog/micro_partition_metadata.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/iterator.h"
+#include "storage/micro_partition_metadata.h"
 
 namespace pax {
 class TableMetadata {
  public:
   class Iterator;
 
-  static TableMetadata *Create(const Relation parent_relation,
-                               const Snapshot snapshot);
+  static TableMetadata *Create(Relation parent_relation, Snapshot snapshot);
 
   std::unique_ptr<Iterator> NewIterator();
 
  private:
-  TableMetadata(const Relation parent_relation, const Snapshot snapshot);
+  TableMetadata(Relation parent_relation, Snapshot snapshot);
 
   void GetAllMicroPartitionMetadata(
       std::vector<pax::MicroPartitionMetadata>
@@ -43,9 +42,9 @@ class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
 
   std::size_t Index() const;
 
-  inline bool Empty() const { return micro_partitions_.empty(); }
+  inline bool Empty() const override { return micro_partitions_.empty(); }
 
-  inline uint32 Size() const { return micro_partitions_.size(); }
+  inline uint32 Size() const override { return micro_partitions_.size(); }
 
   bool HasNext() const override;
 
@@ -55,7 +54,7 @@ class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
 
   pax::MicroPartitionMetadata Current() const override;
 
-  ~Iterator();
+  ~Iterator() override;
 
  private:
   explicit Iterator(std::vector<pax::MicroPartitionMetadata>
