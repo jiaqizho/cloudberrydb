@@ -13,10 +13,17 @@ namespace pax {
 template <typename T>
 class PaxOrcDecoder final : public PaxDecoder {
  public:
-  PaxOrcDecoder(const PaxDecoder::DecodingOption &encoder_options,
-                char *raw_buffer, size_t buffer_len);
+  explicit PaxOrcDecoder(const PaxDecoder::DecodingOption &encoder_options);
 
   ~PaxOrcDecoder() override;
+
+  PaxDecoder *SetSrcBuffer(char *data, size_t data_len) override;
+
+  PaxDecoder *SetDataBuffer(DataBuffer<char> *result_buffer) override;
+
+  const char *GetBuffer() const override;
+
+  size_t GetBufferSize() const override;
 
   size_t Next(const char *not_null) override;
 
@@ -40,6 +47,8 @@ class PaxOrcDecoder final : public PaxDecoder {
   DataBuffer<int64> *copy_data_buffer_;
   // Used by PATCHED_BASE
   DataBuffer<int64> *unpacked_data_;
+  // result buffer
+  DataBuffer<char> *result_buffer_;
 };
 
 extern template class PaxOrcDecoder<int64>;

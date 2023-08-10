@@ -1,4 +1,4 @@
-#include "storage/orc/protobuf_stream.h"
+#include "storage/proto/protobuf_stream.h"
 
 #include "exceptions/CException.h"
 
