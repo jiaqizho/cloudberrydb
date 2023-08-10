@@ -12,19 +12,22 @@ namespace pax {
 class PaxDecoder {
  public:
   struct DecodingOption {
-    PaxColumnEncodeType column_encode_type;
+    ColumnEncoding_Kind column_encode_type;
     bool is_sign;
 
     DecodingOption()
-        : column_encode_type(PaxColumnEncodeType::kTypeNoEncoded),
-          is_sign(false) {}
+        : column_encode_type(
+              ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED),
+          is_sign(true) {}
   };
 
   explicit PaxDecoder(const DecodingOption &decoder_options);
 
   virtual ~PaxDecoder() = default;
 
-  virtual void SetDataBuffer(DataBuffer<char> *result_buffer);
+  virtual PaxDecoder *SetSrcBuffer(char *data, size_t data_len) = 0;
+
+  virtual PaxDecoder *SetDataBuffer(DataBuffer<char> *result_buffer) = 0;
 
   virtual size_t Next(const char *not_null) = 0;
 
@@ -32,26 +35,24 @@ class PaxDecoder {
 
   virtual size_t Decoding(const char *not_null, size_t not_null_len) = 0;
 
-  virtual char *GetBuffer() const;
+  virtual const char *GetBuffer() const = 0;
 
-  virtual size_t GetBufferSize() const;
+  virtual size_t GetBufferSize() const = 0;
 
   template <typename T>
-  static PaxDecoder *CreateDecoder(const DecodingOption &decoder_options,
-                                   char *raw_buffer, size_t buffer_len);
+  static PaxDecoder *CreateDecoder(const DecodingOption &decoder_options);
 
  protected:
   const DecodingOption &decoder_options_;
-  DataBuffer<char> *result_buffer_;
 };
 
 extern template PaxDecoder *PaxDecoder::CreateDecoder<int64>(
-    const DecodingOption &, char *, size_t);
+    const DecodingOption &);
 extern template PaxDecoder *PaxDecoder::CreateDecoder<int32>(
-    const DecodingOption &, char *, size_t);
+    const DecodingOption &);
 extern template PaxDecoder *PaxDecoder::CreateDecoder<int16>(
-    const DecodingOption &, char *, size_t);
+    const DecodingOption &);
 extern template PaxDecoder *PaxDecoder::CreateDecoder<int8>(
-    const DecodingOption &, char *, size_t);
+    const DecodingOption &);
 
 }  // namespace pax

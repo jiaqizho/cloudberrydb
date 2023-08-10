@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "comm/cbdb_wrappers.h"
+#include "storage/proto/proto_wrappers.h"
 
 namespace pax {
 
@@ -16,14 +17,6 @@ namespace pax {
 #define ORC_HIST_LEN 32
 #define ORC_MAX_SHORT_REPEAT_LENGTH (ORC_MIN_REPEAT + 7)
 
-enum PaxColumnEncodeType {
-  kTypeDefaultEncoded = 0,  // default encode by column type
-  kTypeNoEncoded,           // no encoded
-  kTypeRLEV2,               // used orc rle v2
-  kTypeDirectDelta          // used delta
-};
-
-// FIXME(jiaqizho): change to ORCEncodingType
 enum EncodingType {
   kShortRepeat = 0,
   kDirect,

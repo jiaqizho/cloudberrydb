@@ -6,15 +6,9 @@
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/singleton.h"
+#include "storage/columns/pax_encoding_utils.h"
 
 namespace pax {
-
-enum PaxColumnCompressType {
-  kTypeNoCompress = 0,   // no compress
-  kTypeDefaultCompress,  // default compress by column type
-  kTypeZSTD,             // used ZSTD
-  kTypeZLIB              // used Zlib
-};
 
 class PaxCompressor {
  public:
@@ -24,11 +18,7 @@ class PaxCompressor {
     kTypeBlock = 3
   };
 
-  struct CompressorOptions {
-    int compress_level;
-  };
-
-  explicit PaxCompressor(const CompressorOptions &compressor_options);
+  PaxCompressor() = default;
 
   virtual ~PaxCompressor() = default;
 
@@ -50,13 +40,21 @@ class PaxCompressor {
 
   virtual const char *ErrorName(size_t code) = 0;
 
- protected:
-  const CompressorOptions &compressor_options_;
+  /**
+   * block compress
+   *
+   * it has similar interface with `CreateStreamingEncoder`
+   * but the timing of compression/decompression method calls is different from
+   * encoding/decoding.
+   */
+  static PaxCompressor *CreateBlockCompressor(ColumnEncoding_Kind kind);
 };
 
 class PaxZSTDCompressor final : public PaxCompressor {
  public:
-  explicit PaxZSTDCompressor(const CompressorOptions &compressor_options);
+  PaxZSTDCompressor() = default;
+
+  ~PaxZSTDCompressor() override = default;
 
   PaxCompressor::PaxCompressorType GetCompressorType() const override;
 
@@ -79,7 +77,9 @@ class PaxZSTDCompressor final : public PaxCompressor {
 
 class PaxZlibCompressor final : public PaxCompressor {
  public:
-  explicit PaxZlibCompressor(const CompressorOptions &compressor_options);
+  PaxZlibCompressor() = default;
+
+  ~PaxZlibCompressor() override = default;
 
   PaxCompressor::PaxCompressorType GetCompressorType() const override;
 

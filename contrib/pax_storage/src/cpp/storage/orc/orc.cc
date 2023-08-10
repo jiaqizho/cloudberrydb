@@ -179,11 +179,11 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
   }
 
   for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
-    auto encoding = stripe_footer.add_columns();
+    auto encoding = stripe_footer.add_pax_col_encodings();
     auto pb_stats = stripe_stats->add_colstats();
 
-    encoding->set_kind(orc::proto::ColumnEncoding_Kind_DIRECT);
-    encoding->set_dictionarysize(0);
+    encoding->set_kind(ColumnEncoding_Kind_NO_ENCODED);
+    encoding->set_length(0);
 
     pb_stats->set_hasnull((*pax_columns_)[i]->HasNull());
     pb_stats->set_numberofvalues((*pax_columns_)[i]->GetRows());

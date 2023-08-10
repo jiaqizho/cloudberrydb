@@ -10,15 +10,13 @@
 
 #include "storage/columns/pax_compress.h"
 #include "storage/columns/pax_encoding_utils.h"
-
-#undef FATAL
-#include "storage/orc/orc_proto.pb.h"
 #include "storage/pax_buffer.h"
-#define FATAL 22
+#include "storage/proto/proto_wrappers.h"
 
 namespace pax {
 
 #define DEFAULT_CAPACITY 2048
+#define NO_ENCODE_ORIGIN_LEN (-1)
 
 // Used to mapping pg_type
 enum PaxColumnTypeInMem { kTypeInvalid = 1, kTypeFixed = 2, kTypeNonFixed = 3 };
@@ -38,9 +36,7 @@ class PaxColumn {
 
   virtual ~PaxColumn();
 
-  virtual PaxColumn *SetColumnEncodeType(PaxColumnEncodeType encoding_type);
-
-  virtual PaxColumn *SetColumnCompressType(PaxColumnCompressType compress_type);
+  virtual PaxColumn *SetColumnEncodeType(ColumnEncoding_Kind encoding_type);
 
   virtual PaxColumn *SetColumnStorageType(PaxColumnStorageType storage_type);
 
@@ -81,19 +77,18 @@ class PaxColumn {
   // Estimated memory size from current column
   virtual size_t EstimatedSize() const = 0;
 
-  virtual PaxColumnEncodeType GetEncodingType() const;
+  // Get current encoding type
+  virtual ColumnEncoding_Kind GetEncodingType() const;
 
-  virtual PaxColumnCompressType GetCompressType() const;
+  // Get the data size without encoding/compress
+  virtual int64 GetOriginLength() const = 0;
 
  protected:
   // null field bit map
   DataBuffer<bool> *null_bitmap_;
 
   // the column is encoded type
-  PaxColumnEncodeType encoded_type_;
-
-  // whether the column is compressed
-  PaxColumnCompressType compress_type_;
+  ColumnEncoding_Kind encoded_type_;
 
   // whether the column is storage
   PaxColumnStorageType storage_type_;
@@ -126,11 +121,9 @@ class PaxCommColumn : public PaxColumn {
 
   size_t EstimatedSize() const override;
 
+  int64 GetOriginLength() const override;
+
   std::pair<char *, size_t> GetBuffer() override;
-#ifndef RUN_GTEST
- protected:  // NOLINT
-#endif
-  DataBuffer<T> *GetDataBuffer();
 
  protected:
   virtual void ReSize(uint64 capacity);
@@ -141,6 +134,7 @@ class PaxCommColumn : public PaxColumn {
 };
 
 extern template class PaxCommColumn<char>;
+extern template class PaxCommColumn<int8>;
 extern template class PaxCommColumn<int16>;
 extern template class PaxCommColumn<int32>;
 extern template class PaxCommColumn<int64>;
@@ -155,8 +149,8 @@ class PaxNonFixedColumn : public PaxColumn {
 
   ~PaxNonFixedColumn() override;
 
-  void Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
-           size_t total_size);
+  virtual void Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
+                   size_t total_size);
 
   void Append(char *buffer, size_t size) override;
 
@@ -167,6 +161,8 @@ class PaxNonFixedColumn : public PaxColumn {
   std::pair<char *, size_t> GetBuffer() override;
 
   size_t EstimatedSize() const override;
+
+  int64 GetOriginLength() const override;
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 

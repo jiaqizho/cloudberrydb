@@ -68,15 +68,24 @@ if (PROTOBUF_VENDORED)
   endif ()
 endif ()
 
-set(pax_proto_file "${CMAKE_CURRENT_SOURCE_DIR}/storage/orc/orc_proto.proto")
-set(pax_proto_src "${CMAKE_CURRENT_SOURCE_DIR}/storage/orc/orc_proto.pb.h" "${CMAKE_CURRENT_SOURCE_DIR}/storage/orc/orc_proto.pb.cc")
+set(orc_proto_file "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/orc_proto.proto")
+set(orc_proto_src "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/orc_proto.pb.h" "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/orc_proto.pb.cc")
+
+set(pax_proto_file "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/pax.proto")
+set(pax_proto_src "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/pax.pb.h" "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/pax.pb.cc")
+
+add_custom_command(OUTPUT ${orc_proto_src}
+  COMMAND ${PROTOBUF_EXECUTABLE}
+  -I ${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/
+  --cpp_out="${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/"
+  ${orc_proto_file})
 
 add_custom_command(OUTPUT ${pax_proto_src}
   COMMAND ${PROTOBUF_EXECUTABLE}
-  -I ${CMAKE_CURRENT_SOURCE_DIR}/storage/orc/
-  --cpp_out="${CMAKE_CURRENT_SOURCE_DIR}/storage/orc/"
+  -I ${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/
+  --cpp_out="${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/"
   ${pax_proto_file})
-add_custom_target(generate_protobuf DEPENDS ${pax_proto_src})
+add_custom_target(generate_protobuf DEPENDS ${orc_proto_src} ${pax_proto_src})
 
 if (BUILD_GTEST AND NOT BUILD_PAX_FORMAT)
 
@@ -111,9 +120,12 @@ set(pax_exceptions_src
 
 set(pax_storage_src
     storage/columns/pax_column.cc
+    storage/columns/pax_column_int.cc
     storage/columns/pax_compress.cc
     storage/columns/pax_columns.cc
     storage/columns/pax_encoding_utils.cc
+    storage/columns/pax_encoding_non_fixed_column.cc
+    storage/columns/pax_encoding_column.cc
     storage/columns/pax_decoding.cc
     storage/columns/pax_encoding.cc
     storage/columns/pax_rlev2_decoding.cc
@@ -125,13 +137,12 @@ set(pax_storage_src
     storage/micro_partition_file_factory.cc
     storage/micro_partition_metadata.cc
     storage/pax.cc
-    storage/pax_buffer.cc
+    storage/pax_buffer.cc  
+    storage/proto/protobuf_stream.cc
     storage/pax_filter.cc
     storage/strategy.cc
-    storage/orc/protobuf_stream.cc
     storage/paxc_block_map_manager.cc
     storage/orc/orc.cc
-    storage/orc/protobuf_stream.cc
     storage/strategy.cc)
 
 if(NOT BUILD_PAX_FORMAT) 
@@ -191,7 +202,7 @@ install(FILES ${PAX_COMM_HEADERS}
 )
 
 else()
-add_library(pax SHARED ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
+add_library(pax SHARED ${orc_proto_src}  ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
 set_target_properties(pax PROPERTIES 
 OUTPUT_NAME pax)
 target_include_directories(pax PUBLIC ${ZTSD_HEADER}  ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
