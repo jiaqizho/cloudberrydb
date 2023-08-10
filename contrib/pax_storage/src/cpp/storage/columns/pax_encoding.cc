@@ -6,23 +6,27 @@
 
 namespace pax {
 
-PaxEncoder *PaxEncoder::CreateEncoder(const EncodingOption &encoder_options) {
+PaxEncoder *PaxEncoder::CreateStreamingEncoder(
+    const EncodingOption &encoder_options) {
   PaxEncoder *encoder = nullptr;
   switch (encoder_options.column_encode_type) {
-    case PaxColumnEncodeType::kTypeNoEncoded: {
-      // do nothing
-      break;
-    }
-    case PaxColumnEncodeType::kTypeRLEV2: {
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2: {
       encoder = new PaxOrcEncoder(std::move(encoder_options));
       break;
     }
-    case PaxColumnEncodeType::kTypeDirectDelta: {
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA: {
+      // TODO(jiaqizho): support direct delta encoding
+      // not support yet, then direct return a nullptr(means no encoding)
       break;
     }
-    case PaxColumnEncodeType::kTypeDefaultEncoded:
-    default: {
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED: {
       CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+    }
+    // two cases here:
+    //  - `encoded type` is not a encoding type.
+    //  - `encoded type` is the no_encoding type.
+    default: {
+      // do nothing
     }
   }
 

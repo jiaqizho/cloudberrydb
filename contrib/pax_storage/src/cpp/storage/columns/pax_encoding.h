@@ -12,11 +12,15 @@ namespace pax {
 class PaxEncoder {
  public:
   struct EncodingOption {
-    PaxColumnEncodeType column_encode_type;
+    ColumnEncoding_Kind column_encode_type;
     bool is_sign;
+    int compress_lvl;
 
     EncodingOption()
-        : column_encode_type(PaxColumnEncodeType::kTypeRLEV2), is_sign(false) {}
+        : column_encode_type(
+              ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED),
+          is_sign(true),
+          compress_lvl(0) {}
   };
 
  public:
@@ -34,7 +38,17 @@ class PaxEncoder {
 
   virtual size_t GetBufferSize() const;
 
-  static PaxEncoder *CreateEncoder(const EncodingOption &encoder_options);
+  /**
+   * steaming encoder
+   *
+   * streaming means it need hold two DataBuffers
+   * - one of DataBuffer used to temp save buffer
+   * - one of DataBuffer used to keep result
+   *
+   * compared with the block method, streaming can reduce one memory copy
+   */
+  static PaxEncoder *CreateStreamingEncoder(
+      const EncodingOption &encoder_options);
 
  protected:
   const EncodingOption &encoder_options_;
