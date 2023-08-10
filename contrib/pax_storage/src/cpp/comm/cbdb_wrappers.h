@@ -135,13 +135,13 @@ void CopyFile(const char *srcsegpath, const char *dstsegpath);
 
 void MakedirRecursive(const char *path);
 
-char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
-
-char *BuildPaxFilePath(Relation rel, const std::string &block_id);
+std::string BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
 
 int RelationGetAttributesNumber(Relation rel);
 
 bool ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts);
+
+std::string BuildPaxFilePath(Relation rel, const std::string &block_id);
 }  // namespace cbdb
 
 // clang-format off

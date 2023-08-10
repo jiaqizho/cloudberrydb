@@ -70,7 +70,6 @@ void CPaxDeleter::ExecDelete() {
 std::unique_ptr<IteratorBase<MicroPartitionMetadata>>
 CPaxDeleter::buildDeleteIterator() {
   std::vector<pax::MicroPartitionMetadata> micro_partitions;
-  FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
   for (auto &it : block_bitmap_map_) {
     std::string block_id = it.first;
     DynamicBitmap *bitmap_ptr = it.second.get();
@@ -78,7 +77,7 @@ CPaxDeleter::buildDeleteIterator() {
     int32 tuple_number = bitmap_it.Next(true);
     if (tuple_number != -1) {
       pax::MicroPartitionMetadata meta_info(
-          block_id, fs->BuildPaxFilePath(rel_, block_id));
+          block_id, cbdb::BuildPaxFilePath(rel_, block_id));
       micro_partitions.push_back(std::move(meta_info));
     }
   }

@@ -59,7 +59,7 @@ const FileSplitStrategy *TableWriter::GetFileSplitStrategy() const {
 }
 
 std::string TableWriter::GenFilePath(const std::string &block_id) {
-  return file_system_->BuildPaxFilePath(relation_, block_id);
+  return cbdb::BuildPaxFilePath(relation_, block_id);
 }
 
 void TableWriter::Open() {

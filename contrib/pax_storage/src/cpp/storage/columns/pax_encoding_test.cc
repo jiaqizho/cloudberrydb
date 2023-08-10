@@ -2,8 +2,8 @@
 
 #include <cmath>
 #include <random>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/gtest_wrappers.h"

@@ -42,6 +42,7 @@ extern "C" {
 #include "utils/hsearch.h"
 #include "utils/memutils.h"
 #include "utils/relcache.h"
+#include "utils/wait_event.h"
 #include "utils/snapshot.h"
 #include "utils/syscache.h"
 
