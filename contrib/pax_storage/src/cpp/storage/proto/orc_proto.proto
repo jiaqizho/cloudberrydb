@@ -21,6 +21,7 @@ syntax = "proto2";
 package orc.proto;
 
 option java_package = "org.apache.orc";
+import "pax.proto";
 
 message IntegerStatistics  {
   optional sint64 minimum = 1;
@@ -145,42 +146,10 @@ message Stream {
   optional uint64 length = 3;
 }
 
-message ColumnEncoding {
-  enum Kind {
-    DIRECT = 0;
-    DICTIONARY = 1;
-    DIRECT_V2 = 2;
-    DICTIONARY_V2 = 3;
-  }
-  optional Kind kind = 1;
-  optional uint32 dictionarySize = 2;
-
-  // The encoding of the bloom filters for this column:
-  //   0 or missing = none or original
-  //   1            = ORC-135 (utc for timestamps)
-  optional uint32 bloomEncoding = 3;
-}
-
-message StripeEncryptionVariant {
-  repeated Stream streams = 1;
-  repeated ColumnEncoding encoding = 2;
-}
-
-// each stripe looks like:
-//   index streams
-//     unencrypted
-//     variant 1..N
-//   data streams
-//     unencrypted
-//     variant 1..N
-//   footer
-
 message StripeFooter {
   repeated Stream streams = 1;
-  repeated ColumnEncoding columns = 2;
+  repeated pax.ColumnEncoding pax_col_encodings = 5;
   optional string writerTimezone = 3;
-  // one for each column encryption variant
-  repeated StripeEncryptionVariant encryption = 4;
 }
 
 // the file tail looks like:

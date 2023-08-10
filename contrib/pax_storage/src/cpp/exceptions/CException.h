@@ -38,7 +38,8 @@ class CException {
     kExTypeSchemaNotMatch,
     kExTypeInvalidORCFormat,
     kExTypeOutOfRange,
-    kExTypeFileOperationError
+    kExTypeFileOperationError,
+    kExTypeCompressError,
   };
 
   explicit CException(ExType extype);

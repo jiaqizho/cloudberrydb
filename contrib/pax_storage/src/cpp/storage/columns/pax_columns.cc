@@ -92,6 +92,10 @@ size_t PaxColumns::EstimatedSize() const {
   return total_size;
 }
 
+int64 PaxColumns::GetOriginLength() const {
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+}
+
 size_t PaxColumns::GetColumns() const { return columns_.size(); }
 
 std::pair<char *, size_t> PaxColumns::GetBuffer() {

@@ -12,6 +12,8 @@ namespace pax {
 struct BlockBuffer {
   BlockBuffer(char *begin_offset, char *end_offset);
 
+  BlockBuffer(const BlockBuffer &block_buffer) = default;
+
   inline char *Start() const { return begin_offset_; }
 
   inline char *End() const { return end_offset_; }
@@ -39,6 +41,8 @@ struct BlockBuffer {
 class BlockBufferBase {
  public:
   BlockBufferBase(char *ptr, size_t size, size_t offset);
+
+  BlockBufferBase(const BlockBufferBase &block_buffer_base) = default;
 
   inline BlockBuffer &Buffer() { return block_buffer_; }
   inline char *Position() { return block_pos_; }
@@ -114,6 +118,24 @@ class DataBuffer : public BlockBufferBase {
   // will alloc a size of buffer and memory will take over with DataBuffer
   explicit DataBuffer(size_t size);
 
+  DataBuffer(const DataBuffer &data_buffer);
+
+  friend class DataBuffer<char>;
+
+  // copy constructor for DataBuffer<T>
+  // at the same time, this is also a way to convert templates <typename T2> to
+  // templates <typename T>.
+  //
+  // must pay attention that after origin DataBuffer<T2> call `ReSize`, The
+  // copied DataBuffer<T> will become illegal this is because there is no way
+  // for the internal pointer to be updated.
+  //
+  template <typename T2>
+  explicit DataBuffer(const DataBuffer<T2> &data_buffer)
+      : BlockBufferBase(data_buffer),
+        mem_take_over_(false),
+        data_buffer_((T *)data_buffer.data_buffer_) {}
+
   // Direct access elements of internal buffer
   T &operator[](size_t i);
 
@@ -163,10 +185,13 @@ class DataBuffer : public BlockBufferBase {
   // Caller should call `Set` to reuse current `DataBuffer` after call `Clear`
   virtual void Clear();
 
- private:
+ protected:
   bool mem_take_over_;
   T *data_buffer_ = nullptr;
 };
+
+// extern template DataBuffer<char>::DataBuffer<long>(pax::DataBuffer<long>
+// const&);
 
 extern template class DataBuffer<char>;
 extern template class DataBuffer<int8>;

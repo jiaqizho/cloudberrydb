@@ -559,28 +559,58 @@ uint64 CopyData(T *data, const int64 *const temp_data, uint64 len,
 
 template <typename T>
 PaxOrcDecoder<T>::PaxOrcDecoder(
-    const PaxDecoder::DecodingOption &encoder_options, char *raw_buffer,
-    size_t buffer_len)
+    const PaxDecoder::DecodingOption &encoder_options)
     : PaxDecoder(encoder_options),
-      data_buffer_(raw_buffer
-                       ? new TreatedDataBuffer<int64>(
-                             reinterpret_cast<int64 *>(raw_buffer), buffer_len)
-                       : nullptr),
-      copy_data_buffer_(
-          new DataBuffer<int64>(ORC_MAX_LITERAL_SIZE * sizeof(int64))),
-      unpacked_data_(nullptr) {}
+      data_buffer_(nullptr),
+      copy_data_buffer_(nullptr),
+      unpacked_data_(nullptr),
+      result_buffer_(nullptr) {}
 
 template <typename T>
 PaxOrcDecoder<T>::~PaxOrcDecoder() {
-  if (data_buffer_) delete data_buffer_;
-  delete copy_data_buffer_;
+  if (data_buffer_) {
+    delete data_buffer_;
+  }
+  if (copy_data_buffer_) {
+    delete copy_data_buffer_;
+  }
   if (unpacked_data_) {
     delete unpacked_data_;
   }
 }
 
 template <typename T>
+PaxDecoder *PaxOrcDecoder<T>::SetSrcBuffer(char *data, size_t data_len) {
+  Assert(!data_buffer_);
+  if (data) {
+    data_buffer_ =
+        new TreatedDataBuffer<int64>(reinterpret_cast<int64 *>(data), data_len);
+    copy_data_buffer_ =
+        new DataBuffer<int64>(ORC_MAX_LITERAL_SIZE * sizeof(int64));
+  }
+
+  return this;
+}
+
+template <typename T>
+PaxDecoder *PaxOrcDecoder<T>::SetDataBuffer(DataBuffer<char> *result_buffer) {
+  result_buffer_ = result_buffer;
+  return this;
+}
+
+template <typename T>
+const char *PaxOrcDecoder<T>::GetBuffer() const {
+  return result_buffer_->GetBuffer();
+}
+
+template <typename T>
+size_t PaxOrcDecoder<T>::GetBufferSize() const {
+  return result_buffer_->Used();
+}
+
+template <typename T>
 size_t PaxOrcDecoder<T>::Next(const char *const not_null) {
+  Assert(result_buffer_);
   size_t n_read = result_buffer_->Used();
   uint64 read_round = 0;
 
