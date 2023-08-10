@@ -47,6 +47,12 @@ DataBuffer<T>::DataBuffer(T *data_buffer, size_t size, bool allow_null,
   BlockBufferBase::Set(reinterpret_cast<char *>(data_buffer_), size, 0);
 }
 
+template <typename T>
+DataBuffer<T>::DataBuffer(const DataBuffer &data_buffer)
+    : BlockBufferBase(data_buffer),
+      mem_take_over_(false),
+      data_buffer_(data_buffer.data_buffer_) {}
+
 template <typename T>  // NOLINT: redirect constructor
 DataBuffer<T>::DataBuffer(size_t size)
     : DataBuffer(nullptr, size, false, true) {}

@@ -227,6 +227,7 @@ const char *CException::exception_names[] = {"Invalid ExType",
                                              "Schema not match",
                                              "Invalid orc format",
                                              "Out of range",
-                                             "File operation got error"};
+                                             "File operation got error",
+                                             "Compress got errors"};
 
 }  // namespace cbdb

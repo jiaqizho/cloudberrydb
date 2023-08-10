@@ -30,6 +30,8 @@ class PaxColumns : public PaxColumn {
 
   size_t EstimatedSize() const override;
 
+  int64 GetOriginLength() const override;
+
   // Get number of column in columns
   virtual size_t GetColumns() const;
 

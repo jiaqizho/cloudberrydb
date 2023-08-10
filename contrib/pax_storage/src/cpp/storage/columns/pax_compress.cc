@@ -1,17 +1,36 @@
 #include "storage/columns/pax_compress.h"
 
 #include "comm/cbdb_wrappers.h"
-#include "zlib.h" // NOLINT
-#include "zstd.h" // NOLINT
+#include "zlib.h"  // NOLINT
+#include "zstd.h"  // NOLINT
 
 namespace pax {
 
-PaxCompressor::PaxCompressor(const CompressorOptions &compressor_options)
-    : compressor_options_(compressor_options) {}
+PaxCompressor *PaxCompressor::CreateBlockCompressor(
+    const ColumnEncoding_Kind kind) {
+  PaxCompressor *compressor = nullptr;
+  switch (kind) {
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZSTD: {
+      compressor = new PaxZSTDCompressor();
+      break;
+    }
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZLIB: {
+      compressor = new PaxZlibCompressor();
+      break;
+    }
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED: {
+      CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+    }
+    // two cases here:
+    //  - `encoded type` is not a compress type.
+    //  - `encoded type` is the no_encoding type.
+    default: {
+      // do nothing
+    }
+  }
 
-PaxZSTDCompressor::PaxZSTDCompressor(
-    const CompressorOptions &compressor_options)
-    : PaxCompressor(compressor_options) {}
+  return compressor;
+}
 
 PaxCompressor::PaxCompressorType PaxZSTDCompressor::GetCompressorType() const {
   return PaxCompressorType::kTypeBlock;
@@ -58,10 +77,6 @@ const char *PaxZSTDCompressor::ErrorName(size_t code) {
   return ZSTD_getErrorName(code);
 }
 
-PaxZlibCompressor::PaxZlibCompressor(
-    const CompressorOptions &compressor_options)
-    : PaxCompressor(compressor_options) {}
-
 PaxCompressor::PaxCompressorType PaxZlibCompressor::GetCompressorType() const {
   return PaxCompressorType::kTypeStreaming;
 }
@@ -73,8 +88,7 @@ size_t PaxZlibCompressor::GetCompressBound(size_t src_len) {
 }
 
 size_t PaxZlibCompressor::Compress(void *dst_buff, size_t dst_cap,
-                                   void *src_buff, size_t src_len,
-                                   int /*lvl*/) {
+                                   void *src_buff, size_t src_len, int lvl) {
   z_stream c_stream; /* compression stream */
   int err;
 
@@ -82,7 +96,7 @@ size_t PaxZlibCompressor::Compress(void *dst_buff, size_t dst_cap,
   c_stream.zfree = reinterpret_cast<free_func>(0);
   c_stream.opaque = reinterpret_cast<voidpf>(0);
 
-  err = deflateInit(&c_stream, Z_DEFAULT_COMPRESSION);
+  err = deflateInit(&c_stream, lvl);
   if (err != Z_OK) {
     goto error;
   }

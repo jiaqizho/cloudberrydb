@@ -12,8 +12,7 @@ namespace pax {
 
 PaxColumn::PaxColumn()
     : null_bitmap_(nullptr),
-      encoded_type_(PaxColumnEncodeType::kTypeDefaultEncoded),
-      compress_type_(PaxColumnCompressType::kTypeDefaultCompress),
+      encoded_type_(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
       storage_type_(PaxColumnStorageType::kTypeStorageNonVec) {}
 
 PaxColumn::~PaxColumn() {
@@ -79,14 +78,8 @@ void PaxColumn::Append([[maybe_unused]] char *buffer,
   }
 }
 
-PaxColumn *PaxColumn::SetColumnEncodeType(PaxColumnEncodeType encoding_type) {
+PaxColumn *PaxColumn::SetColumnEncodeType(ColumnEncoding_Kind encoding_type) {
   encoded_type_ = encoding_type;
-  return this;
-}
-
-PaxColumn *PaxColumn::SetColumnCompressType(
-    PaxColumnCompressType compress_type) {
-  compress_type_ = compress_type;
   return this;
 }
 
@@ -95,11 +88,7 @@ PaxColumn *PaxColumn::SetColumnStorageType(PaxColumnStorageType storage_type) {
   return this;
 }
 
-PaxColumnEncodeType PaxColumn::GetEncodingType() const { return encoded_type_; }
-
-PaxColumnCompressType PaxColumn::GetCompressType() const {
-  return compress_type_;
-}
+ColumnEncoding_Kind PaxColumn::GetEncodingType() const { return encoded_type_; }
 
 template <typename T>
 PaxCommColumn<T>::PaxCommColumn(uint64 capacity) : capacity_(capacity) {
@@ -126,6 +115,8 @@ void PaxCommColumn<T>::Append(char *buffer, size_t size) {
   PaxColumn::Append(buffer, size);
   auto buffer_t = reinterpret_cast<T *>(buffer);
 
+  // TODO(jiaqizho): Is it necessary to support multiple buffer insertions for
+  // bulk insert push to mirco partition?
   Assert(size == sizeof(T));
   Assert(GetNonNullRows() <= capacity_);
 
@@ -140,11 +131,6 @@ void PaxCommColumn<T>::Append(char *buffer, size_t size) {
 template <typename T>
 PaxColumnTypeInMem PaxCommColumn<T>::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeFixed;
-}
-
-template <typename T>
-DataBuffer<T> *PaxCommColumn<T>::GetDataBuffer() {
-  return data_;
 }
 
 template <typename T>
@@ -172,6 +158,11 @@ size_t PaxCommColumn<T>::EstimatedSize() const {
 }
 
 template <typename T>
+int64 PaxCommColumn<T>::GetOriginLength() const {
+  return NO_ENCODE_ORIGIN_LEN;
+}
+
+template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer() {
   return std::make_pair(data_->Start(), data_->Used());
 }
@@ -184,6 +175,7 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
 }
 
 template class PaxCommColumn<char>;
+template class PaxCommColumn<int8>;
 template class PaxCommColumn<int16>;
 template class PaxCommColumn<int32>;
 template class PaxCommColumn<int64>;
@@ -283,6 +275,10 @@ std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer() {
 size_t PaxNonFixedColumn::GetNonNullRows() const { return lengths_->GetSize(); }
 
 size_t PaxNonFixedColumn::EstimatedSize() const { return estimated_size_; }
+
+int64 PaxNonFixedColumn::GetOriginLength() const {
+  return NO_ENCODE_ORIGIN_LEN;
+}
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
   if (position >= GetNonNullRows()) {

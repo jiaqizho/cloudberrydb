@@ -21,25 +21,25 @@ PaxDecoder *GetDecoderByBits(
   PaxDecoder *decoder = nullptr;
   switch (data_bits) {
     case 8:
-      decoder = PaxDecoder::CreateDecoder<int8>(
-          decoder_options, shared_data->GetBuffer(), shared_data->Used());
+      decoder = PaxDecoder::CreateDecoder<int8>(decoder_options);
       break;
     case 16:
-      decoder = PaxDecoder::CreateDecoder<int16>(
-          decoder_options, shared_data->GetBuffer(), shared_data->Used());
+      decoder = PaxDecoder::CreateDecoder<int16>(decoder_options);
       break;
     case 32:
-      decoder = PaxDecoder::CreateDecoder<int32>(
-          decoder_options, shared_data->GetBuffer(), shared_data->Used());
+      decoder = PaxDecoder::CreateDecoder<int32>(decoder_options);
       break;
     case 64:
-      decoder = PaxDecoder::CreateDecoder<int64>(
-          decoder_options, shared_data->GetBuffer(), shared_data->Used());
+      decoder = PaxDecoder::CreateDecoder<int64>(decoder_options);
       break;
     default:
       decoder = nullptr;
       break;
   }
+
+  if (decoder)
+    decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+
   return decoder;
 }
 
@@ -217,9 +217,10 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
   auto data_bits = ::testing::get<2>(GetParam());
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
@@ -245,7 +246,8 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
   EXPECT_EQ(((encoding_buff[0] >> 3) & 0x07) + 1, 1);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = sign;
 
   PaxDecoder *decoder =
@@ -331,9 +333,10 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
   auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
@@ -360,7 +363,8 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
             delta_len - 1);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = sign;
 
   PaxDecoder *decoder =
@@ -444,9 +448,10 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
   auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
@@ -478,10 +483,12 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
             delta_len - 1);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder<int64>(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+  auto decoder =
+      PaxDecoder::CreateDecoder<int64>(decoder_options)
+          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -514,9 +521,10 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
   auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
@@ -547,10 +555,12 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
             EncodingType::kDelta);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder<int64>(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+  auto decoder =
+      PaxDecoder::CreateDecoder<int64>(decoder_options)
+          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -583,9 +593,10 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
   auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
@@ -619,10 +630,12 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
             delta_len - 1);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder<int64>(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+  auto decoder =
+      PaxDecoder::CreateDecoder<int64>(decoder_options)
+          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -655,9 +668,10 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
   auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
@@ -691,10 +705,12 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
             EncodingType::kDelta);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder<int64>(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+  auto decoder =
+      PaxDecoder::CreateDecoder<int64>(decoder_options)
+          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -797,9 +813,10 @@ TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
   auto shared_dst_data = new DataBuffer<char>(direct_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
   encoder->SetDataBuffer(shared_data);
@@ -836,10 +853,12 @@ TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
   //           direct_len - 1);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = sign;
-  auto decoder = PaxDecoder::CreateDecoder<int64>(
-      decoder_options, shared_data->GetBuffer(), shared_data->Used());
+  auto decoder =
+      PaxDecoder::CreateDecoder<int64>(decoder_options)
+          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -877,9 +896,10 @@ TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
   auto shared_dst_data = new DataBuffer<char>(data_lens * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = true;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
   encoder->SetDataBuffer(shared_data);
@@ -897,7 +917,8 @@ TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
             EncodingType::kPatchedBase);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = true;
 
   auto decoder =
@@ -966,9 +987,10 @@ TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
   auto shared_dst_data = new DataBuffer<char>(data_lens * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = true;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
   encoder->SetDataBuffer(shared_data);
@@ -987,7 +1009,8 @@ TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
   EXPECT_NE(encoder->GetBufferSize(), 0);
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = true;
 
   auto decoder =
@@ -1085,9 +1108,11 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
   size_t total_len = 15;
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = true;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
@@ -1120,10 +1145,12 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
       not_null.push_back(i >= (total_len - sr_len));
     }
     PaxDecoder::DecodingOption decoder_options;
-    decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+    decoder_options.column_encode_type =
+        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder<int64>(
-        decoder_options, shared_data->GetBuffer(), shared_data->Used());
+    auto decoder =
+        PaxDecoder::CreateDecoder<int64>(decoder_options)
+            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
@@ -1158,10 +1185,12 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
       not_null.push_back(i < sr_len);
     }
     PaxDecoder::DecodingOption decoder_options;
-    decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+    decoder_options.column_encode_type =
+        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder<int64>(
-        decoder_options, shared_data->GetBuffer(), shared_data->Used());
+    auto decoder =
+        PaxDecoder::CreateDecoder<int64>(decoder_options)
+            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
@@ -1197,10 +1226,12 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     }
 
     PaxDecoder::DecodingOption decoder_options;
-    decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+    decoder_options.column_encode_type =
+        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder<int64>(
-        decoder_options, shared_data->GetBuffer(), shared_data->Used());
+    auto decoder =
+        PaxDecoder::CreateDecoder<int64>(decoder_options)
+            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
@@ -1242,9 +1273,10 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
   size_t total_len = 30;
 
   PaxEncoder::EncodingOption encoder_options;
-  encoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  encoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   encoder_options.is_sign = true;
-  encoder = PaxEncoder::CreateEncoder(encoder_options);
+  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
@@ -1274,10 +1306,12 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
       not_null.push_back(i >= (total_len - delta_len));
     }
     PaxDecoder::DecodingOption decoder_options;
-    decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+    decoder_options.column_encode_type =
+        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder<int64>(
-        decoder_options, shared_data->GetBuffer(), shared_data->Used());
+    auto decoder =
+        PaxDecoder::CreateDecoder<int64>(decoder_options)
+            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
@@ -1312,10 +1346,12 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
       not_null.push_back(i < delta_len);
     }
     PaxDecoder::DecodingOption decoder_options;
-    decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+    decoder_options.column_encode_type =
+        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder<int64>(
-        decoder_options, shared_data->GetBuffer(), shared_data->Used());
+    auto decoder =
+        PaxDecoder::CreateDecoder<int64>(decoder_options)
+            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
@@ -1350,10 +1386,12 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     }
 
     PaxDecoder::DecodingOption decoder_options;
-    decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+    decoder_options.column_encode_type =
+        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
     decoder_options.is_sign = true;
-    auto decoder = PaxDecoder::CreateDecoder<int64>(
-        decoder_options, shared_data->GetBuffer(), shared_data->Used());
+    auto decoder =
+        PaxDecoder::CreateDecoder<int64>(decoder_options)
+            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
@@ -1395,9 +1433,11 @@ TEST_F(PaxEncodingTest, TestEncodingWithAllNULL) {
   }
 
   PaxDecoder::DecodingOption decoder_options;
-  decoder_options.column_encode_type = PaxColumnEncodeType::kTypeRLEV2;
+  decoder_options.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
   decoder_options.is_sign = true;
-  auto decoder = PaxDecoder::CreateDecoder<int64>(decoder_options, nullptr, 0);
+  auto decoder = PaxDecoder::CreateDecoder<int64>(decoder_options)
+                     ->SetSrcBuffer(nullptr, 0);
 
   decoder->SetDataBuffer(shared_dst_data);
   auto n_read = decoder->Decoding(not_null.data(), 20);

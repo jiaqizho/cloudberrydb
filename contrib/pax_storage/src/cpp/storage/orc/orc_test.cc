@@ -202,9 +202,9 @@ class OrcTest : public ::testing::Test {
 
     if (!proj_map || proj_map[2]) {
       auto column3 = reinterpret_cast<PaxCommColumn<int32> *>((*columns)[2]);
-      auto column3_buffer = column3->GetDataBuffer();
-      EXPECT_EQ(1, column3_buffer->GetSize());
-      EXPECT_EQ(INT32_COLUMN_VALUE, (*column3_buffer)[0]);
+      std::tie(read_data, read_len) = column3->GetBuffer();
+      EXPECT_EQ(4, read_len);
+      EXPECT_EQ(INT32_COLUMN_VALUE, *(int32 *)read_data);
     }
   }
 

@@ -5,10 +5,11 @@
 #include "comm/cbdb_wrappers.h"
 #include "comm/gtest_wrappers.h"
 #include "exceptions/CException.h"
+#include "storage/columns/pax_encoding_utils.h"
 
 namespace pax::tests {
 class PaxCompressTest : public ::testing::TestWithParam<
-                            ::testing::tuple<PaxColumnCompressType, uint32>> {
+                            ::testing::tuple<ColumnEncoding_Kind, uint32>> {
   void SetUp() override {
     MemoryContext pax_compress_memory_context = AllocSetContextCreate(
         (MemoryContext)NULL, "PaxCompressTestMemoryContext", 200 * 1024 * 1024,
@@ -19,11 +20,10 @@ class PaxCompressTest : public ::testing::TestWithParam<
 };
 
 TEST_P(PaxCompressTest, TestCompressAndDecompress) {
-  PaxColumnCompressType type = ::testing::get<0>(GetParam());
+  ColumnEncoding_Kind type = ::testing::get<0>(GetParam());
   uint32 data_len = ::testing::get<1>(GetParam());
-  uint32 dst_len = 0;
+  size_t dst_len = 0;
   PaxCompressor *compressor;
-  PaxCompressor::CompressorOptions compress_options{};
 
   char *data = reinterpret_cast<char *>(cbdb::Palloc(data_len));
   char *result_data = reinterpret_cast<char *>(cbdb::Palloc(data_len));
@@ -31,24 +31,15 @@ TEST_P(PaxCompressTest, TestCompressAndDecompress) {
     data[i] = i;
   }
 
-  switch (type) {
-    case PaxColumnCompressType::kTypeZSTD: {
-      compressor = new PaxZSTDCompressor(compress_options);
-      break;
-    }
-    case PaxColumnCompressType::kTypeZLIB: {
-      compressor = new PaxZlibCompressor(compress_options);
-      break;
-    }
-    default:
-      break;
-  }
+  compressor = PaxCompressor::CreateBlockCompressor(type);
 
   size_t bound_size = compressor->GetCompressBound(data_len);  // NOLINT
   ASSERT_GT(bound_size, 0);
-  result_data = reinterpret_cast<char *>(cbdb::RePalloc(result_data, bound_size));
+  result_data =
+      reinterpret_cast<char *>(cbdb::RePalloc(result_data, bound_size));
   dst_len = bound_size;
   dst_len = compressor->Compress(result_data, dst_len, data, data_len, 1);
+  ASSERT_FALSE(compressor->IsError(dst_len));
   ASSERT_GT(dst_len, 0);
 
   // reset data
@@ -69,10 +60,11 @@ TEST_P(PaxCompressTest, TestCompressAndDecompress) {
   delete result_data;
 }
 
-INSTANTIATE_TEST_CASE_P(PaxCompressTestCombined, PaxCompressTest,
-                        testing::Combine(testing::Values(kTypeZSTD, kTypeZLIB),
-                                         testing::Values(1, 128, 4096,
-                                                         1024 * 1024,
-                                                         64 * 1024 * 1024)));
+INSTANTIATE_TEST_CASE_P(
+    PaxCompressTestCombined, PaxCompressTest,
+    testing::Combine(testing::Values(ColumnEncoding_Kind_COMPRESS_ZSTD,
+                                     ColumnEncoding_Kind_COMPRESS_ZLIB),
+                     testing::Values(1, 128, 4096, 1024 * 1024,
+                                     64 * 1024 * 1024)));
 
 }  // namespace pax::tests

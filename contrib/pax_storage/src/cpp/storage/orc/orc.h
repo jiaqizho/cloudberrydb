@@ -4,12 +4,6 @@
 #include <utility>
 #include <vector>
 
-// The libproto defined `FATAL` inside as a marco linker
-#undef FATAL
-#include "storage/orc/orc_proto.pb.h"
-#include "storage/orc/protobuf_stream.h"
-#define FATAL 22
-
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_defer.h"
 #include "exceptions/CException.h"
@@ -18,6 +12,8 @@
 #include "storage/file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/micro_partition_metadata.h"
+#include "storage/proto/proto_wrappers.h"
+#include "storage/proto/protobuf_stream.h"
 
 namespace pax {
 
