@@ -10,6 +10,7 @@ PaxEncodingColumn<T>::PaxEncodingColumn(
       encoder_options_(encoding_option),
       encoder_(nullptr),
       origin_len_(NO_ENCODE_ORIGIN_LEN),
+      non_null_rows_(0),
       decoder_(nullptr),
       shared_data_(nullptr),
       compressor_(nullptr),
@@ -21,6 +22,7 @@ PaxEncodingColumn<T>::PaxEncodingColumn(
     : PaxCommColumn<T>(capacity),
       encoder_(nullptr),
       origin_len_(NO_ENCODE_ORIGIN_LEN),
+      non_null_rows_(0),
       decoder_options_{decoding_option},
       decoder_(nullptr),
       shared_data_(nullptr),
@@ -201,6 +203,7 @@ void PaxEncodingColumn<T>::Append(char *buffer, size_t size) {
     // but still need call `PaxColumn::Append` to push null bitmap.
     PaxColumn::Append(buffer, size);  // NOLINT(bugprone-parent-virtual-call)
 
+    non_null_rows_++;
     origin_len_ += size;
     encoder_->Append(*reinterpret_cast<T *>(buffer));
     if (shared_data_->Capacity() != PaxCommColumn<T>::capacity_) {
@@ -215,6 +218,15 @@ void PaxEncodingColumn<T>::Append(char *buffer, size_t size) {
 template <typename T>
 int64 PaxEncodingColumn<T>::GetOriginLength() const {
   return compressor_ ? PaxCommColumn<T>::data_->Used() : origin_len_;
+}
+
+template <typename T>
+size_t PaxEncodingColumn<T>::GetNonNullRows() const {
+  if (encoder_) {
+    return non_null_rows_;
+  }
+
+  return PaxCommColumn<T>::GetNonNullRows();
 }
 
 template class PaxEncodingColumn<int8>;

@@ -11,7 +11,6 @@
 #include "storage/columns/pax_columns.h"
 #include "storage/file_system.h"
 #include "storage/micro_partition.h"
-#include "storage/micro_partition_metadata.h"
 #include "storage/proto/proto_wrappers.h"
 #include "storage/proto/protobuf_stream.h"
 
@@ -28,7 +27,9 @@ namespace pax {
 class OrcWriter : public MicroPartitionWriter {
  public:
   OrcWriter(const MicroPartitionWriter::WriterOptions &orc_writer_options,
-            const std::vector<orc::proto::Type_Kind> &column_types, File *file);
+            const std::vector<orc::proto::Type_Kind> &column_types,
+            const std::vector<ColumnEncoding_Kind> &column_encoding_types,
+            File *file);
 
   ~OrcWriter() override;
 
@@ -58,23 +59,40 @@ class OrcWriter : public MicroPartitionWriter {
   //     {{8, "float8"}, ::orc::proto::Type_Kind_DATE},
   //     {{8, "timestamp"}, ::orc::proto::Type_Kind_TIMESTAMP},
   // };
-  static inline std::vector<orc::proto::Type_Kind> BuildSchema(TupleDesc desc) {
+  static inline std::pair<std::vector<orc::proto::Type_Kind>,
+                          std::vector<ColumnEncoding_Kind>>
+  BuildSchema(const MicroPartitionWriter::WriterOptions &options) {
     std::vector<orc::proto::Type_Kind> type_kinds;
+    std::vector<ColumnEncoding_Kind> encoding_types;
+    TupleDesc desc;
+
+    desc = options.desc;
+    Assert(desc);
+
     for (int i = 0; i < desc->natts; i++) {
       auto *attr = &desc->attrs[i];
       if (attr->attbyval) {
         switch (attr->attlen) {
           case 1:
             type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_BYTE);
+            encoding_types.emplace_back(
+                ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
             break;
           case 2:
             type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_SHORT);
+            encoding_types.emplace_back(
+                ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
             break;
           case 4:
             type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+            encoding_types.emplace_back(
+                ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
             break;
           case 8:
             type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
+            // TODO: parse options
+            encoding_types.emplace_back(
+                ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2);
             break;
           default:
             Assert(!"should not be here! pg_type which attbyval=true only have typlen of "
@@ -83,15 +101,33 @@ class OrcWriter : public MicroPartitionWriter {
       } else {
         Assert(attr->attlen > 0 || attr->attlen == -1);
         type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+        encoding_types.emplace_back(
+            ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
       }
     }
 
-    return type_kinds;
+    Assert(type_kinds.size() == encoding_types.size());
+
+    return std::make_pair(type_kinds, encoding_types);
   }
 
 #ifndef RUN_GTEST
  protected:  // NOLINT
 #endif
+
+  // only for test
+  static MicroPartitionWriter *CreateWriter(
+      const MicroPartitionWriter::WriterOptions &options,
+      const std::vector<orc::proto::Type_Kind> &column_types, File *file) {
+    std::vector<ColumnEncoding_Kind> all_no_encoding_types;
+    for (auto _ : column_types) {
+      (void)_;
+      all_no_encoding_types.emplace_back(
+          ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
+    }
+
+    return new OrcWriter(options, column_types, all_no_encoding_types, file);
+  }
 
   // after create a new writer or old stripe have been flushed
   // stripe_info_ in memory should reinit
@@ -106,6 +142,7 @@ class OrcWriter : public MicroPartitionWriter {
  protected:
   PaxColumns *pax_columns_;
   const std::vector<orc::proto::Type_Kind> column_types_;
+  const std::vector<ColumnEncoding_Kind> column_encoding_types_;
   File *file_;
   WriteSummary summary_;
 
