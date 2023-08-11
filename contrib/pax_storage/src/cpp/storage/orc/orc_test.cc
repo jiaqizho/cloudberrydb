@@ -27,6 +27,21 @@ static void GenFakeBuffer(char *buffer, size_t length) {
   }
 }
 
+static void CreateOrcTestResourceOwner() {
+  CurrentResourceOwner = ResourceOwnerCreate(NULL, "OrcTestResourceOwner");
+}
+
+static void ReleaseOrcTestResourceOwner() {
+  ResourceOwner tmp_resource_owner = CurrentResourceOwner;
+  CurrentResourceOwner = NULL;
+  ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS, false,
+                       true);
+  ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false, true);
+  ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS, false,
+                       true);
+  ResourceOwnerDelete(tmp_resource_owner);
+}
+
 class OrcTest : public ::testing::Test {
  public:
   void SetUp() override {
@@ -38,20 +53,23 @@ class OrcTest : public ::testing::Test {
         80 * 1024 * 1024, 80 * 1024 * 1024);
 
     MemoryContextSwitchTo(orc_test_memory_context);
-    CurrentResourceOwner = ResourceOwnerCreate(NULL, "OrcTestResourceOwner");
+    CreateOrcTestResourceOwner();
   }
 
   void TearDown() override {
     Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
-    ResourceOwner tmp_resource_owner = CurrentResourceOwner;
-    CurrentResourceOwner = NULL;
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS,
-                         false, true);
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false,
-                         true);
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS,
-                         false, true);
-    ResourceOwnerDelete(tmp_resource_owner);
+    ReleaseOrcTestResourceOwner();
+  }
+
+  static void DeleteCTupleSlot(CTupleSlot *ctuple_slot) {
+    auto tuple_table_slot = ctuple_slot->GetTupleTableSlot();
+    cbdb::Pfree(tuple_table_slot->tts_tupleDescriptor);
+    if (tuple_table_slot->tts_isnull) {
+      cbdb::Pfree(tuple_table_slot->tts_isnull);
+    }
+
+    cbdb::Pfree(tuple_table_slot);
+    delete ctuple_slot;
   }
 
   static CTupleSlot *CreateFakeCTupleSlot(bool with_value = true) {
@@ -133,26 +151,6 @@ class OrcTest : public ::testing::Test {
     return new CTupleSlot(tuple_slot);
   }
 
-  static void DeleteCTupleSlot(CTupleSlot *ctuple_slot) {
-    auto tuple_table_slot = ctuple_slot->GetTupleTableSlot();
-    cbdb::Pfree(tuple_table_slot->tts_tupleDescriptor);
-    if (tuple_table_slot->tts_isnull) {
-      cbdb::Pfree(tuple_table_slot->tts_isnull);
-    }
-
-    cbdb::Pfree(tuple_table_slot);
-    delete ctuple_slot;
-  }
-
-  static void GenerateTestColumnStats(
-      ::orc::proto::StripeStatistics &stripe_statistics,  // NOLINT
-      int column_number, bool *hasnull) {
-    for (int i = 0; i < column_number; i++) {
-      auto pb_stats = stripe_statistics.add_colstats();
-      pb_stats->set_hasnull(hasnull[i]);
-    }
-  }
-
   static void VerifySingleStripe(PaxColumns *columns,
                                  const bool *const proj_map = nullptr) {
     char column_buff[COLUMN_SIZE];
@@ -224,7 +222,12 @@ class OrcTestProjection
         80 * 1024 * 1024, 80 * 1024 * 1024);
 
     MemoryContextSwitchTo(orc_test_memory_context);
-    CurrentResourceOwner = ResourceOwnerCreate(NULL, "OrcTestResourceOwner");
+    CreateOrcTestResourceOwner();
+  }
+
+  void TearDown() override {
+    Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
+    ReleaseOrcTestResourceOwner();
   }
 
  protected:
@@ -245,7 +248,7 @@ TEST_F(OrcTest, WriteTuple) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   OrcWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
@@ -267,7 +270,8 @@ TEST_F(OrcTest, OpenOrc) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
-  auto writer = new OrcWriter(writer_options, std::move(types), file_ptr);
+  auto writer =
+      OrcWriter::CreateWriter(writer_options, std::move(types), file_ptr);
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
@@ -302,7 +306,7 @@ TEST_F(OrcTest, WriteReadStripes) {
 
   // file_ptr in orc writer will be freed when writer do destruct
   // current OrcWriter::CreateWriter only for test
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
@@ -340,7 +344,7 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
   writer->WriteTuple(tuple_slot);
@@ -394,7 +398,7 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
   writer->Flush();
@@ -436,7 +440,7 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
   writer->WriteTuple(tuple_slot);
   writer->Flush();
 
@@ -469,7 +473,7 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
   // flush empty
   writer->Flush();
   // direct close
@@ -504,7 +508,7 @@ TEST_F(OrcTest, ReadTuple) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
   writer->WriteTuple(tuple_slot);
@@ -536,6 +540,105 @@ TEST_F(OrcTest, ReadTuple) {
   delete reader;
 }
 
+class OrcEncodingTest : public ::testing::TestWithParam<ColumnEncoding_Kind> {
+  void SetUp() override {
+    Singleton<LocalFileSystem>::GetInstance();
+    remove(file_name_.c_str());
+
+    MemoryContext orc_test_memory_context = AllocSetContextCreate(
+        (MemoryContext)NULL, "OrcTestMemoryContext", 80 * 1024 * 1024,
+        80 * 1024 * 1024, 80 * 1024 * 1024);
+
+    MemoryContextSwitchTo(orc_test_memory_context);
+    CreateOrcTestResourceOwner();
+  }
+
+  void TearDown() override {
+    Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
+    ReleaseOrcTestResourceOwner();
+  }
+
+ protected:
+  const std::string file_name_ = "./test_encoding.file";
+};
+
+TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
+  TupleTableSlot *tuple_slot = nullptr;
+  auto encoding_kind = GetParam();
+
+  auto tuple_desc = reinterpret_cast<TupleDescData *>(
+      cbdb::Palloc0(sizeof(TupleDescData) + sizeof(FormData_pg_attribute) * 2));
+
+  tuple_desc->natts = 2;
+  tuple_desc->attrs[0] = {
+      .attlen = 8,
+      .attbyval = true,
+  };
+
+  tuple_desc->attrs[1] = {
+      .attlen = 8,
+      .attbyval = true,
+  };
+
+  tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
+  bool *fake_is_null =
+      reinterpret_cast<bool *>(cbdb::Palloc0(sizeof(bool) * COLUMN_NUMS));
+  fake_is_null[0] = false;
+  fake_is_null[1] = false;
+
+  tuple_slot->tts_values[0] = Int64GetDatum(0);
+  tuple_slot->tts_values[1] = Int64GetDatum(1);
+  tuple_slot->tts_isnull = fake_is_null;
+  auto ctuple_slot = new CTupleSlot(tuple_slot);
+
+  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto file_ptr = local_fs->Open(file_name_);
+  EXPECT_NE(nullptr, file_ptr);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
+  std::vector<ColumnEncoding_Kind> types_encoding;
+  types_encoding.emplace_back(encoding_kind);
+  types_encoding.emplace_back(encoding_kind);
+  MicroPartitionWriter::WriterOptions writer_options;
+
+  auto writer = new OrcWriter(writer_options, types, types_encoding, file_ptr);
+
+  for (size_t i = 0; i < 10000; i++) {
+    ctuple_slot->GetTupleTableSlot()->tts_values[0] = Int64GetDatum(i);
+    ctuple_slot->GetTupleTableSlot()->tts_values[1] = Int64GetDatum(i + 1);
+    writer->WriteTuple(ctuple_slot);
+  }
+
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name_);
+
+  auto reader =
+      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  for (size_t i = 0; i < 10000; i++) {
+    ASSERT_TRUE(reader->ReadTuple(ctuple_slot));
+    ASSERT_EQ(reader->Offset(), i + 1);
+    ASSERT_EQ(ctuple_slot->GetTupleTableSlot()->tts_values[0], i);
+    ASSERT_EQ(ctuple_slot->GetTupleTableSlot()->tts_values[1], i + 1);
+  }
+  reader->Close();
+
+  OrcTest::DeleteCTupleSlot(ctuple_slot);
+  delete writer;
+  delete reader;
+}
+
+INSTANTIATE_TEST_CASE_P(
+    OrcEncodingTestCombine, OrcEncodingTest,
+    testing::Values(ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED,
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2));
+
 TEST_F(OrcTest, ReadTupleDefaultColumn) {
   CTupleSlot *tuple_slot = CreateFakeCTupleSlot(true);
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
@@ -550,7 +653,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto *writer = new OrcWriter(writer_options, types, file_ptr);
+  auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
@@ -607,7 +710,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto *writer = new OrcWriter(writer_options, types, file_ptr);
+  auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
@@ -649,7 +752,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumnWithProjection) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
@@ -713,7 +816,7 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   for (size_t i = 0; i < 10000; i++) {
     ctuple_slot->GetTupleTableSlot()->tts_values[0] = Int32GetDatum(i);
@@ -778,7 +881,7 @@ TEST_F(OrcTest, ReadWithSeek) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   for (size_t i = 0; i < 10000; i++) {
     ctuple_slot->GetTupleTableSlot()->tts_values[0] = Int32GetDatum(i);
@@ -864,7 +967,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
 
@@ -922,7 +1025,7 @@ TEST_F(OrcTest, WriteReadWithNullField) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   OrcWriter::WriterOptions writer_options;
 
-  auto *writer = new OrcWriter(writer_options, types, file_ptr);
+  auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   // str str int
   // null null int
@@ -1017,7 +1120,7 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   OrcWriter::WriterOptions writer_options;
 
-  auto *writer = new OrcWriter(writer_options, types, file_ptr);
+  auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   // null null null
   // str str int
@@ -1101,7 +1204,7 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   OrcWriter::WriterOptions writer_options;
 
-  auto *writer = new OrcWriter(writer_options, types, file_ptr);
+  auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = true;
   ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = true;
@@ -1160,7 +1263,7 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
 
-  auto writer = new OrcWriter(writer_options, types, file_ptr);
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
   writer->Flush();

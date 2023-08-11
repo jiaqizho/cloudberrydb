@@ -8,17 +8,20 @@
 
 #include "comm/cbdb_wrappers.h"
 #include "exceptions/CException.h"
-
+#include "storage/columns/pax_column_int.h"
+#include "storage/columns/pax_encoding_non_fixed_column.h"
 namespace pax {
 
 OrcWriter::OrcWriter(
     const MicroPartitionWriter::WriterOptions &orc_writer_options,
-    const std::vector<orc::proto::Type_Kind> &column_types, File *file)
+    const std::vector<orc::proto::Type_Kind> &column_types,
+    const std::vector<ColumnEncoding_Kind> &column_encoding_types, File *file)
     : MicroPartitionWriter(orc_writer_options),
       column_types_(column_types),
+      column_encoding_types_(column_encoding_types),
       file_(file),
       current_offset_(0) {
-  pax_columns_ = new PaxColumns(column_types);
+  pax_columns_ = new PaxColumns(column_types, column_encoding_types);
 
   summary_.rel_oid = orc_writer_options.rel_oid;
   summary_.block_id = orc_writer_options.block_id;
@@ -147,6 +150,7 @@ void OrcWriter::WriteTupleN(CTupleSlot **slot, size_t n) {
 
 bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
   std::vector<orc::proto::Stream> streams;
+  std::vector<ColumnEncoding> encoding_kinds;
   orc::proto::StripeFooter stripe_footer;
   auto stripe_stats = meta_data_.add_stripestats();
 
@@ -161,29 +165,38 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
     return false;
   }
 
-  PaxColumns::PreCalcBufferFunc func = [&streams](
-                                           const orc::proto::Stream_Kind &kind,
-                                           size_t column, size_t length) {
-    orc::proto::Stream stream;
-    stream.set_kind(kind);
-    stream.set_column(static_cast<uint32>(column));
-    stream.set_length(length);
-    streams.push_back(std::move(stream));
-  };
+  PaxColumns::ColumnStreamsFunc column_streams_func =
+      [&streams](const orc::proto::Stream_Kind &kind, size_t column,
+                 size_t length) {
+        orc::proto::Stream stream;
+        stream.set_kind(kind);
+        stream.set_column(static_cast<uint32>(column));
+        stream.set_length(length);
+        streams.push_back(std::move(stream));
+      };
 
-  DataBuffer<char> *data_buffer = pax_columns_->GetDataBuffer(func);
+  PaxColumns::ColumnEncodingFunc column_encoding_func =
+      [&encoding_kinds](const ColumnEncoding_Kind &encoding_kind,
+                        size_t origin_len) {
+        ColumnEncoding column_encoding;
+        column_encoding.set_kind(encoding_kind);
+        column_encoding.set_length(origin_len);
 
-  for (auto &stream : streams) {
+        encoding_kinds.push_back(std::move(column_encoding));
+      };
+
+  DataBuffer<char> *data_buffer =
+      pax_columns_->GetDataBuffer(column_streams_func, column_encoding_func);
+
+  for (const auto &stream : streams) {
     *stripe_footer.add_streams() = stream;
     data_len += stream.length();
   }
 
   for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
-    auto encoding = stripe_footer.add_pax_col_encodings();
     auto pb_stats = stripe_stats->add_colstats();
 
-    encoding->set_kind(ColumnEncoding_Kind_NO_ENCODED);
-    encoding->set_length(0);
+    *stripe_footer.add_pax_col_encodings() = encoding_kinds[i];
 
     pb_stats->set_hasnull((*pax_columns_)[i]->HasNull());
     pb_stats->set_numberofvalues((*pax_columns_)[i]->GetRows());
@@ -528,6 +541,44 @@ orc::proto::StripeFooter OrcReader::ReadStripeWithProjection(
   return stripe_footer;
 }
 
+template <typename T>
+static PaxColumn *GetIntEncodingColumn(DataBuffer<char> *data_buffer,
+                                       const orc::proto::Stream &data_stream,
+                                       const ColumnEncoding &data_encoding) {
+  uint32 column_data_size = 0;
+  uint64 column_data_len = 0;
+
+  DataBuffer<T> *column_data_buffer = nullptr;
+  PaxIntColumn<T> *pax_column = nullptr;
+
+  column_data_size = static_cast<uint32>(data_stream.column());
+  column_data_len = static_cast<uint64>(data_stream.length());
+
+  column_data_buffer = new DataBuffer<T>(
+      reinterpret_cast<T *>(data_buffer->GetAvailableBuffer()), column_data_len,
+      false, false);
+  column_data_buffer->BrushAll();
+
+  data_buffer->Brush(column_data_len);
+
+  PaxDecoder::DecodingOption decoding_option;
+  decoding_option.column_encode_type = data_encoding.kind();
+  decoding_option.is_sign = true;
+
+  if (data_encoding.kind() ==
+      ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+    Assert(column_data_size == column_data_buffer->GetSize());
+    pax_column = new PaxIntColumn<T>(std::move(decoding_option));
+  } else {
+    Assert(data_encoding.length() / sizeof(T) == column_data_size);
+    pax_column =
+        new PaxIntColumn<T>(column_data_size, std::move(decoding_option));
+  }
+
+  pax_column->Set(column_data_buffer);
+  return pax_column;
+}
+
 PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
                                   size_t proj_len) {
   auto stripe_info = GetStripeInfo(index);
@@ -536,6 +587,7 @@ PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
   orc::proto::StripeFooter stripe_footer;
   size_t streams_index = 0;
   size_t streams_size = 0;
+  size_t encoding_kinds_size = 0;
 
   Assert(stripe_info->index_length == 0);
   pax_columns->AddRows(stripe_info->numbers_of_row);
@@ -570,6 +622,8 @@ PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
       ReadStripeWithProjection(data_buffer, stripe_info, proj_map, proj_len);
 
   streams_size = stripe_footer.streams_size();
+  encoding_kinds_size = stripe_footer.pax_col_encodings_size();
+
   if (unlikely(streams_size == 0 && column_types_.empty())) {
     return pax_columns;
   }
@@ -577,6 +631,7 @@ PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
   data_buffer->BrushBackAll();
 
   AssertImply(proj_len != 0, column_types_.size() <= proj_len);
+  Assert(encoding_kinds_size <= column_types_.size());
 
   for (size_t index = 0; index < column_types_.size(); index++) {
     /* Skip read current column, just move `streams_index` after
@@ -612,15 +667,17 @@ PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
         uint32 column_lens_size = 0;
         uint64 column_lens_len = 0;
-        uint64 total_column_len = 0;
+        uint64 column_data_len = 0;
         DataBuffer<int64> *column_len_buffer = nullptr;
         DataBuffer<char> *column_data_buffer = nullptr;
-        PaxNonFixedColumn *pax_column = nullptr;
+        PaxNonFixedEncodingColumn *pax_column = nullptr;
 
         const orc::proto::Stream &len_stream =
             stripe_footer.streams(streams_index++);
         const orc::proto::Stream &data_stream =
             stripe_footer.streams(streams_index++);
+        const ColumnEncoding &data_encoding =
+            stripe_footer.pax_col_encodings(index);
 
         column_lens_size = static_cast<uint32>(len_stream.column());
         column_lens_len = static_cast<uint64>(len_stream.length());
@@ -631,47 +688,43 @@ PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
         column_len_buffer->BrushAll();
         data_buffer->Brush(column_lens_len);
 
-        for (size_t i = 0; i < column_len_buffer->GetSize(); i++) {
-          total_column_len += (*column_len_buffer)[i];
+        column_data_len = data_stream.length();
+
+#ifdef ENBALE_DEBUG
+        if (data_encoding.kind() ==
+            ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+          size_t segs_size = 0;
+          for (size_t i = 0; i < column_len_buffer->GetSize(); i++) {
+            segs_size += (*column_len_buffer)[i];
+          }
+          Assert(column_data_len == segs_size);
         }
+#endif
 
         column_data_buffer = new DataBuffer<char>(
-            data_buffer->GetAvailableBuffer(), total_column_len, false, false);
-        column_data_buffer->BrushAll();
-        data_buffer->Brush(total_column_len);
-
-        Assert(static_cast<uint32>(data_stream.column()) == column_lens_size);
-
-        pax_column = new PaxNonFixedColumn(0);
-
-        // current memory will be freed in pax_columns->data_
-        pax_column->Set(column_data_buffer, column_len_buffer,
-                        total_column_len);
-        pax_column->SetMemTakeOver(false);
-        pax_columns->Append(pax_column);
-        break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_INT): {
-        const orc::proto::Stream &data_stream =
-            stripe_footer.streams(streams_index++);
-        uint32 column_data_size = 0;
-        uint64 column_data_len = 0;
-        DataBuffer<int32> *column_data_buffer = nullptr;
-        PaxCommColumn<int32> *pax_column = nullptr;
-
-        column_data_size = static_cast<uint32>(data_stream.column());
-        column_data_len = static_cast<uint64>(data_stream.length());
-
-        column_data_buffer = new DataBuffer<int32>(
-            reinterpret_cast<int *>(data_buffer->GetAvailableBuffer()),
-            column_data_len, false, false);
-
+            data_buffer->GetAvailableBuffer(), column_data_len, false, false);
         column_data_buffer->BrushAll();
         data_buffer->Brush(column_data_len);
 
-        Assert(column_data_size == column_data_buffer->GetSize());
-        pax_column = new PaxCommColumn<int32>(0);
-        pax_column->Set(column_data_buffer);
+        Assert(static_cast<uint32>(data_stream.column()) == column_lens_size);
+
+        PaxDecoder::DecodingOption decoding_option;
+        decoding_option.column_encode_type = data_encoding.kind();
+        decoding_option.is_sign = true;
+
+        if (data_encoding.kind() ==
+            ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+          Assert(column_data_len == column_data_buffer->GetSize());
+          pax_column =
+              new PaxNonFixedEncodingColumn(0, std::move(decoding_option));
+        } else {
+          pax_column = new PaxNonFixedEncodingColumn(
+              data_encoding.length(), std::move(decoding_option));
+        }
+
+        // current memory will be freed in pax_columns->data_
+        pax_column->Set(column_data_buffer, column_len_buffer, column_data_len);
+        pax_column->SetMemTakeOver(false);
         pax_columns->Append(pax_column);
         break;
       }
@@ -702,47 +755,28 @@ PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
       case (orc::proto::Type_Kind::Type_Kind_SHORT): {
         const orc::proto::Stream &data_stream =
             stripe_footer.streams(streams_index++);
-        uint32 column_data_size = 0;
-        uint64 column_data_len = 0;
-        DataBuffer<int16> *column_data_buffer = nullptr;
-        PaxCommColumn<int16> *pax_column = nullptr;
-
-        column_data_size = static_cast<uint32>(data_stream.column());
-        column_data_len = static_cast<uint64>(data_stream.length());
-        column_data_buffer = new DataBuffer<int16>(
-            reinterpret_cast<int16 *>(data_buffer->GetAvailableBuffer()),
-            column_data_len, false, false);
-
-        column_data_buffer->BrushAll();
-        data_buffer->Brush(column_data_len);
-
-        Assert(column_data_size == column_data_buffer->GetSize());
-        pax_column = new PaxCommColumn<int16>();
-        pax_column->Set(column_data_buffer);
-        pax_columns->Append(pax_column);
+        const ColumnEncoding &data_encoding =
+            stripe_footer.pax_col_encodings(index);
+        pax_columns->Append(GetIntEncodingColumn<int16>(
+            data_buffer, data_stream, data_encoding));
+        break;
+      }
+      case (orc::proto::Type_Kind::Type_Kind_INT): {
+        const orc::proto::Stream &data_stream =
+            stripe_footer.streams(streams_index++);
+        const ColumnEncoding &data_encoding =
+            stripe_footer.pax_col_encodings(index);
+        pax_columns->Append(GetIntEncodingColumn<int32>(
+            data_buffer, data_stream, data_encoding));
         break;
       }
       case (orc::proto::Type_Kind::Type_Kind_LONG): {
         const orc::proto::Stream &data_stream =
             stripe_footer.streams(streams_index++);
-        uint32 column_data_size = 0;
-        uint64 column_data_len = 0;
-        DataBuffer<int64> *column_data_buffer = nullptr;
-        PaxCommColumn<int64> *pax_column = nullptr;
-
-        column_data_size = static_cast<uint32>(data_stream.column());
-        column_data_len = static_cast<uint64>(data_stream.length());
-        column_data_buffer = new DataBuffer<int64>(
-            reinterpret_cast<int64 *>(data_buffer->GetAvailableBuffer()),
-            column_data_len, false, false);
-
-        column_data_buffer->BrushAll();
-        data_buffer->Brush(column_data_len);
-
-        Assert(column_data_size == column_data_buffer->GetSize());
-        pax_column = new PaxCommColumn<int64>();
-        pax_column->Set(column_data_buffer);
-        pax_columns->Append(pax_column);
+        const ColumnEncoding &data_encoding =
+            stripe_footer.pax_col_encodings(index);
+        pax_columns->Append(GetIntEncodingColumn<int64>(
+            data_buffer, data_stream, data_encoding));
         break;
       }
       default:

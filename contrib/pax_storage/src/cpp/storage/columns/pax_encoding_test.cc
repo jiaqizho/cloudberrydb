@@ -733,11 +733,13 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
   delete decoder;
 }
 
-INSTANTIATE_TEST_CASE_P(
-    PaxEncodingRangeTestCombine, PaxEncodingDeltaIncDecRangeTest,
-    testing::Combine(testing::Values(11, 100, 256, 345, 511, 512),
-                     testing::Values(7, 99, 4294967295, 18014398509481984ULL),
-                     testing::Values(true, false)));
+INSTANTIATE_TEST_CASE_P(PaxEncodingRangeTestCombine,
+                        PaxEncodingDeltaIncDecRangeTest,
+                        testing::Combine(testing::Values(11, 100, 256, 345, 511,
+                                                         512),
+                                         testing::Values(1, 7, 99, 4294967295,
+                                                         18014398509481984ULL),
+                                         testing::Values(true, false)));
 
 TEST_P(PaxEncodingWriteReadLongsRangeTest, TestOrcDirectWriteReadLong) {
   auto write_max = ::testing::get<0>(GetParam());
