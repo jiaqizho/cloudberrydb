@@ -626,7 +626,7 @@ SELECT oldcnt(*) AS cnt_1000 FROM onek;
 
 SELECT sum2(q1,q2) FROM int8_tbl;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
        sum2        
 -------------------
  18271560493827981
@@ -2199,7 +2199,8 @@ drop view aggordview1;
 -- variadic aggregates
 select least_agg(q1,q2) from int8_tbl;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
+CONTEXT:  SQL function "least_accum" during startup
      least_agg     
 -------------------
  -4567890123456789
@@ -2207,7 +2208,7 @@ DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
 
 select least_agg(variadic array[q1,q2]) from int8_tbl;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
      least_agg     
 -------------------
  -4567890123456789
@@ -2680,7 +2681,8 @@ drop view aggordview1;
 -- variadic aggregates
 select least_agg(q1,q2) from int8_tbl;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
+CONTEXT:  SQL function "least_accum" during startup
      least_agg     
 -------------------
  -4567890123456789
@@ -2688,7 +2690,7 @@ DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
 
 select least_agg(variadic array[q1,q2]) from int8_tbl;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
      least_agg     
 -------------------
  -4567890123456789
@@ -2787,27 +2789,25 @@ discard plans;
 -- aggregate state should be shared as aggs are the same.
 select my_avg(one),my_avg(one) from (values(1),(3)) t(one);
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  avg_transfn called with 1
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  avg_transfn called with 3
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  my_avg | my_avg 
 --------+--------
       2 |      2
@@ -2817,31 +2817,29 @@ discard plans;
 -- aggregate state should be shared as transfn is the same for both aggs.
 select my_avg(one),my_sum(one) from (values(1),(3)) t(one);
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  avg_transfn called with 1
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  avg_transfn called with 3
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  my_avg | my_sum 
 --------+--------
       2 |      4
@@ -2851,31 +2849,29 @@ discard plans;
 -- same as previous one, but with DISTINCT, which requires sorting the input.
 select my_avg(distinct one),my_sum(distinct one) from (values(1),(3),(1)) t(one);
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  avg_transfn called with 1
-NOTICE:  avg_transfn called with 3
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  my_avg | my_sum 
 --------+--------
       2 |      4
@@ -2885,31 +2881,31 @@ discard plans;
 -- shouldn't share states due to the distinctness not matching.
 select my_avg(distinct one),my_sum(one) from (values(1),(3)) t(one);
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  my_avg | my_sum 
 --------+--------
       2 |      4
@@ -2921,30 +2917,31 @@ select my_avg(one) filter (where one > 1),my_sum(one) from (values(1),(3)) t(one
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 3
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
+NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  my_avg | my_sum 
 --------+--------
       3 |      4
@@ -2954,31 +2951,31 @@ discard plans;
 -- this should not share the state due to different input columns.
 select my_avg(one),my_sum(two) from (values(1,2),(3,4)) t(one,two);
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  avg_transfn called with 1
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 2
-NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
+NOTICE:  avg_transfn called with 1
 NOTICE:  avg_transfn called with 4
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
+NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
  my_avg | my_sum 
 --------+--------
       2 |      6
@@ -3040,27 +3037,25 @@ discard plans;
 -- state should be shared if INITCONDs are matching
 select my_sum_init(one),my_avg_init(one) from (values(1),(3)) t(one);
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  avg_transfn called with 1
-NOTICE:  avg_transfn called with 3
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  my_sum_init | my_avg_init 
 -------------+-------------
           14 |           7
@@ -3068,10 +3063,28 @@ DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
 
 -- Varying INITCONDs should cause the states not to be shared.
 select my_sum_init(one),my_avg_init2(one) from (values(1),(3)) t(one);
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  avg_transfn called with 1
 NOTICE:  avg_transfn called with 3
 NOTICE:  avg_transfn called with 3
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Query Parameter
  my_sum_init | my_avg_init2 
 -------------+--------------
           14 |            4
@@ -3125,29 +3138,26 @@ discard plans;
 -- Agg state should be shared even though my_sum has no finalfn
 select my_sum(one),my_half_sum(one) from (values(1),(2),(3),(4)) t(one);
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  sum_transfn called with 1
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  sum_transfn called with 1
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  sum_transfn called with 2
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-NOTICE:  sum_transfn called with 2
-NOTICE:  sum_transfn called with 3
+DETAIL:  Feature not supported: Query Parameter
 NOTICE:  sum_transfn called with 3
 NOTICE:  sum_transfn called with 4
 NOTICE:  sum_transfn called with 4
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  my_sum | my_half_sum 
 --------+-------------
      10 |           5
@@ -3177,7 +3187,7 @@ CREATE AGGREGATE balk(int4)
 );
 SELECT balk(hundred) FROM tenk1;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  balk 
 ------
      
@@ -3223,7 +3233,7 @@ EXPLAIN (COSTS OFF) SELECT balk(hundred) FROM tenk1;
 
 SELECT balk(hundred) FROM tenk1;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+DETAIL:  Feature not supported: Query Parameter
  balk 
 ------
      

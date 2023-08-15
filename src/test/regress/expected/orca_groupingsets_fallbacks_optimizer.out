@@ -92,7 +92,7 @@ DETAIL:  Query-to-DXL Translation: No attribute entry found due to incorrect nor
 -- Orca falls back due to HAVING clause with outer references
 select v.c, (select count(*) from gstest1 group by () having v.c) from (values (false),(true)) v(c);
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: ({RTE :alias <> :eref {ALIAS :aliasname gstest1 :colnames ("a" "b" "c" "d" "v")} :rtekind 0 :relid 61133 :relkind r :rellockmode 1 :tablesample <> :lateral false :inh true :inFromCl true :requiredPerms 2 :checkAsUser 0 :selectedCols (b) :insertedCols (b) :updatedCols (b) :extraUpdatedCols (b) :securityQuals <> :forceDistRandom false}) not supported in DXL
+DETAIL:  Feature not supported: {TARGETENTRY :expr {VAR :varno 1 :varattno 2 :vartype 20 :vartypmod -1 :varcollid 0 :varlevelsup 0 :varnoold 1 :varoattno 2 :location -1} :resno 1 :resname count :ressortgroupref 0 :resorigtbl 0 :resorigcol 0 :resjunk false}
  c | count 
 ---+-------
  f |      
