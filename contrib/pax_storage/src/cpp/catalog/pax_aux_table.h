@@ -1,14 +1,11 @@
 #pragma once
+#include "catalog/pax_aux_table.h"
 
 #include "comm/cbdb_api.h"
 
-#include <memory>
 #include <string>
-#include <vector>
 
 #include "storage/micro_partition_metadata.h"
-#include "catalog/pax_aux_table.h"
-#include "storage/local_file_system.h"
 
 #define ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME 1
 #define ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT 2
@@ -19,8 +16,8 @@
 namespace pax {
 class CCPaxAuxTable final {
  public:
-  CCPaxAuxTable() = default;
-  ~CCPaxAuxTable() = default;
+  CCPaxAuxTable() = delete;
+  ~CCPaxAuxTable() = delete;
 
   static void PaxAuxRelationSetNewFilenode(Relation rel,
                                            const RelFileNode *newrnode,
@@ -32,7 +29,7 @@ class CCPaxAuxTable final {
                                      const RelFileNode *newrnode,
                                      bool createnewpath = true);
 
-  static void PaxAuxRelationCopyDataForCluster(Relation old_heap, Relation new_heap);
+  static void PaxAuxRelationCopyDataForCluster(Relation old_rel, Relation new_rel);
 
   static void PaxAuxRelationFileUnlink(RelFileNode node, BackendId backend,
                                        bool delete_topleveldir);
@@ -41,47 +38,13 @@ class CCPaxAuxTable final {
 
 namespace cbdb {
 
-void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
-                                      NameData *compresstype,
-                                      int *compresslevel);
-
-void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
-                         int ptblocksize, const ::pax::stats::MicroPartitionStatisticsInfo &mp_stats);
+Oid GetPaxAuxRelid(Oid relid);
 
 void AddMicroPartitionEntry(const pax::WriteSummary &summary);
 
-void GetAllBlockFileInfoPgPaxBlockRelation(
-    std::vector<pax::MicroPartitionMetadata>
-        &result,  // NOLINT(runtime/references)
-    Relation relation, Relation pg_blockfile_rel,
-    Snapshot pax_meta_data_snapshot);
-
-void GetAllMicroPartitionMetadata(Relation parentrel,
-                                  Snapshot pax_meta_data_snapshot,
-                                  std::vector<pax::MicroPartitionMetadata>
-                                      &result);  // NOLINT(runtime/references)
-
-void AddMicroPartitionEntry(const pax::WriteSummary &summary);
-
-void DeleteMicroPartitionEntry(Oid rel_oid,
-                               Snapshot pax_meta_data_snapshot,
+void DeleteMicroPartitionEntry(Oid pax_relid,
+                               Snapshot snapshot,
                                const std::string &block_id);
 
-void PaxTransactionalTruncateTable(Oid aux_relid);
-
-void PaxNontransactionalTruncateTable(Relation rel);
-
-void PaxCreateMicroPartitionTable(Relation rel);
-
-void PaxCopyPaxBlockEntry(Relation old_relation, Relation new_relation);
 }  // namespace cbdb
 
-namespace paxc {
-void CPaxTransactionalTruncateTable(Oid aux_relid);
-
-void CPaxNontransactionalTruncateTable(Relation rel);
-
-void CPaxCreateMicroPartitionTable(Relation rel);
-
-void CPaxCopyPaxBlockEntry(Relation old_relation, Relation new_relation);
-}  // namespace paxc

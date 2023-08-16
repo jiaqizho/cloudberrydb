@@ -867,7 +867,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
 
   // using the same tuple slot with different data
   cbdb::Pfree(
-      cbdb::PointerFromDatum(tuple_slot->GetTupleTableSlot()->tts_values[0]));
+      cbdb::DatumToPointer(tuple_slot->GetTupleTableSlot()->tts_values[0]));
   memset(&column_buff_reset, 0, COLUMN_SIZE);
   tuple_slot->GetTupleTableSlot()->tts_values[0] =
       cbdb::DatumFromCString(column_buff_reset, COLUMN_SIZE);

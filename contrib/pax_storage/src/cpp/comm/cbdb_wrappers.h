@@ -76,7 +76,7 @@ void MemoryCtxRegisterResetCallback(MemoryContext context,
 
 Oid RelationGetRelationId(Relation rel);
 
-static inline void *PointerFromDatum(Datum d) noexcept {
+static inline void *DatumToPointer(Datum d) noexcept {
   return DatumGetPointer(d);
 }
 
@@ -152,6 +152,19 @@ Datum FunctionCall2Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2)
 Datum FunctionCall3Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2, Datum arg3);
 
 Datum FunctionCall4Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2, Datum arg3, Datum arg4);
+
+SysScanDesc SystableBeginScan(Relation rel, Oid index_id, bool index_ok, Snapshot snapshot, int n_keys, ScanKey keys);
+
+HeapTuple SystableGetNext(SysScanDesc desc);
+
+void SystableEndScan(SysScanDesc desc);
+
+Datum HeapGetAttr(HeapTuple tup, int attnum, TupleDesc tuple_desc, bool *isnull);
+
+Relation TableOpen(Oid relid, LOCKMODE lockmode);
+
+void TableClose(Relation rel, LOCKMODE lockmode);
+
 }  // namespace cbdb
 
 // clang-format off

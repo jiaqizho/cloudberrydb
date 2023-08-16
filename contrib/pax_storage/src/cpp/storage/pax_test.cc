@@ -64,7 +64,7 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
                              meta_info_list.end());
   }
 
-  bool HasNext() const override {
+  bool HasNext() override {
     return index_ < micro_partitions_.size();
   }
 
@@ -142,7 +142,10 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
       new OrcIteratorReader(file_system);
 
   std::vector<MicroPartitionMetadata> meta_info_list;
-  MicroPartitionMetadata meta_info(pax_file_name, pax_file_name);
+  MicroPartitionMetadata meta_info;
+
+  meta_info.SetFileName(pax_file_name);
+  meta_info.SetMicroPartitionId(pax_file_name);
 
   meta_info_list.push_back(std::move(meta_info));
 
@@ -206,11 +209,13 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
       new OrcIteratorReader(file_system);
 
   std::vector<MicroPartitionMetadata> meta_info_list;
-  MicroPartitionMetadata meta_info1(pax_file_name,
-                                    pax_file_name + std::to_string(0));
+  MicroPartitionMetadata meta_info1;
+  meta_info1.SetMicroPartitionId(std::string(pax_file_name));
+  meta_info1.SetFileName(pax_file_name + std::to_string(0));
 
-  MicroPartitionMetadata meta_info2(pax_file_name,
-                                    pax_file_name + std::to_string(1));
+  MicroPartitionMetadata meta_info2;
+  meta_info2.SetMicroPartitionId(std::string(pax_file_name));
+  meta_info2.SetFileName(pax_file_name + std::to_string(1));
 
   meta_info_list.push_back(std::move(meta_info1));
   meta_info_list.push_back(std::move(meta_info2));
