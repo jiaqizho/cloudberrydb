@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "storage/micro_partition_metadata.h"
-#include "catalog/table_metadata.h"
 #include "comm/bitmap.h"
 #include "comm/iterator.h"
 #include "storage/file_system.h"
@@ -71,7 +70,7 @@ class TableReader final {
   };
 
   TableReader(MicroPartitionReader *reader,
-              std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator,
+              std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
               ReaderOptions options);
   virtual ~TableReader();
 

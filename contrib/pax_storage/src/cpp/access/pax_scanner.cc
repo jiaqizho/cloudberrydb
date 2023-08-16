@@ -1,20 +1,20 @@
 #include "access/pax_scanner.h"
 
 #include "access/pax_access_handle.h"
-#include "catalog/table_metadata.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
+#include "storage/micro_partition_iterator.h"
 #include "storage/orc/orc.h"
 #include "storage/pax.h"
 #include "storage/pax_buffer.h"
 
 namespace pax {
+
 TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
                                      int nkeys, struct ScanKeyData *key,
                                      ParallelTableScanDesc pscan, uint32 flags,
                                      PaxFilter *filter) {
   PaxScanDesc *desc;
-  TableMetadata *meta_info;
   MemoryContext old_ctx;
   FileSystem *file_system;
   MicroPartitionReader *micro_partition_reader;
@@ -45,7 +45,6 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
 
   // build reader
-  meta_info = TableMetadata::Create(relation, snapshot);
   file_system = Singleton<LocalFileSystem>::GetInstance();
 
   micro_partition_reader = new OrcIteratorReader(file_system);
@@ -55,8 +54,14 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   reader_options.rel_oid = desc->rs_base_.rs_rd->rd_id;
   reader_options.filter = filter;
 
-  desc->reader_ = new TableReader(micro_partition_reader,
-                                  meta_info->NewIterator(), reader_options);
+  auto iter = MicroPartitionInfoIterator::New(relation, snapshot);
+  if (filter && filter->HasMicroPartitionFilter()) {
+    auto wrap = new FilterIterator<MicroPartitionMetadata>(std::move(iter), [filter, relation](const auto &x) {
+      return filter->TestMicroPartitionScan(x.GetStats(), RelationGetDescr(relation));
+    });
+    iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap);
+  }
+  desc->reader_ = new TableReader(micro_partition_reader, std::move(iter), reader_options);
   desc->reader_->Open();
 
   MemoryContextSwitchTo(old_ctx);
@@ -106,6 +111,12 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
 
   // The `cols` life cycle will be bound to `PaxFilter`
   filter->SetColumnProjection(cols);
+  {
+    ScanKey scan_keys = nullptr;
+    int n_scan_keys = 0;
+    auto ok = pax::BuildScanKeys(rel, qual, false, &scan_keys, &n_scan_keys);
+    if (ok) filter->SetScanKeys(scan_keys, n_scan_keys);
+  }
   paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter);
 
   return paxscan;
