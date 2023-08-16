@@ -33,12 +33,6 @@ class PaxScanDesc {
 
   static bool ScanSampleNextTuple(TableScanDesc scan, TupleTableSlot *slot);
 
-  uint32 GetMicroPartitionNumber() const;
-
-  uint32 GetCurrentMicroPartitionTupleNumber() const;
-
-  bool SeekTuple(uint64 target_tuple_id, uint64 *next_tuple_id);
-
   ~PaxScanDesc() = default;
 
  private:

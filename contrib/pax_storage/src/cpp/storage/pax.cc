@@ -181,50 +181,12 @@ std::string TableReader::GetCurrentMicroPartitionId() const {
   return iterator_->Current().GetMicroPartitionId();
 }
 
-uint32 TableReader::GetMicroPartitionNumber() const {
-  return iterator_->Size();
-}
-
 uint32 TableReader::GetCurrentMicroPartitionTupleNumber() {
   return iterator_->Current().GetTupleCount();
 }
 
 uint32 TableReader::GetCurrentMicroPartitionTupleOffset() {
   return reader_->Offset();
-}
-
-bool TableReader::SeekTuple(const uint64 targettupleid, uint64 *nexttupleid) {
-  uint64 remain_num = 0;
-  if (targettupleid < *nexttupleid) {
-    return false;
-  }
-
-  remain_num = targettupleid - *nexttupleid + 1;
-  if (remain_num <= (GetCurrentMicroPartitionTupleNumber() -
-                     GetCurrentMicroPartitionTupleOffset())) {
-    *nexttupleid = targettupleid;
-    SeekCurrentMicroPartitionTupleOffset(GetCurrentMicroPartitionTupleOffset() +
-                                         remain_num);
-    return true;
-  }
-
-  do {
-    remain_num -= (GetCurrentMicroPartitionTupleNumber() -
-                   GetCurrentMicroPartitionTupleOffset());
-    if (HasNextFile()) {
-      NextFile();
-    } else {
-      return false;
-    }
-  } while (remain_num > GetCurrentMicroPartitionTupleNumber());
-
-  *nexttupleid = targettupleid;
-  SeekCurrentMicroPartitionTupleOffset(remain_num);
-  return true;
-}
-
-void TableReader::SeekCurrentMicroPartitionTupleOffset(int tuple_offset) {
-  reader_->Seek(tuple_offset);
 }
 
 bool TableReader::HasNextFile() const { return iterator_->HasNext(); }
@@ -341,7 +303,6 @@ void TableDeleter::OpenWriter() {
   writer_->SetWriteSummaryCallback(&cbdb::AddMicroPartitionEntry)
       ->SetFileSplitStrategy(new PaxDefaultSplitStrategy())
       ->Open();
-  writer_->Open();
 }
 
 void TableDeleter::OpenReader() {
