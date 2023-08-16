@@ -150,27 +150,14 @@ bool PaxScanDesc::ScanAnalyzeNextTuple(TableScanDesc scan, double *liverows,
   bool ok = false;
 
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
-
   Assert(*deadrows == 0);  // not dead rows in pax latest snapshot
-
-  // skip several tuples if they are not sampling target.
-  ok = desc->SeekTuple(desc->target_tuple_id_, &(desc->next_tuple_id_));
-
-  if (!ok) {
-    goto finish;
+  while (desc->next_tuple_id_ < desc->target_tuple_id_) {
+    ok = PaxScanDesc::ScanGetNextSlot(scan, slot);
+    if (!ok) break;
+    desc->next_tuple_id_++;
   }
-
-  ok = PaxScanDesc::ScanGetNextSlot(scan, slot);
-  desc->next_tuple_id_++;
-  if (ok) {
-    *liverows += 1;
-  }
-  // Unlike heap table, latest pax snapshot does not contain deadrows,
-  // so `false` value of ok indicate that no more tuple to fetch,
-  // and just return directly.
-
-finish:
   MemoryContextSwitchTo(old_ctx);
+  if (ok) *liverows += 1;
   return ok;
 }
 
@@ -215,33 +202,11 @@ bool PaxScanDesc::ScanSampleNextTuple(TableScanDesc scan,
   bool ok = false;
 
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
-
-  // skip several tuples if they are not sampling target.
-  ok = desc->SeekTuple(desc->fetch_tuple_id_, &desc->next_tuple_id_);
-
-  if (ok) {
+  while (desc->next_tuple_id_ < desc->fetch_tuple_id_) {
     ok = PaxScanDesc::ScanGetNextSlot(scan, slot);
+    if (!ok) break;
     desc->next_tuple_id_++;
   }
-
-  MemoryContextSwitchTo(old_ctx);
-  return ok;
-}
-
-uint32 PaxScanDesc::GetMicroPartitionNumber() const {
-  return reader_->GetMicroPartitionNumber();
-}
-
-uint32 PaxScanDesc::GetCurrentMicroPartitionTupleNumber() const {
-  return reader_->GetCurrentMicroPartitionTupleNumber();
-}
-
-bool PaxScanDesc::SeekTuple(uint64 target_tuple_id, uint64 *next_tuple_id) {
-  MemoryContext old_ctx;
-  bool ok = false;
-
-  old_ctx = MemoryContextSwitchTo(memory_context_);
-  ok = reader_->SeekTuple(target_tuple_id, next_tuple_id);
   MemoryContextSwitchTo(old_ctx);
   return ok;
 }
