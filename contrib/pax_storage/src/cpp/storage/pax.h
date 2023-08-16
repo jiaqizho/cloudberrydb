@@ -86,17 +86,11 @@ class TableReader final {
 
   std::string GetCurrentMicroPartitionId() const;
 
-  uint32 GetMicroPartitionNumber() const;
-
   uint32 GetCurrentMicroPartitionTupleNumber();
 
   uint32 GetCurrentMicroPartitionTupleOffset();
 
-  bool SeekTuple(uint64 targettupleid, uint64 *nexttupleid);
-
  private:
-  void SeekCurrentMicroPartitionTupleOffset(int tuple_offset);
-
   bool HasNextFile() const;
 
   void NextFile();
