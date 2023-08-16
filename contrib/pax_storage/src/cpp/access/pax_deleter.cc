@@ -76,15 +76,16 @@ CPaxDeleter::buildDeleteIterator() {
     BitmapIterator bitmap_it(bitmap_ptr);
     int32 tuple_number = bitmap_it.Next(true);
     if (tuple_number != -1) {
-      pax::MicroPartitionMetadata meta_info(
-          block_id, cbdb::BuildPaxFilePath(rel_, block_id));
+      pax::MicroPartitionMetadata meta_info;
+
+      meta_info.SetFileName(cbdb::BuildPaxFilePath(rel_, block_id));
+      meta_info.SetMicroPartitionId(std::move(block_id));
       micro_partitions.push_back(std::move(meta_info));
     }
   }
+  IteratorBase<MicroPartitionMetadata> *iter = new VectorIterator<MicroPartitionMetadata>(std::move(micro_partitions));
 
-  std::unique_ptr<pax::TableMetadata::Iterator> iterator =
-      pax::TableMetadata::Iterator::Create(std::move(micro_partitions));
-  return iterator;
+  return std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(iter);
 }
 
 }  // namespace pax

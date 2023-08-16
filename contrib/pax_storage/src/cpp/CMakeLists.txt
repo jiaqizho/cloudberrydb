@@ -145,6 +145,7 @@ set(pax_storage_src
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
+    storage/micro_partition_iterator.cc
     storage/micro_partition_metadata.cc
     storage/pax_buffer.cc  
     storage/proto/protobuf_stream.cc
@@ -170,8 +171,7 @@ set(pax_access_src
 
 set(pax_catalog_src
     catalog/micro_partition_stats.cc
-    catalog/pax_aux_table.cc
-    catalog/table_metadata.cc)
+    catalog/pax_aux_table.cc)
 
 link_directories($ENV{GPHOME}/lib)
 
