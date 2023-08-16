@@ -74,6 +74,8 @@ class CException {
 #define CBDB_RAISE(...) cbdb::CException::Raise(__FILE__, __LINE__, __VA_ARGS__)
 #define CBDB_RERAISE(ex) cbdb::CException::ReRaise(ex)
 #define CBDB_CHECK(check, ...) \
-  if (!(check)) {              \
-    CBDB_RAISE(__VA_ARGS__);   \
-  }
+  do {                         \
+    if (unlikely(!(check))) {            \
+      CBDB_RAISE(__VA_ARGS__); \
+    }                          \
+  } while (0)

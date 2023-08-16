@@ -2,17 +2,13 @@
 
 #include "comm/cbdb_api.h"
 
-#include <stddef.h>
 
 #include <functional>
+#include <stddef.h>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
-#include "storage/file_system.h"
 #include "storage/micro_partition_metadata.h"
-#include "storage/pax_filter.h"
-#include "storage/statistics.h"
 
 namespace pax {
 class CTupleSlot {
@@ -49,7 +45,9 @@ class CTupleSlot {
 };
 
 struct WriteSummary;
+class FileSystem;
 class MicroPartitionStats;
+class PaxFilter;
 
 class MicroPartitionWriter {
  public:

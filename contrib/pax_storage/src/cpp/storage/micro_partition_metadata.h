@@ -19,32 +19,34 @@ struct WriteSummary {
   WriteSummary(const WriteSummary &summary) = default;
 };
 
-class MicroPartitionMetadata {
+struct MicroPartitionMetadata {
  public:
-  MicroPartitionMetadata(std::string micro_partition_id, std::string filename);
+  MicroPartitionMetadata() = default;
+  MicroPartitionMetadata(const MicroPartitionMetadata &other) = default;
 
   ~MicroPartitionMetadata() = default;
 
-  MicroPartitionMetadata(const MicroPartitionMetadata &other) = default;
+  MicroPartitionMetadata(MicroPartitionMetadata &&other);
 
-  MicroPartitionMetadata(MicroPartitionMetadata &&other) noexcept;
+  MicroPartitionMetadata &operator=(const MicroPartitionMetadata &other) = default;
 
-  MicroPartitionMetadata &operator=(const MicroPartitionMetadata &other) =
-      default;
+  MicroPartitionMetadata &operator=(MicroPartitionMetadata &&other);
 
-  MicroPartitionMetadata &operator=(MicroPartitionMetadata &&other) noexcept;
+  inline const std::string &GetMicroPartitionId() const { return micro_partition_id_; }
 
-  const std::string &GetMicroPartitionId() const;
+  inline const std::string &GetFileName() const { return file_name_; }
 
-  const std::string &GetFileName() const;
+  inline uint32 GetTupleCount() const { return tuple_count_; }
 
-  void SetTupleCount(uint32 tuple_count);
+  inline const ::pax::stats::MicroPartitionStatisticsInfo &GetStats() const { return stats_; }
 
-  uint32 GetTupleCount() const;
+  inline void SetMicroPartitionId(std::string &&id) { micro_partition_id_ = std::move(id); }
 
-  void SetFileSize(uint32 file_size);
+  inline void SetFileName(std::string &&name) { file_name_ = std::move(name); }
 
-  uint32 GetFileSize() const;
+  inline void SetTupleCount(uint32 tuple_count) { tuple_count_ = tuple_count; }
+
+  inline void SetStats(::pax::stats::MicroPartitionStatisticsInfo &&stats) { stats_ = std::move(stats); }
 
  private:
   std::string micro_partition_id_;
@@ -53,8 +55,7 @@ class MicroPartitionMetadata {
 
   // statistics info
   uint32 tuple_count_ = 0;
-  uint32 file_size_ = 0;
 
-  // TODO(gongxun): add more info like bloom filter, index, etc.
+  ::pax::stats::MicroPartitionStatisticsInfo stats_;
 };  // class MicroPartitionMetadata
 }  // namespace pax

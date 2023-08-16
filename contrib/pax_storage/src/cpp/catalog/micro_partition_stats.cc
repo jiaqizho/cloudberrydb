@@ -257,7 +257,7 @@ std::string MicroPartitionStats::ToValue(Datum datum, int typlen,
   }
   // byref but fixed size
   Assert(typlen > 0);
-  return std::string(reinterpret_cast<char *>(cbdb::PointerFromDatum(datum)),
+  return std::string(reinterpret_cast<char *>(cbdb::DatumToPointer(datum)),
                      typlen);
 }
 }  // namespace pax

@@ -11,6 +11,7 @@
 #include "exceptions/CException.h"
 #include "storage/columns/pax_column_int.h"
 #include "storage/columns/pax_encoding_non_fixed_column.h"
+#include "storage/pax_filter.h"
 namespace pax {
 
 OrcWriter::OrcWriter(
@@ -141,7 +142,7 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
         }
         default:
           Assert(type_len > 0);
-          (*pax_columns_)[i]->Append(static_cast<char *>(cbdb::PointerFromDatum(
+          (*pax_columns_)[i]->Append(static_cast<char *>(cbdb::DatumToPointer(
                                          table_slot->tts_values[i])),
                                      type_len);
           break;

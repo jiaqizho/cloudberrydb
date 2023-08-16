@@ -4,11 +4,11 @@
 
 #include <utility>
 
-#include "storage/micro_partition_metadata.h"
 #include "catalog/micro_partition_stats.h"
-#include "catalog/table_metadata.h"
+#include "catalog/pax_aux_table.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/micro_partition_file_factory.h"
+#include "storage/micro_partition_metadata.h"
 
 namespace pax {
 
@@ -122,14 +122,15 @@ void TableWriter::Close() {
 
 TableReader::TableReader(
     MicroPartitionReader *reader,
-    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator,
+    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
     ReaderOptions options)
     : iterator_(std::move(iterator)),
       reader_(reader),
       is_empty_(true),
       reader_options_(options),
       table_no_(0),
-      table_index_(0) {}
+      table_index_(0) {
+}
 
 TableReader::~TableReader() {
   if (reader_) {
