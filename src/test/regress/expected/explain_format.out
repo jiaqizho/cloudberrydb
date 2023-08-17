@@ -51,7 +51,7 @@ EXPLAIN SELECT * from boxes LEFT JOIN apples ON apples.id = boxes.apple_id LEFT 
                            ->  Seq Scan on apples  (cost=0.00..1111.00 rows=33334 width=36)
          ->  Hash  (cost=596.00..596.00 rows=16534 width=36)
                ->  Seq Scan on box_locations  (cost=0.00..596.00 rows=16534 width=36)
- Optimizer: Postgres query optimizer
+ Optimizer: Postgres-based planner
 (15 rows)
 
 -- explain_processing_on
@@ -75,12 +75,13 @@ EXPLAIN (ANALYZE) SELECT * from boxes LEFT JOIN apples ON apples.id = boxes.appl
                            ->  Seq Scan on apples  (cost=0.00..199.33 rows=16533 width=36) (actual time=0.071..3.997 rows=33462 loops=1)
          ->  Hash  (cost=199.33..199.33 rows=16533 width=36) (actual time=0.022..0.026 rows=0 loops=1)
                Buckets: 131072  Batches: 1  Memory Usage: 1024kB
-               ->  Seq Scan on box_locations  (cost=0.00..199.33 rows=16533 width=36) (actual time=0.020..0.021 rows=0 loops=1)
- Planning Time: 1.020 ms
-   (slice0)    Executor memory: 126K bytes.
-   (slice1)    Executor memory: 1051K bytes avg x 3x(0) workers, 1051K bytes max (seg0).  Work_mem: 1024K bytes max.
-   (slice2)    Executor memory: 2366K bytes avg x 3x(0) workers, 2366K bytes max (seg0).  Work_mem: 2201K bytes max.
-   (slice3)    Executor memory: 113K bytes avg x 3x(0) workers, 113K bytes max (seg0).
+               ->  Seq Scan on box_locations  (cost=0.00..199.33 rows=16533 width=36) (actual time=0.000..0.010 rows=0 loops=1)
+ Optimizer: Postgres-based planner
+ Planning Time: 0.893 ms
+   (slice0)    Executor memory: 64K bytes.
+   (slice1)    Executor memory: 1051K bytes avg x 3 workers, 1051K bytes max (seg0).  Work_mem: 1024K bytes max.
+   (slice2)    Executor memory: 2364K bytes avg x 3 workers, 2364K bytes max (seg0).  Work_mem: 2201K bytes max.
+   (slice3)    Executor memory: 41K bytes avg x 3 workers, 44K bytes max (seg1).
  Memory used:  128000kB
  Optimizer: Postgres query optimizer
  Execution Time: 59.644 ms
@@ -265,8 +266,7 @@ QUERY PLAN
                 Total Cost: 596.00
                 Plan Rows: 49600
                 Plan Width: 36
-  Settings: 
-    Optimizer: "Postgres query optimizer"
+  Optimizer: "Postgres-based planner"
 (1 row)
 --- Check Explain Analyze YAML output that include the slices information
 -- explain_processing_off
@@ -459,8 +459,7 @@ QUERY PLAN
                 Actual Total Time: 0.000
                 Actual Rows: 0
                 Actual Loops: 0
-  Settings: 
-    Optimizer: "Postgres query optimizer"
+  Optimizer: "Postgres-based planner"
   Planning Time: 1.121
   Triggers: 
   Slice statistics: 
@@ -517,9 +516,7 @@ QUERY PLAN
       "Function Name": "generate_series",
       "Alias": "generate_series"
     },
-    "Settings": {
-      "Optimizer": "Postgres query optimizer"
-    }
+    "Optimizer": "Postgres-based planner"
   }
 ]
 (1 row)
@@ -537,9 +534,7 @@ QUERY PLAN
       <Function-Name>generate_series</Function-Name>
       <Alias>generate_series</Alias>
     </Plan>
-    <Settings>
-      <Optimizer>Postgres query optimizer</Optimizer>
-    </Settings>
+    <Optimizer>Postgres-based planner</Optimizer>
   </Query>
 </explain>
 (1 row)
@@ -576,9 +571,7 @@ QUERY PLAN
         }
       ]
     },
-    "Settings": {
-      "Optimizer": "Postgres query optimizer"
-    }
+    "Optimizer": "Postgres-based planner"
   }
 ]
 (1 row)

@@ -115,16 +115,16 @@ explain (costs off) select count(distinct d), sum(distinct d) from dqa_t1 group 
 (11 rows)
 
 select count(distinct d), count(distinct dt) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count 
 -------+-------
     23 |    34
 (1 row)
 
 explain (costs off) select count(distinct d), count(distinct dt) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                             QUERY PLAN                            
 ------------------------------------------------------------------
  Finalize Aggregate
@@ -141,16 +141,16 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (11 rows)
 
 select count(distinct d), count(distinct c), count(distinct dt) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count | count 
 -------+-------+-------
     23 |    10 |    34
 (1 row)
 
 explain (costs off) select count(distinct d), count(distinct c), count(distinct dt) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                             QUERY PLAN                            
 ------------------------------------------------------------------
  Finalize Aggregate
@@ -167,8 +167,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (11 rows)
 
 select count(distinct d), count(distinct dt) from dqa_t1 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count 
 -------+-------
     10 |    10
@@ -184,8 +184,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (10 rows)
 
 explain (costs off) select count(distinct d), count(distinct dt) from dqa_t1 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                QUERY PLAN                               
 ------------------------------------------------------------------------
  Finalize HashAggregate
@@ -207,8 +207,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (16 rows)
 
 select count(distinct d), count(distinct dt) from dqa_t1 group by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count 
 -------+-------
      1 |     5
@@ -237,8 +237,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (23 rows)
 
 explain (costs off) select count(distinct d), count(distinct dt) from dqa_t1 group by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                QUERY PLAN                               
 ------------------------------------------------------------------------
  Finalize HashAggregate
@@ -500,16 +500,16 @@ explain (costs off) select count(distinct i), sum(distinct i) from dqa_t1 group 
 (9 rows)
 
 select count(distinct c), count(distinct dt) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count 
 -------+-------
     10 |    34
 (1 row)
 
 explain (costs off) select count(distinct c), count(distinct dt) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                             QUERY PLAN                            
 ------------------------------------------------------------------
  Finalize Aggregate
@@ -526,8 +526,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (11 rows)
 
 select count(distinct c), count(distinct dt), i from dqa_t1 group by i;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count | i  
 -------+-------+----
      5 |     9 |  3
@@ -545,8 +545,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (12 rows)
 
 explain (costs off) select count(distinct c), count(distinct dt), i from dqa_t1 group by i;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                QUERY PLAN                               
 ------------------------------------------------------------------------
  Finalize HashAggregate
@@ -568,8 +568,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (16 rows)
 
 select count(distinct i), count(distinct c), d from dqa_t1 group by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count | d  
 -------+-------+----
      5 |     5 |  3
@@ -598,8 +598,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (23 rows)
 
 explain (costs off) select count(distinct i), count(distinct c), d from dqa_t1 group by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                QUERY PLAN                               
 ------------------------------------------------------------------------
  Finalize HashAggregate
@@ -731,8 +731,8 @@ explain (costs off) select count(distinct dqa_t1.dt) from dqa_t1, dqa_t2 where d
 
 -- multidqa with groupby and order by
 select sum(distinct d), count(distinct i), count(distinct c),i,c from dqa_t1 group by i,c order by i,c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  sum | count | count | i  | c 
 -----+-------+-------+----+---
   14 |     1 |     1 |  0 | 0
@@ -798,8 +798,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (60 rows)
 
 explain (costs off) select sum(distinct d), count(distinct i), count(distinct c),i,c from dqa_t1 group by i,c order by i,c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                      QUERY PLAN                                     
 ------------------------------------------------------------------------------------
  Sort
@@ -910,16 +910,16 @@ explain (costs off) select to_char(corr(distinct d, i), '9.99999999999999') from
 
 -- multi args multidqa
 select count(distinct c), corr(distinct d, i) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count |       corr        
 -------+-------------------
     10 | 0.082401334146002
 (1 row)
 
 explain (costs off) select count(distinct c), corr(distinct d, i) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                              QUERY PLAN                                              
 -----------------------------------------------------------------------------------------------------
  Finalize Aggregate
@@ -936,16 +936,16 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (11 rows)
 
 select count(distinct d), corr(distinct d, i) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count |       corr        
 -------+-------------------
     23 | 0.082401334146002
 (1 row)
 
 explain (costs off) select count(distinct d), corr(distinct d, i) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                              QUERY PLAN                                              
 -----------------------------------------------------------------------------------------------------
  Finalize Aggregate
@@ -962,16 +962,16 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (11 rows)
 
 select count(distinct d), count(distinct i), corr(distinct d, i) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count |       corr        
 -------+-------+-------------------
     23 |    12 | 0.082401334146002
 (1 row)
 
 explain (costs off) select count(distinct d), count(distinct i), corr(distinct d, i) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                QUERY PLAN                                               
 --------------------------------------------------------------------------------------------------------
  Finalize Aggregate
@@ -988,16 +988,16 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (11 rows)
 
 select count(distinct c), count(distinct d), count(distinct i), corr(distinct d, i) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count | count |       corr        
 -------+-------+-------+-------------------
     10 |    23 |    12 | 0.082401334146002
 (1 row)
 
 explain (costs off) select count(distinct c), count(distinct d), count(distinct i), corr(distinct d, i) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                  QUERY PLAN                                                 
 ------------------------------------------------------------------------------------------------------------
  Finalize Aggregate
@@ -1015,8 +1015,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 
 -- multi args multidqa with group by
 select count(distinct c), corr(distinct d, i), d from dqa_t1 group by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | corr | d  
 -------+------+----
      5 |      |  0
@@ -1045,8 +1045,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (23 rows)
 
 explain (costs off) select count(distinct c), corr(distinct d, i), d from dqa_t1 group by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                   QUERY PLAN                                                  
 --------------------------------------------------------------------------------------------------------------
  Finalize HashAggregate
@@ -1068,8 +1068,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (16 rows)
 
 select count(distinct c), corr(distinct d, i), d, i from dqa_t1 group by d,i;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | corr | d  | i  
 -------+------+----+----
      1 |      |  0 |  0
@@ -1175,8 +1175,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (100 rows)
 
 explain (costs off) select count(distinct c), corr(distinct d, i), d, i from dqa_t1 group by d,i;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                    QUERY PLAN                                                    
 -----------------------------------------------------------------------------------------------------------------
  Finalize HashAggregate
@@ -1198,8 +1198,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (16 rows)
 
 select count(distinct c), corr(distinct d, i), dt from dqa_t1 group by dt;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count |       corr        |     dt     
 -------+-------------------+------------
      3 |  0.75592894601845 | 06-10-2009
@@ -1239,8 +1239,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (34 rows)
 
 explain (costs off) select count(distinct c), corr(distinct d, i), dt from dqa_t1 group by dt;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                   QUERY PLAN                                                   
 ---------------------------------------------------------------------------------------------------------------
  Finalize HashAggregate
@@ -1262,8 +1262,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (16 rows)
 
 select count(distinct d), corr(distinct d, i), i from dqa_t1 group by i;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | corr | i  
 -------+------+----
      9 |      |  0
@@ -1281,8 +1281,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (12 rows)
 
 explain (costs off) select count(distinct d), corr(distinct d, i), i from dqa_t1 group by i;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                   QUERY PLAN                                                  
 --------------------------------------------------------------------------------------------------------------
  Finalize HashAggregate
@@ -1304,8 +1304,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (16 rows)
 
 select count(distinct d), corr(distinct d, i), d from dqa_t1 group by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | corr | d  
 -------+------+----
      1 |      |  0
@@ -1334,8 +1334,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (23 rows)
 
 explain (costs off) select count(distinct d), corr(distinct d, i), d from dqa_t1 group by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                 QUERY PLAN                                                 
 -----------------------------------------------------------------------------------------------------------
  Finalize HashAggregate
@@ -1357,8 +1357,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (16 rows)
 
 select count(distinct d),  to_char(corr(distinct d, i), '9.99999999999999'), c from dqa_t1 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count |      to_char      | c 
 -------+-------------------+---
     10 |   .13670602618479 | 0
@@ -1374,8 +1374,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (10 rows)
 
 explain (costs off) select count(distinct d),  to_char(corr(distinct d, i), '9.99999999999999'), c from dqa_t1 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                   QUERY PLAN                                                  
 --------------------------------------------------------------------------------------------------------------
  Finalize HashAggregate
@@ -1432,8 +1432,8 @@ from
      fact_route_aggregation T218094
 where  ( T43883.device_id = T218094.device_id ) 
 group by T43883.platform;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 | c3 | c4 | c5 | c6 | c7 | c8 | c9 
 ----+----+----+----+----+----+----+----+----
 (0 rows)
@@ -1459,8 +1459,8 @@ insert into t2_mdqa select i % 10 , i % 5, i || 'value' from generate_series(1, 
 insert into t2_mdqa select i % 10 , i % 5, i || 'value' from generate_series(1, 20) i;
 -- simple mdqa
 select count(distinct t1.a), count(distinct t2.b), t1.c, t2.c from t1_mdqa t1, t2_mdqa t2 where t1.c = t2.c group by t1.c, t2.c order by t1.c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count |    c    |    c    
 -------+-------+---------+---------
      1 |     1 | 10value | 10value
@@ -1487,8 +1487,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 
 -- distinct on top of some mdqas
 select distinct sum(distinct t1.a), avg(t2.a), sum(distinct t2.b), t1.a, t2.b from t1_mdqa t1, t2_mdqa t2 where t1.a = t2.a group by t1.a, t2.b order by t1.a;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  sum |          avg           | sum | a | b 
 -----+------------------------+-----+---+---
    0 | 0.00000000000000000000 |   0 | 0 | 0
@@ -1499,8 +1499,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (5 rows)
 
 select distinct sum (distinct t1.a), avg(distinct t2.a), sum(distinct t2.b), t1.c from t1_mdqa t1, t2_mdqa t2 where t1.a = t2.a group by t1.c order by t1.c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  sum |          avg           | sum |    c    
 -----+------------------------+-----+---------
    0 | 0.00000000000000000000 |   0 | 10value
@@ -1527,8 +1527,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 
 -- distinct on group by fields
 select distinct t1.c , sum(distinct t1.a), count(t2.b), sum(distinct t2.b) from t1_mdqa t1, t2_mdqa t2 where t1.a = t2.a group by t1.c order by t1.c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
     c    | sum | count | sum 
 ---------+-----+-------+-----
  10value |   0 |     8 |   0
@@ -1555,8 +1555,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 
 -- distinct on normal aggregates
 select distinct sum(t1.a), avg(distinct t2.a), sum(distinct (t1.a + t2.a)), t1.a, t2.b from t1_mdqa t1, t2_mdqa t2 where t1.a = t2.a group by t1.a, t2.b order by t1.a;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  sum |          avg           | sum | a | b 
 -----+------------------------+-----+---+---
    0 | 0.00000000000000000000 |   0 | 0 | 0
@@ -1567,8 +1567,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (5 rows)
 
 select distinct avg(t1.a + t2.b), count(distinct t1.c), count(distinct char_length(t1.c)), t1.a, t2.b from t1_mdqa t1, t2_mdqa t2 where t1.a = t2.a group by t1.a, t2.b order by t1.a;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
           avg           | count | count | a | b 
 ------------------------+-------+-------+---+---
  0.00000000000000000000 |     4 |     2 | 0 | 0
@@ -1595,8 +1595,8 @@ HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sur
 insert into gp_dqa_r  select i , i %10, i%5 from generate_series(1,20) i;
 insert into gp_dqa_s select i, i %15, i%10 from generate_series(1,30) i;
 select a, d, count(distinct b) as c1, count(distinct c) as c2 from gp_dqa_r, gp_dqa_s where ( e = a ) group by d, a order by a,d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  a  | d  | c1 | c2 
 ----+----+----+----
   1 |  1 |  1 |  1
@@ -1638,8 +1638,8 @@ d as c9
 from gp_dqa_r, gp_dqa_s
 where ( e = a ) 
 group by d order by c9;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 | c3 | c2 | c9 
 ----+----+----+----+----
   1 |  2 |  1 |  1 |  1
@@ -1679,8 +1679,8 @@ d as c9
 from gp_dqa_r, gp_dqa_s
 where ( e = a ) 
 group by d order by c9;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 | c9 
 ----+----+----
   1 |  1 |  1
@@ -1717,8 +1717,8 @@ select distinct count(distinct b) as c1, count(distinct c) as c2, d as c9
 from gp_dqa_r, gp_dqa_s
 where ( e = a ) 
 group by d order by c9;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 | c9 
 ----+----+----
   1 |  1 |  1
@@ -1752,8 +1752,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (28 rows)
 
 select distinct d, count(distinct b) as c1, count(distinct c) as c2, d as c9 from gp_dqa_r, gp_dqa_s group by d order by c9;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  d  | c1 | c2 | c9 
 ----+----+----+----
   1 | 10 |  5 |  1
@@ -1789,8 +1789,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (30 rows)
 
 select distinct d, count(distinct b) as c1, count(distinct c) as c2, d as c9 from gp_dqa_r, gp_dqa_s group by d, a order by c9;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  d  | c1 | c2 | c9 
 ----+----+----+----
   1 |  1 |  1 |  1
@@ -1826,24 +1826,24 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (30 rows)
 
 select distinct count(distinct b) as c1, count(distinct c) as c2 from gp_dqa_r, gp_dqa_s;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 
 ----+----
  10 |  5
 (1 row)
 
 select distinct count(distinct b) as c1, count(distinct c) as c2 from gp_dqa_r;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 
 ----+----
  10 |  5
 (1 row)
 
 select distinct count(distinct b) as c1, count(distinct c) as c2, d, a from gp_dqa_r, gp_dqa_s where ( e = a)group by d, a order by a,d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 | d  | a  
 ----+----+----+----
   1 |  1 |  1 |  1
@@ -1881,8 +1881,8 @@ ERROR:  for SELECT DISTINCT, ORDER BY expressions must appear in select list
 LINE 1: ...as c2, d from gp_dqa_r, gp_dqa_s group by d, a order by d,a;
                                                                      ^
 select distinct count(distinct b) as c1, count(distinct c) as c2, d from gp_dqa_r, gp_dqa_s group by d, a order by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 | d  
 ----+----+----
   1 |  1 |  1
@@ -1918,8 +1918,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (30 rows)
 
 select distinct count(distinct b) as c1, count(distinct c) as c2, d from gp_dqa_r, gp_dqa_s group by d order by d;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  c1 | c2 | d  
 ----+----+----
  10 |  5 |  1
@@ -1967,8 +1967,8 @@ create table gp_dqa_t2 (a int, c int) distributed by (a);
 insert into gp_dqa_t1 select i , i %5 from generate_series(1,10) i;
 insert into gp_dqa_t2 select i , i %4 from generate_series(1,10) i;
 select distinct A.a, sum(distinct A.b), count(distinct B.c) from gp_dqa_t1 A left join gp_dqa_t2 B on (A.a = B.a) group by A.a order by A.a;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  a  | sum | count 
 ----+-----+-------
   1 |   1 |     1
@@ -1984,8 +1984,8 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 (10 rows)
 
 select distinct A.a, sum(distinct A.b), count(distinct B.c) from gp_dqa_t1 A right join gp_dqa_t2 B on (A.a = B.a) group by A.a order by A.a;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  a  | sum | count 
 ----+-----+-------
   1 |   1 |     1
@@ -2038,16 +2038,16 @@ explain (costs off) select count(distinct d) from dqa_t1 group by i;
 (11 rows)
 
 select count(distinct d), count(distinct c), count(distinct dt) from dqa_t1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count | count 
 -------+-------+-------
     23 |    10 |    34
 (1 row)
 
 select count(distinct c), count(distinct dt), i from dqa_t1 group by i;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count | i  
 -------+-------+----
      5 |     9 |  3
@@ -2071,15 +2071,15 @@ create table foo_mdqa(x int, y int);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Cloudberry Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SELECT distinct C.z, count(distinct FS.x), count(distinct FS.y) FROM (SELECT 1 AS z FROM generate_series(1,10)) C, foo_mdqa FS GROUP BY z;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  z | count | count 
 ---+-------+-------
 (0 rows)
 
 SELECT distinct C.z, count(distinct FS.x), count(distinct FS.y) FROM (SELECT i AS z FROM generate_series(1,10) i) C, foo_mdqa FS GROUP BY z;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  z | count | count 
 ---+-------+-------
 (0 rows)
@@ -2098,10 +2098,10 @@ HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sur
 insert into nonullstab select 1, 1 from generate_series(1, 100);
 -- This returns wrong result. countall(distinct a) should return 1.
 select countall(distinct a), count(distinct b) from nonullstab;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
  countall | count 
 ----------+-------
         1 |     1
@@ -2115,16 +2115,16 @@ create table dqa_f2(x int, y int, z int) distributed by (x);
 insert into dqa_f1 select i%17, i%5 , i%3 from generate_series(1,1000) i;
 insert into dqa_f2 select i % 13, i % 5 , i % 11 from generate_series(1,1000) i;
 select sum(distinct a) filter (where a > 0), sum(distinct b) filter (where a > 0) from dqa_f1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
  sum | sum 
 -----+-----
  136 |  10
 (1 row)
 
 select sum(distinct a) filter (where a > 0), sum(distinct b) filter (where a > 0) from dqa_f1 group by b;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
  sum | sum 
 -----+-----
  136 |   0
@@ -2135,8 +2135,8 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (5 rows)
 
 select sum(distinct a) filter (where a > 0), sum(distinct b) filter (where a > 0) from dqa_f1 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
  sum | sum 
 -----+-----
  136 |  10
@@ -2145,16 +2145,16 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (3 rows)
 
 select sum(distinct a) filter (where a in (select x from dqa_f2 where x = a)), sum(distinct b) filter (where a > 0) from dqa_f1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
  sum | sum 
 -----+-----
   78 |  10
 (1 row)
 
 select sum(distinct a) filter (where a in (select x from dqa_f2 where x = a)), sum(distinct b) filter (where a > 0) from dqa_f1 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
  sum | sum 
 -----+-----
   78 |  10
@@ -2163,8 +2163,8 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (3 rows)
 
 select count(distinct a) filter (where a > 3),count( distinct b) filter (where a > 4), sum(distinct b) filter( where a > 4) from dqa_f1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
  count | count | sum 
 -------+-------+-----
     13 |     5 |  10
@@ -2172,16 +2172,16 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 
 -- fix hang of multi-dqa with filter (https://github.com/greenplum-db/gpdb/issues/14728)
 select count(distinct a) filter (where a > 3), count(distinct b) from dqa_f1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
  count | count 
 -------+-------
     13 |     5
 (1 row)
 
 explain select sum(distinct a) filter (where a > 0), sum(distinct b) filter (where a > 0) from dqa_f1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
                                               QUERY PLAN                                              
 ------------------------------------------------------------------------------------------------------
  Finalize Aggregate  (cost=20.66..20.67 rows=1 width=16)
@@ -2198,8 +2198,8 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (11 rows)
 
 explain select sum(distinct a) filter (where a > 0), sum(distinct b) filter (where a > 0) from dqa_f1 group by b;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
                                                  QUERY PLAN                                                 
 ------------------------------------------------------------------------------------------------------------
  Finalize HashAggregate  (cost=21.62..21.67 rows=5 width=20)
@@ -2221,8 +2221,8 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (16 rows)
 
 explain select sum(distinct a) filter (where a > 0), sum(distinct b) filter (where a > 0) from dqa_f1 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
                                                  QUERY PLAN                                                  
 -------------------------------------------------------------------------------------------------------------
  Finalize HashAggregate  (cost=21.20..21.23 rows=3 width=20)
@@ -2244,8 +2244,8 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (16 rows)
 
 explain select sum(distinct a) filter (where a in (select x from dqa_f2 where x = a)), sum(distinct b) filter (where a > 0) from dqa_f1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
                                                              QUERY PLAN                                                             
 ------------------------------------------------------------------------------------------------------------------------------------
  Finalize Aggregate  (cost=96.41..96.42 rows=1 width=16)
@@ -2268,8 +2268,8 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (17 rows)
 
 explain select sum(distinct a) filter (where a in (select x from dqa_f2 where x = a)), sum(distinct b) filter (where a > 0) from dqa_f1 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
                                                                 QUERY PLAN                                                                
 ------------------------------------------------------------------------------------------------------------------------------------------
  Finalize HashAggregate  (cost=181.11..181.14 rows=3 width=20)
@@ -2297,8 +2297,8 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (22 rows)
 
 explain select count(distinct a) filter (where a > 3),count( distinct b) filter (where a > 4), sum(distinct b) filter( where a > 4) from dqa_f1;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
                                               QUERY PLAN                                              
 ------------------------------------------------------------------------------------------------------
  Finalize Aggregate  (cost=20.67..20.68 rows=1 width=24)
@@ -2336,7 +2336,7 @@ select count(distinct a), sum(b), sum(c) from dqa_f1;
 create table dqa_unique(a int, b int, c int, d int, primary key(a, b));
 insert into dqa_unique select i%3, i%5, i%7, i%9 from generate_series(1, 10) i;
 explain(verbose on, costs off) select count(distinct a), count(distinct d), c from dqa_unique group by a, b;
-INFO:  GPORCA failed to produce a plan, falling back to planner
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Query-to-DXL Translation: No attribute entry found due to incorrect normalization of query
                                            QUERY PLAN                                           
 ------------------------------------------------------------------------------------------------
@@ -2368,7 +2368,7 @@ DETAIL:  Query-to-DXL Translation: No attribute entry found due to incorrect nor
 (25 rows)
 
 select count(distinct a), count(distinct d), c from dqa_unique group by a, b;
-INFO:  GPORCA failed to produce a plan, falling back to planner
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Query-to-DXL Translation: No attribute entry found due to incorrect normalization of query
  count | count | c 
 -------+-------+---
@@ -2399,16 +2399,16 @@ insert into dqa_f3 values ('123', 2), ('213', 0), ('231', 2), ('312', 0), ('321'
 --           ->  Seq Scan on public.dqa_f3
 --                 Output: b, a, (b)::text
 select count(distinct (b)::text) as b, count(distinct (a)::text) as a from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  b | a 
 ---+---
  3 | 7
 (1 row)
 
 explain (verbose, costs off) select count(distinct (b)::text) as b, count(distinct (a)::text) as a from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                            QUERY PLAN
 ------------------------------------------------------------------------------------------------
  Finalize Aggregate
@@ -2434,16 +2434,16 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 
 -- Case 2: Same as the above one, but convert the type of column 'a' to 'varchar' via binary-compatible types.
 select count(distinct (b)::text) as b, count(distinct (a)::text::varchar) as a from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  b | a 
 ---+---
  3 | 7
 (1 row)
 
 explain (verbose, costs off) select count(distinct (b)::text) as b, count(distinct (a)::text::varchar) as a from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                                 QUERY PLAN                                                 
 -----------------------------------------------------------------------------------------------------------
  Finalize Aggregate
@@ -2479,19 +2479,19 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 --           ->  Seq Scan on public.dqa_f3
 --                 Output: b, a, (b)::text, (a)::integer
 select count(distinct (b)::text) as b, count(distinct (a)::int) as a from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  b | a 
 ---+---
  3 | 7
 (1 row)
 
 explain (verbose, costs off) select count(distinct (b)::text) as b, count(distinct (a)::int) as a from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
-                                            QUERY PLAN
----------------------------------------------------------------------------------------------------
- Finalize Aggregate
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
+ Aggregate
    Output: count(DISTINCT ((b)::text)), count(DISTINCT ((a)::integer))
    ->  Gather Motion 3:1  (slice1; segments: 3)
          Output: (PARTIAL count(DISTINCT ((b)::text))), (PARTIAL count(DISTINCT ((a)::integer)))
@@ -2515,19 +2515,19 @@ DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disab
 -- Case 4: When converting the type of column 'a' from 'varchar' to 'int' to 'varchar', TupleSplit should generate an additional
 -- column '(a)::integer::varchar' as part of hash-key in Redistribute-Motion.
 select count(distinct (b)::text) as b, count(distinct (a)::int::varchar) as a from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  b | a 
 ---+---
  3 | 7
 (1 row)
 
 explain (verbose, costs off) select count(distinct (b)::text) as b, count(distinct (a)::int::varchar) as a from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
-                                                       QUERY PLAN
-------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+                                         QUERY PLAN                                         
+--------------------------------------------------------------------------------------------
+ Aggregate
    Output: count(DISTINCT ((b)::text)), count(DISTINCT (((a)::integer)::character varying))
    ->  Gather Motion 3:1  (slice1; segments: 3)
          Output: (PARTIAL count(DISTINCT ((b)::text))), (PARTIAL count(DISTINCT (((a)::integer)::character varying)))
@@ -3204,10 +3204,10 @@ select distinct sum(Distinct b), count(c), sum(a) from dqa_f3;
 (1 row)
 
 explain (verbose on, costs off) select sum(Distinct b), count(c) filter(where c > 1), sum(a) from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
-                                                            QUERY PLAN                                                             
------------------------------------------------------------------------------------------------------------------------------------
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
+                                          QUERY PLAN                                          
+----------------------------------------------------------------------------------------------
  Finalize Aggregate
    Output: sum(DISTINCT b), count(c) FILTER (WHERE (c > 1)), sum(a)
    ->  Gather Motion 3:1  (slice1; segments: 3)
@@ -3224,8 +3224,8 @@ DETAIL:  Feature not supported: Aggregate functions with FILTER
 (13 rows)
 
 select sum(Distinct b), count(c) filter(where c > 1), sum(a) from dqa_f3;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Aggregate functions with FILTER
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Aggregate functions with FILTER
  sum | count | sum  
 -----+-------+------
   10 |   333 | 7993
@@ -3240,8 +3240,8 @@ insert into dqa_f4 values(null, null, null);
 insert into dqa_f4 values(1, 1, 1);
 insert into dqa_f4 values(2, 2, 2);
 select count(distinct a), count(distinct b) from dqa_f4 group by c;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Multiple Distinct Qualified Aggregates are disabled in the optimizer
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
  count | count 
 -------+-------
      0 |     0

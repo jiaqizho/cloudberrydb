@@ -315,9 +315,7 @@ explain (format json, costs off) SELECT * FROM dummy_ext_tab;
          }                                    +
        ]                                      +
      },                                       +
-     "Settings": {                            +
-       "Optimizer": "Postgres query optimizer"+
-     }                                        +
+     "Optimizer": "Postgres-based planner"    +
    }                                          +
  ]
 (1 row)
@@ -348,8 +346,7 @@ explain (format yaml, costs off) SELECT * FROM dummy_aotab;
          Async Capable: false             +
          Relation Name: "dummy_aotab"     +
          Alias: "dummy_aotab"             +
-   Settings:                              +
-     Optimizer: "Postgres query optimizer"
+   Optimizer: "Postgres-based planner"
 (1 row)
 
 -- DML node (with ORCA)
@@ -380,9 +377,7 @@ explain (format xml, costs off) insert into dummy_aotab values (1);
          </Plan>                                           +
        </Plans>                                            +
      </Plan>                                               +
-     <Settings>                                            +
-       <Optimizer>Postgres query optimizer</Optimizer>     +
-     </Settings>                                           +
+     <Optimizer>Postgres-based planner</Optimizer>         +
    </Query>                                                +
  </explain>
 (1 row)
@@ -478,9 +473,7 @@ explain (slicetable, costs off, format json) SELECT * FROM explaintest;
          }                                    +
        ]                                      +
      },                                       +
-     "Settings": {                            +
-       "Optimizer": "Postgres query optimizer"+
-     },                                       +
+     "Optimizer": "Postgres-based planner",   +
      "Slice Table": [                         +
        {                                      +
          "Slice ID": 0,                       +
