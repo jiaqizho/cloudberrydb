@@ -51,7 +51,7 @@ EXPLAIN SELECT * from boxes LEFT JOIN apples ON apples.id = boxes.apple_id LEFT 
                            Index Cond: (id = boxes.location_id)
          ->  Index Scan using apples_pkey on apples  (cost=0.00..12.00 rows=1 width=12)
                Index Cond: (id = boxes.apple_id)
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: GPORCA
 (15 rows)
 
 -- explain_processing_on
@@ -74,6 +74,7 @@ EXPLAIN (ANALYZE) SELECT * from boxes LEFT JOIN apples ON apples.id = boxes.appl
                            Index Cond: (id = boxes.location_id)
          ->  Index Scan using apples_pkey on apples  (cost=0.00..12.00 rows=1 width=12) (never executed)
                Index Cond: (id = boxes.apple_id)
+ Optimizer: GPORCA
  Planning Time: 40.380 ms
    (slice0)    Executor memory: 56K bytes.
    (slice1)    Executor memory: 43K bytes avg x 3 workers, 43K bytes max (seg0).
@@ -407,8 +408,7 @@ QUERY PLAN
             Actual Loops: 0
             Index Cond: "(id = boxes.apple_id)"
             Rows Removed by Index Recheck: 0
-  Settings: 
-    Optimizer: "Pivotal Optimizer (GPORCA)"
+  Optimizer: "GPORCA"
   Planning Time: 14.827
   Triggers: 
   Slice statistics: 
@@ -463,9 +463,7 @@ QUERY PLAN
       "Function Name": "generate_series",
       "Alias": "generate_series"
     },
-    "Settings": {
-      "Optimizer": "Pivotal Optimizer (GPORCA)"
-    }
+    "Optimizer": "GPORCA"
   }
 ]
 (1 row)
@@ -483,9 +481,7 @@ QUERY PLAN
       <Function-Name>generate_series</Function-Name>
       <Alias>generate_series</Alias>
     </Plan>
-    <Settings>
-      <Optimizer>Pivotal Optimizer (GPORCA)</Optimizer>
-    </Settings>
+    <Optimizer>GPORCA</Optimizer>
   </Query>
 </explain>
 (1 row)
@@ -523,9 +519,7 @@ QUERY PLAN
         }
       ]
     },
-    "Settings": {
-      "Optimizer": "Pivotal Optimizer (GPORCA)"
-    }
+    "Optimizer": "GPORCA"
   }
 ]
 (1 row)

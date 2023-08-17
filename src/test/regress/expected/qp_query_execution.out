@@ -10,7 +10,7 @@ $$
 plpy.execute('set max_parallel_workers_per_gather=0')
 rv = plpy.execute('EXPLAIN '+ query)
 plan = '\n'.join([row['QUERY PLAN'] for row in rv])
-optimizer = plan.find('Pivotal Optimizer (GPORCA)')
+optimizer = plan.find('GPORCA')
 
 if optimizer >= 0:
     return plan.count(optimizer_operator)
