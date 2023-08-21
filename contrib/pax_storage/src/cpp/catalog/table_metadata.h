@@ -38,21 +38,11 @@ class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
   static std::unique_ptr<Iterator> Create(
       std::vector<pax::MicroPartitionMetadata> &&micro_partitions);
 
-  void Init() override;
-
-  std::size_t Index() const;
-
-  inline bool Empty() const override { return micro_partitions_.empty(); }
-
-  inline uint32 Size() const override { return micro_partitions_.size(); }
-
   bool HasNext() const override;
 
-  size_t Seek(int offset, IteratorSeekPosType whence) override;
+  void Rewind() override;
 
   pax::MicroPartitionMetadata Next() override;
-
-  pax::MicroPartitionMetadata Current() const override;
 
   ~Iterator() override;
 
@@ -60,7 +50,7 @@ class TableMetadata::Iterator : public IteratorBase<MicroPartitionMetadata> {
   explicit Iterator(std::vector<pax::MicroPartitionMetadata>
                         &micro_partitions);  // NOLINT (runtime/references)
 
-  size_t current_index_;
+  size_t current_index_ = 0;
   std::vector<pax::MicroPartitionMetadata> micro_partitions_;
 };
 

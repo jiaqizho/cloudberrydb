@@ -102,8 +102,6 @@ void TableWriter::WriteTuple(CTupleSlot *slot) {
   ++total_tuples_;
 }
 
-size_t TableWriter::GetTotalTupleNumbers() const { return total_tuples_; }
-
 void TableWriter::Close() {
   writer_->Close();
   delete writer_;
@@ -131,20 +129,23 @@ TableReader::~TableReader() {
 }
 
 void TableReader::Open() {
-  if (!iterator_->Empty()) {
-    if (reader_options_.build_bitmap) {
-      // first open, now alloc a table no in pax shmem for scan
-      cbdb::GetTableIndexAndTableNumber(reader_options_.rel_oid, &table_no_,
-                                        &table_index_);
-    }
-    OpenFile();
-    is_empty_ = false;
+  if (!iterator_->HasNext()) {
+    is_empty_ = true;
+    return;
   }
+
+  if (reader_options_.build_bitmap) {
+    // first open, now alloc a table no in pax shmem for scan
+    cbdb::GetTableIndexAndTableNumber(reader_options_.rel_oid, &table_no_,
+                                      &table_index_);
+  }
+  OpenFile();
+  is_empty_ = false;
 }
 
 void TableReader::ReOpen() {
   Close();
-  iterator_->Seek(0, pax::BEGIN);
+  iterator_->Rewind();
   Open();
 }
 
@@ -156,8 +157,6 @@ void TableReader::Close() {
   reader_->Close();
 }
 
-size_t TableReader::GetTotalTupleNumbers() const { return num_tuples_; }
-
 bool TableReader::ReadTuple(CTupleSlot *slot) {
   if (is_empty_) {
     return false;
@@ -165,10 +164,12 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
 
   slot->ClearTuple();
   while (!reader_->ReadTuple(slot)) {
-    if (!HasNextFile()) {
+    reader_->Close();
+    if (!iterator_->HasNext()) {
+      is_empty_ = true;
       return false;
     }
-    NextFile();
+    OpenFile();
   }
   num_tuples_++;
   slot->SetTableNo(table_no_);
@@ -177,44 +178,16 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
   return true;
 }
 
-std::string TableReader::GetCurrentMicroPartitionId() const {
-  return iterator_->Current().GetMicroPartitionId();
-}
-
-uint32 TableReader::GetCurrentMicroPartitionTupleNumber() {
-  return iterator_->Current().GetTupleCount();
-}
-
-uint32 TableReader::GetCurrentMicroPartitionTupleOffset() {
-  return reader_->Offset();
-}
-
-bool TableReader::HasNextFile() const { return iterator_->HasNext(); }
-
-void TableReader::NextFile() {
-  if (reader_) {
-    reader_->Close();
-  }
-
-  if (!HasNextFile()) {
-    return;
-  }
-  OpenNextFile();
-}
-
 void TableReader::OpenFile() {
-  auto it = iterator_->Current();
+  Assert(iterator_->HasNext());
+  auto it = iterator_->Next();
   MicroPartitionReader::ReaderOptions options;
-  options.block_id = it.GetMicroPartitionId();
+  micro_partition_id_ = options.block_id = it.GetMicroPartitionId();
   if (reader_options_.build_bitmap) {
     int block_number = 0;
     block_number =
         cbdb::GetBlockNumber(reader_options_.rel_oid, table_index_,
                              paxc::PaxBlockId(options.block_id.c_str()));
-    elog(DEBUG1,
-         "TableReader::OpenFile ctid make mapping block_number=%d, "
-         "block_id=%s",
-         block_number, options.block_id.c_str());
 
     Assert(block_number >= 0);
     current_block_number_ = block_number;
@@ -222,11 +195,6 @@ void TableReader::OpenFile() {
   options.file_name = it.GetFileName();
   options.filter = reader_options_.filter;
   reader_->Open(options);
-}
-
-void TableReader::OpenNextFile() {
-  iterator_->Next();
-  OpenFile();
 }
 
 TableDeleter::TableDeleter(
@@ -260,7 +228,7 @@ TableDeleter::~TableDeleter() {
 }
 
 void TableDeleter::Delete() {
-  if (iterator_->Empty()) {
+  if (!iterator_->HasNext()) {
     return;
   }
   slot_ = MakeTupleTableSlot(rel_->rd_att, &TTSOpsVirtual);
