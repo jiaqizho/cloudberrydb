@@ -38,8 +38,6 @@ class TableWriter {
 
   virtual void Close();
 
-  virtual size_t GetTotalTupleNumbers() const;
-
   TableWriter *SetWriteSummaryCallback(WriteSummaryCallback callback);
 
   TableWriter *SetFileSplitStrategy(const FileSplitStrategy *strategy);
@@ -80,24 +78,14 @@ class TableReader final {
 
   void Close();
 
-  size_t GetTotalTupleNumbers() const;
-
   bool ReadTuple(CTupleSlot *slot);
 
-  std::string GetCurrentMicroPartitionId() const;
-
-  uint32 GetCurrentMicroPartitionTupleNumber();
-
-  uint32 GetCurrentMicroPartitionTupleOffset();
+  // deprecate:
+  // DON'T USE, this function will be removed
+  const std::string &GetCurrentMicroPartitionId() const { return micro_partition_id_; }
 
  private:
-  bool HasNextFile() const;
-
-  void NextFile();
-
   void OpenFile();
-
-  void OpenNextFile();
 
  private:
   const std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
@@ -107,6 +95,7 @@ class TableReader final {
   const ReaderOptions reader_options_;
   int current_block_number_ = 0;
 
+  std::string micro_partition_id_;
   // only for ctid bitmap
   uint8 table_no_;
   uint32 table_index_;
