@@ -135,8 +135,6 @@ class MicroPartitionReader {
   // not. We may optimize to avoid creating the map relation later.
   virtual bool ReadTuple(CTupleSlot *slot) = 0;
 
-  virtual void Seek(size_t offset) = 0;
-
   virtual uint64 Offset() const = 0;
 
   virtual size_t Length() const = 0;

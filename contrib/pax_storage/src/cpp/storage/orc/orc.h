@@ -186,8 +186,6 @@ class OrcReader : public MicroPartitionReader {
 
   bool ReadTuple(CTupleSlot *cslot) override;
 
-  void Seek(size_t offset) override;
-
   uint64 Offset() const override;
 
   size_t Length() const override;
@@ -264,8 +262,6 @@ class OrcIteratorReader final : public MicroPartitionReader {
   bool ReadTuple(CTupleSlot *slot) override;
 
   uint64 Offset() const override;
-
-  void Seek(size_t offset) override;
 
   size_t Length() const override;
 
