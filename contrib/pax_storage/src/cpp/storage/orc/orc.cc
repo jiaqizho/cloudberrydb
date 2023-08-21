@@ -992,57 +992,6 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
 
 uint64 OrcReader::Offset() const { return current_offset_; }
 
-void OrcReader::Seek(size_t offset) {
-  size_t column_nums = 0;
-  size_t row_nums = 0;
-  size_t stripe_nums = 0;
-
-  stripe_nums = GetNumberOfStripes();
-  // reset current reading status
-  ResetCurrentReading();
-
-  current_offset_ = offset;
-
-  while (current_stripe_index_ < stripe_nums) {
-    StripeInformation *stripe_info = GetStripeInfo(current_stripe_index_++);
-    DEFER({ delete stripe_info; });
-    row_nums = stripe_info->numbers_of_row;
-    if (row_nums >= offset) {
-      working_pax_columns_ = ReadStripe(current_stripe_index_ - 1);
-      current_row_index_ = offset;
-      offset = 0;
-      break;
-    }
-
-    offset -= row_nums;
-  }
-
-  if (offset != 0) {
-    elog(
-        WARNING,
-        "Current seek out of range. stripe nums is %ld, current stripe index "
-        "is %ld, current row nums: %ld, origin offset: %ld, remain offset: %ld",
-        stripe_nums, current_stripe_index_, row_nums, current_offset_, offset);
-    ResetCurrentReading();
-    CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
-  }
-
-  if (working_pax_columns_) column_nums = working_pax_columns_->GetColumns();
-
-  for (size_t i = 0; i < column_nums; i++) {
-    auto column = (*working_pax_columns_)[i];
-    if (column->HasNull()) {
-      auto null_data_buffer = column->GetNulls();
-      Assert(current_row_index_ <= null_data_buffer->Used());
-      for (size_t j = 0; j < current_row_index_; j++) {
-        if (!(*null_data_buffer)[j]) {
-          current_nulls_[i]++;
-        }
-      }
-    }
-  }
-}
-
 void OrcReader::SetReadBuffer(DataBuffer<char> *reused_buffer) {
   Assert(!reused_buffer_);
   CBDB_CHECK(reused_buffer->IsMemTakeOver(),
@@ -1083,11 +1032,6 @@ void OrcIteratorReader::Close() {
   delete reader_;
   reader_ = nullptr;
   closed_ = true;
-}
-
-void OrcIteratorReader::Seek(size_t offset) {
-  Assert(reader_);
-  reader_->Seek(offset);
 }
 
 uint64 OrcIteratorReader::Offset() const {
