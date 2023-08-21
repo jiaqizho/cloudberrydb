@@ -64,36 +64,15 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
                              meta_info_list.end());
   }
 
-  void Init() override {}
-
   bool HasNext() const override {
-    if (micro_partitions_.empty()) {
-      return false;
-    }
-    return index_ < micro_partitions_.size() - 1;
+    return index_ < micro_partitions_.size();
   }
 
-  MicroPartitionMetadata Current() const override {
-    return micro_partitions_[index_];
-  }
-  bool Empty() const override { return micro_partitions_.empty(); }
-  uint32 Size() const override { return micro_partitions_.size(); }
-  size_t Seek(int offset, IteratorSeekPosType whence) override {
-    switch (whence) {
-      case BEGIN:
-        index_ = offset;
-        break;
-      case CURRENT:
-        index_ += offset;
-        break;
-      case END:
-        index_ = micro_partitions_.size() - offset;
-        break;
-    }
-    return index_;
+  void Rewind() override {
+    index_ = 0;
   }
 
-  MicroPartitionMetadata Next() override { return micro_partitions_[++index_]; }
+  MicroPartitionMetadata Next() override { return micro_partitions_[index_++]; }
 
  private:
   uint32 index_;
@@ -151,7 +130,6 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   writer->Open();
 
   writer->WriteTuple(slot);
-  ASSERT_EQ(1, writer->GetTotalTupleNumbers());
   writer->Close();
   ASSERT_TRUE(callback_called);
 
@@ -216,7 +194,6 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   auto split_size = writer->GetFileSplitStrategy()->SplitTupleNumbers();
 
   for (size_t i = 0; i < split_size + 1; i++) writer->WriteTuple(slot);
-  ASSERT_EQ(split_size + 1, writer->GetTotalTupleNumbers());
   writer->Close();
   ASSERT_TRUE(callback_called);
 
