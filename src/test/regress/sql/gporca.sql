@@ -2951,7 +2951,6 @@ set optimizer_enable_nljoin=off;
 -- expect a sequential scan, not an index scan, from these two queries
 explain (costs off) select * from t_ao_btree where a = 3 and b = 3;
 explain (costs off) select * from tpart_ao_btree where a = 3 and b = 3;
--- expect a fallback for all four of these queries
 select * from tpart_dim d join t_ao_btree f on d.a=f.a where d.b=1;
 select * from tpart_dim d join tpart_ao_btree f on d.a=f.a where d.b=1;
 
