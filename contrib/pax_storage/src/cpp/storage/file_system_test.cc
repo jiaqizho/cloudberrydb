@@ -83,7 +83,7 @@ TEST_F(LocalFileSystemTest, ListDirectory) {
   fs->DeleteDirectory(pax_list_path, true);
   ASSERT_NE(access(pax_list_path, F_OK), 0);
 
-  fs->CreateDirectory(pax_list_path);
+  ASSERT_EQ(0, fs->CreateDirectory(pax_list_path));
   ASSERT_EQ(access(pax_list_path, F_OK), 0);
 
   for (int i = 0; i < PAX_TEST_LIST_FILE_NUM; i++) {
@@ -137,7 +137,7 @@ TEST_F(LocalFileSystemTest, CreateDeleteDirectory) {
   fs->DeleteDirectory(pax_list_path, true);
   ASSERT_NE(access(pax_list_path, F_OK), 0);
 
-  fs->CreateDirectory(pax_list_path);
+  ASSERT_EQ(0, fs->CreateDirectory(pax_list_path));
   ASSERT_EQ(access(pax_list_path, F_OK), 0);
 
   for (int i = 0; i < PAX_TEST_LIST_FILE_NUM; i++) {
@@ -163,7 +163,7 @@ TEST_F(LocalFileSystemTest, DeleteDirectoryReserveToplevel) {
   fs->DeleteDirectory(pax_list_path, true);
   ASSERT_NE(access(pax_list_path, F_OK), 0);
 
-  fs->CreateDirectory(pax_list_path);
+  ASSERT_EQ(0, fs->CreateDirectory(pax_list_path));
   ASSERT_EQ(access(pax_list_path, F_OK), 0);
 
   for (int i = 0; i < PAX_TEST_LIST_FILE_NUM; i++) {

@@ -28,7 +28,11 @@ class CCPaxAuxTable final {
 
   static void PaxAuxRelationNontransactionalTruncate(Relation rel);
 
-  static void PaxAuxRelationCopyData(Relation rel, const RelFileNode *newrnode);
+  static void PaxAuxRelationCopyData(Relation rel,
+                                     const RelFileNode *newrnode,
+                                     bool createnewpath = true);
+
+  static void PaxAuxRelationCopyDataForCluster(Relation old_heap, Relation new_heap);
 
   static void PaxAuxRelationFileUnlink(RelFileNode node, BackendId backend,
                                        bool delete_topleveldir);
@@ -59,13 +63,17 @@ void GetAllMicroPartitionMetadata(Relation parentrel,
 
 void AddMicroPartitionEntry(const pax::WriteSummary &summary);
 
-void DeleteMicroPartitionEntry(Oid rel_oid, Snapshot pax_meta_data_snapshot,
-                               std::string block_id);
+void DeleteMicroPartitionEntry(Oid rel_oid,
+                               Snapshot pax_meta_data_snapshot,
+                               const std::string &block_id);
+
 void PaxTransactionalTruncateTable(Oid aux_relid);
 
 void PaxNontransactionalTruncateTable(Relation rel);
 
 void PaxCreateMicroPartitionTable(Relation rel);
+
+void PaxCopyPaxBlockEntry(Relation old_relation, Relation new_relation);
 }  // namespace cbdb
 
 namespace paxc {
@@ -74,4 +82,6 @@ void CPaxTransactionalTruncateTable(Oid aux_relid);
 void CPaxNontransactionalTruncateTable(Relation rel);
 
 void CPaxCreateMicroPartitionTable(Relation rel);
+
+void CPaxCopyPaxBlockEntry(Relation old_relation, Relation new_relation);
 }  // namespace paxc
