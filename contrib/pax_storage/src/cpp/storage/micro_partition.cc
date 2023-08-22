@@ -33,9 +33,9 @@ MicroPartitionWriter *MicroPartitionWriter::SetWriteSummaryCallback(
 }
 
 MicroPartitionWriter *MicroPartitionWriter::SetStatsCollector(
-    StatsCollector *collector) {
-  Assert(collector_ == nullptr);
-  collector_ = collector;
+    MicroPartitionStats *mpstats) {
+  Assert(mpstats_ == nullptr);
+  mpstats_ = mpstats;
   return this;
 }
 

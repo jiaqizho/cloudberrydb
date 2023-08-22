@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "catalog/micro_partition_stats.h"
 #include "comm/cbdb_wrappers.h"
 #include "exceptions/CException.h"
 #include "storage/columns/pax_column_int.h"
@@ -26,8 +27,6 @@ OrcWriter::OrcWriter(
   summary_.rel_oid = orc_writer_options.rel_oid;
   summary_.block_id = orc_writer_options.block_id;
   summary_.file_name = orc_writer_options.file_name;
-  summary_.file_size = 0;
-  summary_.num_tuples = 0;
 
   file_footer_.set_headerlength(0);
   file_footer_.set_contentlength(0);
@@ -53,6 +52,12 @@ OrcWriter::~OrcWriter() {
   delete file_;
 }
 
+MicroPartitionWriter *OrcWriter::SetStatsCollector(MicroPartitionStats *mpstats) {
+  if (mpstats)
+    mpstats->SetStatsMessage(&summary_.mp_stats, column_types_.size());
+  return MicroPartitionWriter::SetStatsCollector(mpstats);
+}
+
 void OrcWriter::Flush() {
   BufferedOutputStream buffer_mem_stream(nullptr, 2048);
   if (WriteStripe(&buffer_mem_stream)) {
@@ -72,7 +77,7 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
   int16 type_len;
   bool type_by_val;
 
-  DEFER({ summary_.num_tuples++; });
+  summary_.num_tuples++;
 
   table_slot = slot->GetTupleTableSlot();
   table_desc = slot->GetTupleDesc();
@@ -139,6 +144,7 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
           (*pax_columns_)[i]->Append(static_cast<char *>(cbdb::PointerFromDatum(
                                          table_slot->tts_values[i])),
                                      type_len);
+          break;
       }
     }
   }
@@ -195,11 +201,12 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
 
   for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
     auto pb_stats = stripe_stats->add_colstats();
+    PaxColumn *pax_column = (*pax_columns_)[i];
 
     *stripe_footer.add_pax_col_encodings() = encoding_kinds[i];
 
-    pb_stats->set_hasnull((*pax_columns_)[i]->HasNull());
-    pb_stats->set_numberofvalues((*pax_columns_)[i]->GetRows());
+    pb_stats->set_hasnull(pax_column->HasNull());
+    pb_stats->set_numberofvalues(pax_column->GetRows());
   }
 
   stripe_footer.set_writertimezone("GMT");

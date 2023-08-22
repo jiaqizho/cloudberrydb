@@ -13,7 +13,8 @@
 #define ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME 1
 #define ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT 2
 #define ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE 3
-#define NATTS_PG_PAX_BLOCK_TABLES 3
+#define ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS 4
+#define NATTS_PG_PAX_BLOCK_TABLES 4
 
 namespace pax {
 class CCPaxAuxTable final {
@@ -41,7 +42,7 @@ void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
                                       int *compresslevel);
 
 void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
-                         int ptblocksize);
+                         int ptblocksize, const ::pax::stats::MicroPartitionStatisticsInfo &mp_stats);
 
 void AddMicroPartitionEntry(const pax::WriteSummary &summary);
 

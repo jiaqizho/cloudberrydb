@@ -15,7 +15,6 @@
 #include "storage/statistics.h"
 
 namespace pax {
-
 class CTupleSlot {
  public:
   explicit CTupleSlot(TupleTableSlot *tuple_slot);
@@ -50,6 +49,7 @@ class CTupleSlot {
 };
 
 struct WriteSummary;
+class MicroPartitionStats;
 
 class MicroPartitionWriter {
  public:
@@ -87,7 +87,7 @@ class MicroPartitionWriter {
   virtual MicroPartitionWriter *SetWriteSummaryCallback(
       WriteSummaryCallback callback);
 
-  virtual MicroPartitionWriter *SetStatsCollector(StatsCollector *collector);
+  virtual MicroPartitionWriter *SetStatsCollector(MicroPartitionStats *mpstats);
 
   const WriterOptions &Options() const;
 
@@ -99,7 +99,8 @@ class MicroPartitionWriter {
   WriteSummaryCallback summary_callback_;
   const WriterOptions &writer_options_;
   FileSystem *file_system_ = nullptr;
-  StatsCollector *collector_ = nullptr;
+  // only reference the mpstats, not the owner
+  MicroPartitionStats *mpstats_ = nullptr;
 };
 
 template <typename T>

@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "access/pax_dml_state.h"
+#include "catalog/micro_partition_stats.h"
 #include "catalog/pax_aux_table.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
@@ -15,6 +16,7 @@ CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
   writer_ = new TableWriter(rel);
   writer_->SetWriteSummaryCallback(&cbdb::AddMicroPartitionEntry)
       ->SetFileSplitStrategy(new PaxDefaultSplitStrategy())
+      ->SetStatsCollector(new MicroPartitionStats())
       ->Open();
 }
 
