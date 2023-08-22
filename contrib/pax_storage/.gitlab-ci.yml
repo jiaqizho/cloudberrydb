@@ -25,7 +25,7 @@ stages:
 
 .build_script: &build_script
   script: |
-    git clone -b 1X_STABLE_CP_FEATURE_PAX https://buildbot:Passw0rd@code.hashdata.xyz/cloudberry/cbdb.git $CBDB_PROJECT_DIR
+    git clone -b feature-pax https://buildbot:Passw0rd@code.hashdata.xyz/cloudberry/cbdb.git $CBDB_PROJECT_DIR
     cd /code/gpdb_src
     git submodule update --init --recursive
     cd /code
