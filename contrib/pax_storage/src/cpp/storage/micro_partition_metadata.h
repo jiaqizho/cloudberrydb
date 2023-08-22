@@ -1,5 +1,6 @@
 #pragma once
 #include "comm/cbdb_api.h"
+#include "storage/proto/proto_wrappers.h"
 
 #include <string>
 #include <utility>
@@ -13,6 +14,7 @@ struct WriteSummary {
   size_t file_size;
   size_t num_tuples;
   unsigned int rel_oid;
+  pax::stats::MicroPartitionStatisticsInfo mp_stats;
   WriteSummary();
   WriteSummary(const WriteSummary &summary) = default;
 };

@@ -2,10 +2,8 @@
 
 #include <cstddef>
 
-#include "storage/micro_partition.h"
-
 namespace pax {
-
+class MicroPartitionWriter;
 class FileSplitStrategy {
  public:
   virtual ~FileSplitStrategy() = default;
@@ -18,7 +16,7 @@ class FileSplitStrategy {
   virtual size_t SplitFileSize() const = 0;
 };
 
-class PaxDefaultSplitStrategy : public FileSplitStrategy {
+class PaxDefaultSplitStrategy final : public FileSplitStrategy {
  public:
   PaxDefaultSplitStrategy() = default;
   ~PaxDefaultSplitStrategy() override = default;

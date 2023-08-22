@@ -224,4 +224,42 @@ static void DeletePaxDirectoryPathRecursive(
   }
 }
 
+bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid *procid, FmgrInfo *finfo, StrategyNumber strategynum)
+{
+  FmgrInfo dummy;
+  HeapTuple tuple;
+  Oid opclass;
+  Oid opfamily;
+  Oid oprid;
+  RegProcedure opcode;
+  bool isNull;
+
+  opclass = GetDefaultOpClass(atttypid, BRIN_AM_OID);
+  if (!OidIsValid(opclass))
+    return false;
+
+  opfamily = get_opclass_family(opclass);
+  tuple = SearchSysCache4(AMOPSTRATEGY, ObjectIdGetDatum(opfamily),
+                           ObjectIdGetDatum(atttypid),
+                           ObjectIdGetDatum(atttypid),
+                           Int16GetDatum(strategynum));
+
+  if (!HeapTupleIsValid(tuple))
+    return false; // not found operator
+
+  oprid = DatumGetObjectId(SysCacheGetAttr(AMOPSTRATEGY, tuple,
+                                            Anum_pg_amop_amopopr, &isNull));
+  ReleaseSysCache(tuple);
+  Assert(!isNull && RegProcedureIsValid(oprid));
+
+  opcode = get_opcode(oprid);
+  if (!RegProcedureIsValid(opcode))
+    return false;
+
+  fmgr_info_cxt(opcode, finfo ? finfo : &dummy, CurrentMemoryContext);
+  *procid = opcode;
+
+  return true;
+}
+
 }  // namespace paxc

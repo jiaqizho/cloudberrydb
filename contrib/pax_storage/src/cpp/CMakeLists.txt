@@ -89,6 +89,16 @@ add_custom_target(generate_protobuf DEPENDS ${orc_proto_src} ${pax_proto_src})
 
 if (BUILD_GTEST AND NOT BUILD_PAX_FORMAT)
 
+set(catalog_proto_file "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/micro_partition_stats.proto")
+set(stats_proto_src "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/micro_partition_stats.pb.h" "${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/micro_partition_stats.pb.cc")
+
+add_custom_command(OUTPUT ${stats_proto_src}
+  COMMAND ${PROTOBUF_EXECUTABLE}
+  -I ${CMAKE_CURRENT_SOURCE_DIR}/storage/proto/
+  --cpp_out="${CMAKE_CURRENT_SOURCE_DIR}/storage/proto"
+  ${catalog_proto_file})
+add_custom_target(stats_generate_protobuf DEPENDS ${stats_proto_src})
+
 add_subdirectory(contrib/googletest)
 ADD_DEFINITIONS(-DRUN_GTEST)
 file(GLOB TEST_CASE_SOURCES 
@@ -159,6 +169,7 @@ set(pax_access_src
     access/pax_scanner.cc)
 
 set(pax_catalog_src
+    catalog/micro_partition_stats.cc
     catalog/pax_aux_table.cc
     catalog/table_metadata.cc)
 
@@ -201,12 +212,13 @@ install(FILES ${PAX_COMM_HEADERS}
 )
 
 else()
-add_library(pax SHARED ${orc_proto_src}  ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
+add_library(pax SHARED ${orc_proto_src} ${pax_proto_src} ${pax_storage_src} ${stats_proto_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
 set_target_properties(pax PROPERTIES 
 OUTPUT_NAME pax)
 target_include_directories(pax PUBLIC ${ZTSD_HEADER}  ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
 target_link_libraries(pax PUBLIC uuid orc_protobuf zstd z postgres)
 add_dependencies(pax generate_protobuf)
+add_dependencies(pax stats_generate_protobuf)
 add_custom_command(TARGET pax POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E
                        copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
