@@ -15,6 +15,7 @@
 #include "storage/proto/protobuf_stream.h"
 
 namespace pax {
+class MicroPartitionStats;
 
 #define ORC_MAGIC_ID "ORC"
 // ORC cpp writer
@@ -41,6 +42,7 @@ class OrcWriter : public MicroPartitionWriter {
 
   void Close() override;
 
+  MicroPartitionWriter *SetStatsCollector(MicroPartitionStats *mpstats) override;
   size_t EstimatedSize() const override;
 
   // TODO(jiaqizho): using pg type mapping to replace fixed one

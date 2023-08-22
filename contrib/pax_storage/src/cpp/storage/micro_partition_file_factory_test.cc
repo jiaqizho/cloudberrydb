@@ -63,18 +63,21 @@ class MicroPartitionFileFactoryTest : public ::testing::Test {
 
     tuple_desc->natts = COLUMN_NUMS;
     tuple_desc->attrs[0] = {
+        .atttypid = TEXTOID,
         .attlen = -1,
         .attbyval = false,
         .attisdropped = false,
     };
 
     tuple_desc->attrs[1] = {
+        .atttypid = TEXTOID,
         .attlen = -1,
         .attbyval = false,
         .attisdropped = false,
     };
 
     tuple_desc->attrs[2] = {
+        .atttypid = INT4OID,
         .attlen = 4,
         .attbyval = true,
         .attisdropped = false,

@@ -90,11 +90,11 @@ static inline int64 DatumToInt64(Datum d) noexcept { return DatumGetInt64(d); }
 
 static inline Datum Int8ToDatum(int8 d) noexcept { return Int8GetDatum(d); }
 
-static inline int16 Int16ToDatum(int16 d) noexcept { return Int16GetDatum(d); }
+static inline Datum Int16ToDatum(int16 d) noexcept { return Int16GetDatum(d); }
 
-static inline int32 Int32ToDatum(int32 d) noexcept { return Int32GetDatum(d); }
+static inline Datum Int32ToDatum(int32 d) noexcept { return Int32GetDatum(d); }
 
-static inline int64 Int64ToDatum(int64 d) noexcept { return Int64GetDatum(d); }
+static inline Datum Int64ToDatum(int64 d) noexcept { return Int64GetDatum(d); }
 
 void *PointerAndLenFromDatum(Datum d, int *len);
 
@@ -142,6 +142,16 @@ int RelationGetAttributesNumber(Relation rel);
 bool ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts);
 
 std::string BuildPaxFilePath(Relation rel, const std::string &block_id);
+
+bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid *procid, FmgrInfo *finfo, StrategyNumber strategynum);
+
+Datum FunctionCall1Coll(FmgrInfo *flinfo, Oid collation, Datum arg1);
+
+Datum FunctionCall2Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2);
+
+Datum FunctionCall3Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2, Datum arg3);
+
+Datum FunctionCall4Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2, Datum arg3, Datum arg4);
 }  // namespace cbdb
 
 // clang-format off
