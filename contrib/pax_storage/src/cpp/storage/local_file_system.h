@@ -42,7 +42,7 @@ class LocalFileSystem final : public FileSystem {
       const std::string &path) const override;
   void CopyFile(const std::string &src_file_path,
                 const std::string &dst_file_path) const override;
-  void CreateDirectory(const std::string &path) const override;
+  int CreateDirectory(const std::string &path) const override;
   void DeleteDirectory(const std::string &path,
                        bool delete_topleveldir) const override;
  private:
