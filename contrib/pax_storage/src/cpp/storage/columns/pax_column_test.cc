@@ -15,7 +15,7 @@ static void AppendInt4All(PaxColumn *pax_column, size_t bits) {
   int64 data;
   for (int16 i = INT16_MIN; i <= INT16_MAX; ++i) {  // dead loop
     data = i;
-    pax_column->Append((char *)&data, bits / 8);
+    pax_column->Append(reinterpret_cast<char *>(&data), bits / 8);
     if (i == INT16_MAX) {
       break;
     }
@@ -81,7 +81,7 @@ static PaxColumn *CreateDecodeColumn(
     size_t encoded_len) {
   switch (bits) {
     case 16: {
-      auto *buffer_for_read = new DataBuffer<int16>((int16 *)encoded_buff,
+      auto *buffer_for_read = new DataBuffer<int16>(reinterpret_cast<int16 *>(encoded_buff),
                                                     encoded_len, false, false);
       buffer_for_read->Brush(encoded_len);
 
@@ -92,7 +92,7 @@ static PaxColumn *CreateDecodeColumn(
       return int_column;
     }
     case 32: {
-      auto *buffer_for_read = new DataBuffer<int32>((int32 *)encoded_buff,
+      auto *buffer_for_read = new DataBuffer<int32>(reinterpret_cast<int32 *>(encoded_buff),
                                                     encoded_len, false, false);
       buffer_for_read->Brush(encoded_len);
 
@@ -102,7 +102,7 @@ static PaxColumn *CreateDecodeColumn(
       return int_column;
     }
     case 64: {
-      auto *buffer_for_read = new DataBuffer<int64>((int64 *)encoded_buff,
+      auto *buffer_for_read = new DataBuffer<int64>(reinterpret_cast<int64 *>(encoded_buff),
                                                     encoded_len, false, false);
       buffer_for_read->Brush(encoded_len);
 

@@ -42,13 +42,16 @@ class TableWriter {
 
   TableWriter *SetFileSplitStrategy(const FileSplitStrategy *strategy);
 
+  TableWriter *SetStatsCollector(MicroPartitionStats *mp_stats);
+
  protected:
   virtual std::string GenFilePath(const std::string &block_id);
 
  protected:
-  const Relation relation_;
-  MicroPartitionWriter *writer_;
-  const FileSplitStrategy *strategy_;
+  const Relation relation_ = nullptr;
+  MicroPartitionWriter *writer_ = nullptr;
+  const FileSplitStrategy *strategy_ = nullptr;
+  MicroPartitionStats *mp_stats_ = nullptr;
   WriteSummaryCallback summary_callback_;
   const FileSystem *file_system_ = Singleton<LocalFileSystem>::GetInstance();
 

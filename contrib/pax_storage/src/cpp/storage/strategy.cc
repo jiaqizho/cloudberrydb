@@ -1,5 +1,7 @@
 #include "storage/strategy.h"
 
+#include "storage/micro_partition.h"
+
 namespace pax {
 
 size_t PaxDefaultSplitStrategy::SplitTupleNumbers() const { return 100000; }

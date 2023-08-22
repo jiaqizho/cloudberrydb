@@ -24,19 +24,22 @@ void GetMicroPartitionEntryAttributes(Oid relid, Oid *blocksrelid,
 }
 
 void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
-                         int ptblocksize) {
-  Relation rel;
-  HeapTuple tuple;
-  NameData ptblockname;
-  bool *nulls;
-  Datum *values;
-  int natts = 0;
+                         int ptblocksize, const ::pax::stats::MicroPartitionStatisticsInfo &mp_stats) {
+  int stats_length = mp_stats.ByteSize();
+  uint32 len = VARHDRSZ + stats_length;
+  void *output = cbdb::Palloc(len);
+  SET_VARSIZE(output, len);
+  mp_stats.SerializeToArray(VARDATA(output), stats_length);
+
   CBDB_WRAP_START;
   {
+    Relation rel;
+    HeapTuple tuple;
+    NameData ptblockname;
+    Datum values[NATTS_PG_PAX_BLOCK_TABLES];
+    bool nulls[NATTS_PG_PAX_BLOCK_TABLES];
+
     rel = table_open(relid, RowExclusiveLock);
-    natts = NATTS_PG_PAX_BLOCK_TABLES;
-    values = reinterpret_cast<Datum *>(palloc(sizeof(Datum) * natts));
-    nulls = reinterpret_cast<bool *>(palloc0(sizeof(bool) * natts));
 
     Assert(blockname);
     namestrcpy(&ptblockname, blockname);
@@ -50,6 +53,11 @@ void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
     values[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE - 1] =
         Int32GetDatum(ptblocksize);
     nulls[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE - 1] = false;
+
+    // Serialize catalog statitics information into PG bytea format and saved in aux table ptstatitics column.
+    values[ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS - 1] = PointerGetDatum(output);
+    nulls[ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS - 1] = false;
+
     tuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
     // insert a new tuple
@@ -60,10 +68,10 @@ void InsertPaxBlockEntry(Oid relid, const char *blockname, int pttupcount,
     // held until end of transaction.
     table_close(rel, NoLock);
 
-    pfree(values);
-    pfree(nulls);
   }
   CBDB_WRAP_END;
+
+  cbdb::Pfree(output);
 }
 
 void GetAllBlockFileInfoPgPaxBlockRelation(
@@ -185,7 +193,7 @@ void AddMicroPartitionEntry(const pax::WriteSummary &summary) {
   cbdb::GetMicroPartitionEntryAttributes(summary.rel_oid,
                                          &pax_block_tables_rel_id, NULL, NULL);
   cbdb::InsertPaxBlockEntry(pax_block_tables_rel_id, summary.block_id.c_str(),
-                            summary.num_tuples, summary.file_size);
+                            summary.num_tuples, summary.file_size, summary.mp_stats);
 }
 
 void PaxTransactionalTruncateTable(Oid aux_relid) {
@@ -360,6 +368,8 @@ void CPaxCreateMicroPartitionTable(const Relation rel) {
   // TODO(chenhongjie): uncompressed and compressed ptblocksize are needed.
   TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE,
                      "ptblocksize", INT4OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS,
+                     "ptstatistics", PAX_AUX_STATS_TYPE_OID, -1, 0);
   relid = heap_create_with_catalog(
       aux_relname, aux_namespace_id, InvalidOid, aux_relid, InvalidOid,
       InvalidOid, rel->rd_rel->relowner, HEAP_TABLE_AM_OID, tupdesc, NIL,

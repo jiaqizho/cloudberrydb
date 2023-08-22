@@ -19,6 +19,8 @@ extern "C" {
 #include "catalog/indexing.h"
 #include "catalog/oid_dispatch.h"
 #include "catalog/pg_am.h"
+#include "catalog/pg_amop.h"
+#include "catalog/pg_amproc.h"
 #include "catalog/pg_namespace.h"
 #ifndef BUILD_PAX_FORMAT
 #include "access/reloptions.h"
@@ -40,26 +42,32 @@ extern "C" {
 #include "storage/relfilenode.h"
 #include "storage/smgr.h"
 #include "utils/builtins.h"
+#include "utils/datum.h"
 #include "utils/elog.h"
 #include "utils/hsearch.h"
+#include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/relcache.h"
-#include "utils/wait_event.h"
 #include "utils/snapshot.h"
 #include "utils/syscache.h"
+#include "utils/wait_event.h"
 
 // no header file in cbdb
-extern BlockNumber system_nextsampleblock(SampleScanState *node,  // NOLINT
-                                          BlockNumber nblocks);
-extern bool extractcolumns_from_node(Node *expr, bool *cols, AttrNumber natts);  //NOLINT
-
+extern BlockNumber system_nextsampleblock(SampleScanState *node, BlockNumber nblocks);  // NOLINT
+extern bool extractcolumns_from_node(Node *expr, bool *cols, AttrNumber natts);  // NOLINT
+extern Oid GetDefaultOpClass(Oid type_id, Oid am_id);
 #ifdef __cplusplus
 }
 #endif
 
-#define PAX_TABLE_AM_OID (BITMAP_AM_OID + 1)
+#define PAX_TABLE_AM_OID 7014
 #define PAX_AMNAME "pax"
 #define PAX_AM_HANDLER_OID 7600
 #define PAX_AM_HANDLER_NAME "pax_tableam_handler"
+
+#define PAX_AUX_STATS_IN_OID 7601
+#define PAX_AUX_STATS_OUT_OID 7602
+#define PAX_AUX_STATS_TYPE_OID 7603
+#define PAX_AUX_STATS_TYPE_NAME "paxauxstats"
 
 #endif  // SRC_CPP_COMM_CBDB_API_H_

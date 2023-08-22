@@ -134,7 +134,7 @@ class DataBuffer : public BlockBufferBase {
   explicit DataBuffer(const DataBuffer<T2> &data_buffer)
       : BlockBufferBase(data_buffer),
         mem_take_over_(false),
-        data_buffer_((T *)data_buffer.data_buffer_) {}
+        data_buffer_(reinterpret_cast<T *>(data_buffer.data_buffer_)) {}
 
   // Direct access elements of internal buffer
   T &operator[](size_t i);
