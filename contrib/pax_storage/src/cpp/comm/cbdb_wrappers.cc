@@ -1,5 +1,4 @@
 #include "comm/cbdb_wrappers.h"
-
 #include "comm/paxc_wrappers.h"
 #include "storage/paxc_block_map_manager.h"
 extern "C" {
@@ -190,7 +189,6 @@ void *cbdb::PointerAndLenFromDatum(Datum d, int *len) {
     return static_cast<void *>(vl);
   }
   CBDB_WRAP_END;
-  return nullptr;
 }
 
 // pax ctid mapping functions
@@ -324,3 +322,39 @@ bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts) {
   { return extractcolumns_from_node(expr, cols, natts); }
   CBDB_WRAP_END;
 }
+
+bool cbdb::MinMaxGetStrategyProcinfo(Oid atttypid, Oid *procid, FmgrInfo *finfo, StrategyNumber strategynum)
+{
+  CBDB_WRAP_START;
+  {  return paxc::MinMaxGetStrategyProcinfo(atttypid, procid, finfo, strategynum); }
+  CBDB_WRAP_END;
+}
+
+Datum cbdb::FunctionCall1Coll(FmgrInfo *flinfo, Oid collation, Datum arg1)
+{
+  CBDB_WRAP_START;
+  {  return ::FunctionCall1Coll(flinfo, collation, arg1); }
+  CBDB_WRAP_END;
+}
+
+Datum cbdb::FunctionCall2Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2)
+{
+  CBDB_WRAP_START;
+  {  return ::FunctionCall2Coll(flinfo, collation, arg1, arg2); }
+  CBDB_WRAP_END;
+}
+
+Datum cbdb::FunctionCall3Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2, Datum arg3)
+{
+  CBDB_WRAP_START;
+  {  return ::FunctionCall3Coll(flinfo, collation, arg1, arg2, arg3); }
+  CBDB_WRAP_END;
+}
+
+Datum cbdb::FunctionCall4Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2, Datum arg3, Datum arg4)
+{
+  CBDB_WRAP_START;
+  {  return ::FunctionCall4Coll(flinfo, collation, arg1, arg2, arg3, arg4); }
+  CBDB_WRAP_END;
+}
+

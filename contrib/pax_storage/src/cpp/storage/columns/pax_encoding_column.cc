@@ -201,7 +201,7 @@ void PaxEncodingColumn<T>::Append(char *buffer, size_t size) {
   if (encoder_) {
     // Should not call `PaxCommColumn::Append`,
     // but still need call `PaxColumn::Append` to push null bitmap.
-    PaxColumn::Append(buffer, size);  // NOLINT(bugprone-parent-virtual-call)
+    PaxColumn::Append(buffer, size);  // NOLINT
 
     non_null_rows_++;
     origin_len_ += size;

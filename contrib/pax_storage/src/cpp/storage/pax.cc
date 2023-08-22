@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "storage/micro_partition_metadata.h"
+#include "catalog/micro_partition_stats.h"
 #include "catalog/table_metadata.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/micro_partition_file_factory.h"
@@ -28,8 +29,6 @@ static std::string GenRandomBlockId() {
 
 TableWriter::TableWriter(Relation relation)
     : relation_(relation),
-      writer_(nullptr),
-      strategy_(nullptr),
       summary_callback_(nullptr) {}
 
 TableWriter *TableWriter::SetWriteSummaryCallback(
@@ -46,12 +45,20 @@ TableWriter *TableWriter::SetFileSplitStrategy(
   return this;
 }
 
+TableWriter *TableWriter::SetStatsCollector(MicroPartitionStats *mp_stats) {
+  Assert(!mp_stats_);
+  Assert(!writer_); // must be set before the writer is created.
+
+  mp_stats_ = mp_stats;
+  return this;
+}
+
 TableWriter::~TableWriter() {
   // must call close before delete table writer
   Assert(writer_ == nullptr);
 
   delete strategy_;
-  strategy_ = nullptr;
+  delete mp_stats_;
 }
 
 const FileSplitStrategy *TableWriter::GetFileSplitStrategy() const {
@@ -67,6 +74,7 @@ void TableWriter::Open() {
   std::string file_path;
   std::string block_id;
 
+  Assert(relation_);
   Assert(strategy_);
   Assert(summary_callback_);
 
@@ -85,6 +93,7 @@ void TableWriter::Open() {
       MICRO_PARTITION_TYPE_PAX, file, std::move(options));
 
   writer_->SetWriteSummaryCallback(summary_callback_);
+  writer_->SetStatsCollector(mp_stats_);
 }
 
 void TableWriter::WriteTuple(CTupleSlot *slot) {
@@ -96,6 +105,8 @@ void TableWriter::WriteTuple(CTupleSlot *slot) {
     this->Close();
     this->Open();
   }
+  if (mp_stats_)
+    mp_stats_->AddRow(slot->GetTupleTableSlot());
 
   writer_->WriteTuple(slot);
   ++num_tuples_;
@@ -270,6 +281,7 @@ void TableDeleter::OpenWriter() {
   writer_ = new TableWriter(rel_);
   writer_->SetWriteSummaryCallback(&cbdb::AddMicroPartitionEntry)
       ->SetFileSplitStrategy(new PaxDefaultSplitStrategy())
+      ->SetStatsCollector(new MicroPartitionStats())
       ->Open();
 }
 
