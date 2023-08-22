@@ -136,8 +136,8 @@ void LocalFileSystem::CopyFile(const std::string &src_file_path,
   cbdb::CopyFile(src_file_path.c_str(), dst_file_path.c_str());
 }
 
-void LocalFileSystem::CreateDirectory(const std::string &path) const {
-  cbdb::PathNameCreateDir(path.c_str());
+int LocalFileSystem::CreateDirectory(const std::string &path) const {
+  return cbdb::PathNameCreateDir(path.c_str());
 }
 
 void LocalFileSystem::DeleteDirectory(const std::string &path,
