@@ -194,6 +194,32 @@ void CCPaxAccessMethod::RelationCopyData(Relation rel,
   CBDB_END_TRY();
 }
 
+/*
+ * Used by rebuild_relation, like CLUSTER, VACUUM FULL, etc.
+ *
+ * PAX does not have dead tuples, but the core framework requires
+ * to implement this callback to do CLUSTER/VACUUM FULL/etc.
+ * PAX may have re-organize semantics for this function.
+ *
+ * TODO: how to split the set of micro-partitions to several QE handlers.
+ */
+void CCPaxAccessMethod::RelationCopyForCluster(
+    Relation old_heap, Relation new_heap, Relation /*old_index*/,
+    bool /*use_sort*/, TransactionId /*oldest_xmin*/,
+    TransactionId * /*xid_cutoff*/, MultiXactId * /*multi_cutoff*/,
+    double * /*num_tuples*/, double * /*tups_vacuumed*/,
+    double * /*tups_recently_dead*/) {
+  Assert(RELATION_IS_PAX(old_heap));
+  Assert(RELATION_IS_PAX(new_heap));
+  CBDB_TRY();
+  {
+    pax::CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(old_heap, new_heap);
+  }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+}
+
 void CCPaxAccessMethod::RelationFileUnlink(RelFileNodeBackend rnode) {
   CBDB_TRY();
   {
@@ -505,28 +531,6 @@ TransactionId PaxAccessMethod::IndexDeleteTuples(
   return 0;
 }
 
-/*
- * Used by rebuild_relation, like CLUSTER, VACUUM FULL, etc.
- *
- * PAX does not have dead tuples, but the core framework requires
- * to implement this callback to do CLUSTER/VACUUM FULL/etc.
- * PAX may have re-organize semantics for this function.
- *
- * TODO: how to split the set of micro-partitions to several QE handlers.
- */
-void PaxAccessMethod::RelationCopyForCluster(
-    Relation old_heap, Relation new_heap, Relation /*old_index*/,
-    bool /*use_sort*/, TransactionId /*oldest_xmin*/,
-    TransactionId * /*xid_cutoff*/, MultiXactId * /*multi_cutoff*/,
-    double * /*num_tuples*/, double * /*tups_vacuumed*/,
-    double * /*tups_recently_dead*/) {
-  Assert(RELATION_IS_PAX(old_heap));
-  if (!RELATION_IS_PAX(new_heap))
-    ereport(ERROR, (errmsg("PAX: can't convert pax to non-pax table")));
-
-  NOT_IMPLEMENTED_YET;
-}
-
 void PaxAccessMethod::RelationVacuum(Relation /*onerel*/,
                                      VacuumParams * /*params*/,
                                      BufferAccessStrategy /*bstrategy*/) {
@@ -802,7 +806,7 @@ static const TableAmRoutine kPaxColumnMethods = {
     .relation_nontransactional_truncate =
         pax::CCPaxAccessMethod::RelationNontransactionalTruncate,
     .relation_copy_data = pax::CCPaxAccessMethod::RelationCopyData,
-    .relation_copy_for_cluster = paxc::PaxAccessMethod::RelationCopyForCluster,
+    .relation_copy_for_cluster = pax::CCPaxAccessMethod::RelationCopyForCluster,
     .relation_vacuum = paxc::PaxAccessMethod::RelationVacuum,
     .scan_analyze_next_block = pax::CCPaxAccessMethod::ScanAnalyzeNextBlock,
     .scan_analyze_next_tuple = pax::CCPaxAccessMethod::ScanAnalyzeNextTuple,

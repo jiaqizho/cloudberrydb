@@ -148,7 +148,7 @@ void GetAllMicroPartitionMetadata(const Relation parentrel,
   CBDB_WRAP_END;
 }
 
-void DeletePaxBlockEntry(const Oid relid, const Snapshot pax_meta_data_snapshot,
+void DeletePaxBlockEntry(const Oid relid, Snapshot pax_meta_data_snapshot,
                          const char *blockname) {
   Relation rel;
   ScanKeyData key[1];
@@ -178,9 +178,9 @@ void DeletePaxBlockEntry(const Oid relid, const Snapshot pax_meta_data_snapshot,
   CBDB_WRAP_END;
 }
 
-void DeleteMicroPartitionEntry(const Oid rel_oid,
-                               const Snapshot pax_meta_data_snapshot,
-                               const std::string block_id) {
+void DeleteMicroPartitionEntry(Oid rel_oid,
+                               Snapshot pax_meta_data_snapshot,
+                               const std::string &block_id) {
   Oid pax_block_tables_rel_id;
   cbdb::GetMicroPartitionEntryAttributes(rel_oid, &pax_block_tables_rel_id,
                                          NULL, NULL);
@@ -213,6 +213,12 @@ void PaxCreateMicroPartitionTable(const Relation rel) {
   { paxc::CPaxCreateMicroPartitionTable(rel); }
   CBDB_WRAP_END;
 }
+
+void PaxCopyPaxBlockEntry(Relation old_relation, Relation new_relation) {
+  CBDB_WRAP_START;
+  { paxc::CPaxCopyPaxBlockEntry(old_relation, new_relation); }
+  CBDB_WRAP_END;
+}
 }  // namespace cbdb
 
 namespace pax {
@@ -239,7 +245,7 @@ void CCPaxAuxTable::PaxAuxRelationSetNewFilenode(Relation rel,
   cbdb::RelationCreateStorageDirectory(*newrnode, persistence, SMGR_MD, rel);
   path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!path.empty());
-  fs->CreateDirectory(path);
+  CBDB_CHECK((fs->CreateDirectory(path) == 0), cbdb::CException::ExType::kExTypeIOError);
 }
 
 void CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(Relation rel) {
@@ -251,10 +257,13 @@ void CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(Relation rel) {
 }
 
 void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
-                                           const RelFileNode *newrnode) {
+                                           const RelFileNode *newrnode,
+                                           bool createnewpath) {
   std::string src_path;
   std::string dst_path;
   std::vector<std::string> filelist;
+
+  Assert(rel && newrnode);
 
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
 
@@ -265,20 +274,24 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
   filelist = fs->ListDirectory(src_path);
   if (filelist.empty()) return;
 
-  // create pg_pax_table relfilenode file and dbid directory under path
-  // pg_tblspc/.
-  cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
-                                       SMGR_MD, rel);
-
   dst_path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!dst_path.empty());
 
   if (src_path.empty() || dst_path.empty())
     CBDB_RAISE(cbdb::CException::ExType::kExTypeFileOperationError);
 
-  // create micropartition file destination folder for copying.
-  if (cbdb::PathNameCreateDir(dst_path.c_str()) != 0)
-    CBDB_RAISE(cbdb::CException::ExType::kExTypeFileOperationError);
+  // createnewpath is used to indicate if creating destination micropartition file directory and storage file for copying or not.
+  // 1. For RelationCopyData case, createnewpath should be set as true to explicitly create a new destination directory under
+  //    new tablespace path pg_tblspc/.
+  // 2. For RelationCopyDataForCluster case, createnewpath should be set as false cause the destination directory was already
+  //    created with a new temp table by previously calling PaxAuxRelationSetNewFilenode.
+  if (createnewpath) {
+    // create pg_pax_table relfilenode file and dbid directory.
+    cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
+                                       SMGR_MD, rel);
+    // create micropartition file destination folder for copying.
+    CBDB_CHECK((fs->CreateDirectory(dst_path) == 0), cbdb::CException::ExType::kExTypeIOError);
+  }
 
   for (auto &iter : filelist) {
     Assert(!iter.empty());
@@ -291,6 +304,12 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
 
   // TODO(Tony) : here need to implement pending delete srcPath after set new
   // tablespace.
+}
+
+void CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(Relation old_heap, Relation new_heap) {
+  PaxAuxRelationCopyData(old_heap, &new_heap->rd_node, false);
+  cbdb::PaxCopyPaxBlockEntry(old_heap, new_heap);
+  // TODO(Tony) : here need to implement PAX re-organize semantics logic.
 }
 
 void CCPaxAuxTable::PaxAuxRelationFileUnlink(RelFileNode node,
@@ -405,5 +424,35 @@ void CPaxCreateMicroPartitionTable(const Relation rel) {
     aux.objectSubId = 0;
     recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
   }
+}
+
+void CPaxCopyPaxBlockEntry(Relation old_relation, Relation new_relation) {
+  HeapTuple tuple;
+  SysScanDesc pax_scan;
+  Relation old_aux_rel, new_aux_rel;
+  Oid old_aux_relid = 0, new_aux_relid = 0;
+
+  HeapTuple tupcache;
+  tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(old_relation));
+  Assert(HeapTupleIsValid(tupcache));
+  old_aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
+  ReleaseSysCache(tupcache);
+
+  tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(new_relation));
+  Assert(HeapTupleIsValid(tupcache));
+  new_aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
+  ReleaseSysCache(tupcache);
+
+  old_aux_rel = table_open(old_aux_relid, RowExclusiveLock);
+  new_aux_rel = table_open(new_aux_relid, RowExclusiveLock);
+
+  pax_scan = systable_beginscan(old_aux_rel, InvalidOid, false,
+                                NULL, 0, NULL);
+  while ((tuple = systable_getnext(pax_scan)) != NULL) {
+    CatalogTupleInsert(new_aux_rel, tuple);
+  }
+  systable_endscan(pax_scan);
+  table_close(old_aux_rel, RowExclusiveLock);
+  table_close(new_aux_rel, RowExclusiveLock);
 }
 }  // namespace paxc
