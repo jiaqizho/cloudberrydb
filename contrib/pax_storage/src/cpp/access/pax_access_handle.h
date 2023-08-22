@@ -59,14 +59,6 @@ class PaxAccessMethod final {
                              LockWaitPolicy wait_policy, uint8 flags,
                              TM_FailureData *tmfd);
 
-  static void RelationCopyForCluster(Relation old_heap, Relation new_heap,
-                                     Relation old_index, bool use_sort,
-                                     TransactionId oldest_xmin,
-                                     TransactionId *xid_cutoff,
-                                     MultiXactId *multi_cutoff,
-                                     double *num_tuples, double *tups_vacuumed,
-                                     double *tups_recently_dead);
-
   static void RelationVacuum(Relation onerel, VacuumParams *params,
                              BufferAccessStrategy bstrategy);
   static double IndexBuildRangeScan(
@@ -122,6 +114,14 @@ class CCPaxAccessMethod final {
                                LockTupleMode *lockmode, bool *update_indexes);
 
   static void RelationCopyData(Relation rel, const RelFileNode *newrnode);
+
+  static void RelationCopyForCluster(Relation old_heap, Relation new_heap,
+                                     Relation old_index, bool use_sort,
+                                     TransactionId oldest_xmin,
+                                     TransactionId *xid_cutoff,
+                                     MultiXactId *multi_cutoff,
+                                     double *num_tuples, double *tups_vacuumed,
+                                     double *tups_recently_dead);
 
   static void RelationSetNewFilenode(Relation rel, const RelFileNode *newrnode,
                                      char persistence,

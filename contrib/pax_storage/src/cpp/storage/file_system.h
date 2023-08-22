@@ -51,7 +51,7 @@ class FileSystem {
       const std::string &path) const = 0;
   virtual void CopyFile(const std::string &src_file_path,
                         const std::string &dst_file_path) const = 0;
-  virtual void CreateDirectory(const std::string &path) const = 0;
+  virtual int CreateDirectory(const std::string &path) const = 0;
   virtual void DeleteDirectory(const std::string &path,
                                bool delete_topleveldir) const = 0;
  protected:
