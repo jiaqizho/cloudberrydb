@@ -1,13 +1,9 @@
 #include <gtest/gtest.h>
+
 #include "comm/bitmap.h"
 
 namespace pax::tests {
-class BitMapTest : public ::testing::Test {
- public:
-  void SetUp() override {}
-
-  void TearDown() override {}
-};
+class BitMapTest : public ::testing::Test {};
 
 TEST_F(BitMapTest, test) {
   FixedBitmap bit_map(100);
