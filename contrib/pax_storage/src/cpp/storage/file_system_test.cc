@@ -3,31 +3,27 @@
 #include "comm/singleton.h"
 #include "storage/local_file_system.h"
 
-extern int gp_debug_linger;
-
 namespace pax::tests {
 #define PAX_TEST_CMD_LENGTH 2048
-#define PAX_TEST_LIST_FILE_NUM 128
-static const char *pax_copy_test_dir = "/tmp/copytest";
-static const char *pax_copy_src_path = "/tmp/test_src";
-static const char *pax_copy_dst_path = "/tmp/copytest/test_dst";
-static const char *pax_list_path = "/tmp/testlist";
-static const char *pax_file_pathname =
-    "/tmp/pg_tblspc/16400/GPDB_1_302206171/13261/16394";
+#define PAX_TEST_LIST_FILE_NUM 10
 
 class LocalFileSystemTest : public ::testing::Test {
  public:
-  void SetUp() override { gp_debug_linger = 0; }
+  void SetUp() override {
+    remove(file_name_.c_str());
+    remove(file_path_.c_str());
+  }
 
   void TearDown() override {
-    gp_debug_linger = 30;
-    struct stat st {};
-    if (!stat(file_name_.c_str(), &st))
-      pax::Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
+    remove(file_name_.c_str());
+    remove(file_path_.c_str());
   }
 
  protected:
   const std::string file_name_ = "./test.file";
+  const std::string file_path_ = "./test_path";
+  const std::string file_full_path_ =
+      "./test_path/16400/GPDB_1_302206171/13261/16394";
 };
 
 TEST_F(LocalFileSystemTest, Open) {
@@ -80,26 +76,30 @@ TEST_F(LocalFileSystemTest, ListDirectory) {
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
   std::vector<std::string> filelist;
 
-  fs->DeleteDirectory(pax_list_path, true);
-  ASSERT_NE(access(pax_list_path, F_OK), 0);
+  fs->DeleteDirectory(file_path_, true);
+  ASSERT_NE(access(file_path_.c_str(), F_OK), 0);
 
-  ASSERT_EQ(0, fs->CreateDirectory(pax_list_path));
-  ASSERT_EQ(access(pax_list_path, F_OK), 0);
+  ASSERT_EQ(0, fs->CreateDirectory(file_path_));
+  ASSERT_EQ(access(file_path_.c_str(), F_OK), 0);
 
   for (int i = 0; i < PAX_TEST_LIST_FILE_NUM; i++) {
     std::string path;
-    path.append(pax_list_path);
+    path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
     File *f = fs->Open(path);
     f->Close();
   }
 
-  filelist = fs->ListDirectory(pax_list_path);
+  filelist = fs->ListDirectory(file_path_);
   ASSERT_EQ(filelist.size(), PAX_TEST_LIST_FILE_NUM);
 }
 
 TEST_F(LocalFileSystemTest, CopyFile) {
+  static const char *pax_copy_test_dir = "./copytest";
+  static const char *pax_copy_src_path = "./test_src";
+  static const char *pax_copy_dst_path = "./copytest/test_dst";
+
   int result = 0;
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
 
@@ -115,6 +115,8 @@ TEST_F(LocalFileSystemTest, CopyFile) {
   fs->CopyFile(pax_copy_src_path, pax_copy_dst_path);
   result = access(pax_copy_dst_path, F_OK);
   ASSERT_NE(result, -1);
+
+  fs->DeleteDirectory(pax_copy_test_dir, true);
 }
 
 TEST_F(LocalFileSystemTest, MakedirRecursive) {
@@ -122,11 +124,11 @@ TEST_F(LocalFileSystemTest, MakedirRecursive) {
   struct stat st {};
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
 
-  fs->DeleteDirectory(pax_file_pathname, true);
-  ASSERT_NE(access(pax_file_pathname, F_OK), 0);
+  fs->DeleteDirectory(file_full_path_, true);
+  ASSERT_NE(access(file_full_path_.c_str(), F_OK), 0);
 
-  cbdb::MakedirRecursive(pax_file_pathname);
-  result = stat(pax_file_pathname, &st);
+  cbdb::MakedirRecursive(file_full_path_.c_str());
+  result = stat(file_full_path_.c_str(), &st);
   ASSERT_EQ(result, 0);
 }
 
@@ -134,54 +136,54 @@ TEST_F(LocalFileSystemTest, CreateDeleteDirectory) {
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
   std::vector<std::string> filelist;
 
-  fs->DeleteDirectory(pax_list_path, true);
-  ASSERT_NE(access(pax_list_path, F_OK), 0);
+  fs->DeleteDirectory(file_path_, true);
+  ASSERT_NE(access(file_path_.c_str(), F_OK), 0);
 
-  ASSERT_EQ(0, fs->CreateDirectory(pax_list_path));
-  ASSERT_EQ(access(pax_list_path, F_OK), 0);
+  ASSERT_EQ(0, fs->CreateDirectory(file_path_));
+  ASSERT_EQ(access(file_path_.c_str(), F_OK), 0);
 
   for (int i = 0; i < PAX_TEST_LIST_FILE_NUM; i++) {
     std::string path;
-    path.append(pax_list_path);
+    path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
     File *f = fs->Open(path);
     f->Close();
   }
 
-  filelist = fs->ListDirectory(pax_list_path);
+  filelist = fs->ListDirectory(file_path_);
   ASSERT_EQ(filelist.size(), PAX_TEST_LIST_FILE_NUM);
 
-  fs->DeleteDirectory(pax_list_path, true);
-  ASSERT_NE(access(pax_list_path, F_OK), 0);
+  fs->DeleteDirectory(file_path_, true);
+  ASSERT_NE(access(file_path_.c_str(), F_OK), 0);
 }
 
 TEST_F(LocalFileSystemTest, DeleteDirectoryReserveToplevel) {
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
   std::vector<std::string> filelist;
 
-  fs->DeleteDirectory(pax_list_path, true);
-  ASSERT_NE(access(pax_list_path, F_OK), 0);
+  fs->DeleteDirectory(file_path_, true);
+  ASSERT_NE(access(file_path_.c_str(), F_OK), 0);
 
-  ASSERT_EQ(0, fs->CreateDirectory(pax_list_path));
-  ASSERT_EQ(access(pax_list_path, F_OK), 0);
+  ASSERT_EQ(0, fs->CreateDirectory(file_path_));
+  ASSERT_EQ(access(file_path_.c_str(), F_OK), 0);
 
   for (int i = 0; i < PAX_TEST_LIST_FILE_NUM; i++) {
     std::string path;
-    path.append(pax_list_path);
+    path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
     File *f = fs->Open(path);
     f->Close();
   }
 
-  filelist = fs->ListDirectory(pax_list_path);
+  filelist = fs->ListDirectory(file_path_);
   ASSERT_EQ(filelist.size(), PAX_TEST_LIST_FILE_NUM);
 
-  fs->DeleteDirectory(pax_list_path, false);
-  ASSERT_EQ(access(pax_list_path, F_OK), 0);
+  fs->DeleteDirectory(file_path_, false);
+  ASSERT_EQ(access(file_path_.c_str(), F_OK), 0);
 
-  filelist = fs->ListDirectory(pax_list_path);
+  filelist = fs->ListDirectory(file_path_);
   ASSERT_EQ(filelist.size(), 0);
 }
 }  // namespace pax::tests
