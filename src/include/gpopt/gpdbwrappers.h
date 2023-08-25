@@ -19,6 +19,7 @@
 extern "C" {
 #include "postgres.h"
 
+#include "access/amapi.h"
 #include "access/attnum.h"
 #include "optimizer/plancat.h"
 #include "parser/parse_coerce.h"
@@ -681,6 +682,8 @@ TargetEntry *FlatCopyTargetEntry(TargetEntry *src_tle);
 bool IsTypeRange(Oid typid);
 
 char *GetRelAmName(Oid reloid);
+
+IndexAmRoutine *GetIndexAmRoutineFromAmHandler(Oid am_handler);
 
 }  //namespace gpdb
 
