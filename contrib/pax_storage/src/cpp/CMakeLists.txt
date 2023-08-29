@@ -173,6 +173,9 @@ set(pax_catalog_src
     catalog/micro_partition_stats.cc
     catalog/pax_aux_table.cc)
 
+set(pax_vec_src
+  storage/vec/pax_vec_adapter.cc)
+
 link_directories($ENV{GPHOME}/lib)
 
 if(BUILD_PAX_FORMAT)
@@ -185,13 +188,10 @@ set_target_properties(paxformat PROPERTIES
 OUTPUT_NAME paxformat)
 add_dependencies(paxformat generate_protobuf)
 
-
 # export headers
 set(PAX_COMM_HEADERS
   comm/cbdb_api.h
 )
-
-
 
 ## install dynamic libraray 
 install(TARGETS paxformat
@@ -212,10 +212,10 @@ install(FILES ${PAX_COMM_HEADERS}
 )
 
 else()
-add_library(pax SHARED ${orc_proto_src} ${pax_proto_src} ${pax_storage_src} ${stats_proto_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src})
+add_library(pax SHARED ${orc_proto_src} ${pax_proto_src} ${pax_storage_src} ${stats_proto_src} ${pax_exceptions_src} ${pax_access_src} ${pax_comm_src} ${pax_catalog_src} ${pax_vec_src})
 set_target_properties(pax PROPERTIES 
 OUTPUT_NAME pax)
-target_include_directories(pax PUBLIC ${ZTSD_HEADER}  ${CMAKE_CURRENT_SOURCE_DIR} "${CBDB_INCLUDE_DIR}")
+target_include_directories(pax PUBLIC ${ZTSD_HEADER}  ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
 target_link_libraries(pax PUBLIC uuid orc_protobuf zstd z postgres)
 add_dependencies(pax generate_protobuf)
 add_dependencies(pax stats_generate_protobuf)
@@ -224,3 +224,20 @@ add_custom_command(TARGET pax POST_BUILD
                        copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
 endif(BUILD_PAX_FORMAT)
 
+# vec build
+if (VEC_BUILD)
+  set(VEC_HEADER ${VEC_HOME}/src/include/)
+
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(GLIB REQUIRED glib-2.0)
+
+  target_include_directories(pax PRIVATE 
+    ${VEC_HEADER} # for utils/tuptable_vec.h
+    ${CBDB_ROOT_INCLUDE_DIR}  # for arrow-glib/arrow-glib.h and otehr arrow interface
+    ${GLIB_INCLUDE_DIRS} # for glib-object.h
+  )
+if(BUILD_GTEST)
+  target_include_directories(test_main PRIVATE ${VEC_HEADER} ${CBDB_ROOT_INCLUDE_DIR} ${GLIB_INCLUDE_DIRS})
+endif(BUILD_GTEST)
+  target_link_libraries(pax PRIVATE arrow)
+endif(VEC_BUILD)
