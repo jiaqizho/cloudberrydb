@@ -67,6 +67,12 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
       new TableReader(micro_partition_reader, std::move(iter), reader_options);
   desc->reader_->Open();
 
+#ifdef VEC_BUILD
+  if (flags & (1 << 12)) {
+    desc->vec_adapter_ = new VecAdapter(cbdb::RelationGetTupleDesc(relation));
+  }
+#endif
+
   MemoryContextSwitchTo(old_ctx);
   return &desc->rs_base_;
 }
@@ -81,6 +87,9 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
   delete desc->reader_;
   if (desc->filter_) delete desc->filter_;
 
+#ifdef VEC_BUILD
+  delete desc->vec_adapter_;
+#endif
   // TODO(jiaqizho): please double check with abort transaction @gongxun
   Assert(desc->memory_context_);
   cbdb::MemoryCtxDelete(desc->memory_context_);
@@ -144,7 +153,18 @@ bool PaxScanDesc::ScanGetNextSlot(TableScanDesc scan, TupleTableSlot *slot) {
 
   CTupleSlot cslot(slot);
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
+
+#ifdef VEC_BUILD
+  // TODO(vec): replace (1 << 12), and check other place
+  if (desc->rs_base_.rs_flags & (1 << 12)) {
+    ok = desc->reader_->ReadVecTuple(&cslot, desc->vec_adapter_);
+    MemoryContextSwitchTo(old_ctx);
+    return ok;
+  }
+#endif
+
   ok = desc->reader_->ReadTuple(&cslot);
+
   MemoryContextSwitchTo(old_ctx);
   return ok;
 }

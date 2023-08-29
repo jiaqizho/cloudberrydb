@@ -1,0 +1,662 @@
+#include "storage/vec/pax_vec_adapter.h"
+
+#ifdef VEC_BUILD
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+
+extern "C" {
+#include "utils/tuptable_vec.h"  // for vec tuple
+}
+
+#pragma GCC diagnostic pop
+
+#include "storage/vec/arrow_wrapper.h"
+
+/// export interface wrapper of arrow
+namespace arrow {
+
+template <typename T>
+struct ArrowExportTraits {};
+
+template <typename T>
+using Arrow = std::function<Status(const T &, struct ArrowSchema *)>;
+
+template <>
+struct ArrowExportTraits<DataType> {
+  static Arrow<DataType> export_func;
+};
+
+template <>
+struct ArrowExportTraits<Field> {
+  static Arrow<Field> export_func;
+};
+
+template <>
+struct ArrowExportTraits<Schema> {
+  static Arrow<Schema> export_func;
+};
+
+Arrow<DataType> ArrowExportTraits<DataType>::export_func = ExportType;
+Arrow<Field> ArrowExportTraits<Field>::export_func = ExportField;
+Arrow<Schema> ArrowExportTraits<Schema>::export_func = ExportSchema;
+
+}  // namespace arrow
+
+namespace pax {
+
+static void CopyFixedRawBufferWithNull(PaxColumn *column, size_t range_begin,
+                                       size_t range_lens,
+                                       size_t data_index_begin,
+                                       size_t data_range_lens,
+                                       DataBuffer<char> *out_data_buffer);
+static inline void CopyFixedRawBuffer(char *buffer, size_t len,
+                                      DataBuffer<char> *data_buffer);
+
+static void CopyNonFixedRawBuffer(PaxColumn *column, size_t range_begin,
+                                  size_t range_lens, size_t data_index_begin,
+                                  size_t data_range_lens,
+                                  DataBuffer<int32> *offset_buffer,
+                                  DataBuffer<char> *out_data_buffer);
+static void ConvSchemaAndDataToVec(
+    Oid pg_type_oid, char *attname, size_t all_nums_of_row,
+    VecAdapter::VecBatchBuffer *vec_batch_buffer,
+    std::vector<std::shared_ptr<arrow::Field>> &schema_types,
+    arrow::ArrayVector &array_vector, std::vector<std::string> &field_names);
+
+static void NullBytesToNullBits(bool *null_buffer, size_t buffer_len,
+                                DataBuffer<char> *null_bits_map);
+
+VecAdapter::VecBatchBuffer::VecBatchBuffer()
+    : vec_buffer(0), null_bits_buffer(0), offset_buffer(0), null_counts(0) {
+  SetMemoryTakeOver(true);
+};
+
+void VecAdapter::VecBatchBuffer::Reset() {
+  // Current `DataBuffer` will not hold the buffers.
+  // And the buffers will be trans to `ArrayVector` which will hold it.
+  // Released in `release` callback or Memory context reset in `EndScan`
+  SetMemoryTakeOver(false);
+  vec_buffer.Reset();
+  null_bits_buffer.Reset();
+  offset_buffer.Reset();
+  null_counts = 0;
+  SetMemoryTakeOver(true);
+}
+
+void VecAdapter::VecBatchBuffer::SetMemoryTakeOver(bool take) {
+  vec_buffer.SetMemTakeOver(take);
+  null_bits_buffer.SetMemTakeOver(take);
+  offset_buffer.SetMemTakeOver(take);
+}
+
+static void CopyFixedRawBufferWithNull(PaxColumn *column, size_t range_begin,
+                                       size_t range_lens,
+                                       size_t data_index_begin,
+                                       size_t data_range_lens,
+                                       DataBuffer<char> *out_data_buffer) {
+  char *buffer;
+  size_t buffer_len;
+
+  std::tie(buffer, buffer_len) =
+      column->GetRangeBuffer(data_index_begin, data_range_lens);
+
+  auto null_bitmap = column->GetNulls();
+  size_t non_null_offset = 0;
+  size_t type_len = column->GetTypeLength();
+
+  for (size_t i = range_begin; i < (range_begin + range_lens); i++) {
+    if ((*null_bitmap)[i]) {
+      out_data_buffer->Write(buffer + non_null_offset, type_len);
+      non_null_offset += type_len;
+    }
+
+    out_data_buffer->Brush(type_len);
+  }
+
+  Assert((non_null_offset / type_len) == data_range_lens);
+}
+
+static inline void CopyFixedRawBuffer(char *buffer, size_t len,
+                                      DataBuffer<char> *data_buffer) {
+  data_buffer->Write(buffer, len);
+  data_buffer->Brush(len);
+}
+
+static void NullBytesToNullBits(bool *null_buffer, size_t buffer_len,
+                                DataBuffer<char> *null_bits_map) {
+  Assert(null_bits_map->Capacity() >=
+         (buffer_len % 8 == 0 ? buffer_len / 8 : buffer_len / 8 + 1));
+  for (size_t i = 0; i < buffer_len; i++) {
+    arrow::bit_util::SetBitTo((uint8 *)null_bits_map->GetBuffer(), i,
+                              null_buffer[i]);
+  }
+  null_bits_map->BrushAll();
+}
+
+static void CopyNonFixedRawBuffer(PaxColumn *column, size_t range_begin,
+                                  size_t range_lens, size_t data_index_begin,
+                                  size_t data_range_lens,
+                                  DataBuffer<int32> *offset_buffer,
+                                  DataBuffer<char> *out_data_buffer) {
+  size_t dst_offset = out_data_buffer->Used();
+  char *buffer = nullptr;
+  size_t buffer_len = 0;
+
+  auto null_bitmap = column->GetNulls();
+  size_t non_null_offset = 0;
+
+  for (size_t i = range_begin; i < (range_begin + range_lens); i++) {
+    if (null_bitmap && !(*null_bitmap)[i]) {
+      offset_buffer->Write(dst_offset);
+      offset_buffer->Brush(sizeof(int32));
+
+    } else {
+      std::tie(buffer, buffer_len) =
+          column->GetBuffer(data_index_begin + non_null_offset);
+
+      auto vl = (struct varlena *)(buffer);
+      size_t read_len = 0;
+
+      auto tunpacked = pg_detoast_datum_packed(vl);
+      Assert((Pointer)vl == (Pointer)tunpacked);
+
+      read_len = VARSIZE_ANY_EXHDR(tunpacked);
+      auto read_data = VARDATA_ANY(tunpacked);
+
+      out_data_buffer->Write(read_data, read_len);
+      out_data_buffer->Brush(read_len);
+
+      offset_buffer->Write(dst_offset);
+      offset_buffer->Brush(sizeof(int32));
+
+      dst_offset += read_len;
+
+      non_null_offset++;
+    }
+  }
+
+  offset_buffer->Write(dst_offset);
+  offset_buffer->Brush(sizeof(int32));
+
+  CBDB_CHECK(non_null_offset == data_range_lens,
+             cbdb::CException::ExType::kExTypeOutOfRange);
+}
+
+static std::tuple<std::shared_ptr<arrow::Buffer>,
+                  std::shared_ptr<arrow::Buffer>,
+                  std::shared_ptr<arrow::Buffer>>
+ConvToVecBuffer(VecAdapter::VecBatchBuffer *vec_batch_buffer) {
+  std::shared_ptr<arrow::Buffer> arrow_buffer = nullptr;
+  std::shared_ptr<arrow::Buffer> arrow_null_buffer = nullptr;
+  std::shared_ptr<arrow::Buffer> arrow_offset_buffer = nullptr;
+
+  arrow_buffer = std::make_shared<arrow::Buffer>(
+      (uint8 *)vec_batch_buffer->vec_buffer.GetBuffer(),
+      (int64)vec_batch_buffer->vec_buffer.Capacity());
+
+  if (vec_batch_buffer->null_bits_buffer.GetBuffer()) {
+    arrow_null_buffer = std::make_shared<arrow::Buffer>(
+        (uint8 *)vec_batch_buffer->null_bits_buffer.GetBuffer(),
+        (int64)vec_batch_buffer->null_bits_buffer.Capacity());
+  }
+
+  if (vec_batch_buffer->offset_buffer.GetBuffer()) {
+    arrow_offset_buffer = std::make_shared<arrow::Buffer>(
+        (uint8 *)vec_batch_buffer->offset_buffer.GetBuffer(),
+        (int64)vec_batch_buffer->offset_buffer.Capacity());
+  }
+  return std::make_tuple(arrow_buffer, arrow_null_buffer, arrow_offset_buffer);
+}
+
+template <typename ArrayType>
+static void ConvArrowSchemaAndBuffer(
+    const std::string &field_name, std::shared_ptr<arrow::DataType> data_type,
+    VecAdapter::VecBatchBuffer *vec_batch_buffer, size_t all_nums_of_row,
+    std::vector<std::shared_ptr<arrow::Field>> &schema_types,
+    arrow::ArrayVector &array_vector, std::vector<std::string> &field_names) {
+  std::shared_ptr<arrow::Buffer> arrow_buffer;
+  std::shared_ptr<arrow::Buffer> arrow_null_buffer;
+
+  auto arrow_buffers = ConvToVecBuffer(vec_batch_buffer);
+  arrow_buffer = std::get<0>(arrow_buffers);
+  arrow_null_buffer = std::get<1>(arrow_buffers);
+
+  schema_types.emplace_back(arrow::field(field_name, data_type));
+  auto array = std::make_shared<ArrayType>(all_nums_of_row, arrow_buffer,
+                                           arrow_null_buffer,
+                                           vec_batch_buffer->null_counts);
+
+  array_vector.emplace_back(array);
+  field_names.emplace_back(field_name);
+}
+
+static void ConvSchemaAndDataToVec(
+    Oid pg_type_oid, char *attname, size_t all_nums_of_row,
+    VecAdapter::VecBatchBuffer *vec_batch_buffer,
+    std::vector<std::shared_ptr<arrow::Field>> &schema_types,
+    arrow::ArrayVector &array_vector, std::vector<std::string> &field_names) {
+  switch (pg_type_oid) {
+    case BOOLOID: {
+      ConvArrowSchemaAndBuffer<arrow::BooleanArray>(
+          std::string(attname), arrow::boolean(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case CHAROID: {
+      ConvArrowSchemaAndBuffer<arrow::Int8Array>(
+          std::string(attname), arrow::int8(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case TIMEOID:
+    case TIMESTAMPOID:
+    case TIMESTAMPTZOID: {
+      ConvArrowSchemaAndBuffer<arrow::Date64Array>(
+          std::string(attname), arrow::date64(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case TIDOID:
+    case INT8OID: {
+      ConvArrowSchemaAndBuffer<arrow::Int64Array>(
+          std::string(attname), arrow::int64(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case INT2OID: {
+      ConvArrowSchemaAndBuffer<arrow::Int16Array>(
+          std::string(attname), arrow::int16(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case DATEOID: {
+      ConvArrowSchemaAndBuffer<arrow::Date32Array>(
+          std::string(attname), arrow::date32(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case INT4OID: {
+      ConvArrowSchemaAndBuffer<arrow::Int32Array>(
+          std::string(attname), arrow::int32(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case BPCHAROID:
+      Assert(false);
+      break;
+    case VARCHAROID:
+    case TEXTOID: {
+      std::shared_ptr<arrow::Buffer> arrow_buffer;
+      std::shared_ptr<arrow::Buffer> arrow_null_buffer;
+      std::shared_ptr<arrow::Buffer> arrow_offset_buffer;
+
+      auto arrow_buffers = ConvToVecBuffer(vec_batch_buffer);
+      arrow_buffer = std::get<0>(arrow_buffers);
+      arrow_null_buffer = std::get<1>(arrow_buffers);
+      arrow_offset_buffer = std::get<2>(arrow_buffers);
+
+      schema_types.emplace_back(
+          arrow::field(std::string(attname), arrow::utf8()));
+      auto array = std::make_shared<arrow::StringArray>(
+          all_nums_of_row, arrow_offset_buffer, arrow_buffer, arrow_null_buffer,
+          vec_batch_buffer->null_counts);
+
+      array_vector.emplace_back(array);
+      field_names.emplace_back(std::string(std::string(attname)));
+      break;
+    }
+    case FLOAT4OID: {
+      ConvArrowSchemaAndBuffer<arrow::FloatArray>(
+          std::string(attname), arrow::float32(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case FLOAT8OID: {
+      ConvArrowSchemaAndBuffer<arrow::DoubleArray>(
+          std::string(attname), arrow::float64(), vec_batch_buffer,
+          all_nums_of_row, schema_types, array_vector, field_names);
+      break;
+    }
+    case INT2ARRAYOID:
+    case INT4ARRAYOID:
+    case INT8ARRAYOID:
+    case FLOAT4ARRAYOID:
+    case FLOAT8ARRAYOID:
+    case TEXTARRAYOID:
+    case BPCHARARRAYOID: {
+      Assert(false);
+    }
+    case NAMEOID:
+    case XIDOID:
+    case CIDOID:
+    case OIDVECTOROID:
+    case JSONOID:
+    case OIDOID:
+    case REGPROCOID:
+    case NUMERICOID:  // TODO(jiaqizho): support it in 0.11
+    default: {
+      Assert(false);
+    }
+  }
+}
+
+VecAdapter::VecAdapter(TupleDesc tuple_desc)
+    : rel_tuple_desc_(tuple_desc),
+      cached_batch_lens_(0),
+      vec_cache_buffer_(nullptr),
+      vec_cache_buffer_lens_(0),
+      process_columns_(nullptr),
+      current_cached_pax_columns_index_(0) {
+  Assert(rel_tuple_desc_);
+};
+
+VecAdapter::~VecAdapter() {
+  if (vec_cache_buffer_) {
+    for (int i = 0; i < vec_cache_buffer_lens_; i++) {
+      vec_cache_buffer_[i].SetMemoryTakeOver(false);
+    }
+    delete[] vec_cache_buffer_;
+  }
+}
+
+void VecAdapter::SetDataSource(PaxColumns *columns) {
+  Assert(columns);
+  process_columns_ = columns;
+  current_cached_pax_columns_index_ = 0;
+  cached_batch_lens_ = 0;
+  if (!vec_cache_buffer_) {
+    vec_cache_buffer_ = new VecBatchBuffer[columns->GetColumns()];
+    vec_cache_buffer_lens_ = columns->GetColumns();
+  }
+}
+
+bool VecAdapter::AppendToVecBuffer() {
+  PaxColumns *columns;
+  PaxColumn *column;
+  size_t range_begin = current_cached_pax_columns_index_;
+  size_t range_lens = VEC_BATCH_LENGTH;
+
+  columns = process_columns_;
+  Assert(cached_batch_lens_ <= VEC_BATCH_LENGTH);
+
+  // There are three cases to direct return
+  // 1. no call `DataSource`, then no source setup
+  // 2. already have cached vec batch without flush
+  // 3. all of data in pax columns have been comsume
+  if (!columns || cached_batch_lens_ != 0 ||
+      range_begin == columns->GetRows()) {
+    return false;
+  }
+
+  Assert(range_begin <= columns->GetRows());
+
+  // recompute `range_lens`, if remain data LT `VEC_BATCH_LENGTH`
+  // then should reduce `range_lens`
+  if ((range_begin + range_lens) > columns->GetRows()) {
+    range_lens = columns->GetRows() - range_begin;
+  }
+
+  // null length depends on `range_lens`
+  auto null_align_bytes = TYPEALIGN(
+      MEMORY_ALIGN_SIZE,
+      range_lens % 8 == 0 ? (range_lens / 8) : ((range_lens / 8) + 1));
+
+  for (size_t index = 0; index < columns->GetColumns(); index++) {
+    size_t data_index_begin = 0;
+    size_t data_range_lens = 0;
+    DataBuffer<char> *vec_buffer = nullptr;
+    DataBuffer<char> *null_bits_buffer = nullptr;
+    DataBuffer<int32> *offset_buffer = nullptr;
+
+    char *raw_buffer = nullptr;
+    size_t buffer_len = 0;
+
+    if ((*columns)[index] == nullptr) {
+      continue;
+    }
+
+    column = (*columns)[index];
+    Assert(index < (size_t)vec_cache_buffer_lens_ && vec_cache_buffer_);
+
+    data_index_begin = column->GetRangeNonNullRows(0, range_begin);
+    data_range_lens = column->GetRangeNonNullRows(range_begin, range_lens);
+
+    // data buffer holder
+    vec_buffer = &(vec_cache_buffer_[index].vec_buffer);
+    null_bits_buffer = &(vec_cache_buffer_[index].null_bits_buffer);
+    offset_buffer = &(vec_cache_buffer_[index].offset_buffer);
+
+    vec_cache_buffer_[index].null_counts = range_lens - data_range_lens;
+
+    std::tie(raw_buffer, buffer_len) =
+        column->GetRangeBuffer(data_index_begin, data_range_lens);
+
+    switch (column->GetPaxColumnTypeInMem()) {
+      case PaxColumnTypeInMem::kTypeNonFixed: {
+        auto raw_data_size = buffer_len - (data_range_lens * VARHDRSZ_SHORT);
+        auto align_size = TYPEALIGN(MEMORY_ALIGN_SIZE, raw_data_size);
+
+        auto offset_align_bytes =
+            TYPEALIGN(MEMORY_ALIGN_SIZE, (range_lens + 1) * sizeof(int32));
+
+        Assert(!vec_buffer->GetBuffer() && !offset_buffer->GetBuffer());
+        vec_buffer->Set((char *)cbdb::Palloc(align_size), align_size);
+        offset_buffer->Set((char *)cbdb::Palloc0(offset_align_bytes),
+                           offset_align_bytes);
+
+        CopyNonFixedRawBuffer(column, range_begin, range_lens, data_index_begin,
+                              data_range_lens, offset_buffer, vec_buffer);
+
+        break;
+      }
+      case PaxColumnTypeInMem::kTypeFixed: {
+        Assert(column->GetTypeLength() > 0);
+        auto align_size = TYPEALIGN(MEMORY_ALIGN_SIZE,
+                                    (range_lens * column->GetTypeLength()));
+        Assert(!vec_buffer->GetBuffer());
+
+        vec_buffer->Set((char *)cbdb::Palloc(align_size), align_size);
+
+        if (column->HasNull()) {
+          CopyFixedRawBufferWithNull(column, range_begin, range_lens,
+                                     data_index_begin, data_range_lens,
+                                     vec_buffer);
+        } else {
+          CopyFixedRawBuffer(raw_buffer, buffer_len, vec_buffer);
+        }
+
+        break;
+      }
+      default: {
+        CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+      }
+    }  // switch column type
+
+    if (column->HasNull()) {
+      bool *null_buffer;
+      size_t null_buffer_len;
+      Assert(!null_bits_buffer->GetBuffer());
+      null_bits_buffer->Set((char *)cbdb::Palloc(null_align_bytes),
+                            null_align_bytes);
+      std::tie(null_buffer, null_buffer_len) =
+          column->GetRangeNulls(range_begin, range_lens);
+      NullBytesToNullBits(null_buffer, null_buffer_len, null_bits_buffer);
+    }
+
+  }  // for each column
+
+  current_cached_pax_columns_index_ = range_begin + range_lens;
+  cached_batch_lens_ += range_lens;
+  return true;
+}
+
+size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
+  ArrowSchema *arrow_schema = nullptr;
+  ArrowArray *arrow_array = nullptr;
+  std::vector<std::shared_ptr<arrow::Field>> schema_types;
+  arrow::ArrayVector array_vector;
+  std::vector<std::string> field_names;
+  VecTupleTableSlot *vslot = nullptr;
+  VecBatchBuffer *vec_batch_buffer = nullptr;
+  PaxColumns *columns = nullptr;
+
+  TupleDesc target_desc;
+
+  // column size from current pax columns(which is same size with disk stored)
+  // may not equal with `rel_tuple_desc_->natts`, but must LE with
+  // `rel_tuple_desc_->natts`
+  size_t column_size = 0;
+  size_t rc = 0;
+
+  columns = process_columns_;
+  Assert(columns);
+
+  vslot = VECSLOT(cslot->GetTupleTableSlot());
+  Assert(vslot);
+
+  target_desc = cslot->GetTupleDesc();
+  column_size = columns->GetColumns();
+
+  Assert(column_size <= (size_t)rel_tuple_desc_->natts);
+
+  // Vec executor is different with cbdb executor
+  // if select single column in multi column defined relation
+  // then `target_desc->natts` will be one, rather then actually column numbers
+  // So we need use `rel_tuple_desc_` which own full relation tuple desc
+  // to fill target arrow data
+  for (size_t index = 0; index < column_size; index++) {
+    auto attr = &rel_tuple_desc_->attrs[index];
+    char *column_name = NameStr(attr->attname);
+
+    if ((*columns)[index] == nullptr || attr->attisdropped) {
+      continue;
+    }
+
+    vec_batch_buffer = &vec_cache_buffer_[index];
+
+    ConvSchemaAndDataToVec(attr->atttypid, column_name, cached_batch_lens_,
+                           vec_batch_buffer, schema_types, array_vector,
+                           field_names);
+
+    vec_batch_buffer->Reset();
+  }
+
+  Assert(schema_types.size() <= (size_t)target_desc->natts);
+
+  // The reason why use we can put null column into `target_desc` is that
+  // this situation will only happen when the column is missing in disk.
+  // `add column` will make this happen
+  // for example
+  // 1. CREATE TABLE aa(a int4, b int4) using pax;
+  // 2. insert into aa values(...);    // it will generate pax file1 with column
+  // a,b
+  // 3. alter table aa add c int4;
+  // 4. insert into aa values(...);    // it will generate pax file2 with column
+  // a,b,c
+  // 5. select * from aa;
+  //
+  // In step5, file1 missing the column c, `schema_types.size()` is 2.
+  // So we need full null in it. But in file2, `schema_types.size()` is 3,
+  // so do nothing.
+  //
+  // Notice that: `drop column` will not effect this logic. Because we already
+  // deal the `drop column` above(using the relation tuple desc filter the
+  // column).
+  //
+  // A example about `drop column` + `add column`:
+  // 1. CREATE TABLE aa(a int4, b int4) using pax;
+  // 2. insert into aa values(...);    // it will generate pax file1 with column
+  // a,b
+  // 3. alter table aa drop b;
+  // 4. alter table aa add c int4;
+  // 5. insert into aa values(...);    // it will generate pax file2 with column
+  // a,c
+  // 6. select * from aa; // need column a + column c
+  //
+  // In step6, file 1 missing the column c, column b in file1 will be filter by
+  // `attisdropped` so `schema_types.size()` is 1, we need full null in it. But
+  // in file2, `schema_types.size()` is 3, so do nothing.
+  for (int index = schema_types.size(); index < target_desc->natts; index++) {
+    VecBatchBuffer temp_batch_buffer;
+    char *target_column_name = NameStr(target_desc->attrs[index].attname);
+
+    // FIXME(jiaqizho): should setting default value here
+    // but missing this part of logic
+
+    // No sure whether can direct add `null()` here
+    ConvSchemaAndDataToVec(target_desc->attrs[index].atttypid,
+                           target_column_name, cached_batch_lens_,
+                           &temp_batch_buffer, schema_types, array_vector,
+                           field_names);
+  }
+
+  Assert(schema_types.size() == (size_t)target_desc->natts);
+  Assert(array_vector.size() == schema_types.size());
+  Assert(field_names.size() == array_vector.size());
+
+  arrow_schema = (ArrowSchema *)cbdb::Palloc0(sizeof(ArrowSchema));
+  arrow_array = (ArrowArray *)cbdb::Palloc0(sizeof(ArrowArray));
+
+  auto export_status = arrow::ArrowExportTraits<arrow::DataType>::export_func(
+      *arrow::struct_(std::move(schema_types)), arrow_schema);
+
+  CBDB_CHECK(export_status.ok(),
+             cbdb::CException::ExType::kExTypeArrowExportError);
+
+  export_status = arrow::ExportArray(
+      **arrow::StructArray::Make(std::move(array_vector), field_names),
+      arrow_array);
+
+  CBDB_CHECK(export_status.ok(),
+             cbdb::CException::ExType::kExTypeArrowExportError);
+
+  arrow_array->release = [](struct ArrowArray *array) {  //
+    for (int64 i = 0; i < array->n_children; i++) {
+      if (array->children && array->children[i] &&
+          array->children[i]->release) {
+        array->children[i]->release(array->children[i]);
+      }
+    }
+
+    for (int64 i = 0; i < array->n_buffers; i++) {
+      if (array->buffers[i]) {
+        // cbdb::Pfree CException will not be deal
+        // just let long jump happen
+        pfree((void *)array->buffers[i]);
+      }
+    }
+
+    // FIXME(jiaqizho): memory leak here
+    // Will consider not use `arrow::ExportArray`
+    // delete reinterpret_cast<ExportedArrayPrivateData*>(array->private_data);
+    array->release = NULL;
+  };
+
+  // `ArrowRecordBatch/ArrowSchema/ArrowArray` alloced by pax memory context.
+  // Can not possible to hold the lifecycle of these three objects in pax.
+  // It will be freed after memory context reset.
+  auto *arrow_rb = (ArrowRecordBatch *)cbdb::Palloc0(sizeof(ArrowRecordBatch));
+  arrow_rb->batch = arrow_array;
+  arrow_rb->schema = arrow_schema;
+  vslot->tts_recordbatch = arrow_rb;
+
+  // Pax will put any data into tts_value in `ReadVecTuple`
+  memset(vslot->tts_shouldfree, 0, vslot->base.tts_nvalid);
+
+  rc = cached_batch_lens_;
+  cached_batch_lens_ = 0;
+
+  return rc;
+}
+
+bool VecAdapter::IsInitialized() const { return process_columns_; }
+
+bool VecAdapter::IsEnd() const {
+  CBDB_CHECK(process_columns_, cbdb::CException::ExType::kExTypeLogicError);
+  return current_cached_pax_columns_index_ == process_columns_->GetRows();
+}
+
+}  // namespace pax
+
+#endif  // VEC_BUILD

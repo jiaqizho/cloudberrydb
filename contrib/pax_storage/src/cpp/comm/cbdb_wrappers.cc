@@ -317,6 +317,12 @@ int cbdb::RelationGetAttributesNumber(Relation rel) {
   CBDB_WRAP_END;
 }
 
+TupleDesc cbdb::RelationGetTupleDesc(Relation rel) {
+  CBDB_WRAP_START;
+  { return RelationGetDescr(rel); }
+  CBDB_WRAP_END;
+}
+
 bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts) {
   CBDB_WRAP_START;
   { return extractcolumns_from_node(expr, cols, natts); }
