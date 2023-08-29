@@ -139,6 +139,8 @@ std::string BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend);
 
 int RelationGetAttributesNumber(Relation rel);
 
+TupleDesc RelationGetTupleDesc(Relation rel);
+
 bool ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts);
 
 std::string BuildPaxFilePath(Relation rel, const std::string &block_id);
