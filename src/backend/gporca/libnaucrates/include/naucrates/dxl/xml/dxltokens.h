@@ -512,6 +512,7 @@ enum Edxltoken
 
 	EdxltokenIndexKeyCols,
 	EdxltokenIndexIncludedCols,
+	EdxltokenIndexReturnableCols,
 	EdxltokenIndexClustered,
 	EdxltokenIndexAmCanOrder,
 	EdxltokenIndexPartial,
