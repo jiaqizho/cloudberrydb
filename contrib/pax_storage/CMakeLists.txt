@@ -47,7 +47,9 @@ option(BUILD_PAX_FORMAT "Build pax format lib" OFF)
 
 if (ENBALE_DEBUG)
   ADD_DEFINITIONS(-DENBALE_DEBUG)
-	SET(CMAKE_BUILD_TYPE "Debug")
+  # Use to build compile_commands.json
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+  SET(CMAKE_BUILD_TYPE "Debug")
   SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
   SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 else()
