@@ -31,10 +31,10 @@ PaxEncodingColumn<T>::PaxEncodingColumn(
 
 template <typename T>
 PaxEncodingColumn<T>::~PaxEncodingColumn() {
-  if (encoder_) delete encoder_;
-  if (decoder_) delete decoder_;
-  if (shared_data_) delete shared_data_;
-  if (compressor_) delete compressor_;
+  delete encoder_;
+  delete decoder_;
+  delete shared_data_;
+  delete compressor_;
 }
 
 template <typename T>

@@ -85,7 +85,7 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
 
   delete desc->reused_buffer_;
   delete desc->reader_;
-  if (desc->filter_) delete desc->filter_;
+  delete desc->filter_;
 
 #ifdef VEC_BUILD
   delete desc->vec_adapter_;
