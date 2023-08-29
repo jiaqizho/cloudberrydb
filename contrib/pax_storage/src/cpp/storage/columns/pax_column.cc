@@ -41,8 +41,35 @@ void PaxColumn::SetNulls(DataBuffer<bool> *null_bitmap) {
 
 DataBuffer<bool> *PaxColumn::GetNulls() const { return null_bitmap_; }
 
+std::pair<bool *, size_t> PaxColumn::GetRangeNulls(size_t start_pos,
+                                                   size_t len) {
+  Assert(null_bitmap_);
+  CBDB_CHECK((start_pos + len) <= GetRows(),
+             cbdb::CException::ExType::kExTypeOutOfRange);
+
+  static_assert(sizeof(char) == sizeof(bool));
+  return std::make_pair(null_bitmap_->GetBuffer() + start_pos, len);
+}
+
 size_t PaxColumn::GetRows() {
   return null_bitmap_ ? null_bitmap_->Used() : GetNonNullRows();
+}
+
+size_t PaxColumn::GetRangeNonNullRows(size_t start_pos, size_t len) {
+  CBDB_CHECK((start_pos + len) <= GetRows(),
+             cbdb::CException::ExType::kExTypeOutOfRange);
+  if (null_bitmap_) {
+    size_t total_non_null = 0;
+    for (size_t i = start_pos; i < (start_pos + len); i++) {
+      if ((*null_bitmap_)[i]) {
+        total_non_null++;
+      }
+    }
+
+    return total_non_null;
+  } else {
+    return len;
+  }
 }
 
 void PaxColumn::AppendNull() {
@@ -153,13 +180,18 @@ size_t PaxCommColumn<T>::GetNonNullRows() const {
 }
 
 template <typename T>
-size_t PaxCommColumn<T>::EstimatedSize() const {
+size_t PaxCommColumn<T>::PhysicalSize() const {
   return data_->Used();
 }
 
 template <typename T>
 int64 PaxCommColumn<T>::GetOriginLength() const {
   return NO_ENCODE_ORIGIN_LEN;
+}
+
+template <typename T>
+int32 PaxCommColumn<T>::GetTypeLength() const {
+  return sizeof(T);
 }
 
 template <typename T>
@@ -172,6 +204,15 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
   CBDB_CHECK(position < GetNonNullRows(),
              cbdb::CException::ExType::kExTypeOutOfRange);
   return std::make_pair(data_->Start() + (sizeof(T) * position), sizeof(T));
+}
+
+template <typename T>
+std::pair<char *, size_t> PaxCommColumn<T>::GetRangeBuffer(size_t start_pos,
+                                                           size_t len) {
+  CBDB_CHECK((start_pos + len) <= GetNonNullRows(),
+             cbdb::CException::ExType::kExTypeOutOfRange);
+  return std::make_pair(data_->Start() + (sizeof(T) * start_pos),
+                        sizeof(T) * len);
 }
 
 template class PaxCommColumn<char>;
@@ -274,19 +315,39 @@ std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer() {
 
 size_t PaxNonFixedColumn::GetNonNullRows() const { return lengths_->GetSize(); }
 
-size_t PaxNonFixedColumn::EstimatedSize() const { return estimated_size_; }
+size_t PaxNonFixedColumn::PhysicalSize() const { return estimated_size_; }
 
 int64 PaxNonFixedColumn::GetOriginLength() const {
   return NO_ENCODE_ORIGIN_LEN;
 }
 
+int32 PaxNonFixedColumn::GetTypeLength() const { return -1; }
+
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
-  if (position >= GetNonNullRows()) {
-    CBDB_RAISE(cbdb::CException::ExType::kExTypeOutOfRange);
-  }
+  CBDB_CHECK(position < GetNonNullRows(),
+             cbdb::CException::ExType::kExTypeOutOfRange);
 
   return std::make_pair(data_->GetBuffer() + offsets_[position],
                         (*lengths_)[position]);
+}
+
+std::pair<char *, size_t> PaxNonFixedColumn::GetRangeBuffer(size_t start_pos,
+                                                            size_t len) {
+  CBDB_CHECK((start_pos + len) <= GetNonNullRows() && len > 0,
+             cbdb::CException::ExType::kExTypeOutOfRange);
+  size_t range_len = 0;
+
+  for (size_t i = start_pos; i < start_pos + len; i++) {
+    range_len += (*lengths_)[i];
+  }
+
+  if (GetNonNullRows() == 0) {
+    Assert(range_len == 0);
+    return std::make_pair(data_->GetBuffer(), 0);
+  }
+
+  Assert(start_pos < offsets_.size());
+  return std::make_pair(data_->GetBuffer() + offsets_[start_pos], range_len);
 }
 
 bool PaxNonFixedColumn::IsMemTakeOver() const {

@@ -29,9 +29,11 @@ class PaxColumns : public PaxColumn {
 
   void Set(DataBuffer<char> *data);
 
-  size_t EstimatedSize() const override;
+  size_t PhysicalSize() const override;
 
   int64 GetOriginLength() const override;
+
+  int32 GetTypeLength() const override;
 
   // Get number of column in columns
   virtual size_t GetColumns() const;
@@ -41,6 +43,9 @@ class PaxColumns : public PaxColumn {
 
   // Get the combine buffer of single column
   std::pair<char *, size_t> GetBuffer(size_t position) override;
+
+  std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
+                                           size_t len) override;
 
   size_t GetNonNullRows() const override;
 

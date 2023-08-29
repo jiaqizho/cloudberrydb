@@ -26,8 +26,8 @@ PaxColumns::PaxColumns(
         encoding_option.is_sign = false;
         encoding_option.compress_lvl = column_encoding_types[i];
 
-        auto pax_non_fixed_column = 
-          new PaxNonFixedEncodingColumn(DEFAULT_CAPACITY, std::move(encoding_option));
+        auto pax_non_fixed_column = new PaxNonFixedEncodingColumn(
+            DEFAULT_CAPACITY, std::move(encoding_option));
         // current memory will copy from tuple, so should take over it
         pax_non_fixed_column->SetMemTakeOver(true);
         columns_.emplace_back(pax_non_fixed_column);
@@ -110,10 +110,14 @@ size_t PaxColumns::GetNonNullRows() const {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
-size_t PaxColumns::EstimatedSize() const {
+int32 PaxColumns::GetTypeLength() const {
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+}
+
+size_t PaxColumns::PhysicalSize() const {
   size_t total_size = 0;
   for (auto column : columns_) {
-    if (column) total_size += column->EstimatedSize();
+    if (column) total_size += column->PhysicalSize();
   }
   return total_size;
 }
@@ -141,6 +145,11 @@ std::pair<char *, size_t> PaxColumns::GetBuffer(size_t position) {
   } else {
     return std::make_pair(nullptr, 0);
   }
+}
+
+std::pair<char *, size_t> PaxColumns::GetRangeBuffer(size_t /*start_pos*/,
+                                                     size_t /*len*/) {
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
 DataBuffer<char> *PaxColumns::GetDataBuffer(

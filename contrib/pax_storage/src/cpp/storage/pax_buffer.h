@@ -153,6 +153,9 @@ class DataBuffer : public BlockBufferBase {
 
   void Set(char *ptr, size_t size) override;
 
+  // Reset the DataBuffer
+  void Reset();
+
   // Direct write a element into available buffer
   // Should call `Brush` after write
   virtual void Write(T value);
@@ -196,6 +199,7 @@ class DataBuffer : public BlockBufferBase {
 extern template class DataBuffer<char>;
 extern template class DataBuffer<int8>;
 extern template class DataBuffer<int16>;
+extern template class DataBuffer<uint32>;
 extern template class DataBuffer<int32>;
 extern template class DataBuffer<int64>;
 extern template class DataBuffer<float>;

@@ -56,12 +56,15 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
 
   auto iter = MicroPartitionInfoIterator::New(relation, snapshot);
   if (filter && filter->HasMicroPartitionFilter()) {
-    auto wrap = new FilterIterator<MicroPartitionMetadata>(std::move(iter), [filter, relation](const auto &x) {
-      return filter->TestMicroPartitionScan(x.GetStats(), RelationGetDescr(relation));
-    });
+    auto wrap = new FilterIterator<MicroPartitionMetadata>(
+        std::move(iter), [filter, relation](const auto &x) {
+          return filter->TestMicroPartitionScan(x.GetStats(),
+                                                RelationGetDescr(relation));
+        });
     iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap);
   }
-  desc->reader_ = new TableReader(micro_partition_reader, std::move(iter), reader_options);
+  desc->reader_ =
+      new TableReader(micro_partition_reader, std::move(iter), reader_options);
   desc->reader_->Open();
 
   MemoryContextSwitchTo(old_ctx);
@@ -110,7 +113,8 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
   if (!found) cols[0] = true;
 
   // The `cols` life cycle will be bound to `PaxFilter`
-  filter->SetColumnProjection(cols);
+  filter->SetColumnProjection(cols, natts);
+
   {
     ScanKey scan_keys = nullptr;
     int n_scan_keys = 0;
