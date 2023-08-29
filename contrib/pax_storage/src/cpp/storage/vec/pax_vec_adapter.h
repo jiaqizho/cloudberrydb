@@ -1,0 +1,57 @@
+#pragma once
+
+#ifdef VEC_BUILD
+
+#include "storage/columns/pax_column.h"
+#include "storage/columns/pax_columns.h"
+#include "storage/micro_partition.h"
+
+// TODO(jiaqizho) : after vec define this value to cbdb,
+// then read the GUC value
+#define VEC_BATCH_LENGTH (16384)
+#define MEMORY_ALIGN_SIZE (8)
+
+namespace pax {
+
+class VecAdapter final {
+ public:
+  struct VecBatchBuffer {
+    DataBuffer<char> vec_buffer;
+    DataBuffer<char> null_bits_buffer;
+    DataBuffer<int32> offset_buffer;
+    size_t null_counts;
+
+    VecBatchBuffer();
+
+    void Reset();
+
+    void SetMemoryTakeOver(bool take);
+  };
+
+  explicit VecAdapter(TupleDesc tuple_desc);
+
+  ~VecAdapter();
+
+  void SetDataSource(PaxColumns *columns);
+
+  bool IsInitialized() const;
+
+  bool IsEnd() const;
+
+  bool AppendToVecBuffer();
+
+  size_t FlushVecBuffer(CTupleSlot *cslot);
+
+ private:
+  TupleDesc rel_tuple_desc_;
+  size_t cached_batch_lens_;
+  VecBatchBuffer *vec_cache_buffer_;
+  int vec_cache_buffer_lens_;
+
+  PaxColumns *process_columns_;
+  size_t current_cached_pax_columns_index_;
+};
+
+}  // namespace pax
+
+#endif  // #ifdef VEC_BUILD

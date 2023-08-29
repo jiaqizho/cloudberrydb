@@ -127,8 +127,7 @@ TableReader::TableReader(
       is_empty_(true),
       reader_options_(options),
       table_no_(0),
-      table_index_(0) {
-}
+      table_index_(0) {}
 
 TableReader::~TableReader() {
   if (reader_) {
@@ -163,8 +162,11 @@ void TableReader::Close() {
   if (is_empty_) {
     return;
   }
-  Assert(reader_);
-  reader_->Close();
+
+  if (reader_) {
+    reader_->Close();
+    reader_ = nullptr;
+  }
 }
 
 bool TableReader::ReadTuple(CTupleSlot *slot) {
@@ -187,6 +189,59 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
   slot->StoreVirtualTuple();
   return true;
 }
+
+#ifdef VEC_BUILD
+// TODO(jiaqizho): should remove this method but provider a
+// new mirco partition reader which include adapter
+bool TableReader::ReadVecTuple(CTupleSlot *slot, VecAdapter *adapter) {
+  size_t flush_nums_of_rows = 0;
+
+  if (is_empty_) {
+    return false;
+  }
+
+  // Three conditions indicate that there is no data left
+  // - `VecAdapter` must be set
+  // - `VecAdapter` has consumed all buffer data
+  // - current have not next reader
+  if (adapter->IsInitialized() && adapter->IsEnd() && !iterator_->HasNext()) {
+    return false;
+  }
+
+  Assert(reader_);
+
+  // `No set` means that the first reader not setup in apapter
+  if (!adapter->IsInitialized()) {
+    PaxColumns *pax_columns =
+        reinterpret_cast<OrcIteratorReader *>(reader_)->GetAllColumns();
+    adapter->SetDataSource(pax_columns);
+  }
+
+  // `VecAdapter` has consumed all buffer data
+  if (adapter->IsEnd()) {
+    if (iterator_->HasNext()) {
+      reader_->Close();
+      OpenFile();
+
+      PaxColumns *pax_columns =
+          reinterpret_cast<OrcIteratorReader *>(reader_)->GetAllColumns();
+      adapter->SetDataSource(pax_columns);
+    }
+  }
+
+  auto ok = adapter->AppendToVecBuffer();
+  CBDB_CHECK(ok, cbdb::CException::ExType::kExTypeLogicError);
+
+  flush_nums_of_rows = adapter->FlushVecBuffer(slot);
+  Assert(flush_nums_of_rows);
+
+  num_tuples_ += flush_nums_of_rows;
+  slot->SetTableNo(table_no_);
+  slot->SetBlockNumber(current_block_number_);
+  slot->StoreVirtualTuple();
+  return true;
+}
+#endif  // VEC_BUILD
 
 void TableReader::OpenFile() {
   Assert(iterator_->HasNext());

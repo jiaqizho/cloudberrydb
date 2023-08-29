@@ -56,4 +56,17 @@ else()
   SET(BUILD_GTEST OFF)
 endif(ENBALE_DEBUG)
 
+# Vec options
+option(VEC_BUILD "Build pax vectorization version" OFF)
+set(VEC_HOME "" CACHE STRING "Path to vectorization home")
+if (VEC_BUILD)
+
+if("${VEC_HOME}" STREQUAL "")
+  message(FATAL_ERROR "No found vectorization home setting. Using -DVEC_HOME to spec vectorization home")
+endif()
+
+set(CBDB_ROOT_INCLUDE_DIR ${PG_INCLUDEDIR})
+ADD_DEFINITIONS(-DVEC_BUILD)
+
+endif(VEC_BUILD)
 add_subdirectory(src/cpp)

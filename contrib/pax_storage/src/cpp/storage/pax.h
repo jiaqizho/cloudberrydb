@@ -19,6 +19,10 @@
 #include "storage/paxc_block_map_manager.h"
 #include "storage/strategy.h"
 
+#ifdef VEC_BUILD
+#include "storage/vec/pax_vec_adapter.h"
+#endif
+
 namespace pax {
 
 class TableWriter {
@@ -79,6 +83,11 @@ class TableReader final {
   void ReOpen();
 
   void Close();
+
+#ifdef VEC_BUILD
+  // std::unique_ptr<VecAdapter> here ?
+  bool ReadVecTuple(CTupleSlot *slot, VecAdapter *adapter);
+#endif
 
   bool ReadTuple(CTupleSlot *slot);
 
