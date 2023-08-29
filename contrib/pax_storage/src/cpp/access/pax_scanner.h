@@ -4,7 +4,9 @@
 
 #include "storage/pax.h"
 #include "storage/pax_filter.h"
-
+#ifdef VEC_BUILD
+#include "storage/vec/pax_vec_adapter.h"
+#endif
 namespace pax {
 
 class PaxScanDesc {
@@ -62,6 +64,9 @@ class PaxScanDesc {
 
   // filter used to do column projection
   PaxFilter *filter_ = nullptr;
+#ifdef VEC_BUILD
+  VecAdapter *vec_adapter_ = nullptr;
+#endif
 };  // class PaxScanDesc
 
 }  // namespace pax

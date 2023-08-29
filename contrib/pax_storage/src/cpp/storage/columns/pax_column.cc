@@ -333,7 +333,7 @@ std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetRangeBuffer(size_t start_pos,
                                                             size_t len) {
-  CBDB_CHECK((start_pos + len) <= GetNonNullRows() && len > 0,
+  CBDB_CHECK((start_pos + len) <= GetNonNullRows() && len >= 0,
              cbdb::CException::ExType::kExTypeOutOfRange);
   size_t range_len = 0;
 
