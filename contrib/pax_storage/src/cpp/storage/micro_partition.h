@@ -2,9 +2,9 @@
 
 #include "comm/cbdb_api.h"
 
+#include <stddef.h>
 
 #include <functional>
-#include <stddef.h>
 #include <stdexcept>
 #include <string>
 
@@ -34,8 +34,6 @@ class CTupleSlot {
   TupleDesc GetTupleDesc() const;
 
   TupleTableSlot *GetTupleTableSlot() const;
-
-  int GetTupleTableColumnsNum();
 
  private:
   TupleTableSlot *slot_;
@@ -71,7 +69,7 @@ class MicroPartitionWriter {
 
   // estimated size of the writing size, used to determine
   // whether to switch to another micro partition.
-  virtual size_t EstimatedSize() const = 0;
+  virtual size_t PhysicalSize() const = 0;
 
   // append tuple to the current micro partition file
   // return the number of tuples the current micro partition has written

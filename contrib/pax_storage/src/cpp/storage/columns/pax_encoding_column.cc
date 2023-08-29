@@ -134,6 +134,13 @@ void PaxEncodingColumn<T>::Set(DataBuffer<T> *data) {
       shared_data_->Brush(d_size);
     }
 
+    // FIXME(jiaqizho): DataBuffer copy should change to ptr copy
+    // Then we don't need update back `data_`
+    PaxCommColumn<T>::data_->Reset();
+    PaxCommColumn<T>::data_->Set(shared_data_->Start(),
+                                 shared_data_->Capacity(), 0);
+    PaxCommColumn<T>::data_->Brush(shared_data_->Used());
+
     Assert(!data->IsMemTakeOver());
     delete data;
   } else {
@@ -143,11 +150,10 @@ void PaxEncodingColumn<T>::Set(DataBuffer<T> *data) {
 
 template <typename T>
 std::pair<char *, size_t> PaxEncodingColumn<T>::GetBuffer(size_t position) {
-  if (encoder_) {
-    encoder_->Flush();
-  }
+  CBDB_CHECK(!encoder_, cbdb::CException::ExType::kExTypeLogicError);
 
-  if (shared_data_) {
+  if (decoder_) {
+    Assert(shared_data_);
     CBDB_CHECK(position < shared_data_->Used() / sizeof(T),
                cbdb::CException::ExType::kExTypeOutOfRange);
 
@@ -196,6 +202,22 @@ std::pair<char *, size_t> PaxEncodingColumn<T>::GetBuffer() {
 }
 
 template <typename T>
+std::pair<char *, size_t> PaxEncodingColumn<T>::GetRangeBuffer(size_t start_pos,
+                                                               size_t len) {
+  CBDB_CHECK(!encoder_, cbdb::CException::ExType::kExTypeLogicError);
+
+  if (decoder_) {
+    Assert(shared_data_);
+    CBDB_CHECK((start_pos + len) <= GetNonNullRows(),
+               cbdb::CException::ExType::kExTypeOutOfRange);
+    return std::make_pair(shared_data_->Start() + (sizeof(T) * start_pos),
+                          sizeof(T) * len);
+  }
+
+  return PaxCommColumn<T>::GetRangeBuffer(start_pos, len);
+}
+
+template <typename T>
 void PaxEncodingColumn<T>::Append(char *buffer, size_t size) {
   Assert(size == sizeof(T));
   if (encoder_) {
@@ -222,11 +244,26 @@ int64 PaxEncodingColumn<T>::GetOriginLength() const {
 
 template <typename T>
 size_t PaxEncodingColumn<T>::GetNonNullRows() const {
+  if (decoder_) {
+    // must be decoded
+    Assert(shared_data_);
+    return shared_data_->Used() / sizeof(T);
+  }
+
   if (encoder_) {
     return non_null_rows_;
   }
 
   return PaxCommColumn<T>::GetNonNullRows();
+}
+
+template <typename T>
+size_t PaxEncodingColumn<T>::PhysicalSize() const {
+  if (shared_data_) {
+    return shared_data_->Used();
+  }
+
+  return PaxCommColumn<T>::PhysicalSize();
 }
 
 template class PaxEncodingColumn<int8>;

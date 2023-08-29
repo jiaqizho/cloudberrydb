@@ -23,6 +23,11 @@ class PaxNonFixedEncodingColumn final : public PaxNonFixedColumn {
 
   int64 GetOriginLength() const override;
 
+  // The reason why `PaxNonFixedEncodingColumn` not override the
+  // method `GetRangeBuffer` and `GetNonNullRows` is that
+  // `PaxNonFixedEncodingColumn` don't have any streaming encoding, also
+  // `shared_data_` will own the same buffer with `PaxNonFixedColumn::data_`.
+
  protected:
   PaxEncoder::EncodingOption encoder_options_;
   PaxDecoder::DecodingOption decoder_options_;

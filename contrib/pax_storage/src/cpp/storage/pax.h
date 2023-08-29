@@ -7,12 +7,12 @@
 #include <string>
 #include <utility>
 
-#include "storage/micro_partition_metadata.h"
 #include "comm/bitmap.h"
 #include "comm/iterator.h"
 #include "storage/file_system.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
+#include "storage/micro_partition_metadata.h"
 #include "storage/orc/orc.h"
 #include "storage/pax_block_id.h"
 #include "storage/pax_filter.h"
@@ -84,7 +84,9 @@ class TableReader final {
 
   // deprecate:
   // DON'T USE, this function will be removed
-  const std::string &GetCurrentMicroPartitionId() const { return micro_partition_id_; }
+  const std::string &GetCurrentMicroPartitionId() const {
+    return micro_partition_id_;
+  }
 
  private:
   void OpenFile();

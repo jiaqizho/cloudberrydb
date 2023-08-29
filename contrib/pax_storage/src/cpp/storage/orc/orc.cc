@@ -53,7 +53,8 @@ OrcWriter::~OrcWriter() {
   delete file_;
 }
 
-MicroPartitionWriter *OrcWriter::SetStatsCollector(MicroPartitionStats *mpstats) {
+MicroPartitionWriter *OrcWriter::SetStatsCollector(
+    MicroPartitionStats *mpstats) {
   if (mpstats)
     mpstats->SetStatsMessage(&summary_.mp_stats, column_types_.size());
   return MicroPartitionWriter::SetStatsCollector(mpstats);
@@ -261,9 +262,7 @@ void OrcWriter::Close() {
   }
 }
 
-size_t OrcWriter::EstimatedSize() const {
-  return pax_columns_->EstimatedSize();
-}
+size_t OrcWriter::PhysicalSize() const { return pax_columns_->PhysicalSize(); }
 
 void OrcWriter::InitStripe() {
   stripe_info_.set_offset(current_offset_);
@@ -339,7 +338,8 @@ OrcReader::OrcReader(File *file)
       reused_buffer_(nullptr),
       working_pax_columns_(nullptr),
       num_of_stripes_(0),
-      proj_map_(nullptr) {
+      proj_map_(nullptr),
+      proj_len_(0) {
   size_t file_length = file_->FileLength();
   uint64 post_script_len = 0;
 
@@ -360,6 +360,25 @@ OrcReader::OrcReader(File *file)
 }
 
 OrcReader::~OrcReader() { delete file_; }
+
+PaxColumns *OrcReader::GetAllColumns() {
+  Assert(GetNumberOfStripes() == 1);
+
+  if (!working_pax_columns_) {
+    working_pax_columns_ =
+        ReadStripe(current_stripe_index_++, proj_map_, proj_len_);
+    current_row_index_ = 0;
+    for (size_t i = 0; i < column_types_.size(); i++) {
+      current_nulls_[i] = 0;
+      auto column = (*working_pax_columns_)[i];
+      if (column) {
+        Assert(column->GetBuffer().first);
+      }
+    }
+  }
+
+  return working_pax_columns_;
+}
 
 void OrcReader::ReadMetadata(ssize_t file_length, uint64 post_script_len) {
   uint64 meta_len = post_script_.metadatalength();
@@ -832,7 +851,9 @@ OrcReader::StripeInformation *OrcReader::GetStripeInfo(size_t index) const {
 size_t OrcReader::GetNumberOfStripes() const { return num_of_stripes_; }
 
 void OrcReader::Open(const ReaderOptions &options) {
-  if (options.filter) proj_map_ = options.filter->GetColumnProjection();
+  Assert(!proj_map_ && !proj_len_);
+  if (options.filter)
+    std::tie(proj_map_, proj_len_) = options.filter->GetColumnProjection();
 }
 
 void OrcReader::ResetCurrentReading() {
@@ -866,7 +887,6 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
 
   while (true) {
     nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
-
     if (!working_pax_columns_) {
       // no data remain
       if (current_stripe_index_ >= GetNumberOfStripes()) {
@@ -874,7 +894,7 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
       }
 
       working_pax_columns_ =
-          ReadStripe(current_stripe_index_++, proj_map_, nattrs);
+          ReadStripe(current_stripe_index_++, proj_map_, proj_len_);
       current_row_index_ = 0;
       for (size_t i = 0; i < column_types_.size(); i++) {
         current_nulls_[i] = 0;

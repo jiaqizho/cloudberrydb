@@ -40,6 +40,7 @@ class CException {
     kExTypeOutOfRange,
     kExTypeFileOperationError,
     kExTypeCompressError,
+    kExTypeArrowExportError,
   };
 
   explicit CException(ExType extype);
