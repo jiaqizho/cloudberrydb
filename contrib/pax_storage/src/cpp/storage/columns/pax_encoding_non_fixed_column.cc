@@ -74,6 +74,13 @@ void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
       shared_data_->Brush(d_size);
     }
 
+    // FIXME(jiaqizho): DataBuffer copy should change to ptr copy
+    // Then we don't need update back `data_`
+    PaxNonFixedColumn::data_->Reset();
+    PaxNonFixedColumn::data_->Set(shared_data_->Start(),
+                                  shared_data_->Capacity(), 0);
+    PaxNonFixedColumn::data_->Brush(shared_data_->Used());
+
     Assert(!data->IsMemTakeOver());
     delete data;
   } else {

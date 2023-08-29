@@ -53,35 +53,49 @@ class PaxColumn {
   // Get buffer by position
   virtual std::pair<char *, size_t> GetBuffer(size_t position) = 0;
 
+  // Get buffer by range [start_pos, start_pos + len)
+  virtual std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
+                                                   size_t len) = 0;
+
   // Get all rows number(contain null) from column
   virtual size_t GetRows();
 
   // Get rows number(not null) from column
   virtual size_t GetNonNullRows() const = 0;
 
+  // Get all rows number(not null) from column by range [start_pos, start_pos +
+  // len)
+  virtual size_t GetRangeNonNullRows(size_t start_pos, size_t len);
+
   // Append new filed into current column
-  virtual void Append(char *buffer, size_t size) = 0;
-
-  // Contain null filed or not
-  virtual bool HasNull();
-
-  // Set null bitmap
-  virtual void SetNulls(DataBuffer<bool> *null_bitmap);
-
-  // Get null bitmaps
-  DataBuffer<bool> *GetNulls() const;
+  virtual void Append(char *buffer, size_t size);
 
   // Append a null filed into last position
   virtual void AppendNull();
 
   // Estimated memory size from current column
-  virtual size_t EstimatedSize() const = 0;
+  virtual size_t PhysicalSize() const = 0;
 
   // Get current encoding type
   virtual ColumnEncoding_Kind GetEncodingType() const;
 
   // Get the data size without encoding/compress
   virtual int64 GetOriginLength() const = 0;
+
+  // Get the type length, if non-fixed, will return -1
+  virtual int32 GetTypeLength() const = 0;
+
+  // Contain null filed or not
+  bool HasNull();
+
+  // Set null bitmap
+  void SetNulls(DataBuffer<bool> *null_bitmap);
+
+  // Get null bitmaps
+  DataBuffer<bool> *GetNulls() const;
+
+  // Get bull bitmaps by range [start_pos, start_pos + len)
+  std::pair<bool *, size_t> GetRangeNulls(size_t start_pos, size_t len);
 
  protected:
   // null field bit map
@@ -115,15 +129,20 @@ class PaxCommColumn : public PaxColumn {
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 
+  std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
+                                           size_t len) override;
+
   size_t GetNonNullRows() const override;
 
   void Clear() override;
 
-  size_t EstimatedSize() const override;
+  size_t PhysicalSize() const override;
 
   int64 GetOriginLength() const override;
 
   std::pair<char *, size_t> GetBuffer() override;
+
+  int32 GetTypeLength() const override;
 
  protected:
   virtual void ReSize(uint64 capacity);
@@ -160,11 +179,16 @@ class PaxNonFixedColumn : public PaxColumn {
 
   std::pair<char *, size_t> GetBuffer() override;
 
-  size_t EstimatedSize() const override;
+  size_t PhysicalSize() const override;
 
   int64 GetOriginLength() const override;
 
+  int32 GetTypeLength() const override;
+
   std::pair<char *, size_t> GetBuffer(size_t position) override;
+
+  std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
+                                           size_t len) override;
 
   size_t GetNonNullRows() const override;
 

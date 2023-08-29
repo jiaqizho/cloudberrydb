@@ -89,6 +89,13 @@ void DataBuffer<T>::Set(char *ptr, size_t size) {
 }
 
 template <typename T>
+void DataBuffer<T>::Reset() {
+  Assert(!mem_take_over_);
+  BlockBufferBase::Set(nullptr, 0);
+  data_buffer_ = nullptr;
+}
+
+template <typename T>
 void DataBuffer<T>::Write(T value) {
   Assert(block_pos_ + sizeof(T) <= block_buffer_.End());
   *(reinterpret_cast<T *>(block_pos_)) = value;
@@ -168,6 +175,7 @@ void DataBuffer<T>::Clear() {
 template class DataBuffer<char>;
 template class DataBuffer<int8>;
 template class DataBuffer<int16>;
+template class DataBuffer<uint32>;
 template class DataBuffer<int32>;
 template class DataBuffer<int64>;
 template class DataBuffer<float>;

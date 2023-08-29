@@ -185,20 +185,25 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
 
 namespace pax {
 
-bool BuildScanKeys(Relation rel, List *quals, bool isorderby, ScanKey *scan_keys,
-                   int *num_scan_keys) {
+bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
+                   ScanKey *scan_keys, int *num_scan_keys) {
   CBDB_WRAP_START;
-  { return paxc::BuildScanKeys(rel, quals, isorderby, scan_keys, num_scan_keys); }
+  {
+    return paxc::BuildScanKeys(rel, quals, isorderby, scan_keys, num_scan_keys);
+  }
   CBDB_WRAP_END;
 }
 
-PaxFilter::~PaxFilter() {
-  delete[] proj_;
+PaxFilter::~PaxFilter() { delete[] proj_; }
+
+std::pair<bool *, size_t> PaxFilter::GetColumnProjection() {
+  return std::make_pair(proj_, proj_len_);
 }
 
-bool *PaxFilter::GetColumnProjection() { return proj_; }
-
-void PaxFilter::SetColumnProjection(bool *proj) { proj_ = proj; }
+void PaxFilter::SetColumnProjection(bool *proj, size_t proj_len) {
+  proj_ = proj;
+  proj_len_ = proj_len;
+}
 
 void PaxFilter::SetScanKeys(ScanKey scan_keys, int num_scan_keys) {
   Assert(num_scan_keys_ == 0);
@@ -233,7 +238,7 @@ static inline bool CheckNullKey(
 }
 
 static inline bool CheckProcid(const ::pax::stats::MinmaxStatistics &minmax,
-                                StrategyNumber strategy, Oid procid) {
+                               StrategyNumber strategy, Oid procid) {
   switch (strategy) {
     case BTLessStrategyNumber:
       return minmax.proclt() == procid;
@@ -252,7 +257,7 @@ static inline bool CheckProcid(const ::pax::stats::MinmaxStatistics &minmax,
 }
 
 static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
-                         ScanKey scan_key, Form_pg_attribute attr) {
+                              ScanKey scan_key, Form_pg_attribute attr) {
   Oid procid;
   FmgrInfo finfo;
   Datum datum;
@@ -270,7 +275,8 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
                                                 scan_key->sk_strategy);
       if (!ok || !CheckProcid(minmax, scan_key->sk_strategy, procid))
         return true;
-      datum = pax::MicroPartitionStats::FromValue(minmax.minimal(), typlen, typbyval, &ok);
+      datum = pax::MicroPartitionStats::FromValue(minmax.minimal(), typlen,
+                                                  typbyval, &ok);
       CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
       matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
       break;
@@ -280,7 +286,8 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
                                                 BTLessEqualStrategyNumber);
       if (!ok || !CheckProcid(minmax, BTLessEqualStrategyNumber, procid))
         return true;
-      datum = pax::MicroPartitionStats::FromValue(minmax.minimal(), typlen, typbyval, &ok);
+      datum = pax::MicroPartitionStats::FromValue(minmax.minimal(), typlen,
+                                                  typbyval, &ok);
       CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
       matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
 
@@ -292,7 +299,8 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
                                            BTGreaterEqualStrategyNumber);
       if (!ok || !CheckProcid(minmax, BTGreaterEqualStrategyNumber, procid))
         return true;
-      datum = pax::MicroPartitionStats::FromValue(minmax.maximum(), typlen, typbyval, &ok);
+      datum = pax::MicroPartitionStats::FromValue(minmax.maximum(), typlen,
+                                                  typbyval, &ok);
       CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
       matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
       break;
@@ -303,7 +311,8 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
                                                 scan_key->sk_strategy);
       if (!ok || !CheckProcid(minmax, scan_key->sk_strategy, procid))
         return true;
-      datum = pax::MicroPartitionStats::FromValue(minmax.maximum(), typlen, typbyval, &ok);
+      datum = pax::MicroPartitionStats::FromValue(minmax.maximum(), typlen,
+                                                  typbyval, &ok);
       CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
       matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
       break;

@@ -215,19 +215,22 @@ void CException::Raise(const char *filename, int lineno, ExType extype) {
 
 void CException::ReRaise(CException ex) { Raise(ex, true); }
 
-const char *CException::exception_names[] = {"Invalid ExType",
-                                             "Not implements in cpp",
-                                             "Assert Failure",
-                                             "Abort",
-                                             "Out of Memory",
-                                             "IO Error",
-                                             "C ERROR",
-                                             "Logic ERROR",
-                                             "Invalid memory operation",
-                                             "Schema not match",
-                                             "Invalid orc format",
-                                             "Out of range",
-                                             "File operation got error",
-                                             "Compress got errors"};
+const char *CException::exception_names[] = {
+    "Invalid ExType",
+    "Not implements in cpp",
+    "Assert Failure",
+    "Abort",
+    "Out of Memory",
+    "IO Error",
+    "C ERROR",
+    "Logic ERROR",
+    "Invalid memory operation",
+    "Schema not match",
+    "Invalid orc format",
+    "Out of range",
+    "File operation got error",
+    "Compress got errors",
+    "Arrow export got errors",
+};
 
 }  // namespace cbdb
