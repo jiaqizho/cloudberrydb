@@ -1,13 +1,14 @@
 #pragma once
-
 #include "comm/cbdb_api.h"
+
+#include <utility>
 
 namespace pax {
 namespace stats {
 class MicroPartitionStatisticsInfo;
 }
-bool BuildScanKeys(Relation rel, List *quals, bool isorderby, ScanKey *scan_keys,
-                   int *num_scan_keys);
+bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
+                   ScanKey *scan_keys, int *num_scan_keys);
 
 class PaxFilter final {
  public:
@@ -17,14 +18,15 @@ class PaxFilter final {
 
   bool HasMicroPartitionFilter() const { return num_scan_keys_ > 0; }
 
-  bool *GetColumnProjection();
+  std::pair<bool *, size_t> GetColumnProjection();
 
-  void SetColumnProjection(bool *proj);
+  void SetColumnProjection(bool *proj, size_t proj_len);
 
   void SetScanKeys(ScanKey scan_keys, int num_scan_keys);
 
-  // true: if failed to filter the whole micro-partition, reader SHOULD scan the tuples
-  // false: if success to filter the micro-partition, the whole micro-partition SHOULD be ignored.
+  // true: if failed to filter the whole micro-partition, reader SHOULD scan the
+  // tuples false: if success to filter the micro-partition, the whole
+  // micro-partition SHOULD be ignored.
   inline bool TestMicroPartitionScan(
       const pax::stats::MicroPartitionStatisticsInfo &stats,
       TupleDesc desc) const {
@@ -46,6 +48,7 @@ class PaxFilter final {
 
   // column projection
   bool *proj_ = nullptr;
+  size_t proj_len_ = 0;
 };  // class PaxFilter
 
 }  // namespace pax

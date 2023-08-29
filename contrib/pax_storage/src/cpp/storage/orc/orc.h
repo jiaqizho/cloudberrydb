@@ -42,8 +42,9 @@ class OrcWriter : public MicroPartitionWriter {
 
   void Close() override;
 
-  MicroPartitionWriter *SetStatsCollector(MicroPartitionStats *mpstats) override;
-  size_t EstimatedSize() const override;
+  MicroPartitionWriter *SetStatsCollector(
+      MicroPartitionStats *mpstats) override;
+  size_t PhysicalSize() const override;
 
   // TODO(jiaqizho): using pg type mapping to replace fixed one
   // typlen + typname -> orc type id
@@ -208,6 +209,8 @@ class OrcReader : public MicroPartitionReader {
   // footer information
   explicit OrcReader(File *file);
 
+  PaxColumns *GetAllColumns();
+
 #ifndef RUN_GTEST
  protected:  // NOLINT
 #endif
@@ -249,6 +252,7 @@ class OrcReader : public MicroPartitionReader {
 
   size_t num_of_stripes_;
   bool *proj_map_;
+  size_t proj_len_;
 };
 
 class OrcIteratorReader final : public MicroPartitionReader {
@@ -268,6 +272,11 @@ class OrcIteratorReader final : public MicroPartitionReader {
   size_t Length() const override;
 
   void SetReadBuffer(DataBuffer<char> *reused_buffer) override;
+
+  // FIXME(jiaqizho): combine it in readtuple
+  PaxColumns *GetAllColumns() {
+    return reinterpret_cast<OrcReader *>(reader_)->GetAllColumns();
+  }
 
  private:
   std::string block_id_;

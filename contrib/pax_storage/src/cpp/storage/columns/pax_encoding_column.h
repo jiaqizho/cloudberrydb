@@ -25,9 +25,14 @@ class PaxEncodingColumn : public PaxCommColumn<T> {
 
   std::pair<char *, size_t> GetBuffer() override;
 
+  std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
+                                           size_t len) override;
+
   size_t GetNonNullRows() const override;
 
   int64 GetOriginLength() const override;
+
+  size_t PhysicalSize() const override;
 
  protected:
   void InitEncoder();

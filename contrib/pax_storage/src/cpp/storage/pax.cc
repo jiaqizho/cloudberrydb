@@ -28,8 +28,7 @@ static std::string GenRandomBlockId() {
 }
 
 TableWriter::TableWriter(Relation relation)
-    : relation_(relation),
-      summary_callback_(nullptr) {}
+    : relation_(relation), summary_callback_(nullptr) {}
 
 TableWriter *TableWriter::SetWriteSummaryCallback(
     WriteSummaryCallback callback) {
@@ -47,7 +46,7 @@ TableWriter *TableWriter::SetFileSplitStrategy(
 
 TableWriter *TableWriter::SetStatsCollector(MicroPartitionStats *mp_stats) {
   Assert(!mp_stats_);
-  Assert(!writer_); // must be set before the writer is created.
+  Assert(!writer_);  // must be set before the writer is created.
 
   mp_stats_ = mp_stats;
   return this;
@@ -105,8 +104,7 @@ void TableWriter::WriteTuple(CTupleSlot *slot) {
     this->Close();
     this->Open();
   }
-  if (mp_stats_)
-    mp_stats_->AddRow(slot->GetTupleTableSlot());
+  if (mp_stats_) mp_stats_->AddRow(slot->GetTupleTableSlot());
 
   writer_->WriteTuple(slot);
   ++num_tuples_;
