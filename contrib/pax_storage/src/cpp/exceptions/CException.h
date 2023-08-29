@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <string>
+
 namespace cbdb {
 
 #define DEFAULT_STACK_MAX_DEPTH 63
@@ -76,7 +77,7 @@ class CException {
 #define CBDB_RERAISE(ex) cbdb::CException::ReRaise(ex)
 #define CBDB_CHECK(check, ...) \
   do {                         \
-    if (unlikely(!(check))) {            \
+    if (unlikely(!(check))) {  \
       CBDB_RAISE(__VA_ARGS__); \
     }                          \
   } while (0)
