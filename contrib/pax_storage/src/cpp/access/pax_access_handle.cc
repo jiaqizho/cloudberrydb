@@ -36,17 +36,19 @@
 //    // specific exception handler
 //    error_message.Append("error message: %s", error_message.Message());
 // }
-// CBDB_CATCH_COMM();
 // CBDB_CATCH_DEFAULT();
 // CBDB_END_TRY();
 //
 // CBDB_CATCH_MATCH() is optional and can have several match pattern.
 
+cbdb::CException global_exception(cbdb::CException::kExTypeInvalid);
+
 // being of a try block w/o explicit handler
-#define CBDB_TRY()                               \
-  do {                                           \
-    bool internal_cbdb_try_throw_error_ = false; \
-    cbdb::ErrorMessage error_message;            \
+#define CBDB_TRY()                                          \
+  do {                                                      \
+    bool internal_cbdb_try_throw_error_ = false;            \
+    bool internal_cbdb_try_throw_error_with_stack_ = false; \
+    cbdb::ErrorMessage error_message;                       \
     try {
 // begin of a catch block
 #define CBDB_CATCH_MATCH(exception_decl) \
@@ -54,19 +56,19 @@
   catch (exception_decl) {               \
     internal_cbdb_try_throw_error_ = true;
 
-#define CBDB_CATCH_COMM()                            \
-  }                                                  \
-  catch (cbdb::CException & e) {                     \
-    internal_cbdb_try_throw_error_ = true;           \
-    elog(LOG, "\npax stack trace: \n%s", e.Stack()); \
-    ereport(ERROR, errmsg("%s", e.What().c_str()));
-
 // catch c++ exception and rethrow ERROR to C code
 // only used by the outer c++ code called by C
-#define CBDB_CATCH_DEFAULT() \
-  }                          \
-  catch (...) {              \
-    internal_cbdb_try_throw_error_ = true;
+#define CBDB_CATCH_DEFAULT()                          \
+  }                                                   \
+  catch (cbdb::CException & e) {                      \
+    internal_cbdb_try_throw_error_ = true;            \
+    internal_cbdb_try_throw_error_with_stack_ = true; \
+    elog(LOG, "\npax stack trace: \n%s", e.Stack());  \
+    global_exception = e;                             \
+  }                                                   \
+  catch (...) {                                       \
+    internal_cbdb_try_throw_error_ = true;            \
+    internal_cbdb_try_throw_error_with_stack_ = false;
 
 // like PG_FINALLY
 #define CBDB_FINALLY(...) \
@@ -77,14 +79,18 @@
     } while (0);
 
 // end of a try-catch block
-#define CBDB_END_TRY()                                     \
-  }                                                        \
-  if (internal_cbdb_try_throw_error_) {                    \
-    if (error_message.Length() == 0)                       \
-      error_message.Append("ERROR: %s", __func__);         \
-    ereport(ERROR, errmsg("%s", error_message.Message())); \
-  }                                                        \
-  }                                                        \
+#define CBDB_END_TRY()                                                \
+  }                                                                   \
+  if (internal_cbdb_try_throw_error_) {                               \
+    if (internal_cbdb_try_throw_error_with_stack_) {                  \
+      elog(LOG, "\npax stack trace: \n%s", global_exception.Stack()); \
+      ereport(ERROR, errmsg("%s", global_exception.What().c_str()));  \
+    }                                                                 \
+    if (error_message.Length() == 0)                                  \
+      error_message.Append("ERROR: %s", __func__);                    \
+    ereport(ERROR, errmsg("%s", error_message.Message()));            \
+  }                                                                   \
+  }                                                                   \
   while (0)
 
 bool AMOidIsPax(Oid am_oid) {
@@ -124,7 +130,6 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
     return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags,
                                   nullptr);
   }
-  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_END_TRY();
 
@@ -134,7 +139,6 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
 void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
   CBDB_TRY();
   { PaxScanDesc::EndScan(scan); }
-  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy PaxScanDesc?
@@ -212,9 +216,7 @@ void CCPaxAccessMethod::RelationCopyForCluster(
   Assert(RELATION_IS_PAX(old_heap));
   Assert(RELATION_IS_PAX(new_heap));
   CBDB_TRY();
-  {
-    pax::CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(old_heap, new_heap);
-  }
+  { pax::CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(old_heap, new_heap); }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
@@ -237,7 +239,6 @@ void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey /*key*/,
                                    bool /*allow_pagemode*/) {
   CBDB_TRY();
   { pax::PaxScanDesc::ReScan(scan); }
-  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
@@ -248,7 +249,6 @@ bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
                                         TupleTableSlot *slot) {
   CBDB_TRY();
   { return PaxScanDesc::ScanGetNextSlot(scan, slot); }
-  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy PaxScanDesc?
@@ -270,7 +270,6 @@ void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
     CPaxInserter::TupleInsert(relation, slot, cid, options, bistate);
     MemoryContextSwitchTo(old_ctx);
   }
-  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy CPaxInserter?
@@ -285,7 +284,6 @@ TM_Result CCPaxAccessMethod::TupleDelete(Relation relation, ItemPointer tid,
                                          bool /*changing_part*/) {
   CBDB_TRY();
   { return CPaxDeleter::DeleteTuple(relation, tid, cid, snapshot, tmfd); }
-
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
@@ -386,7 +384,6 @@ void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
     CPaxInserter::MultiInsert(relation, slots, ntuples, cid, options, bistate);
     MemoryContextSwitchTo(old_ctx);
   }
-  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy CPaxInserter?
@@ -404,7 +401,6 @@ void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
     // cause it just call dml finish
     pax::CPaxInserter::FinishBulkInsert(relation, options);
   }
-  CBDB_CATCH_COMM();
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({
       // FIXME: destroy CPaxInserter?
@@ -413,15 +409,27 @@ void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
 }
 
 void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
-  if (RELATION_IS_PAX(rel)) {
-    pax::CPaxDmlStateLocal::Instance()->InitDmlState(rel, operation);
+  if (!RELATION_IS_PAX(rel)) {
+    return;
   }
+
+  CBDB_TRY();
+  { pax::CPaxDmlStateLocal::Instance()->InitDmlState(rel, operation); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
 }
 
 void CCPaxAccessMethod::ExtDmlFini(Relation rel, CmdType operation) {
-  if (RELATION_IS_PAX(rel)) {
-    pax::CPaxDmlStateLocal::Instance()->FinishDmlState(rel, operation);
+  if (!RELATION_IS_PAX(rel)) {
+    return;
   }
+
+  CBDB_TRY();
+  { pax::CPaxDmlStateLocal::Instance()->FinishDmlState(rel, operation); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
 }
 
 }  // namespace pax
