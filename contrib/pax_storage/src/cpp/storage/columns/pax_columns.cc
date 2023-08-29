@@ -26,7 +26,7 @@ PaxColumns::PaxColumns(
         encoding_option.is_sign = false;
         encoding_option.compress_lvl = column_encoding_types[i];
 
-        auto pax_non_fixed_column = new PaxNonFixedEncodingColumn(
+        auto pax_non_fixed_column = new PaxNonFixedEncodingColumn(  //
             DEFAULT_CAPACITY, std::move(encoding_option));
         // current memory will copy from tuple, so should take over it
         pax_non_fixed_column->SetMemTakeOver(true);
@@ -76,7 +76,7 @@ PaxColumns::PaxColumns() : row_nums_(0) { data_ = new DataBuffer<char>(0); }
 
 PaxColumns::~PaxColumns() {
   for (auto column : columns_) {
-    if (column) delete column;
+    delete column;
   }
   delete data_;
 }

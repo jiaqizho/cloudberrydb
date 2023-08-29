@@ -41,8 +41,8 @@ PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
 }
 
 PaxNonFixedEncodingColumn::~PaxNonFixedEncodingColumn() {
-  if (compressor_) delete compressor_;
-  if (shared_data_) delete shared_data_;
+  delete compressor_;
+  delete shared_data_;
 }
 
 void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
