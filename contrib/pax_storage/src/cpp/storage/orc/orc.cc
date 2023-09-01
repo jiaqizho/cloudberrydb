@@ -14,6 +14,57 @@
 #include "storage/pax_filter.h"
 namespace pax {
 
+std::pair<std::vector<orc::proto::Type_Kind>, std::vector<ColumnEncoding_Kind>>
+OrcWriter::BuildSchema(const MicroPartitionWriter::WriterOptions &options) {
+  std::vector<orc::proto::Type_Kind> type_kinds;
+  std::vector<ColumnEncoding_Kind> encoding_types;
+  TupleDesc desc;
+
+  desc = options.desc;
+  Assert(desc);
+
+  for (int i = 0; i < desc->natts; i++) {
+    auto *attr = &desc->attrs[i];
+    if (attr->attbyval) {
+      switch (attr->attlen) {
+        case 1:
+          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_BYTE);
+          encoding_types.emplace_back(
+              ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
+          break;
+        case 2:
+          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_SHORT);
+          encoding_types.emplace_back(
+              ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
+          break;
+        case 4:
+          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+          encoding_types.emplace_back(
+              ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
+          break;
+        case 8:
+          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
+          // TODO: parse options
+          encoding_types.emplace_back(
+              ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2);
+          break;
+        default:
+          Assert(!"should not be here! pg_type which attbyval=true only have typlen of "
+                  "1, 2, 4, or 8");
+      }
+    } else {
+      Assert(attr->attlen > 0 || attr->attlen == -1);
+      type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+      encoding_types.emplace_back(
+          ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
+    }
+  }
+
+  Assert(type_kinds.size() == encoding_types.size());
+
+  return std::make_pair(type_kinds, encoding_types);
+}
+
 OrcWriter::OrcWriter(
     const MicroPartitionWriter::WriterOptions &orc_writer_options,
     const std::vector<orc::proto::Type_Kind> &column_types,
@@ -339,25 +390,8 @@ OrcReader::OrcReader(File *file)
       working_pax_columns_(nullptr),
       num_of_stripes_(0),
       proj_map_(nullptr),
-      proj_len_(0) {
-  size_t file_length = file_->FileLength();
-  uint64 post_script_len = 0;
-
-  file_->PRead(&post_script_len, ORC_POST_SCRIPT_SIZE,
-               (off_t)(file_length - ORC_POST_SCRIPT_SIZE));
-
-  ReadPostScript(file_length, post_script_len);
-
-  size_t footer_len = post_script_.footerlength();
-  size_t tail_len = ORC_POST_SCRIPT_SIZE + post_script_len + footer_len;
-  size_t footer_offset = file_length - tail_len;
-
-  ReadFooter(footer_offset, footer_len);
-  num_of_stripes_ = file_footer_.stripes_size();
-
-  if (post_script_.metadatalength() != 0)
-    ReadMetadata(file_length, post_script_len);
-}
+      proj_len_(0),
+      is_close_(true) {}
 
 OrcReader::~OrcReader() { delete file_; }
 
@@ -851,9 +885,59 @@ OrcReader::StripeInformation *OrcReader::GetStripeInfo(size_t index) const {
 size_t OrcReader::GetNumberOfStripes() const { return num_of_stripes_; }
 
 void OrcReader::Open(const ReaderOptions &options) {
+  size_t file_length = 0;
+  uint64 post_script_len = 0;
+
+  size_t footer_offset = 0;
+  size_t footer_len = 0;
+  size_t tail_len = 0;
+
+  Assert(file_);
+  Assert(is_close_);
+
+  // Must not open twice.
+  Assert(!reused_buffer_);
+  if (options.reused_buffer) {
+    CBDB_CHECK(options.reused_buffer->IsMemTakeOver(),
+               cbdb::CException::ExType::kExTypeLogicError);
+    options.reused_buffer->BrushBackAll();
+
+    reused_buffer_ = options.reused_buffer;
+  }
+
   Assert(!proj_map_ && !proj_len_);
   if (options.filter)
     std::tie(proj_map_, proj_len_) = options.filter->GetColumnProjection();
+
+  // Begin read footer
+
+  // TODO(jiaqizho):
+  // There is an optimization here, in standard ORC, A single ORC
+  // file will read
+  // follow these step:
+  // - read postscript size
+  // - read post script
+  // - read file footer
+  // - read meta if exist
+  // the footer information of a single ORC file needing cost 3-4 iops
+  // consider add a new filed after postscript size, contain the full size of
+  // footer information
+  file_length = file_->FileLength();
+  file_->PRead(&post_script_len, ORC_POST_SCRIPT_SIZE,
+               (off_t)(file_length - ORC_POST_SCRIPT_SIZE));
+
+  ReadPostScript(file_length, post_script_len);
+
+  footer_len = post_script_.footerlength();
+  tail_len = ORC_POST_SCRIPT_SIZE + post_script_len + footer_len;
+  footer_offset = file_length - tail_len;
+
+  ReadFooter(footer_offset, footer_len);
+  num_of_stripes_ = file_footer_.stripes_size();
+
+  if (post_script_.metadatalength() != 0)
+    ReadMetadata(file_length, post_script_len);
+  is_close_ = false;
 }
 
 void OrcReader::ResetCurrentReading() {
@@ -868,11 +952,15 @@ void OrcReader::ResetCurrentReading() {
 }
 
 void OrcReader::Close() {
-  Assert(current_nulls_);
+  if (is_close_) {
+    return;
+  }
+
   ResetCurrentReading();
   delete[] current_nulls_;
   current_nulls_ = nullptr;
   file_->Close();
+  is_close_ = true;
 }
 
 bool OrcReader::ReadTuple(CTupleSlot *cslot) {
@@ -1016,71 +1104,6 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
   cslot->SetOffset(current_offset_);
 
   return true;
-}
-
-uint64 OrcReader::Offset() const { return current_offset_; }
-
-void OrcReader::SetReadBuffer(DataBuffer<char> *reused_buffer) {
-  Assert(!reused_buffer_);
-  CBDB_CHECK(reused_buffer->IsMemTakeOver(),
-             cbdb::CException::ExType::kExTypeLogicError);
-  reused_buffer->BrushBackAll();
-
-  reused_buffer_ = reused_buffer;
-}
-
-size_t OrcReader::Length() const { return 0; }
-
-OrcIteratorReader::OrcIteratorReader(FileSystem *fs)
-    : MicroPartitionReader(fs), reader_(nullptr), reused_buffer_(nullptr) {}
-
-void OrcIteratorReader::Open(const ReaderOptions &options) {
-  File *file = file_system_->Open(options.file_name);
-  Assert(file != nullptr);
-  // last file should closed
-  Assert(reader_ == nullptr);
-
-  reader_ = OrcReader::CreateReader(file);
-  if (reused_buffer_) {
-    reader_->SetReadBuffer(reused_buffer_);
-  }
-  // TODO(jiaqizho): should remove OrcIteratorReader
-  // and create micro partition writer/reader by a builder.
-  // Then we won't pass the options to anywhere
-  reader_->Open(options);
-  closed_ = false;
-}
-
-void OrcIteratorReader::Close() {
-  if (closed_) {
-    return;
-  }
-  Assert(reader_);
-  reader_->Close();
-  delete reader_;
-  reader_ = nullptr;
-  closed_ = true;
-}
-
-uint64 OrcIteratorReader::Offset() const {
-  Assert(reader_);
-  return reader_->Offset();
-}
-
-bool OrcIteratorReader::ReadTuple(CTupleSlot *slot) {
-  Assert(reader_);
-  return reader_->ReadTuple(slot);
-}
-
-size_t OrcIteratorReader::Length() const {
-  // TODO(gongxun): get length from orc file
-  Assert(!"not implemented");
-  return 0;
-}
-
-void OrcIteratorReader::SetReadBuffer(DataBuffer<char> *reused_buffer) {
-  Assert(!reused_buffer_);
-  reused_buffer_ = reused_buffer;
 }
 
 }  // namespace pax

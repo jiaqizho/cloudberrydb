@@ -44,75 +44,12 @@ class OrcWriter : public MicroPartitionWriter {
 
   MicroPartitionWriter *SetStatsCollector(
       MicroPartitionStats *mpstats) override;
+
   size_t PhysicalSize() const override;
 
-  // TODO(jiaqizho): using pg type mapping to replace fixed one
-  // typlen + typname -> orc type id
-  //
-  // std::map<std::pair<int, const char *>, ::orc::proto::Type_Kind>
-  // type_mapping = {
-  //     {{-1, ""}, ::orc::proto::Type_Kind_STRING},
-  //     {{-1, "bytea"}, ::orc::proto::Type_Kind_BYTE},
-  //     {{1, "char"}, ::orc::proto::Type_Kind_CHAR},
-  //     {{1, "bool"}, ::orc::proto::Type_Kind_BOOLEAN},
-  //     {{2, "int2"}, ::orc::proto::Type_Kind_SHORT},
-  //     {{4, "int4"}, ::orc::proto::Type_Kind_INT},
-  //     {{4, "float4"}, ::orc::proto::Type_Kind_FLOAT},
-  //     {{4, "date"}, ::orc::proto::Type_Kind_DATE},
-  //     {{8, "float8"}, ::orc::proto::Type_Kind_DATE},
-  //     {{8, "timestamp"}, ::orc::proto::Type_Kind_TIMESTAMP},
-  // };
-  static inline std::pair<std::vector<orc::proto::Type_Kind>,
-                          std::vector<ColumnEncoding_Kind>>
-  BuildSchema(const MicroPartitionWriter::WriterOptions &options) {
-    std::vector<orc::proto::Type_Kind> type_kinds;
-    std::vector<ColumnEncoding_Kind> encoding_types;
-    TupleDesc desc;
-
-    desc = options.desc;
-    Assert(desc);
-
-    for (int i = 0; i < desc->natts; i++) {
-      auto *attr = &desc->attrs[i];
-      if (attr->attbyval) {
-        switch (attr->attlen) {
-          case 1:
-            type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_BYTE);
-            encoding_types.emplace_back(
-                ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
-            break;
-          case 2:
-            type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_SHORT);
-            encoding_types.emplace_back(
-                ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
-            break;
-          case 4:
-            type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
-            encoding_types.emplace_back(
-                ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
-            break;
-          case 8:
-            type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
-            // TODO: parse options
-            encoding_types.emplace_back(
-                ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2);
-            break;
-          default:
-            Assert(!"should not be here! pg_type which attbyval=true only have typlen of "
-                  "1, 2, 4, or 8");
-        }
-      } else {
-        Assert(attr->attlen > 0 || attr->attlen == -1);
-        type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
-        encoding_types.emplace_back(
-            ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED);
-      }
-    }
-
-    Assert(type_kinds.size() == encoding_types.size());
-
-    return std::make_pair(type_kinds, encoding_types);
-  }
+  static std::pair<std::vector<orc::proto::Type_Kind>,
+                   std::vector<ColumnEncoding_Kind>>
+  BuildSchema(const MicroPartitionWriter::WriterOptions &options);
 
 #ifndef RUN_GTEST
  protected:  // NOLINT
@@ -174,6 +111,8 @@ class OrcReader : public MicroPartitionReader {
     ::orc::proto::StripeStatistics stripe_statistics;
   };
 
+  explicit OrcReader(File *file);
+
   ~OrcReader() override;
 
   StripeInformation *GetStripeInfo(size_t index) const;
@@ -188,26 +127,6 @@ class OrcReader : public MicroPartitionReader {
   void Close() override;
 
   bool ReadTuple(CTupleSlot *cslot) override;
-
-  uint64 Offset() const override;
-
-  size_t Length() const override;
-
-  static MicroPartitionReader *CreateReader(File *file) {
-    return new OrcReader(file);
-  }
-
-  // there is an optimization here, in standard ORC, A single ORC
-  // file will read
-  // follow these step:
-  // - read postscript size
-  // - read post script
-  // - read file footer
-  // - read meta if exist
-  // the footer information of a single ORC file needing cost 3-4 iops
-  // consider add a new filed after postscript size, contain the full size of
-  // footer information
-  explicit OrcReader(File *file);
 
   PaxColumns *GetAllColumns();
 
@@ -230,10 +149,6 @@ class OrcReader : public MicroPartitionReader {
   // Clean up reading status
   void ResetCurrentReading();
 
-  // Optional, when reused buffer is not set, new memory will be generated for
-  // ReadTuple
-  void SetReadBuffer(DataBuffer<char> *reused_buffer) override;
-
  protected:
   std::vector<orc::proto::Type_Kind> column_types_;
   File *file_;
@@ -253,36 +168,8 @@ class OrcReader : public MicroPartitionReader {
   size_t num_of_stripes_;
   bool *proj_map_;
   size_t proj_len_;
-};
 
-class OrcIteratorReader final : public MicroPartitionReader {
- public:
-  explicit OrcIteratorReader(FileSystem *fs);
-
-  ~OrcIteratorReader() override = default;
-
-  void Open(const ReaderOptions &options) override;
-
-  void Close() override;
-
-  bool ReadTuple(CTupleSlot *slot) override;
-
-  uint64 Offset() const override;
-
-  size_t Length() const override;
-
-  void SetReadBuffer(DataBuffer<char> *reused_buffer) override;
-
-  // FIXME(jiaqizho): combine it in readtuple
-  PaxColumns *GetAllColumns() {
-    return reinterpret_cast<OrcReader *>(reader_)->GetAllColumns();
-  }
-
- private:
-  std::string block_id_;
-  MicroPartitionReader *reader_;
-  DataBuffer<char> *reused_buffer_;
-  bool closed_ = true;
+  bool is_close_;
 };
 
 };  // namespace pax
