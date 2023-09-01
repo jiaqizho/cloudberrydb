@@ -109,12 +109,14 @@ class MicroPartitionReader {
     // additioinal info to initialize a reader.
     std::string block_id;
 
+    // Optional, when reused buffer is not set, new memory will be generated for
+    // ReadTuple
+    DataBuffer<char> *reused_buffer = nullptr;
+
     PaxFilter *filter = nullptr;
   };
 
-  explicit MicroPartitionReader(FileSystem *fs);
-
-  MicroPartitionReader();
+  MicroPartitionReader() = default;
 
   virtual ~MicroPartitionReader() = default;
 
@@ -131,15 +133,6 @@ class MicroPartitionReader {
   // is also created during this stage, no matter the map relation is needed or
   // not. We may optimize to avoid creating the map relation later.
   virtual bool ReadTuple(CTupleSlot *slot) = 0;
-
-  virtual uint64 Offset() const = 0;
-
-  virtual size_t Length() const = 0;
-
-  virtual void SetReadBuffer(DataBuffer<char> *data_buffer) = 0;
-
- protected:
-  FileSystem *file_system_ = nullptr;
 };
 
 }  // namespace pax
