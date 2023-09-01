@@ -119,11 +119,10 @@ void TableWriter::Close() {
 }
 
 TableReader::TableReader(
-    MicroPartitionReader *reader,
     std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
     ReaderOptions options)
     : iterator_(std::move(iterator)),
-      reader_(reader),
+      reader_(nullptr),
       is_empty_(true),
       reader_options_(options),
       table_no_(0),
@@ -213,7 +212,7 @@ bool TableReader::ReadVecTuple(CTupleSlot *slot, VecAdapter *adapter) {
   // `No set` means that the first reader not setup in apapter
   if (!adapter->IsInitialized()) {
     PaxColumns *pax_columns =
-        reinterpret_cast<OrcIteratorReader *>(reader_)->GetAllColumns();
+        reinterpret_cast<OrcReader *>(reader_)->GetAllColumns();
     adapter->SetDataSource(pax_columns);
   }
 
@@ -224,7 +223,7 @@ bool TableReader::ReadVecTuple(CTupleSlot *slot, VecAdapter *adapter) {
       OpenFile();
 
       PaxColumns *pax_columns =
-          reinterpret_cast<OrcIteratorReader *>(reader_)->GetAllColumns();
+          reinterpret_cast<OrcReader *>(reader_)->GetAllColumns();
       adapter->SetDataSource(pax_columns);
     }
   }
@@ -259,6 +258,14 @@ void TableReader::OpenFile() {
   }
   options.file_name = it.GetFileName();
   options.filter = reader_options_.filter;
+  options.reused_buffer = reader_options_.reused_buffer;
+
+  if (reader_) {
+    delete reader_;
+  }
+
+  reader_ = new OrcReader(
+      Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name));
   reader_->Open(options);
 }
 
@@ -340,21 +347,10 @@ void TableDeleter::OpenWriter() {
 }
 
 void TableDeleter::OpenReader() {
-  auto file_system = Singleton<LocalFileSystem>::GetInstance();
-
-  // TODO(gongxun) we should put the micro partition reader inside the table
-  // reader, and use a factory to create the micro partition reader.
-  // MicroPartitionReader * micro_partition_reader =
-  //     OrcReader::CreateReader(file_system);
-
-  MicroPartitionReader *micro_partition_reader =
-      new OrcIteratorReader(file_system);
-
   TableReader::ReaderOptions reader_options{};
   reader_options.build_bitmap = false;
   reader_options.rel_oid = rel_->rd_id;
-  reader_ = new TableReader(micro_partition_reader, std::move(iterator_),
-                            reader_options);
+  reader_ = new TableReader(std::move(iterator_), reader_options);
   reader_->Open();
 }
 
