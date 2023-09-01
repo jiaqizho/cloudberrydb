@@ -64,13 +64,9 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
                              meta_info_list.end());
   }
 
-  bool HasNext() override {
-    return index_ < micro_partitions_.size();
-  }
+  bool HasNext() override { return index_ < micro_partitions_.size(); }
 
-  void Rewind() override {
-    index_ = 0;
-  }
+  void Rewind() override { index_ = 0; }
 
   MicroPartitionMetadata Next() override { return micro_partitions_[index_++]; }
 
@@ -101,11 +97,12 @@ class PaxWriterTest : public ::testing::Test {
     std::remove(pax_file_name);
     ResourceOwner tmp_resource_owner = CurrentResourceOwner;
     CurrentResourceOwner = NULL;
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS, false,
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_BEFORE_LOCKS,
+                         false, true);
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false,
                          true);
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_LOCKS, false, true);
-    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS, false,
-                         true);
+    ResourceOwnerRelease(tmp_resource_owner, RESOURCE_RELEASE_AFTER_LOCKS,
+                         false, true);
     ResourceOwnerDelete(tmp_resource_owner);
   }
 };
@@ -136,11 +133,6 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   cbdb::Pfree(slot->GetTupleTableSlot());
   delete writer;
 
-  FileSystem *file_system = Singleton<LocalFileSystem>::GetInstance();
-
-  MicroPartitionReader *micro_partition_reader =
-      new OrcIteratorReader(file_system);
-
   std::vector<MicroPartitionMetadata> meta_info_list;
   MicroPartitionMetadata meta_info;
 
@@ -157,8 +149,7 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   TableReader::ReaderOptions reader_options{};
   reader_options.build_bitmap = false;
   reader_options.rel_oid = 0;
-  reader = new TableReader(micro_partition_reader,
-                           std::move(meta_info_iterator), reader_options);
+  reader = new TableReader(std::move(meta_info_iterator), reader_options);
   reader->Open();
 
   CTupleSlot *rslot = CreateFakeCTupleSlot(true);
@@ -203,11 +194,6 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   cbdb::Pfree(slot->GetTupleTableSlot());
   delete writer;
 
-  FileSystem *file_system = Singleton<LocalFileSystem>::GetInstance();
-
-  MicroPartitionReader *micro_partition_reader =
-      new OrcIteratorReader(file_system);
-
   std::vector<MicroPartitionMetadata> meta_info_list;
   MicroPartitionMetadata meta_info1;
   meta_info1.SetMicroPartitionId(std::string(pax_file_name));
@@ -228,8 +214,7 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   TableReader::ReaderOptions reader_options{.build_bitmap = false,
                                             .rel_oid = 0};
   reader_options.build_bitmap = false;
-  reader = new TableReader(micro_partition_reader,
-                           std::move(meta_info_iterator), reader_options);
+  reader = new TableReader(std::move(meta_info_iterator), reader_options);
   reader->Open();
 
   CTupleSlot *rslot = CreateFakeCTupleSlot(true);

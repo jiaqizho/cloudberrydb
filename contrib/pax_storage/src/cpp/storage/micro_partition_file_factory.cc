@@ -5,10 +5,11 @@
 namespace pax {
 MicroPartitionReader *MicroPartitionFileFactory::CreateMicroPartitionReader(
     const std::string &type, File *file,
-    const MicroPartitionReader::ReaderOptions & /*options*/) {
+    const MicroPartitionReader::ReaderOptions &options) {
   if (type == MICRO_PARTITION_TYPE_PAX) {
-    MicroPartitionReader *reader = nullptr;
-    reader = OrcReader::CreateReader(file);
+    MicroPartitionReader *reader = new OrcReader(file);
+
+    reader->Open(options);
     return reader;
   }
 
