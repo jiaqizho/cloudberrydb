@@ -48,8 +48,4 @@ const std::string &MicroPartitionWriter::FileName() const {
   return writer_options_.file_name;
 }
 
-MicroPartitionReader::MicroPartitionReader(FileSystem *fs) : file_system_(fs) {}
-
-MicroPartitionReader::MicroPartitionReader() : file_system_(nullptr) {}
-
 }  // namespace pax

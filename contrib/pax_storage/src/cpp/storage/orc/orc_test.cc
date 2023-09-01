@@ -278,8 +278,9 @@ TEST_F(OrcTest, OpenOrc) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
 
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   reader->GetStripeInfo(0);
@@ -314,11 +315,9 @@ TEST_F(OrcTest, WriteReadStripes) {
   file_ptr = local_fs->Open(file_name_);
 
   // file_ptr in orc reader will be freed when reader do destruct
-  // should not direct used OrcReader in TableReader(use OrcIteratorReader
-  // instead)
-  //
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
 
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   auto columns = reader->ReadStripe(0);
@@ -352,8 +351,9 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
 
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   auto columns_stripe = reader->ReadStripe(0);
@@ -408,8 +408,9 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
 
   EXPECT_EQ(2, reader->GetNumberOfStripes());
   auto columns1 = reader->ReadStripe(0);
@@ -449,8 +450,10 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
+
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   auto columns = reader->ReadStripe(0);
   OrcTest::VerifySingleStripe(columns);
@@ -481,8 +484,9 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   EXPECT_EQ(0, reader->GetNumberOfStripes());
   reader->Close();
 
@@ -516,8 +520,9 @@ TEST_F(OrcTest, ReadTuple) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   tuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
   reader->ReadTuple(tuple_slot_empty);
@@ -617,12 +622,12 @@ TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   for (size_t i = 0; i < 10000; i++) {
     ASSERT_TRUE(reader->ReadTuple(ctuple_slot));
-    ASSERT_EQ(reader->Offset(), i + 1);
     ASSERT_EQ(ctuple_slot->GetTupleTableSlot()->tts_values[0], i);
     ASSERT_EQ(ctuple_slot->GetTupleTableSlot()->tts_values[1], i + 1);
   }
@@ -660,8 +665,9 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto *reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
@@ -717,8 +723,9 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto *reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
@@ -758,8 +765,9 @@ TEST_F(OrcTest, ReadTupleDroppedColumnWithProjection) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto *reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
@@ -828,12 +836,12 @@ TEST_F(OrcTest, WriteReadBigTuple) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   for (size_t i = 0; i < 10000; i++) {
     ASSERT_TRUE(reader->ReadTuple(ctuple_slot));
-    ASSERT_EQ(reader->Offset(), i + 1);
     ASSERT_EQ(ctuple_slot->GetTupleTableSlot()->tts_values[0], i);
     ASSERT_EQ(ctuple_slot->GetTupleTableSlot()->tts_values[1], i + 1);
   }
@@ -877,8 +885,9 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
 
   EXPECT_EQ(1, reader->GetNumberOfStripes());
   auto columns = reader->ReadStripe(0);
@@ -946,8 +955,9 @@ TEST_F(OrcTest, WriteReadWithNullField) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto *reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
   EXPECT_EQ(1, reader->GetNumberOfStripes());
@@ -1038,8 +1048,9 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto *reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
   EXPECT_EQ(1, reader->GetNumberOfStripes());
@@ -1110,8 +1121,9 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto *reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
   EXPECT_EQ(1, reader->GetNumberOfStripes());
@@ -1167,10 +1179,9 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
 
   file_ptr = local_fs->Open(file_name_);
 
-  auto reader =
-      reinterpret_cast<OrcReader *>(OrcReader::CreateReader(file_ptr));
-  pax::MicroPartitionReader::ReaderOptions options;
-  reader->Open(options);
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
 
   EXPECT_EQ(2, reader->GetNumberOfStripes());
 

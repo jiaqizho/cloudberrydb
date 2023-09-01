@@ -68,13 +68,14 @@ class TableReader final {
     bool build_bitmap = false;
     Oid rel_oid = 0;
 
+    DataBuffer<char> *reused_buffer = nullptr;
+
     // Will not used in TableReader
     // But pass into micro partition reader
     PaxFilter *filter = nullptr;
   };
 
-  TableReader(MicroPartitionReader *reader,
-              std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
+  TableReader(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
               ReaderOptions options);
   virtual ~TableReader();
 

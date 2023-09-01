@@ -16,8 +16,6 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
                                      PaxFilter *filter) {
   PaxScanDesc *desc;
   MemoryContext old_ctx;
-  FileSystem *file_system;
-  MicroPartitionReader *micro_partition_reader;
   TableReader::ReaderOptions reader_options{};
 
   StaticAssertStmt(
@@ -45,12 +43,8 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
 
   // build reader
-  file_system = Singleton<LocalFileSystem>::GetInstance();
-
-  micro_partition_reader = new OrcIteratorReader(file_system);
-  micro_partition_reader->SetReadBuffer(desc->reused_buffer_);
-
   reader_options.build_bitmap = true;
+  reader_options.reused_buffer = desc->reused_buffer_;
   reader_options.rel_oid = desc->rs_base_.rs_rd->rd_id;
   reader_options.filter = filter;
 
@@ -63,8 +57,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
         });
     iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap);
   }
-  desc->reader_ =
-      new TableReader(micro_partition_reader, std::move(iter), reader_options);
+  desc->reader_ = new TableReader(std::move(iter), reader_options);
   desc->reader_->Open();
 
 #ifdef VEC_BUILD
