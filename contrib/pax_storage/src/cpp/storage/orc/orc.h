@@ -128,11 +128,11 @@ class OrcReader : public MicroPartitionReader {
 
   bool ReadTuple(CTupleSlot *cslot) override;
 
-  PaxColumns *GetAllColumns();
-
 #ifndef RUN_GTEST
  protected:  // NOLINT
 #endif
+
+  PaxColumns *GetAllColumns() override;
 
   orc::proto::StripeFooter ReadStripeWithProjection(
       DataBuffer<char> *data_buffer, OrcReader::StripeInformation *stripe_info,
