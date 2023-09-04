@@ -143,8 +143,8 @@ set(pax_storage_src
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
-    storage/micro_partition_iterator.cc
     storage/micro_partition_metadata.cc
+    storage/micro_partition_stats.cc
     storage/pax_buffer.cc  
     storage/proto/protobuf_stream.cc
     storage/pax_filter.cc
@@ -155,6 +155,7 @@ set(pax_storage_src
 
 if(NOT BUILD_PAX_FORMAT) 
   set(pax_storage_src ${pax_storage_src} storage/pax.cc)
+  set(pax_storage_src ${pax_storage_src} storage/micro_partition_iterator.cc)
 endif(NOT BUILD_PAX_FORMAT)
 
 set(pax_access_src
@@ -166,7 +167,6 @@ set(pax_access_src
     access/pax_scanner.cc)
 
 set(pax_catalog_src
-    catalog/micro_partition_stats.cc
     catalog/pax_aux_table.cc)
 
 set(pax_vec_src
@@ -178,7 +178,7 @@ link_directories($ENV{GPHOME}/lib)
 if(BUILD_PAX_FORMAT)
   # paxformat.so
   ADD_DEFINITIONS(-DBUILD_PAX_FORMAT)
-  add_library(paxformat SHARED ${orc_proto_src} ${pax_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_comm_src} )
+  add_library(paxformat SHARED ${orc_proto_src} ${pax_proto_src} ${stats_proto_src} ${pax_storage_src} ${pax_exceptions_src} ${pax_comm_src} )
   target_include_directories(paxformat PUBLIC ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
   target_link_libraries(paxformat PUBLIC uuid orc_protobuf zstd z)
   set_target_properties(paxformat PROPERTIES
@@ -188,6 +188,12 @@ if(BUILD_PAX_FORMAT)
   # export headers
   set(PAX_COMM_HEADERS
     comm/cbdb_api.h
+    comm/cbdb_wrappers.h
+  )
+
+  # export headers
+  set(PAX_EXCEPTION_HEADERS
+    exceptions/CException.h
   )
 
   ## install dynamic libraray
@@ -202,11 +208,15 @@ if(BUILD_PAX_FORMAT)
     DESTINATION ${CMAKE_INSTALL_PREFIX}/include/pax
     FILES_MATCHING
     PATTERN "*.h"
-)
+  )
 
-install(FILES ${PAX_COMM_HEADERS}
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/pax/comm
-)
+  install(FILES ${PAX_COMM_HEADERS}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/include/pax/comm
+  )
+
+  install(FILES ${PAX_EXCEPTION_HEADERS}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/include/pax/exceptions
+  )
 
 else()
 

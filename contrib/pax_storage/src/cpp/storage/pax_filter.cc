@@ -2,8 +2,8 @@
 
 #include "comm/cbdb_api.h"
 
-#include "catalog/micro_partition_stats.h"
 #include "comm/cbdb_wrappers.h"
+#include "storage/micro_partition_stats.h"
 #include "storage/proto/proto_wrappers.h"
 
 namespace paxc {

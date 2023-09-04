@@ -4,9 +4,9 @@
 #include <utility>
 
 #include "access/pax_dml_state.h"
-#include "catalog/micro_partition_stats.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/cbdb_wrappers.h"
+#include "storage/micro_partition_stats.h"
 #include "storage/strategy.h"
 
 namespace pax {

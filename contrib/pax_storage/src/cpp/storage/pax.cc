@@ -4,11 +4,11 @@
 
 #include <utility>
 
-#include "catalog/micro_partition_stats.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/micro_partition_file_factory.h"
 #include "storage/micro_partition_metadata.h"
+#include "storage/micro_partition_stats.h"
 
 #ifdef VEC_BUILD
 #include "storage/vec/pax_vec_reader.h"
