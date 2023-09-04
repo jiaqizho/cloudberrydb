@@ -1,4 +1,5 @@
 #include "comm/gtest_wrappers.h"
+#include "storage/pax.h"
 #include "storage/vec/pax_vec_adapter.h"
 
 #ifdef VEC_BUILD
@@ -11,11 +12,20 @@ extern "C" {
 
 #pragma GCC diagnostic pop
 #include "storage/vec/arrow_wrapper.h"
-#endif
+#endif  // VEC_BUILD
 
 namespace pax::tests {
 
 #ifdef VEC_BUILD
+using ::testing::_;
+using ::testing::AtLeast;
+using ::testing::Return;
+
+static void GenFakeBuffer(char *buffer, size_t length) {
+  for (size_t i = 0; i < length; i++) {
+    buffer[i] = static_cast<char>(i);
+  }
+}
 
 static void CreateOrcTestResourceOwner() {
   CurrentResourceOwner = ResourceOwnerCreate(NULL, "PaxVecTestResourceOwner");
@@ -35,6 +45,7 @@ static void ReleaseOrcTestResourceOwner() {
 class PaxVecTest : public ::testing::TestWithParam<bool> {
  public:
   void SetUp() override {
+    Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
     MemoryContext pax_vec_test_memory_context = AllocSetContextCreate(
         (MemoryContext)NULL, "PaxVecTestMemoryContext", 80 * 1024 * 1024,
         80 * 1024 * 1024, 80 * 1024 * 1024);
@@ -43,7 +54,7 @@ class PaxVecTest : public ::testing::TestWithParam<bool> {
     CreateOrcTestResourceOwner();
   }
 
-  static CTupleSlot *CreateCtuple(bool is_fixed) {
+  static CTupleSlot *CreateCtuple(bool is_fixed, bool with_value = false) {
     TupleTableSlot *tuple_slot;
     TupleDescData *tuple_desc;
     CTupleSlot *ctuple_slot;
@@ -73,6 +84,21 @@ class PaxVecTest : public ::testing::TestWithParam<bool> {
             MAXALIGN(tuple_desc->natts * sizeof(bool)) +
             MAXALIGN(sizeof(VecTupleTableSlot)));
 
+    if (with_value) {
+      if (is_fixed) {
+        tuple_slot->tts_values[0] = cbdb::Int32ToDatum(0x123);
+      } else {
+        char column_buff[100];
+        GenFakeBuffer(column_buff, 100);
+        tuple_slot->tts_values[0] = cbdb::DatumFromCString(column_buff, 100);
+      }
+
+      bool *fake_is_null =
+          reinterpret_cast<bool *>(cbdb::Palloc0(sizeof(bool)));
+      fake_is_null[0] = false;
+      tuple_slot->tts_isnull = fake_is_null;
+    }
+
     tuple_slot->tts_tupleDescriptor = tuple_desc;
     ctuple_slot = new CTupleSlot(tuple_slot);
 
@@ -86,7 +112,13 @@ class PaxVecTest : public ::testing::TestWithParam<bool> {
     delete ctuple_slot;
   }
 
-  void TearDown() override { ReleaseOrcTestResourceOwner(); }
+  void TearDown() override {
+    // Singleton<LocalFileSystem>::GetInstance()->Delete(file_name_);
+    ReleaseOrcTestResourceOwner();
+  }
+
+ protected:
+  const char *file_name_ = "./test.file";
 };
 
 TEST_P(PaxVecTest, PaxColumnToVec) {
@@ -870,9 +902,109 @@ TEST_P(PaxVecTest, PaxColumnAllNullToVec) {
   delete adapter;
 }
 
+class MockWriter : public TableWriter {
+ public:
+  MockWriter(const Relation relation, WriteSummaryCallback callback)
+      : TableWriter(relation) {
+    SetWriteSummaryCallback(callback);
+    SetFileSplitStrategy(new PaxDefaultSplitStrategy());
+  }
+
+  MOCK_METHOD(std::string, GenFilePath, (const std::string &), (override));
+};
+
+class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
+ public:
+  explicit MockReaderInterator(
+      const std::vector<MicroPartitionMetadata> &meta_info_list)
+      : index_(0) {
+    micro_partitions_.insert(micro_partitions_.end(), meta_info_list.begin(),
+                             meta_info_list.end());
+  }
+
+  bool HasNext() override { return index_ < micro_partitions_.size(); }
+
+  void Rewind() override { index_ = 0; }
+
+  MicroPartitionMetadata Next() override { return micro_partitions_[index_++]; }
+
+ private:
+  uint32 index_;
+  std::vector<MicroPartitionMetadata> micro_partitions_;
+};
+
+TEST_P(PaxVecTest, PaxVecReaderTest) {
+  auto is_fixed = GetParam();
+  CTupleSlot *ctuple_slot = CreateCtuple(is_fixed, true);
+
+  auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
+  relation->rd_att = ctuple_slot->GetTupleTableSlot()->tts_tupleDescriptor;
+  bool callback_called = false;
+
+  TableWriter::WriteSummaryCallback callback =
+      [&callback_called](const WriteSummary & /*summary*/) {
+        callback_called = true;
+      };
+
+  auto writer = new MockWriter(relation, callback);
+  EXPECT_CALL(*writer, GenFilePath(_))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(file_name_));
+
+  writer->Open();
+
+  for (size_t i = 0; i < VEC_BATCH_LENGTH + 1000; i++) {
+    writer->WriteTuple(ctuple_slot);
+  }
+
+  writer->Close();
+  ASSERT_TRUE(callback_called);
+
+  DeleteCTupleSlot(ctuple_slot);
+  delete writer;
+
+  ctuple_slot = CreateCtuple(is_fixed);
+  auto adapter = new VecAdapter(ctuple_slot->GetTupleDesc());
+
+  std::vector<MicroPartitionMetadata> meta_info_list;
+  MicroPartitionMetadata meta_info;
+
+  meta_info.SetFileName(file_name_);
+  meta_info.SetMicroPartitionId(file_name_);
+  meta_info_list.push_back(std::move(meta_info));
+
+  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
+      std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(
+          new MockReaderInterator(meta_info_list));
+
+  TableReader *reader;
+  TableReader::ReaderOptions reader_options{};
+  reader_options.build_bitmap = false;
+  reader_options.rel_oid = 0;
+  reader_options.is_vec = true;
+  reader_options.adapter = adapter;
+
+  reader = new TableReader(std::move(meta_info_iterator), reader_options);
+  reader->Open();
+
+  bool ok = reader->ReadTuple(ctuple_slot);
+  ASSERT_TRUE(ok);
+
+  ok = reader->ReadTuple(ctuple_slot);
+  ASSERT_TRUE(ok);
+  ok = reader->ReadTuple(ctuple_slot);
+  ASSERT_FALSE(ok);
+
+  reader->Close();
+  DeleteCTupleSlot(ctuple_slot);
+  delete adapter;
+  delete relation;
+  delete reader;
+}
+
 INSTANTIATE_TEST_CASE_P(PaxVecTestCombine, PaxVecTest,
                         testing::Values(true, false));
 
-#endif
+#endif  // VEC_BUILD
 
 }  // namespace pax::tests

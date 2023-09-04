@@ -10,6 +10,10 @@
 #include "storage/micro_partition_file_factory.h"
 #include "storage/micro_partition_metadata.h"
 
+#ifdef VEC_BUILD
+#include "storage/vec/pax_vec_reader.h"
+#endif
+
 namespace pax {
 
 static std::string GenRandomBlockId() {
@@ -182,65 +186,11 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
     }
     OpenFile();
   }
-  num_tuples_++;
   slot->SetTableNo(table_no_);
   slot->SetBlockNumber(current_block_number_);
   slot->StoreVirtualTuple();
   return true;
 }
-
-#ifdef VEC_BUILD
-// TODO(jiaqizho): should remove this method but provider a
-// new mirco partition reader which include adapter
-bool TableReader::ReadVecTuple(CTupleSlot *slot, VecAdapter *adapter) {
-  size_t flush_nums_of_rows = 0;
-
-  if (is_empty_) {
-    return false;
-  }
-
-  // Three conditions indicate that there is no data left
-  // - `VecAdapter` must be set
-  // - `VecAdapter` has consumed all buffer data
-  // - current have not next reader
-  if (adapter->IsInitialized() && adapter->IsEnd() && !iterator_->HasNext()) {
-    return false;
-  }
-
-  Assert(reader_);
-
-  // `No set` means that the first reader not setup in apapter
-  if (!adapter->IsInitialized()) {
-    PaxColumns *pax_columns =
-        reinterpret_cast<OrcReader *>(reader_)->GetAllColumns();
-    adapter->SetDataSource(pax_columns);
-  }
-
-  // `VecAdapter` has consumed all buffer data
-  if (adapter->IsEnd()) {
-    if (iterator_->HasNext()) {
-      reader_->Close();
-      OpenFile();
-
-      PaxColumns *pax_columns =
-          reinterpret_cast<OrcReader *>(reader_)->GetAllColumns();
-      adapter->SetDataSource(pax_columns);
-    }
-  }
-
-  auto ok = adapter->AppendToVecBuffer();
-  CBDB_CHECK(ok, cbdb::CException::ExType::kExTypeLogicError);
-
-  flush_nums_of_rows = adapter->FlushVecBuffer(slot);
-  Assert(flush_nums_of_rows);
-
-  num_tuples_ += flush_nums_of_rows;
-  slot->SetTableNo(table_no_);
-  slot->SetBlockNumber(current_block_number_);
-  slot->StoreVirtualTuple();
-  return true;
-}
-#endif  // VEC_BUILD
 
 void TableReader::OpenFile() {
   Assert(iterator_->HasNext());
@@ -266,6 +216,14 @@ void TableReader::OpenFile() {
 
   reader_ = new OrcReader(
       Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name));
+
+#ifdef VEC_BUILD
+  if (reader_options_.is_vec) {
+    Assert(reader_options_.adapter);
+    reader_ = new PaxVecReader(reader_, reader_options_.adapter);
+  }
+#endif
+
   reader_->Open(options);
 }
 
