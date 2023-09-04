@@ -73,6 +73,10 @@ class TableReader final {
     // Will not used in TableReader
     // But pass into micro partition reader
     PaxFilter *filter = nullptr;
+#ifdef VEC_BUILD
+    bool is_vec = false;
+    VecAdapter *adapter = nullptr;
+#endif
   };
 
   TableReader(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
@@ -84,11 +88,6 @@ class TableReader final {
   void ReOpen();
 
   void Close();
-
-#ifdef VEC_BUILD
-  // std::unique_ptr<VecAdapter> here ?
-  bool ReadVecTuple(CTupleSlot *slot, VecAdapter *adapter);
-#endif
 
   bool ReadTuple(CTupleSlot *slot);
 
@@ -104,7 +103,6 @@ class TableReader final {
  private:
   const std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
   MicroPartitionReader *reader_ = nullptr;
-  size_t num_tuples_ = 0;
   bool is_empty_ = false;
   const ReaderOptions reader_options_;
   int current_block_number_ = 0;
