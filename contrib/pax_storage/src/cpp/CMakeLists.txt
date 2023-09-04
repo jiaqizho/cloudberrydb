@@ -170,7 +170,8 @@ set(pax_catalog_src
     catalog/pax_aux_table.cc)
 
 set(pax_vec_src
-  storage/vec/pax_vec_adapter.cc)
+  storage/vec/pax_vec_adapter.cc
+  storage/vec/pax_vec_reader.cc)
 
 link_directories($ENV{GPHOME}/lib)
 
