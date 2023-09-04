@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "catalog/micro_partition_stats.h"
+#include "storage/micro_partition_stats.h"
 #include "comm/cbdb_wrappers.h"
 #include "exceptions/CException.h"
 #include "storage/columns/pax_column_int.h"
