@@ -1,4 +1,4 @@
-#include "catalog/micro_partition_stats.h"
+#include "storage/micro_partition_stats.h"
 
 #include "comm/cbdb_api.h"
 

@@ -4,8 +4,6 @@
 
 #include <string>
 
-#include "comm/cbdb_wrappers.h"
-#include "comm/singleton.h"
 #include "storage/columns/pax_encoding_utils.h"
 
 namespace pax {
