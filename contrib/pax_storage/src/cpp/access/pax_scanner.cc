@@ -36,6 +36,13 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   desc->key_ = key;
   desc->reused_buffer_ = new DataBuffer<char>(32 * 1024 * 1024);  // 32mb
   desc->filter_ = filter;
+#ifdef VEC_BUILD
+  if (flags & (1 << 12)) {
+    desc->vec_adapter_ = new VecAdapter(cbdb::RelationGetTupleDesc(relation));
+    reader_options.is_vec = true;
+    reader_options.adapter = desc->vec_adapter_;
+  }
+#endif
 
   // init shared memory
   cbdb::InitCommandResource();
@@ -59,12 +66,6 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   }
   desc->reader_ = new TableReader(std::move(iter), reader_options);
   desc->reader_->Open();
-
-#ifdef VEC_BUILD
-  if (flags & (1 << 12)) {
-    desc->vec_adapter_ = new VecAdapter(cbdb::RelationGetTupleDesc(relation));
-  }
-#endif
 
   MemoryContextSwitchTo(old_ctx);
   return &desc->rs_base_;
@@ -146,15 +147,6 @@ bool PaxScanDesc::ScanGetNextSlot(TableScanDesc scan, TupleTableSlot *slot) {
 
   CTupleSlot cslot(slot);
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
-
-#ifdef VEC_BUILD
-  // TODO(vec): replace (1 << 12), and check other place
-  if (desc->rs_base_.rs_flags & (1 << 12)) {
-    ok = desc->reader_->ReadVecTuple(&cslot, desc->vec_adapter_);
-    MemoryContextSwitchTo(old_ctx);
-    return ok;
-  }
-#endif
 
   ok = desc->reader_->ReadTuple(&cslot);
 

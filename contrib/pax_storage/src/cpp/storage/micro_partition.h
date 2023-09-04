@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "storage/columns/pax_columns.h"
 #include "storage/micro_partition_metadata.h"
 
 namespace pax {
@@ -133,6 +134,22 @@ class MicroPartitionReader {
   // is also created during this stage, no matter the map relation is needed or
   // not. We may optimize to avoid creating the map relation later.
   virtual bool ReadTuple(CTupleSlot *slot) = 0;
+
+ protected:
+  // Allow different MicroPartitionReader shared columns
+  // but should not let export columns out of micro partition
+  //
+  // In MicroPartition writer/reader implementation, all in-memory data should
+  // be accessed by pax column This is because most of the common logic of
+  // column operation is done in pax column, such as type mapping, bitwise
+  // fetch, compression/encoding. At the same time, pax column can also be used
+  // as a general interface for internal using, because it's zero copy from
+  // buffer. more details in `storage/columns`
+  virtual PaxColumns *GetAllColumns() = 0;
+#ifdef VEC_BUILD
+ private:
+  friend class PaxVecReader;
+#endif
 };
 
 }  // namespace pax
