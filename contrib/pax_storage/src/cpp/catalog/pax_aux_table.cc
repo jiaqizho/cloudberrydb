@@ -337,10 +337,6 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
   src_path = cbdb::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend);
   Assert(!src_path.empty());
 
-  // get micropatition file source folder filename list for copying.
-  filelist = fs->ListDirectory(src_path);
-  if (filelist.empty()) return;
-
   dst_path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!dst_path.empty());
 
@@ -360,13 +356,19 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
     CBDB_CHECK((fs->CreateDirectory(dst_path) == 0), cbdb::CException::ExType::kExTypeIOError);
   }
 
+  // Get micropatition file source folder filename list for copying, if file list is empty then skip copying file directly.
+  filelist = fs->ListDirectory(src_path);
+  if (filelist.empty()) return;
+
   for (auto &iter : filelist) {
     Assert(!iter.empty());
-    src_path.append("/");
-    src_path.append(iter);
-    dst_path.append("/");
-    dst_path.append(iter);
-    fs->CopyFile(src_path, dst_path);
+    std::string src_file = src_path;
+    std::string dst_file = dst_path;
+    src_file.append("/");
+    src_file.append(iter);
+    dst_file.append("/");
+    dst_file.append(iter);
+    fs->CopyFile(src_file, dst_file);
   }
 
   // TODO(Tony) : here need to implement pending delete srcPath after set new
