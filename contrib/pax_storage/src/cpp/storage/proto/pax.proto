@@ -9,7 +9,7 @@ message ColumnEncoding {
   enum Kind {
     DEF_ENCODED = -1;         // only used in memory, should not store in disk
     NO_ENCODED = 0;           // no encoded
-    ORC_RLE_V2 = 1;           // used orc rle v2
+    RLE_V2 = 1;               // used rle v2
     DIRECT_DELTA = 2;         // used direct delta
 
     COMPRESS_ZSTD = 3;        // use ZTSD to compress 

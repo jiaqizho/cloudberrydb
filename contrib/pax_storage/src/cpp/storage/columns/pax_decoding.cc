@@ -12,7 +12,7 @@ PaxDecoder *PaxDecoder::CreateDecoder(const DecodingOption &decoder_options) {
       // do nothing
       break;
     }
-    case ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2: {
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2: {
       decoder = new PaxOrcDecoder<T>(decoder_options);
       break;
     }

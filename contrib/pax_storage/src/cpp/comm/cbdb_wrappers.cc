@@ -1,4 +1,5 @@
 #include "comm/cbdb_wrappers.h"
+
 #include "comm/paxc_wrappers.h"
 #include "storage/paxc_block_map_manager.h"
 extern "C" {
@@ -95,9 +96,13 @@ void *operator new[](std::size_t size, MemoryContext ctx) {
   return cbdb::MemCtxAlloc(ctx, size);
 }
 
-void operator delete(void *ptr) { if (ptr) cbdb::Pfree(ptr); }
+void operator delete(void *ptr) {
+  if (ptr) cbdb::Pfree(ptr);
+}
 
-void operator delete[](void *ptr) { if (ptr) cbdb::Pfree(ptr); }
+void operator delete[](void *ptr) {
+  if (ptr) cbdb::Pfree(ptr);
+}
 
 HTAB *cbdb::HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
                        int flags) {
@@ -317,6 +322,12 @@ int cbdb::RelationGetAttributesNumber(Relation rel) {
   CBDB_WRAP_END;
 }
 
+StdRdOptions **cbdb::RelGetAttributeOptions(Relation rel) {
+  CBDB_WRAP_START;
+  { return RelationGetAttributeOptions(rel); }
+  CBDB_WRAP_END;
+}
+
 TupleDesc cbdb::RelationGetTupleDesc(Relation rel) {
   CBDB_WRAP_START;
   { return RelationGetDescr(rel); }
@@ -329,44 +340,50 @@ bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts) {
   CBDB_WRAP_END;
 }
 
-bool cbdb::MinMaxGetStrategyProcinfo(Oid atttypid, Oid *procid, FmgrInfo *finfo, StrategyNumber strategynum)
-{
+bool cbdb::MinMaxGetStrategyProcinfo(Oid atttypid, Oid *procid, FmgrInfo *finfo,
+                                     StrategyNumber strategynum) {
   CBDB_WRAP_START;
-  {  return paxc::MinMaxGetStrategyProcinfo(atttypid, procid, finfo, strategynum); }
+  {
+    return paxc::MinMaxGetStrategyProcinfo(atttypid, procid, finfo,
+                                           strategynum);
+  }
   CBDB_WRAP_END;
 }
 
-Datum cbdb::FunctionCall1Coll(FmgrInfo *flinfo, Oid collation, Datum arg1)
-{
+Datum cbdb::FunctionCall1Coll(FmgrInfo *flinfo, Oid collation, Datum arg1) {
   CBDB_WRAP_START;
-  {  return ::FunctionCall1Coll(flinfo, collation, arg1); }
+  { return ::FunctionCall1Coll(flinfo, collation, arg1); }
   CBDB_WRAP_END;
 }
 
-Datum cbdb::FunctionCall2Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2)
-{
+Datum cbdb::FunctionCall2Coll(FmgrInfo *flinfo, Oid collation, Datum arg1,
+                              Datum arg2) {
   CBDB_WRAP_START;
-  {  return ::FunctionCall2Coll(flinfo, collation, arg1, arg2); }
+  { return ::FunctionCall2Coll(flinfo, collation, arg1, arg2); }
   CBDB_WRAP_END;
 }
 
-Datum cbdb::FunctionCall3Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2, Datum arg3)
-{
+Datum cbdb::FunctionCall3Coll(FmgrInfo *flinfo, Oid collation, Datum arg1,
+                              Datum arg2, Datum arg3) {
   CBDB_WRAP_START;
-  {  return ::FunctionCall3Coll(flinfo, collation, arg1, arg2, arg3); }
+  { return ::FunctionCall3Coll(flinfo, collation, arg1, arg2, arg3); }
   CBDB_WRAP_END;
 }
 
-Datum cbdb::FunctionCall4Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2, Datum arg3, Datum arg4)
-{
+Datum cbdb::FunctionCall4Coll(FmgrInfo *flinfo, Oid collation, Datum arg1,
+                              Datum arg2, Datum arg3, Datum arg4) {
   CBDB_WRAP_START;
-  {  return ::FunctionCall4Coll(flinfo, collation, arg1, arg2, arg3, arg4); }
+  { return ::FunctionCall4Coll(flinfo, collation, arg1, arg2, arg3, arg4); }
   CBDB_WRAP_END;
 }
 
-SysScanDesc cbdb::SystableBeginScan(Relation rel, Oid index_id, bool index_ok, Snapshot snapshot, int n_keys, ScanKey keys) {
+SysScanDesc cbdb::SystableBeginScan(Relation rel, Oid index_id, bool index_ok,
+                                    Snapshot snapshot, int n_keys,
+                                    ScanKey keys) {
   CBDB_WRAP_START;
-  { return systable_beginscan(rel, index_id, index_ok, snapshot, n_keys, keys); }
+  {
+    return systable_beginscan(rel, index_id, index_ok, snapshot, n_keys, keys);
+  }
   CBDB_WRAP_END;
 }
 
@@ -382,7 +399,8 @@ void cbdb::SystableEndScan(SysScanDesc desc) {
   CBDB_WRAP_END;
 }
 
-Datum cbdb::HeapGetAttr(HeapTuple tup, int attnum, TupleDesc tuple_desc, bool *isnull) {
+Datum cbdb::HeapGetAttr(HeapTuple tup, int attnum, TupleDesc tuple_desc,
+                        bool *isnull) {
   CBDB_WRAP_START;
   { return heap_getattr(tup, attnum, tuple_desc, isnull); }
   CBDB_WRAP_END;

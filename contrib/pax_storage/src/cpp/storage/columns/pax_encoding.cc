@@ -10,7 +10,7 @@ PaxEncoder *PaxEncoder::CreateStreamingEncoder(
     const EncodingOption &encoder_options) {
   PaxEncoder *encoder = nullptr;
   switch (encoder_options.column_encode_type) {
-    case ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2: {
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2: {
       encoder = new PaxOrcEncoder(std::move(encoder_options));
       break;
     }

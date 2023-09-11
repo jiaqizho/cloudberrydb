@@ -284,7 +284,7 @@ TEST_P(PaxColumnEncodingTest, GetRangeEncodingColumnTest) {
 
   PaxDecoder::DecodingOption decoding_option;
   decoding_option.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoding_option.is_sign = true;
 
   auto int_column_for_read = CreateDecodeColumn(
@@ -396,7 +396,7 @@ TEST_P(PaxColumnEncodingTest, PaxEncodingColumnDefault) {
 
   PaxDecoder::DecodingOption decoding_option;
   decoding_option.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoding_option.is_sign = true;
 
   auto int_column_for_read = CreateDecodeColumn(
@@ -417,7 +417,7 @@ TEST_P(PaxColumnEncodingTest, PaxEncodingColumnSpecType) {
 
   PaxEncoder::EncodingOption encoding_option;
   encoding_option.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoding_option.is_sign = true;
 
   int_column = CreateEncodeColumn(bits, std::move(encoding_option));
@@ -436,7 +436,7 @@ TEST_P(PaxColumnEncodingTest, PaxEncodingColumnSpecType) {
 
   PaxDecoder::DecodingOption decoding_option;
   decoding_option.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoding_option.is_sign = true;
 
   auto int_column_for_read = CreateDecodeColumn(
