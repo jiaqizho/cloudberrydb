@@ -6,11 +6,11 @@
 #include <utility>
 #include <vector>
 
-#include "storage/micro_partition_stats.h"
 #include "comm/cbdb_wrappers.h"
 #include "exceptions/CException.h"
 #include "storage/columns/pax_column_int.h"
 #include "storage/columns/pax_encoding_non_fixed_column.h"
+#include "storage/micro_partition_stats.h"
 #include "storage/pax_filter.h"
 namespace pax {
 
@@ -46,7 +46,7 @@ OrcWriter::BuildSchema(const MicroPartitionWriter::WriterOptions &options) {
           type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
           // TODO: parse options
           encoding_types.emplace_back(
-              ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2);
+              ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2);
           break;
         default:
           Assert(!"should not be here! pg_type which attbyval=true only have typlen of "

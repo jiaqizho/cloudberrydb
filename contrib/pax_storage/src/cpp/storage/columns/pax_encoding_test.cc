@@ -218,7 +218,7 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -247,7 +247,7 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
 
   PaxDecoder *decoder =
@@ -334,7 +334,7 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -364,7 +364,7 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
 
   PaxDecoder *decoder =
@@ -449,7 +449,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -484,7 +484,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
       PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -522,7 +522,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -556,7 +556,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
       PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -594,7 +594,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -631,7 +631,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
       PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -669,7 +669,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -706,7 +706,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
       PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -816,7 +816,7 @@ TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -856,7 +856,7 @@ TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
       PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -899,7 +899,7 @@ TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = true;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -920,7 +920,7 @@ TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = true;
 
   auto decoder =
@@ -990,7 +990,7 @@ TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = true;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -1012,7 +1012,7 @@ TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = true;
 
   auto decoder =
@@ -1112,7 +1112,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
   PaxEncoder::EncodingOption encoder_options;
 
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = true;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -1148,7 +1148,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     }
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type =
-        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+        ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
         PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -1188,7 +1188,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     }
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type =
-        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+        ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
         PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -1229,7 +1229,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
 
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type =
-        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+        ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
         PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -1276,7 +1276,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = true;
   encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
@@ -1309,7 +1309,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     }
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type =
-        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+        ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
         PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -1349,7 +1349,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     }
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type =
-        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+        ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
         PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -1389,7 +1389,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
 
     PaxDecoder::DecodingOption decoder_options;
     decoder_options.column_encode_type =
-        ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+        ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
         PaxDecoder::CreateDecoder<int64>(decoder_options)
@@ -1436,7 +1436,7 @@ TEST_F(PaxEncodingTest, TestEncodingWithAllNULL) {
 
   PaxDecoder::DecodingOption decoder_options;
   decoder_options.column_encode_type =
-      ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2;
+      ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = true;
   auto decoder = PaxDecoder::CreateDecoder<int64>(decoder_options)
                      ->SetSrcBuffer(nullptr, 0);
