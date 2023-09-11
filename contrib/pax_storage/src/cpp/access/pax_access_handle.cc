@@ -5,6 +5,7 @@
 #include "access/pax_dml_state.h"
 #include "access/pax_scanner.h"
 #include "access/pax_updater.h"
+#include "access/paxc_rel_options.h"
 #include "catalog/pax_aux_table.h"
 #include "exceptions/CException.h"
 #include "storage/paxc_block_map_manager.h"
@@ -17,12 +18,6 @@
 #define NOT_SUPPORTED_YET                                 \
   ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
                   errmsg("not supported on pax relations: %s", __func__)))
-
-#define PAX_DEFAULT_COMPRESSLEVEL AO_DEFAULT_COMPRESSLEVEL
-#define PAX_MIN_COMPRESSLEVEL AO_MIN_COMPRESSLEVEL
-#define PAX_MAX_COMPRESSLEVEL AO_MAX_COMPRESSLEVEL
-
-#define PAX_DEFAULT_COMPRESSTYPE AO_DEFAULT_COMPRESSTYPE
 
 #define RELATION_IS_PAX(rel) \
   (OidIsValid((rel)->rd_rel->relam) && AMOidIsPax((rel)->rd_rel->relam))
@@ -108,15 +103,6 @@ bool AMOidIsPax(Oid am_oid) {
 
   return is_pax;
 }
-
-// reloptions structure and variables.
-static relopt_kind self_relopt_kind;
-static const relopt_parse_elt kSelfReloptTab[] = {
-    {"compresslevel", RELOPT_TYPE_INT, offsetof(PaxOptions, compress_level)},
-    {"compresstype", RELOPT_TYPE_STRING, offsetof(PaxOptions, compress_type)},
-    {"storage_format", RELOPT_TYPE_STRING,
-     offsetof(PaxOptions, storage_format)},
-};
 
 // access methods that are implemented in C++
 namespace pax {
@@ -664,30 +650,6 @@ void PaxAccessMethod::IndexValidateScan(Relation /*heap_relation*/,
   NOT_IMPLEMENTED_YET;
 }
 
-#define PAX_COPY_OPT(pax_opts_, pax_opt_name_)                                \
-  do {                                                                        \
-    PaxOptions *pax_opts = reinterpret_cast<PaxOptions *>(pax_opts_);         \
-    int pax_name_offset_ = *reinterpret_cast<int *>(pax_opts->pax_opt_name_); \
-    if (pax_name_offset_)                                                     \
-      strlcpy(pax_opts->pax_opt_name_,                                        \
-              reinterpret_cast<char *>(pax_opts) + pax_name_offset_,          \
-              sizeof(pax_opts->pax_opt_name_));                               \
-  } while (0)
-bytea *PaxAccessMethod::Amoptions(Datum reloptions, char /*relkind*/,
-                                  bool validate) {
-  void *rdopts;
-
-  rdopts = build_reloptions(reloptions, validate, self_relopt_kind,
-                            sizeof(PaxOptions), kSelfReloptTab,
-                            lengthof(kSelfReloptTab));
-  // adjust string values
-  PAX_COPY_OPT(rdopts, storage_format);
-  PAX_COPY_OPT(rdopts, compress_type);
-
-  return reinterpret_cast<bytea *>(rdopts);
-}
-#undef PAX_COPY_OPT
-
 void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2,
                                         TransactionId frozen_xid,
                                         MultiXactId cutoff_multi) {
@@ -770,6 +732,22 @@ void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2,
   }
 }
 
+bytea *PaxAccessMethod::AmOptions(Datum reloptions, char relkind,
+                                  bool validate) {
+  return paxc_default_rel_options(reloptions, relkind, validate);
+}
+
+void PaxAccessMethod::ValidateColumnEncodingClauses(List *encoding_opts) {
+  paxc_validate_column_encoding_clauses(encoding_opts);
+}
+
+List *PaxAccessMethod::TransformColumnEncodingClauses(List *encoding_opts,
+                                                      bool validate,
+                                                      bool from_type) {
+  return paxc_transform_column_encoding_clauses(encoding_opts, validate,
+                                                from_type);
+}
+
 }  // namespace paxc
 // END of C implementation
 
@@ -831,40 +809,18 @@ static const TableAmRoutine kPaxColumnMethods = {
     .scan_sample_next_block = pax::CCPaxAccessMethod::ScanSampleNextBlock,
     .scan_sample_next_tuple = pax::CCPaxAccessMethod::ScanSampleNextTuple,
 
-    .amoptions = paxc::PaxAccessMethod::Amoptions,
+    .amoptions = paxc::PaxAccessMethod::AmOptions,
     .swap_relation_files = paxc::PaxAccessMethod::SwapRelationFiles,
+    .validate_column_encoding_clauses =
+        paxc::PaxAccessMethod::ValidateColumnEncodingClauses,
+    .transform_column_encoding_clauses =
+        paxc::PaxAccessMethod::TransformColumnEncodingClauses,
 };
 
 PG_MODULE_MAGIC;
 PG_FUNCTION_INFO_V1(pax_tableam_handler);
 Datum pax_tableam_handler(PG_FUNCTION_ARGS) {  // NOLINT
   PG_RETURN_POINTER(&kPaxColumnMethods);
-}
-
-static void PaxValidateStorageFormat(const char *value) {
-  size_t i;
-  static const char *storage_formats[] = {
-      "orc",
-      "ppt",
-  };
-
-  for (i = 0; i < lengthof(storage_formats); i++) {
-    if (strcmp(value, storage_formats[i]) == 0) return;
-  }
-  ereport(ERROR, (errmsg("unsupported storage format: '%s'", value)));
-}
-
-static void PaxValidateCompresstype(const char *value) {
-  size_t i;
-  static const char *compress_types[] = {
-      "none",
-      "zlib",
-  };
-
-  for (i = 0; i < lengthof(compress_types); i++) {
-    if (strcmp(value, compress_types[i]) == 0) return;
-  }
-  ereport(ERROR, (errmsg("unsupported compress type: '%s'", value)));
 }
 
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
@@ -933,15 +889,6 @@ void _PG_init(void) {  // NOLINT
   file_unlink_hook = pax::CCPaxAccessMethod::RelationFileUnlink;
 
   RegisterXactCallback(PaxXactCallback, NULL);
-
-  self_relopt_kind = add_reloption_kind();
-  add_string_reloption(self_relopt_kind, "storage_format", "pax storage format",
-                       "orc", PaxValidateStorageFormat, AccessExclusiveLock);
-  add_string_reloption(self_relopt_kind, "compresstype", "pax compress type",
-                       PAX_DEFAULT_COMPRESSTYPE, PaxValidateCompresstype,
-                       AccessExclusiveLock);
-  add_int_reloption(self_relopt_kind, "compresslevel", "pax compress level",
-                    PAX_DEFAULT_COMPRESSLEVEL, AO_MIN_COMPRESSLEVEL,
-                    AO_MAX_COMPRESSLEVEL, AccessExclusiveLock);
+  paxc::paxc_reg_rel_options();
 }
 }  // extern "C"
