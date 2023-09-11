@@ -642,7 +642,7 @@ INSTANTIATE_TEST_CASE_P(
     OrcEncodingTestCombine, OrcEncodingTest,
     testing::Values(ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED,
                     ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
-                    ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2));
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2));
 
 TEST_F(OrcTest, ReadTupleDefaultColumn) {
   CTupleSlot *tuple_slot = CreateFakeCTupleSlot(true);

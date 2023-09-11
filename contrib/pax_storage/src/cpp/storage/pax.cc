@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include "access/paxc_rel_options.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/micro_partition_file_factory.h"
