@@ -21,6 +21,7 @@ extern "C" {
 #include "catalog/pg_am.h"
 #include "catalog/pg_amop.h"
 #include "catalog/pg_amproc.h"
+#include "catalog/pg_attribute_encoding.h"
 #include "catalog/pg_namespace.h"
 #ifndef BUILD_PAX_FORMAT
 #include "access/reloptions.h"
@@ -53,8 +54,10 @@ extern "C" {
 #include "utils/wait_event.h"
 
 // no header file in cbdb
-extern BlockNumber system_nextsampleblock(SampleScanState *node, BlockNumber nblocks);  // NOLINT
-extern bool extractcolumns_from_node(Node *expr, bool *cols, AttrNumber natts);  // NOLINT
+extern BlockNumber system_nextsampleblock(SampleScanState *node,  // NOLINT
+                                          BlockNumber nblocks);
+extern bool extractcolumns_from_node(Node *expr, bool *cols,  // NOLINT
+                                     AttrNumber natts);
 extern Oid GetDefaultOpClass(Oid type_id, Oid am_id);
 #ifdef __cplusplus
 }

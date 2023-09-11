@@ -3,6 +3,7 @@
 #include "comm/cbdb_api.h"
 
 namespace paxc {
+
 class PaxAccessMethod final {
  private:
   PaxAccessMethod() = default;
@@ -69,12 +70,14 @@ class PaxAccessMethod final {
   static void IndexValidateScan(Relation heap_relation, Relation index_relation,
                                 IndexInfo *index_info, Snapshot snapshot,
                                 ValidateIndexState *state);
-
-  static bytea *Amoptions(Datum reloptions, char relkind, bool validate);
-
   static void SwapRelationFiles(Oid relid1, Oid relid2,
                                 TransactionId frozen_xid,
                                 MultiXactId cutoff_multi);
+
+  static bytea *AmOptions(Datum reloptions, char relkind, bool validate);
+  static void ValidateColumnEncodingClauses(List *encoding_opts);
+  static List *TransformColumnEncodingClauses(List *encoding_opts,
+                                              bool validate, bool from_type);
 };
 
 }  // namespace paxc
@@ -162,11 +165,3 @@ class CCPaxAccessMethod final {
 
 extern ext_dml_func_hook_type ext_dml_init_hook;
 extern ext_dml_func_hook_type ext_dml_finish_hook;
-
-// plain structure used by reloptions, can be accessed from C++ code.
-struct PaxOptions {
-  int32 vl_len; /* varlena header (do not touch directly!) */
-  char storage_format[16];
-  char compress_type[16];
-  int compress_level;
-};

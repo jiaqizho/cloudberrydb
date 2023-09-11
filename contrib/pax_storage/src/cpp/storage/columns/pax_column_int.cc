@@ -31,7 +31,7 @@ PaxIntColumn<T>::PaxIntColumn(uint64 capacity,
 
 template <typename T>
 ColumnEncoding_Kind PaxIntColumn<T>::GetDefaultColumnType() {
-  return sizeof(T) >= 4 ? ColumnEncoding_Kind::ColumnEncoding_Kind_ORC_RLE_V2
+  return sizeof(T) >= 4 ? ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2
                         : ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA;
 }
 

@@ -159,6 +159,7 @@ if(NOT BUILD_PAX_FORMAT)
 endif(NOT BUILD_PAX_FORMAT)
 
 set(pax_access_src
+    access/paxc_rel_options.cc
     access/pax_access_handle.cc
     access/pax_deleter.cc
     access/pax_dml_state.cc
