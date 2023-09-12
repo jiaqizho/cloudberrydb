@@ -79,7 +79,8 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
        * provides a cross-check that the operator does match the index.
        */
       opfamily = opfamilies[varattno - 1];
-      if (!OidIsValid(opfamily)) goto ignore_clause;
+      if (!OidIsValid(opfamily) || !op_in_opfamily(opno, opfamily))
+        goto ignore_clause;
 
       get_op_opfamily_properties(opno, opfamily, isorderby, &op_strategy,
                                  &op_lefttype, &op_righttype);
