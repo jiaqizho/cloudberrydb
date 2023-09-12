@@ -353,7 +353,7 @@ bool PaxFilter::TestMicroPartitionScanInternal(
     const auto &minmax = column_stats.minmaxstats();
 
     // Check whether alter column type will result rewriting whole table.
-    Assert(attr->atttypid == minmax.typid());
+    AssertImply(minmax.typid(), attr->atttypid == minmax.typid());
 
     if (scan_key->sk_flags & SK_ISNULL) {
       if (!CheckNullKey(scan_key, column_stats)) return false;
