@@ -36,7 +36,7 @@ get_pg_config(PG_INCLUDEDIR --includedir)
 set(CBDB_INCLUDE_DIR ${PG_INCLUDEDIR}/postgresql/server)
 
 # Debug options
-option(ENBALE_DEBUG "Enable debug" ON)
+option(ENABLE_DEBUG "Enable debug" ON)
 
 # Build gtest options
 option(BUILD_GTEST "Build with google test" ON)
@@ -45,8 +45,8 @@ option(BUILD_GTEST "Build with google test" ON)
 option(BUILD_PAX_FORMAT "Build pax format lib" OFF)
 
 
-if (ENBALE_DEBUG)
-  ADD_DEFINITIONS(-DENBALE_DEBUG)
+if (ENABLE_DEBUG)
+  ADD_DEFINITIONS(-DENABLE_DEBUG)
   # Use to build compile_commands.json
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
   SET(CMAKE_BUILD_TYPE "Debug")
@@ -56,7 +56,7 @@ else()
   SET(CMAKE_BUILD_TYPE "Release")
   # no need build gtest in release mode
   SET(BUILD_GTEST OFF)
-endif(ENBALE_DEBUG)
+endif(ENABLE_DEBUG)
 
 # Vec options
 option(VEC_BUILD "Build pax vectorization version" OFF)

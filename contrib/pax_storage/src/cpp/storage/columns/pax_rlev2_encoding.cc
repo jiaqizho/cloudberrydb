@@ -599,7 +599,7 @@ void PaxOrcEncoder::AppendInternal(const int64 data, bool is_flush) {
       case EncoderStatus::kTreatPatchedBase: {
         TreatPatchedBase();
         encoder_context_.var_len = 0;
-        encoder_context_.ResetPbCtx();
+
         keep_push_status = true;
         SwitchStatusTo(kTreatDone);
         break;
@@ -611,7 +611,7 @@ void PaxOrcEncoder::AppendInternal(const int64 data, bool is_flush) {
         } else {
           encoder_context_.var_len = 0;
         }
-        encoder_context_.ResetDeltaCtx();
+
         keep_push_status = true;
         SwitchStatusTo(kTreatDone);
 
@@ -619,6 +619,9 @@ void PaxOrcEncoder::AppendInternal(const int64 data, bool is_flush) {
       }
       case EncoderStatus::kTreatDone: {
         Assert(data_buffer_->UnTreated() != 0);
+        encoder_context_.ResetDeltaCtx();
+        encoder_context_.ResetDirectCtx();
+        encoder_context_.ResetPbCtx();
 
         // left shift
         data_buffer_->TreatedAll();
