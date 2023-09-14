@@ -43,7 +43,7 @@ make -j
 ### Build GTEST
 
 1. make sure already build pax with cmake option `-DBUILD_GTEST=on`, default value is on
-2. better with debug cmake option `-DENBALE_DEBUG=on`, default value is on
+2. better with debug cmake option `-DENABLE_DEBUG=on`, default value is on
 3. run tests
 
 ```
