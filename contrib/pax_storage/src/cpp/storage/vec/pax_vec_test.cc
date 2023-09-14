@@ -911,6 +911,8 @@ class MockWriter : public TableWriter {
   }
 
   MOCK_METHOD(std::string, GenFilePath, (const std::string &), (override));
+  MOCK_METHOD((std::vector<std::tuple<ColumnEncoding_Kind, int>>),
+              GetRelEncodingOptions, (), (override));
 };
 
 class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
@@ -936,6 +938,7 @@ class MockReaderInterator : public IteratorBase<MicroPartitionMetadata> {
 TEST_P(PaxVecTest, PaxVecReaderTest) {
   auto is_fixed = GetParam();
   CTupleSlot *ctuple_slot = CreateCtuple(is_fixed, true);
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
 
   auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
   relation->rd_att = ctuple_slot->GetTupleTableSlot()->tts_tupleDescriptor;
@@ -950,6 +953,11 @@ TEST_P(PaxVecTest, PaxVecReaderTest) {
   EXPECT_CALL(*writer, GenFilePath(_))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(file_name_));
+  encoding_opts.emplace_back(
+        std::make_tuple(ColumnEncoding_Kind_NO_ENCODED, 0));
+  EXPECT_CALL(*writer, GetRelEncodingOptions())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(encoding_opts));
 
   writer->Open();
 
