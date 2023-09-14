@@ -7,7 +7,6 @@
 namespace pax {
 void MicroPartitionInfoIterator::Begin() {
   Assert(pax_rel_);
-  Assert(snapshot_);
   Assert(!desc_);
   Assert(!tuple_);
 
@@ -72,10 +71,10 @@ MicroPartitionMetadata MicroPartitionInfoIterator::ToValue(HeapTuple tuple) {
     auto blockid = cbdb::HeapGetAttr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME, tup_desc, &is_null);
     CBDB_CHECK(!is_null, cbdb::CException::kExTypeLogicError);
 
-    auto name = DatumGetName(blockid)->data;
+    auto name = NameStr(*DatumGetName(blockid));
     auto file_name = cbdb::BuildPaxFilePath(pax_rel_, name);
     v.SetFileName(std::move(file_name));
-    v.SetMicroPartitionId(std::move(name));
+    v.SetMicroPartitionId(name);
   }
 
   auto tup_count = cbdb::HeapGetAttr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT, tup_desc, &is_null);

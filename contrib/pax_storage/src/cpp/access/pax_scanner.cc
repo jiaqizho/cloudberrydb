@@ -163,21 +163,24 @@ bool PaxScanDesc::ScanAnalyzeNextBlock(TableScanDesc scan,
 }
 
 bool PaxScanDesc::ScanAnalyzeNextTuple(TableScanDesc scan, double *liverows,
-                                       const double *deadrows,
+                                       const double * /* deadrows */,
                                        TupleTableSlot *slot) {
   PaxScanDesc *desc = ScanToDesc(scan);
   MemoryContext old_ctx;
   bool ok = false;
 
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
-  Assert(*deadrows == 0);  // not dead rows in pax latest snapshot
   while (desc->next_tuple_id_ < desc->target_tuple_id_) {
     ok = PaxScanDesc::ScanGetNextSlot(scan, slot);
     if (!ok) break;
     desc->next_tuple_id_++;
   }
+  if (desc->next_tuple_id_ == desc->target_tuple_id_) {
+    ok = PaxScanDesc::ScanGetNextSlot(scan, slot);
+    desc->next_tuple_id_++;
+    if (ok) *liverows += 1;
+  }
   MemoryContextSwitchTo(old_ctx);
-  if (ok) *liverows += 1;
   return ok;
 }
 
