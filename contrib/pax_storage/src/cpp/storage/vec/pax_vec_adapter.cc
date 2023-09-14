@@ -641,9 +641,6 @@ size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
   arrow_rb->schema = arrow_schema;
   vslot->tts_recordbatch = arrow_rb;
 
-  // Pax will put any data into tts_value in `ReadVecTuple`
-  memset(vslot->tts_shouldfree, 0, vslot->base.tts_nvalid);
-
   rc = cached_batch_lens_;
   cached_batch_lens_ = 0;
 
