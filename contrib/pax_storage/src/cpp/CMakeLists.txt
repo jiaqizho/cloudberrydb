@@ -127,6 +127,8 @@ set(pax_exceptions_src
     exceptions/CException.cc)
 
 set(pax_storage_src
+    storage/cache/pax_cache.cc
+    storage/cache/pax_plasma_cache.cc
     storage/columns/pax_column.cc
     storage/columns/pax_column_int.cc
     storage/columns/pax_compress.cc
@@ -231,6 +233,12 @@ else()
                   COMMAND ${CMAKE_COMMAND} -E
                   copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
 endif(BUILD_PAX_FORMAT)
+
+
+# enable plasma
+if (ENABLE_PLASMA)
+target_link_libraries(pax PUBLIC plasma)
+endif()
 
 # vec build
 if (VEC_BUILD)
