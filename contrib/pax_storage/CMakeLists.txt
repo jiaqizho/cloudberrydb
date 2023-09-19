@@ -58,6 +58,14 @@ else()
   SET(BUILD_GTEST OFF)
 endif(ENABLE_DEBUG)
 
+# Plasma options
+option (ENABLE_PLASMA "Enable plasma cache" OFF)
+if (ENABLE_PLASMA)
+ADD_DEFINITIONS(-DENABLE_PLASMA)
+# plasma need use CXX_STANDARD 17
+set(CMAKE_CXX_STANDARD 17)
+endif()
+
 # Vec options
 option(VEC_BUILD "Build pax vectorization version" OFF)
 set(VEC_HOME "" CACHE STRING "Path to vectorization home")
