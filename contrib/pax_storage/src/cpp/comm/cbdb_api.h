@@ -4,6 +4,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wregister"
+
 #include "postgres.h"  //  NOLINT
 
 #include "access/genam.h"
@@ -59,6 +63,8 @@ extern BlockNumber system_nextsampleblock(SampleScanState *node,  // NOLINT
 extern bool extractcolumns_from_node(Node *expr, bool *cols,  // NOLINT
                                      AttrNumber natts);
 extern Oid GetDefaultOpClass(Oid type_id, Oid am_id);
+
+#pragma GCC diagnostic pop
 #ifdef __cplusplus
 }
 #endif
