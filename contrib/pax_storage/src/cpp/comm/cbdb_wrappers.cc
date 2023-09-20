@@ -334,7 +334,63 @@ TupleDesc cbdb::RelationGetTupleDesc(Relation rel) {
   CBDB_WRAP_END;
 }
 
-bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts) {
+bool cbdb::IsSystemAttrNumExist(struct PaxcExtractcolumnContext *context,
+                                AttrNumber number) {
+  Assert(number < 0 && number > FirstLowInvalidHeapAttributeNumber && context);
+  return context->system_attr_number_mask[~number];
+}
+
+extern "C" {
+
+static bool paxc_extractcolumns_walker(  // NOLINT
+    Node *node, struct PaxcExtractcolumnContext *ec_ctx) {
+  if (node == NULL) {
+    return false;
+  }
+
+  if (IsA(node, Var)) {
+    Var *var = (Var *)node;
+
+    if (IS_SPECIAL_VARNO(var->varno)) return false;
+
+    if (var->varattno < 0) {
+      Assert(var->varattno > FirstLowInvalidHeapAttributeNumber);
+      ec_ctx->system_attr_number_mask[~var->varattno] = true;
+    } else if (ec_ctx->cols) {
+      if (var->varattno == 0) {
+        // If all attributes are included,
+        // set all entries in mask to true.
+        for (int attno = 0; attno < ec_ctx->natts; attno++)
+          ec_ctx->cols[attno] = true;
+        ec_ctx->found = true;
+      } else if (var->varattno <= ec_ctx->natts) {
+        ec_ctx->cols[var->varattno - 1] = true;
+        ec_ctx->found = true;
+      }
+      // Still need fill `system_attr_number_mask`
+      // Let this case return false
+    }
+
+    return false;
+  }
+
+  return expression_tree_walker(node, (bool (*)())paxc_extractcolumns_walker,
+                                (void *)ec_ctx);
+}
+
+};  // extern "C"
+
+bool cbdb::ExtractcolumnsFromNode(Node *expr,
+                                  struct PaxcExtractcolumnContext *ec_ctx) {
+  CBDB_WRAP_START;
+  {
+    paxc_extractcolumns_walker(expr, ec_ctx);
+    return ec_ctx->found;
+  }
+  CBDB_WRAP_END;
+}
+
+bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, int natts) {
   CBDB_WRAP_START;
   { return extractcolumns_from_node(expr, cols, natts); }
   CBDB_WRAP_END;

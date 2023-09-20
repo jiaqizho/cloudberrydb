@@ -18,7 +18,7 @@ namespace pax {
 TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
                                      int nkeys, struct ScanKeyData *key,
                                      ParallelTableScanDesc pscan, uint32 flags,
-                                     PaxFilter *filter) {
+                                     PaxFilter *filter, bool build_bitmap) {
   PaxScanDesc *desc;
   MemoryContext old_ctx;
   TableReader::ReaderOptions reader_options{};
@@ -91,7 +91,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   old_ctx = MemoryContextSwitchTo(desc->memory_context_);
 
   // build reader
-  reader_options.build_bitmap = true;
+  reader_options.build_bitmap = build_bitmap;
   reader_options.reused_buffer = desc->reused_buffer_;
   reader_options.rel_oid = desc->rs_base_.rs_rd->rd_id;
   reader_options.filter = filter;
@@ -147,17 +147,24 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
   auto natts = cbdb::RelationGetAttributesNumber(rel);
   bool *cols;
   bool found = false;
+  bool build_bitmap = true;
+  PaxcExtractcolumnContext extract_column;
 
   filter = new PaxFilter();
 
   cols = new bool[natts];
   memset(cols, false, natts);
 
+  extract_column.cols = cols;
+  extract_column.natts = natts;
+
   found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(targetlist),
-                                       cols, natts);
+                                       &extract_column);
   found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(qual), cols,
                                        natts) ||
           found;
+  build_bitmap = cbdb::IsSystemAttrNumExist(&extract_column,
+                                            SelfItemPointerAttributeNumber);
 
   // In some cases (for example, count(*)), targetlist and qual may be null,
   // extractcolumns_walker will return immediately, so no columns are specified.
@@ -173,7 +180,8 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
     auto ok = pax::BuildScanKeys(rel, qual, false, &scan_keys, &n_scan_keys);
     if (ok) filter->SetScanKeys(scan_keys, n_scan_keys);
   }
-  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter);
+  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter,
+                      build_bitmap);
 
   return paxscan;
 }
