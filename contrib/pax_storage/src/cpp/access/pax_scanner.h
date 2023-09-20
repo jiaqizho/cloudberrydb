@@ -67,6 +67,11 @@ class PaxScanDesc {
 #ifdef VEC_BUILD
   VecAdapter *vec_adapter_ = nullptr;
 #endif
+
+#ifdef ENABLE_PLASMA
+  const std::string plasma_socket_path_prefix_ = "/tmp/.s.plasma.";
+  PaxCache *pax_cache_ = nullptr;
+#endif
 };  // class PaxScanDesc
 
 }  // namespace pax

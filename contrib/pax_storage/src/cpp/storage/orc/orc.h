@@ -93,6 +93,10 @@ class OrcWriter : public MicroPartitionWriter {
   uint64 current_offset_ = 0;
 };
 
+#ifdef ENABLE_PLASMA
+class PaxColumnCache;
+#endif  // ENABLE_PLASMA
+
 class OrcReader : public MicroPartitionReader {
  public:
   struct StripeInformation {
@@ -167,6 +171,10 @@ class OrcReader : public MicroPartitionReader {
   size_t proj_len_;
 
   bool is_close_;
+#ifdef ENABLE_PLASMA
+  PaxColumnCache *pax_column_cache_ = nullptr;
+  std::vector<std::string> release_key_;
+#endif  // ENABLE_PLASMA
 };
 
 };  // namespace pax

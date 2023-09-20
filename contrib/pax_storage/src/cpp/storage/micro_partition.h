@@ -101,6 +101,10 @@ class MicroPartitionWriter {
   MicroPartitionStats *mpstats_ = nullptr;
 };
 
+#ifdef ENABLE_PLASMA
+class PaxCache;
+#endif
+
 template <typename T>
 class DataBuffer;
 class MicroPartitionReader {
@@ -116,6 +120,9 @@ class MicroPartitionReader {
     DataBuffer<char> *reused_buffer = nullptr;
 
     PaxFilter *filter = nullptr;
+#ifdef ENABLE_PLASMA
+    PaxCache *pax_cache = nullptr;
+#endif  // ENABLE_PLASMA
   };
 
   MicroPartitionReader() = default;
