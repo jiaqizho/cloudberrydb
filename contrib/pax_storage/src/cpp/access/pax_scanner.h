@@ -14,7 +14,7 @@ class PaxScanDesc {
   static TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
                                  int nkeys, struct ScanKeyData *key,
                                  ParallelTableScanDesc pscan, uint32 flags,
-                                 PaxFilter *filter);
+                                 PaxFilter *filter, bool build_bitmap);
 
   static void ReScan(TableScanDesc scan);
   static void EndScan(TableScanDesc scan);
