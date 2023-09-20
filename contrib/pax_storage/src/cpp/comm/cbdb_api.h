@@ -9,6 +9,7 @@ extern "C" {
 #pragma GCC diagnostic ignored "-Wregister"
 
 #include "postgres.h"  //  NOLINT
+#include "postmaster/postmaster.h"
 
 #include "access/genam.h"
 #include "access/heapam.h"

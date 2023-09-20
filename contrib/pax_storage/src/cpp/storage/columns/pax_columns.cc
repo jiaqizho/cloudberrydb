@@ -83,10 +83,36 @@ PaxColumns::PaxColumns(const std::vector<orc::proto::Type_Kind> &types,
 PaxColumns::PaxColumns() : row_nums_(0) { data_ = new DataBuffer<char>(0); }
 
 PaxColumns::~PaxColumns() {
+  // Notice that: the resources freed here,
+  // must transform owner in `PaxColumns::Merge`
   for (auto column : columns_) {
     delete column;
   }
+  for (auto holder : data_holder_) {
+    delete holder;
+  }
   delete data_;
+}
+
+void PaxColumns::Merge(PaxColumns *columns) {
+  Assert(GetColumns() == columns->GetColumns());
+  Assert(GetRows() == columns->GetRows());
+  Assert(columns->data_holder_.empty());
+
+  for (size_t i = 0; i < columns->GetColumns(); i++) {
+    AssertImply(columns_[i], !columns->columns_[i]);
+    if (!columns_[i] && columns->columns_[i]) {
+      columns_[i] = columns->columns_[i];
+      columns->columns_[i] = nullptr;
+    }
+  }
+
+  if (columns->data_) {
+    data_holder_.emplace_back(columns->data_);
+    columns->data_ = nullptr;
+  }
+
+  delete columns;
 }
 
 void PaxColumns::Clear() {

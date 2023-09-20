@@ -244,6 +244,9 @@ void TableReader::OpenFile() {
   options.file_name = it.GetFileName();
   options.filter = reader_options_.filter;
   options.reused_buffer = reader_options_.reused_buffer;
+#ifdef ENABLE_PLASMA
+  options.pax_cache = reader_options_.pax_cache;
+#endif
 
   if (reader_) {
     delete reader_;
@@ -257,7 +260,7 @@ void TableReader::OpenFile() {
     Assert(reader_options_.adapter);
     reader_ = new PaxVecReader(reader_, reader_options_.adapter);
   }
-#endif
+#endif  // VEC_BUILD
 
   reader_->Open(options);
 }

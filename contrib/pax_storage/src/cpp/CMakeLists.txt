@@ -114,7 +114,7 @@ endif(BUILD_GTEST AND NOT BUILD_PAX_FORMAT)
 # ztsd
 set(ZSTD_BUILD_PROGRAMS OFF)
 set(ZSTD_BUILD_TESTS OFF)
-set(ZSTD_BUILD_CONTRIB)
+set(ZSTD_BUILD_CONTRIB OFF)
 add_subdirectory(contrib/zstd/build/cmake/)
 set(ZTSD_HEADER contrib/zstd/lib)
 
@@ -129,6 +129,7 @@ set(pax_exceptions_src
 set(pax_storage_src
     storage/cache/pax_cache.cc
     storage/cache/pax_plasma_cache.cc
+    storage/columns/pax_column_cache.cc
     storage/columns/pax_column.cc
     storage/columns/pax_column_int.cc
     storage/columns/pax_compress.cc
