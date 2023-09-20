@@ -12,6 +12,10 @@
 #include "storage/micro_partition.h"
 #include "storage/orc/orc.h"
 
+#ifdef ENABLE_PLASMA
+#include "storage/cache/pax_plasma_cache.h"
+#endif
+
 namespace pax::tests {
 using ::testing::_;
 using ::testing::AtLeast;
@@ -252,5 +256,117 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
   std::remove((pax_file_name + std::to_string(0)).c_str());
   std::remove((pax_file_name + std::to_string(1)).c_str());
 }
+
+#ifdef ENABLE_PLASMA
+
+TEST_F(PaxWriterTest, TestCacheColumns) {
+  CTupleSlot *slot = CreateFakeCTupleSlot(true);
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
+  const char *uuid_file_name = "40fdcd4e-52cc-11ee-a652-52549e1c7e53";
+
+  std::remove(uuid_file_name);
+
+  auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
+  relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
+  bool callback_called = false;
+
+  TableWriter::WriteSummaryCallback callback =
+      [&callback_called](const WriteSummary & /*summary*/) {
+        callback_called = true;
+      };
+
+  auto writer = new MockWriter(relation, callback);
+  EXPECT_CALL(*writer, GenFilePath(_))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(uuid_file_name));
+
+  for (size_t i = 0; i < COLUMN_NUMS; i++) {
+    encoding_opts.emplace_back(
+        std::make_tuple(ColumnEncoding_Kind_NO_ENCODED, 0));
+  }
+  EXPECT_CALL(*writer, GetRelEncodingOptions())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(encoding_opts));
+
+  writer->Open();
+  writer->WriteTuple(slot);
+  writer->Close();
+  ASSERT_TRUE(callback_called);
+
+  cbdb::Pfree(slot->GetTupleTableSlot());
+  delete writer;
+
+  std::vector<MicroPartitionMetadata> meta_info_list;
+  MicroPartitionMetadata meta_info;
+
+  meta_info.SetFileName(uuid_file_name);
+  meta_info.SetMicroPartitionId(uuid_file_name);
+
+  meta_info_list.push_back(std::move(meta_info));
+
+  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
+      std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(
+          new MockReaderInterator(meta_info_list));
+
+  PaxPlasmaCache::CacheOptions cache_options;
+  cache_options.domain_socket = "/tmp/plasma";
+  cache_options.client_name = "";
+  cache_options.memory_quota = 10 * 1024 * 1024;
+  cache_options.waitting_ms = 0;
+
+  auto pax_cache = new PaxPlasmaCache(std::move(cache_options));
+  pax_cache->Initialize();
+
+  PaxFilter *filter = new PaxFilter();
+  auto proj_map = new bool[2];
+  memset(proj_map, true, 2);
+  filter->SetColumnProjection(proj_map, 2);
+
+  TableReader *reader;
+  TableReader::ReaderOptions reader_options{};
+  reader_options.build_bitmap = false;
+  reader_options.rel_oid = 0;
+  reader_options.filter = filter;
+  reader_options.pax_cache = pax_cache;
+
+  reader = new TableReader(std::move(meta_info_iterator), reader_options);
+  reader->Open();
+
+  CTupleSlot *rslot = CreateFakeCTupleSlot(true);
+
+  reader->ReadTuple(rslot);
+
+  ASSERT_EQ(1, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[0]));
+  ASSERT_EQ(2, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[1]));
+
+  reader->Close();
+
+  delete reader;
+
+  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator2 =
+      std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(
+          new MockReaderInterator(meta_info_list));
+
+  reader = new TableReader(std::move(meta_info_iterator2), reader_options);
+  reader->Open();
+  rslot = CreateFakeCTupleSlot(true);
+
+  reader->ReadTuple(rslot);
+
+  ASSERT_EQ(1, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[0]));
+  ASSERT_EQ(2, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[1]));
+
+  reader->Close();
+  delete reader;
+
+  std::remove(uuid_file_name);
+  pax_cache->Destroy();
+
+  delete relation;
+  delete filter;
+  delete pax_cache;
+}
+
+#endif
 
 }  // namespace pax::tests

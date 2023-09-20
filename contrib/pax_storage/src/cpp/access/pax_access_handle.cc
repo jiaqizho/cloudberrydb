@@ -867,11 +867,21 @@ static void PaxXactCallback(XactEvent event, void * /*arg*/) {
   }
 }
 
+#ifdef ENABLE_PLASMA
+bool enable_plasma_in_mem = true;
+#endif
+
 void _PG_init(void) {  // NOLINT
   if (!process_shared_preload_libraries_in_progress) {
     ereport(ERROR, (errmsg("pax must be loaded via shared_preload_libraries")));
     return;
   }
+
+#ifdef ENABLE_PLASMA
+  DefineCustomBoolVariable(
+      "pax.enable_plasma", "Enable plasma cache the set of columns", NULL,
+      &enable_plasma_in_mem, true, PGC_USERSET, 0, NULL, NULL, NULL);
+#endif
 
   paxc::paxc_shmem_request();
 
