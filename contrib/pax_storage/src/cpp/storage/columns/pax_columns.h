@@ -20,6 +20,10 @@ class PaxColumns : public PaxColumn {
 
   ~PaxColumns() override;
 
+  // Use to merge other columns
+  // The columns pass in will be delete
+  void Merge(PaxColumns *columns);
+
   void Clear() override;
 
   PaxColumn *operator[](uint64 i);
@@ -75,6 +79,7 @@ class PaxColumns : public PaxColumn {
 
  protected:
   std::vector<PaxColumn *> columns_;
+  std::vector<DataBuffer<char> *> data_holder_;
   DataBuffer<char> *data_;
   size_t row_nums_;
 };
