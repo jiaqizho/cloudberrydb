@@ -80,6 +80,10 @@ class TableReader final {
     bool is_vec = false;
     VecAdapter *adapter = nullptr;
 #endif
+
+#ifdef ENABLE_PLASMA
+    PaxCache *pax_cache = nullptr;
+#endif  // ENABLE_PLASMA
   };
 
   TableReader(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,

@@ -8,6 +8,11 @@
 #include "storage/pax.h"
 #include "storage/pax_buffer.h"
 
+#ifdef ENABLE_PLASMA
+extern bool enable_plasma_in_mem;
+#include "storage/cache/pax_plasma_cache.h"
+#endif
+
 namespace pax {
 
 TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
@@ -36,13 +41,49 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   desc->key_ = key;
   desc->reused_buffer_ = new DataBuffer<char>(32 * 1024 * 1024);  // 32mb
   desc->filter_ = filter;
+  if (!desc->filter_) {
+    desc->filter_ = new PaxFilter();
+  }
+
+  if (!desc->filter_->GetColumnProjection().first) {
+    auto natts = cbdb::RelationGetAttributesNumber(relation);
+    auto cols = new bool[natts];
+    memset(cols, true, natts);
+    desc->filter_->SetColumnProjection(cols, natts);
+  }
+
 #ifdef VEC_BUILD
   if (flags & (1 << 12)) {
     desc->vec_adapter_ = new VecAdapter(cbdb::RelationGetTupleDesc(relation));
     reader_options.is_vec = true;
     reader_options.adapter = desc->vec_adapter_;
   }
-#endif
+#endif  // VEC_BUILD
+
+#ifdef ENABLE_PLASMA
+  if (enable_plasma_in_mem) {
+    std::string plasma_socket_path =
+        std::string(desc->plasma_socket_path_prefix_);
+    plasma_socket_path.append(std::to_string(PostPortNumber));
+    plasma_socket_path.append("\0");
+    PaxPlasmaCache::CacheOptions cache_options;
+    cache_options.domain_socket = plasma_socket_path;
+    cache_options.memory_quota = 0;
+    cache_options.waitting_ms = 0;
+
+    desc->pax_cache_ = new PaxPlasmaCache(std::move(cache_options));
+    auto status = desc->pax_cache_->Initialize();
+    if (!status.Ok()) {
+      elog(WARNING, "Plasma cache client init failed, message: %s",
+           status.Error().c_str());
+      delete desc->pax_cache_;
+      desc->pax_cache_ = nullptr;
+    }
+
+    reader_options.pax_cache = desc->pax_cache_;
+  }
+
+#endif  // ENABLE_PLASMA
 
   // init shared memory
   cbdb::InitCommandResource();
@@ -84,6 +125,14 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
 #ifdef VEC_BUILD
   delete desc->vec_adapter_;
 #endif
+
+#ifdef ENABLE_PLASMA
+  if (desc->pax_cache_) {
+    desc->pax_cache_->Destroy();
+    delete desc->pax_cache_;
+  }
+#endif
+
   // TODO(jiaqizho): please double check with abort transaction @gongxun
   Assert(desc->memory_context_);
   cbdb::MemoryCtxDelete(desc->memory_context_);

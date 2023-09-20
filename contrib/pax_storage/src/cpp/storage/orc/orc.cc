@@ -8,6 +8,7 @@
 
 #include "comm/cbdb_wrappers.h"
 #include "exceptions/CException.h"
+#include "storage/columns/pax_column_cache.h"
 #include "storage/columns/pax_column_int.h"
 #include "storage/columns/pax_encoding_non_fixed_column.h"
 #include "storage/micro_partition_stats.h"
@@ -383,8 +384,50 @@ PaxColumns *OrcReader::GetAllColumns() {
   Assert(GetNumberOfStripes() == 1);
 
   if (!working_pax_columns_) {
+#ifdef ENABLE_PLASMA
+    if (pax_column_cache_) {
+      PaxColumns *columns_readed = nullptr;
+      bool *proj_copy = nullptr;
+      bool still_remain = false;
+      std::tie(working_pax_columns_, release_key_, proj_copy) =
+          pax_column_cache_->ReadCache();
+
+      for (size_t i = 0; i < proj_len_; i++) {
+        if (proj_copy[i]) {
+          still_remain = true;
+          break;
+        }
+      }
+
+      if (still_remain) {
+        columns_readed =
+            ReadStripe(current_stripe_index_++, proj_copy, proj_len_);
+        pax_column_cache_->WriteCache(columns_readed);
+      } else {
+        current_stripe_index_++;
+      }
+
+      delete[] proj_copy;
+
+      // No get the cache columns
+      if (working_pax_columns_->GetRows() == 0) {
+        Assert(columns_readed);
+        delete working_pax_columns_;
+        working_pax_columns_ = columns_readed;
+      } else if (still_remain) {
+        Assert(columns_readed);
+        working_pax_columns_->Merge(columns_readed);
+      }
+
+    } else {
+      working_pax_columns_ =
+          ReadStripe(current_stripe_index_++, proj_map_, proj_len_);
+    }
+#else  // ENABLE_PLASMA
     working_pax_columns_ =
         ReadStripe(current_stripe_index_++, proj_map_, proj_len_);
+
+#endif  // ENABLE_PLASMA
     current_row_index_ = 0;
     for (size_t i = 0; i < column_types_.size(); i++) {
       current_nulls_[i] = 0;
@@ -397,7 +440,7 @@ PaxColumns *OrcReader::GetAllColumns() {
           Assert(!(*nulls)[n]);
         }
       }
-#endif
+#endif  // ENABLE_DEBUG
     }
   }
 
@@ -898,6 +941,12 @@ void OrcReader::Open(const ReaderOptions &options) {
   if (options.filter)
     std::tie(proj_map_, proj_len_) = options.filter->GetColumnProjection();
 
+#ifdef ENABLE_PLASMA
+  if (options.pax_cache)
+    pax_column_cache_ = new PaxColumnCache(options.pax_cache, options.block_id,
+                                           proj_map_, proj_len_);
+#endif
+
   // Begin read footer
 
   // TODO(jiaqizho):
@@ -945,6 +994,13 @@ void OrcReader::Close() {
     return;
   }
 
+#ifdef ENABLE_PLASMA
+  if (pax_column_cache_) {
+    pax_column_cache_->ReleaseCache(release_key_);
+    delete pax_column_cache_;
+  }
+#endif
+
   ResetCurrentReading();
   delete[] current_nulls_;
   current_nulls_ = nullptr;
@@ -969,13 +1025,7 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
       if (current_stripe_index_ >= GetNumberOfStripes()) {
         return false;
       }
-
-      working_pax_columns_ =
-          ReadStripe(current_stripe_index_++, proj_map_, proj_len_);
-      current_row_index_ = 0;
-      for (size_t i = 0; i < column_types_.size(); i++) {
-        current_nulls_[i] = 0;
-      }
+      working_pax_columns_ = GetAllColumns();
     }
 
     column_numbers = working_pax_columns_->GetColumns();
