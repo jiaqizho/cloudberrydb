@@ -114,7 +114,7 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
   CBDB_TRY();
   {
     return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags,
-                                  nullptr);
+                                  nullptr, true);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_END_TRY();

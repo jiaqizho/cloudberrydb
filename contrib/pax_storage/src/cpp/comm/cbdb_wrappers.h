@@ -8,6 +8,21 @@
 #include "exceptions/CException.h"
 #include "storage/pax_block_id.h"
 
+struct PaxcExtractcolumnContext {
+  // If cols set and call ExtractcolumnsFromNode with
+  // `target list`. Then the cols will fill with projection mask.
+  bool *cols = nullptr;
+  int natts = 0;
+  bool found = false;
+
+  // This mask use to filter system attribute number.
+  // (~AttrNumber) will be index, mapping the [0,
+  // FirstLowInvalidHeapAttributeNumber) call `IsSystemAttrNumExist` to check
+  // system-defined attributes set
+  bool system_attr_number_mask[~FirstLowInvalidHeapAttributeNumber] = {
+      0};  // NOLINT
+};
+
 namespace cbdb {
 
 #define PAX_ALLOCSET_DEFAULT_MINSIZE ALLOCSET_DEFAULT_MINSIZE
@@ -142,7 +157,13 @@ int RelationGetAttributesNumber(Relation rel);
 StdRdOptions **RelGetAttributeOptions(Relation rel);
 TupleDesc RelationGetTupleDesc(Relation rel);
 
-bool ExtractcolumnsFromNode(Node *expr, bool *cols, AttrNumber natts);
+bool ExtractcolumnsFromNode(Node *expr,
+                            struct PaxcExtractcolumnContext *ec_ctx);
+
+bool IsSystemAttrNumExist(struct PaxcExtractcolumnContext *context,
+                          AttrNumber number);
+
+bool ExtractcolumnsFromNode(Node *expr, bool *cols, int natts);
 
 std::string BuildPaxFilePath(Relation rel, const std::string &block_id);
 
