@@ -120,6 +120,7 @@ set(ZTSD_HEADER contrib/zstd/lib)
 
 set(pax_comm_src
     comm/bitmap.cc
+    comm/guc.cc
     comm/paxc_wrappers.cc
     comm/cbdb_wrappers.cc)
 

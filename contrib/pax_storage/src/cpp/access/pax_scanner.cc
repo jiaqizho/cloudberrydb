@@ -1,6 +1,8 @@
 #include "access/pax_scanner.h"
 
 #include "access/pax_access_handle.h"
+#include "comm/guc.h"
+#include "comm/log.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/micro_partition_iterator.h"
@@ -9,7 +11,6 @@
 #include "storage/pax_buffer.h"
 
 #ifdef ENABLE_PLASMA
-extern bool enable_plasma_in_mem;
 #include "storage/cache/pax_plasma_cache.h"
 #endif
 
@@ -61,7 +62,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
 #endif  // VEC_BUILD
 
 #ifdef ENABLE_PLASMA
-  if (enable_plasma_in_mem) {
+  if (pax_enable_plasma_in_mem) {
     std::string plasma_socket_path =
         std::string(desc->plasma_socket_path_prefix_);
     plasma_socket_path.append(std::to_string(PostPortNumber));
@@ -100,8 +101,11 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   if (filter && filter->HasMicroPartitionFilter()) {
     auto wrap = new FilterIterator<MicroPartitionMetadata>(
         std::move(iter), [filter, relation](const auto &x) {
-          return filter->TestMicroPartitionScan(x.GetStats(),
-                                                RelationGetDescr(relation));
+          auto ok = filter->TestMicroPartitionScan(x.GetStats(),
+                                                   RelationGetDescr(relation));
+          PAX_LOG_IF(!ok && pax_enable_debug, "filter micro partition: \"%s\"",
+                     x.GetFileName().c_str());
+          return ok;
         });
     iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap);
   }
