@@ -7,6 +7,7 @@
 #include "access/pax_updater.h"
 #include "access/paxc_rel_options.h"
 #include "catalog/pax_aux_table.h"
+#include "comm/guc.h"
 #include "exceptions/CException.h"
 #include "storage/paxc_block_map_manager.h"
 
@@ -867,9 +868,16 @@ static void PaxXactCallback(XactEvent event, void * /*arg*/) {
   }
 }
 
+static void DefineGUCs() {
+  DefineCustomBoolVariable("pax.enable_debug", "enable pax debug", NULL,
+                           &pax::pax_enable_debug, true, PGC_USERSET, 0, NULL, NULL,
+                           NULL);
 #ifdef ENABLE_PLASMA
-bool enable_plasma_in_mem = true;
+  DefineCustomBoolVariable(
+      "pax.enable_plasma", "Enable plasma cache the set of columns", NULL,
+      &pax::pax_enable_plasma_in_mem, true, PGC_USERSET, 0, NULL, NULL, NULL);
 #endif
+}
 
 void _PG_init(void) {  // NOLINT
   if (!process_shared_preload_libraries_in_progress) {
@@ -877,12 +885,7 @@ void _PG_init(void) {  // NOLINT
     return;
   }
 
-#ifdef ENABLE_PLASMA
-  DefineCustomBoolVariable(
-      "pax.enable_plasma", "Enable plasma cache the set of columns", NULL,
-      &enable_plasma_in_mem, true, PGC_USERSET, 0, NULL, NULL, NULL);
-#endif
-
+  DefineGUCs();
   paxc::paxc_shmem_request();
 
   prev_shmem_startup_hook = shmem_startup_hook;
