@@ -268,7 +268,7 @@ void TableReader::OpenFile() {
 TableDeleter::TableDeleter(
     Relation rel,
     std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
-    std::map<std::string, std::unique_ptr<DynamicBitmap>> &&delete_bitmap,
+    std::map<std::string, std::unique_ptr<Bitmap64>> &&delete_bitmap,
     Snapshot snapshot)
     : rel_(rel),
       iterator_(std::move(iterator)),
@@ -318,10 +318,9 @@ void TableDeleter::Delete() {
     }
 
     auto bitmap = it->second.get();
-    if (cslot.GetOffset() < bitmap->NumBits() &&
-        bitmap->Test(cslot.GetOffset())) {
+    if (bitmap->Test(cslot.GetOffset()))
       continue;
-    }
+
     writer_->WriteTuple(&cslot);
   }
 
