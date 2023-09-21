@@ -12,6 +12,7 @@ namespace pax {
 
 PaxColumn::PaxColumn()
     : null_bitmap_(nullptr),
+      total_rows_(0),
       encoded_type_(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
       storage_type_(PaxColumnStorageType::kTypeStorageNonVec) {}
 
@@ -30,46 +31,29 @@ void PaxColumn::Clear() {
     delete null_bitmap_;
     null_bitmap_ = nullptr;
   }
+  total_rows_ = 0;
 }
 
 bool PaxColumn::HasNull() { return null_bitmap_ != nullptr; }
 
-void PaxColumn::SetNulls(DataBuffer<bool> *null_bitmap) {
+void PaxColumn::SetBitmap(Bitmap8 *null_bitmap) {
   Assert(!null_bitmap_);
   null_bitmap_ = null_bitmap;
 }
 
-DataBuffer<bool> *PaxColumn::GetNulls() const { return null_bitmap_; }
-
-std::pair<bool *, size_t> PaxColumn::GetRangeNulls(size_t start_pos,
-                                                   size_t len) {
-  Assert(null_bitmap_);
-  CBDB_CHECK((start_pos + len) <= GetRows(),
-             cbdb::CException::ExType::kExTypeOutOfRange);
-
-  static_assert(sizeof(char) == sizeof(bool));
-  return std::make_pair(null_bitmap_->GetBuffer() + start_pos, len);
+size_t PaxColumn::GetRows() {
+  return total_rows_;
 }
 
-size_t PaxColumn::GetRows() {
-  return null_bitmap_ ? null_bitmap_->Used() : GetNonNullRows();
+void PaxColumn::SetRows(size_t total_rows) {
+  total_rows_ = total_rows;
 }
 
 size_t PaxColumn::GetRangeNonNullRows(size_t start_pos, size_t len) {
   CBDB_CHECK((start_pos + len) <= GetRows(),
              cbdb::CException::ExType::kExTypeOutOfRange);
-  if (null_bitmap_) {
-    size_t total_non_null = 0;
-    for (size_t i = start_pos; i < (start_pos + len); i++) {
-      if ((*null_bitmap_)[i]) {
-        total_non_null++;
-      }
-    }
-
-    return total_non_null;
-  } else {
-    return len;
-  }
+  if (!null_bitmap_) return len;
+  return null_bitmap_->CountBits(start_pos, start_pos + len - 1);
 }
 
 void PaxColumn::AppendNull() {
@@ -78,31 +62,17 @@ void PaxColumn::AppendNull() {
     size_t size = current_rows > DEFAULT_CAPACITY
                       ? (current_rows / DEFAULT_CAPACITY + 1) * DEFAULT_CAPACITY
                       : DEFAULT_CAPACITY;
-    null_bitmap_ = new DataBuffer<bool>(size);
-    null_bitmap_->Brush(current_rows * sizeof(bool));
-    memset(null_bitmap_->GetBuffer(), 1, null_bitmap_->Capacity());
+    null_bitmap_ = new Bitmap8(size);
+    null_bitmap_->SetN(total_rows_);
   }
-
-  if (null_bitmap_->Available() == 0) {
-    size_t old_cap = null_bitmap_->Capacity();
-    null_bitmap_->ReSize(old_cap * 2);
-    memset(null_bitmap_->GetAvailableBuffer(), 1, old_cap);
-  }
-
-  null_bitmap_->Write(false);
-  null_bitmap_->Brush(sizeof(bool));
+  null_bitmap_->Clear(total_rows_);
+  ++total_rows_;
 }
 
 void PaxColumn::Append([[maybe_unused]] char *buffer,
                        [[maybe_unused]] size_t size) {
-  if (null_bitmap_) {
-    if (null_bitmap_->Available() == 0) {
-      size_t old_cap = null_bitmap_->Capacity();
-      null_bitmap_->ReSize(old_cap * 2);
-      memset(null_bitmap_->GetAvailableBuffer(), 1, old_cap);
-    }
-    null_bitmap_->Brush(sizeof(bool));
-  }
+  if (null_bitmap_) null_bitmap_->Set(total_rows_);
+  ++total_rows_;
 }
 
 PaxColumn *PaxColumn::SetColumnEncodeType(ColumnEncoding_Kind encoding_type) {
@@ -231,24 +201,14 @@ PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity) : estimated_size_(0) {
 PaxNonFixedColumn::PaxNonFixedColumn() : PaxNonFixedColumn(DEFAULT_CAPACITY) {}
 
 PaxNonFixedColumn::~PaxNonFixedColumn() {
-  if (data_) {
-    delete data_;
-  }
-
-  if (lengths_) {
-    delete lengths_;
-  }
+  delete data_;
+  delete lengths_;
 }
 
 void PaxNonFixedColumn::Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
                             size_t total_size) {
-  if (data_) {
-    delete data_;
-  }
-
-  if (lengths_) {
-    delete lengths_;
-  }
+  delete data_;
+  delete lengths_;
 
   estimated_size_ = total_size;
   data_ = data;

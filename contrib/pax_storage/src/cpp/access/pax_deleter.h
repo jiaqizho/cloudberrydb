@@ -12,22 +12,22 @@
 namespace pax {
 class CPaxDeleter {
  public:
-  explicit CPaxDeleter(const Relation rel, const Snapshot snapshot);
+  explicit CPaxDeleter(Relation rel, Snapshot snapshot);
 
-  static TM_Result DeleteTuple(const Relation relation, const ItemPointer tid,
-                               const CommandId cid, const Snapshot snapshot,
+  static TM_Result DeleteTuple(Relation relation, ItemPointer tid,
+                               CommandId cid, Snapshot snapshot,
                                TM_FailureData *tmfd);
 
-  TM_Result MarkDelete(const ItemPointer tid);
+  TM_Result MarkDelete(ItemPointer tid);
 
   ~CPaxDeleter();
 
   void ExecDelete();
 
  private:
-  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> buildDeleteIterator();
-  std::map<std::string, std::unique_ptr<DynamicBitmap>> block_bitmap_map_;
-  const Relation rel_;
-  const Snapshot snapshot_;
+  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> BuildDeleteIterator();
+  std::map<std::string, std::unique_ptr<Bitmap64>> block_bitmap_map_;
+  Relation rel_;
+  Snapshot snapshot_;
 };  // class CPaxDeleter
 }  // namespace pax

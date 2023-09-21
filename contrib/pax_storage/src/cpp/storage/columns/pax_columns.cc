@@ -215,10 +215,12 @@ size_t PaxColumns::MeasureDataBuffer(
 
     // has null will generate a bitmap in current stripe
     if (column->HasNull()) {
-      size_t non_null_length = column->GetNulls()->Used();
-      buffer_len += non_null_length;
+      auto bm = column->GetBitmap();
+      Assert(bm);
+      size_t bm_length = bm->MinimalStoredBytes(column->GetRows());
+      buffer_len += bm_length;
       column_streams_func(orc::proto::Stream_Kind_PRESENT, column->GetRows(),
-                          non_null_length);
+                          bm_length);
     }
 
     size_t column_size = column->GetNonNullRows();
@@ -269,12 +271,12 @@ void PaxColumns::CombineDataBuffer() {
     }
 
     if (column->HasNull()) {
-      auto null_data_buffer = column->GetNulls();
-      size_t non_null_length = null_data_buffer->Used();
+      auto bm = column->GetBitmap();
+      auto nbytes = bm->MinimalStoredBytes(column->GetRows());
+      Assert(nbytes <= bm->Raw().size);
 
-      data_->Write(reinterpret_cast<char *>(null_data_buffer->GetBuffer()),
-                   non_null_length);
-      data_->Brush(non_null_length);
+      data_->Write(reinterpret_cast<char *>(bm->Raw().bitmap), nbytes);
+      data_->Brush(nbytes);
     }
 
     switch (column->GetPaxColumnTypeInMem()) {
