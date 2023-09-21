@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "comm/bitmap.h"
 #include "storage/columns/pax_compress.h"
 #include "storage/columns/pax_encoding_utils.h"
 #include "storage/pax_buffer.h"
@@ -89,17 +90,20 @@ class PaxColumn {
   bool HasNull();
 
   // Set null bitmap
-  void SetNulls(DataBuffer<bool> *null_bitmap);
+  void SetBitmap(Bitmap8 *null_bitmap);
 
-  // Get null bitmaps
-  DataBuffer<bool> *GetNulls() const;
+  // Get Bitmap
+  Bitmap8 *GetBitmap() { return null_bitmap_; }
 
-  // Get bull bitmaps by range [start_pos, start_pos + len)
-  std::pair<bool *, size_t> GetRangeNulls(size_t start_pos, size_t len);
+  void SetRows(size_t total_rows);
 
  protected:
   // null field bit map
-  DataBuffer<bool> *null_bitmap_;
+  Bitmap8 *null_bitmap_;
+
+  // Writer: write pointer
+  // Reader: total rows
+  uint32 total_rows_;
 
   // the column is encoded type
   ColumnEncoding_Kind encoded_type_;

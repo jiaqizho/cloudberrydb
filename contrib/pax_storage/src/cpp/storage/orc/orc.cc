@@ -434,10 +434,10 @@ PaxColumns *OrcReader::GetAllColumns() {
 #ifdef ENABLE_DEBUG
       auto column = (*working_pax_columns_)[i];
       if (column && !column->GetBuffer().first) {
-        auto nulls = column->GetNulls();
-        Assert(nulls);
+        auto bm = column->GetBitmap();
+        Assert(bm);
         for (size_t n = 0; n < column->GetRows(); n++) {
-          Assert(!(*nulls)[n]);
+          Assert(!bm->Test(n));
         }
       }
 #endif  // ENABLE_DEBUG
@@ -742,19 +742,17 @@ PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
       continue;
     }
 
-    DataBuffer<bool> *non_null_bitmap = nullptr;
+    Bitmap8 *non_null_bitmap = nullptr;
     bool has_null = stripe_info->stripe_statistics.colstats(index).hasnull();
     if (has_null) {
-      uint64 non_null_length = 0;
       const orc::proto::Stream &non_null_stream =
           stripe_footer.streams(streams_index++);
-      non_null_length = static_cast<uint32>(non_null_stream.length());
+      auto bm_nbytes = static_cast<uint32>(non_null_stream.length());
+      auto bm_bytes = reinterpret_cast<uint8 *>(data_buffer->GetAvailableBuffer());
 
-      non_null_bitmap = new DataBuffer<bool>(
-          reinterpret_cast<bool *>(data_buffer->GetAvailableBuffer()),
-          non_null_length, false, false);
-      non_null_bitmap->BrushAll();
-      data_buffer->Brush(non_null_length);
+      non_null_bitmap = new Bitmap8(BitmapRaw<uint8>(bm_bytes, bm_nbytes),
+BitmapTpl<uint8>::ReadOnlyRefBitmap);
+      data_buffer->Brush(bm_nbytes);
     }
 
     switch (column_types_[index]) {
@@ -879,11 +877,13 @@ PaxColumns *OrcReader::ReadStripe(size_t index, bool *proj_map,
     }
 
     // fill nulls data buffer
+    Assert(pax_columns->GetColumns() > 0);
+    auto last_column = (*pax_columns)[pax_columns->GetColumns() - 1];
     if (has_null) {
-      Assert(pax_columns->GetColumns() > 0 && non_null_bitmap);
-      auto last_column = (*pax_columns)[pax_columns->GetColumns() - 1];
-      last_column->SetNulls(non_null_bitmap);
+      Assert(non_null_bitmap);
+      last_column->SetBitmap(non_null_bitmap);
     }
+    last_column->SetRows(stripe_info->numbers_of_row);
   }
 
   Assert(streams_size == streams_index);
@@ -1090,8 +1090,9 @@ bool OrcReader::ReadTuple(CTupleSlot *cslot) {
     // set default is not null
     slot->tts_isnull[index] = false;
     if (column->HasNull()) {
-      auto null_bitmap = column->GetNulls();
-      if (!(*null_bitmap)[current_row_index_]) {
+      auto bm = column->GetBitmap();
+      Assert(bm);
+      if (!bm->Test(current_row_index_)) {
         slot->tts_isnull[index] = true;
         current_nulls_[index]++;
         continue;
