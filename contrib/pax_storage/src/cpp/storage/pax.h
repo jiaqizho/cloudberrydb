@@ -125,7 +125,7 @@ class TableDeleter final {
   TableDeleter(
       Relation rel,
       std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
-      std::map<std::string, std::unique_ptr<DynamicBitmap>> &&delete_bitmap,
+      std::map<std::string, std::unique_ptr<Bitmap64>> &&delete_bitmap,
       Snapshot snapshot);
 
   ~TableDeleter();
@@ -140,7 +140,7 @@ class TableDeleter final {
  private:
   Relation rel_;
   std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
-  std::map<std::string, std::unique_ptr<DynamicBitmap>> delete_bitmap_;
+  std::map<std::string, std::unique_ptr<Bitmap64>> delete_bitmap_;
   Snapshot snapshot_;
   TableReader *reader_;
   TableWriter *writer_;
