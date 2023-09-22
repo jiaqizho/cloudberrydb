@@ -1,0 +1,364 @@
+#include "comm/cbdb_api.h"
+
+#include "storage/micro_partition_stats.h"
+#include "storage/orc/orc.h"
+namespace pax {
+
+std::vector<orc::proto::Type_Kind> OrcWriter::BuildSchema(TupleDesc desc) {
+  std::vector<orc::proto::Type_Kind> type_kinds;
+  for (int i = 0; i < desc->natts; i++) {
+    auto *attr = &desc->attrs[i];
+    if (attr->attbyval) {
+      switch (attr->attlen) {
+        case 1:
+          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_BYTE);
+          break;
+        case 2:
+          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_SHORT);
+          break;
+        case 4:
+          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+          break;
+        case 8:
+          type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_LONG);
+          break;
+        default:
+          Assert(!"should not be here! pg_type which attbyval=true only have typlen of "
+                  "1, 2, 4, or 8");
+      }
+    } else {
+      Assert(attr->attlen > 0 || attr->attlen == -1);
+      type_kinds.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+    }
+  }
+
+  return type_kinds;
+}
+
+OrcWriter::OrcWriter(
+    const MicroPartitionWriter::WriterOptions &orc_writer_options,
+    const std::vector<orc::proto::Type_Kind> &column_types, File *file)
+    : MicroPartitionWriter(orc_writer_options),
+      column_types_(column_types),
+      file_(file),
+      current_offset_(0) {
+  pax_columns_ = new PaxColumns(column_types, orc_writer_options.encoding_opts);
+
+  summary_.rel_oid = orc_writer_options.rel_oid;
+  summary_.block_id = orc_writer_options.block_id;
+  summary_.file_name = orc_writer_options.file_name;
+
+  file_footer_.set_headerlength(0);
+  file_footer_.set_contentlength(0);
+  file_footer_.set_numberofrows(0);
+  file_footer_.set_rowindexstride(0);
+  file_footer_.set_writer(ORC_WRITER_ID);
+  file_footer_.set_softwareversion(ORC_SOFT_VERSION);
+  BuildFooterType();
+
+  post_script_.set_footerlength(0);
+  post_script_.set_compression(orc::proto::CompressionKind::NONE);
+  post_script_.set_compressionblocksize(0);
+
+  post_script_.add_version(ORC_FILE_MAJOR_VERSION);
+  post_script_.set_writerversion(ORC_WRITER_VERSION);
+  post_script_.set_magic(ORC_MAGIC_ID);
+
+  InitStripe();
+}
+
+OrcWriter::~OrcWriter() {
+  delete pax_columns_;
+  delete file_;
+}
+
+MicroPartitionWriter *OrcWriter::SetStatsCollector(
+    MicroPartitionStats *mpstats) {
+  if (mpstats)
+    mpstats->SetStatsMessage(&summary_.mp_stats, column_types_.size());
+  return MicroPartitionWriter::SetStatsCollector(mpstats);
+}
+
+void OrcWriter::Flush() {
+  BufferedOutputStream buffer_mem_stream(nullptr, 2048);
+  if (WriteStripe(&buffer_mem_stream)) {
+    Assert(current_offset_ >= buffer_mem_stream.GetDataBuffer()->Used());
+    file_->PWriteN(buffer_mem_stream.GetDataBuffer()->GetBuffer(),
+                   buffer_mem_stream.GetDataBuffer()->Used(),
+                   current_offset_ - buffer_mem_stream.GetDataBuffer()->Used());
+    file_->Flush();
+    pax_columns_->Clear();
+  }
+}
+
+void OrcWriter::WriteTuple(CTupleSlot *slot) {
+  int n;
+  TupleTableSlot *table_slot;
+  TupleDesc table_desc;
+  int16 type_len;
+  bool type_by_val;
+
+  summary_.num_tuples++;
+
+  table_slot = slot->GetTupleTableSlot();
+  table_desc = slot->GetTupleDesc();
+  n = table_desc->natts;
+
+  CBDB_CHECK(pax_columns_->GetColumns() == static_cast<size_t>(n),
+             cbdb::CException::ExType::kExTypeSchemaNotMatch);
+
+  pax_columns_->AddRows(1);
+
+  for (int i = 0; i < n; i++) {
+    type_len = table_desc->attrs[i].attlen;
+    type_by_val = table_desc->attrs[i].attbyval;
+
+    AssertImply(table_desc->attrs[i].attisdropped, table_slot->tts_isnull[i]);
+
+    if (table_slot->tts_isnull[i]) {
+      (*pax_columns_)[i]->AppendNull();
+      continue;
+    }
+
+    if (type_by_val) {
+      switch (type_len) {
+        case 1: {
+          auto value = cbdb::DatumToInt8(table_slot->tts_values[i]);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value),
+                                     type_len);
+          break;
+        }
+        case 2: {
+          auto value = cbdb::DatumToInt16(table_slot->tts_values[i]);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value),
+                                     type_len);
+          break;
+        }
+        case 4: {
+          auto value = cbdb::DatumToInt32(table_slot->tts_values[i]);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value),
+                                     type_len);
+          break;
+        }
+        case 8: {
+          auto value = cbdb::DatumToInt64(table_slot->tts_values[i]);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(&value),
+                                     type_len);
+          break;
+        }
+        default:
+          Assert(!"should not be here! pg_type which attbyval=true only have typlen of "
+                  "1, 2, 4, or 8 ");
+      }
+    } else {
+      switch (type_len) {
+        case -1: {
+          void *vl = nullptr;
+          int len = -1;
+          vl = cbdb::PointerAndLenFromDatum(table_slot->tts_values[i], &len);
+          Assert(vl != nullptr && len != -1);
+          (*pax_columns_)[i]->Append(reinterpret_cast<char *>(vl), len);
+          break;
+        }
+        default:
+          Assert(type_len > 0);
+          (*pax_columns_)[i]->Append(static_cast<char *>(cbdb::DatumToPointer(
+                                         table_slot->tts_values[i])),
+                                     type_len);
+          break;
+      }
+    }
+  }
+}
+
+void OrcWriter::WriteTupleN(CTupleSlot **slot, size_t n) {
+  // TODO(jiaqizho): support WriteTupleN
+}
+
+bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
+  std::vector<orc::proto::Stream> streams;
+  std::vector<ColumnEncoding> encoding_kinds;
+  orc::proto::StripeFooter stripe_footer;
+  auto stripe_stats = meta_data_.add_stripestats();
+
+  size_t data_len = 0;
+  size_t number_of_row = 0;
+
+  number_of_row = pax_columns_->GetRows();
+  stripe_rows_ = number_of_row;
+
+  // No need add stripe if nothing in memeory
+  if (number_of_row == 0) {
+    return false;
+  }
+
+  PaxColumns::ColumnStreamsFunc column_streams_func =
+      [&streams](const orc::proto::Stream_Kind &kind, size_t column,
+                 size_t length) {
+        orc::proto::Stream stream;
+        stream.set_kind(kind);
+        stream.set_column(static_cast<uint32>(column));
+        stream.set_length(length);
+        streams.push_back(std::move(stream));
+      };
+
+  PaxColumns::ColumnEncodingFunc column_encoding_func =
+      [&encoding_kinds](const ColumnEncoding_Kind &encoding_kind,
+                        int64 origin_len) {
+        ColumnEncoding column_encoding;
+        Assert(encoding_kind !=
+               ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED);
+        if (encoding_kind != ColumnEncoding_Kind_NO_ENCODED &&
+            origin_len == NO_ENCODE_ORIGIN_LEN) {
+          CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+        }
+        column_encoding.set_kind(encoding_kind);
+        column_encoding.set_length(origin_len);
+
+        encoding_kinds.push_back(std::move(column_encoding));
+      };
+
+  DataBuffer<char> *data_buffer =
+      pax_columns_->GetDataBuffer(column_streams_func, column_encoding_func);
+
+  for (const auto &stream : streams) {
+    *stripe_footer.add_streams() = stream;
+    data_len += stream.length();
+  }
+
+  for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
+    auto pb_stats = stripe_stats->add_colstats();
+    PaxColumn *pax_column = (*pax_columns_)[i];
+
+    *stripe_footer.add_pax_col_encodings() = encoding_kinds[i];
+
+    pb_stats->set_hasnull(pax_column->HasNull());
+    pb_stats->set_numberofvalues(pax_column->GetRows());
+  }
+
+  stripe_footer.set_writertimezone("GMT");
+  buffer_mem_stream->Set(data_buffer, 2048);
+
+  // check memory io with protobuf
+  CBDB_CHECK(stripe_footer.SerializeToZeroCopyStream(buffer_mem_stream),
+             cbdb::CException::ExType::kExTypeIOError);
+
+  stripe_info_.set_indexlength(0);
+  stripe_info_.set_datalength(data_len);
+  stripe_info_.set_footerlength(buffer_mem_stream->GetSize());
+  stripe_info_.set_numberofrows(stripe_rows_);
+
+  *file_footer_.add_stripes() = stripe_info_;
+
+  current_offset_ += buffer_mem_stream->GetSize();
+  total_rows_ += stripe_rows_;
+
+  // reset the stripe
+  InitStripe();
+  return true;
+}
+
+void OrcWriter::Close() {
+  BufferedOutputStream buffer_mem_stream(nullptr, 2048);
+  size_t file_offset = current_offset_;
+  bool empty_stripe = false;
+  DataBuffer<char> *data_buffer;
+
+  empty_stripe = !WriteStripe(&buffer_mem_stream);
+  if (empty_stripe) {
+    data_buffer = new DataBuffer<char>(2048);
+    buffer_mem_stream.Set(data_buffer, 2048);
+  }
+
+  WriteMetadata(&buffer_mem_stream);
+  WriteFileFooter(&buffer_mem_stream);
+  WritePostscript(&buffer_mem_stream);
+  if (summary_callback_) {
+    summary_.file_size = buffer_mem_stream.GetDataBuffer()->Used();
+    summary_callback_(summary_);
+  }
+
+  file_->PWriteN(buffer_mem_stream.GetDataBuffer()->GetBuffer(),
+                 buffer_mem_stream.GetDataBuffer()->Used(), file_offset);
+  file_->Flush();
+  file_->Close();
+  if (empty_stripe) {
+    delete data_buffer;
+  }
+}
+
+size_t OrcWriter::PhysicalSize() const { return pax_columns_->PhysicalSize(); }
+
+void OrcWriter::InitStripe() {
+  stripe_info_.set_offset(current_offset_);
+  stripe_info_.set_indexlength(0);
+  stripe_info_.set_datalength(0);
+  stripe_info_.set_footerlength(0);
+  stripe_info_.set_numberofrows(0);
+
+  stripe_rows_ = 0;
+}
+
+void OrcWriter::BuildFooterType() {
+  auto proto_type = file_footer_.add_types();
+  proto_type->set_maximumlength(0);
+  proto_type->set_precision(0);
+  proto_type->set_scale(0);
+  proto_type->set_kind(::orc::proto::Type_Kind_STRUCT);
+
+  // TODO(jiaqizho): support interface for meta kv, if we do need this function
+  //   protoAttr->set_key(key);
+  //   protoAttr->set_value(value);
+  for (size_t i = 0; i < column_types_.size(); ++i) {
+    auto orc_type = column_types_[i];
+
+    auto sub_proto_type = file_footer_.add_types();
+    sub_proto_type->set_maximumlength(0);
+    sub_proto_type->set_precision(0);
+    sub_proto_type->set_scale(0);
+    sub_proto_type->set_kind(orc_type);
+
+    file_footer_.mutable_types(0)->add_subtypes(i);
+  }
+}
+
+void OrcWriter::WriteMetadata(BufferedOutputStream *buffer_mem_stream) {
+  buffer_mem_stream->StartBufferOutRecord();
+  CBDB_CHECK(meta_data_.SerializeToZeroCopyStream(buffer_mem_stream),
+             cbdb::CException::ExType::kExTypeIOError);
+
+  post_script_.set_metadatalength(buffer_mem_stream->EndBufferOutRecord());
+}
+
+void OrcWriter::WriteFileFooter(BufferedOutputStream *buffer_mem_stream) {
+  file_footer_.set_contentlength(current_offset_ - file_footer_.headerlength());
+  file_footer_.set_numberofrows(total_rows_);
+
+  for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
+    auto pb_stats = file_footer_.add_statistics();
+    // FIXME(jiaqizho): the statistics in file footer is not accurate
+    // but statistics in stripe stats is accurate
+    pb_stats->set_hasnull(false);
+    pb_stats->set_numberofvalues((*pax_columns_)[i]->GetRows());
+  }
+
+  buffer_mem_stream->StartBufferOutRecord();
+  CBDB_CHECK(file_footer_.SerializeToZeroCopyStream(buffer_mem_stream),
+             cbdb::CException::ExType::kExTypeIOError);
+
+  post_script_.set_footerlength(buffer_mem_stream->EndBufferOutRecord());
+}
+
+void OrcWriter::WritePostscript(BufferedOutputStream *buffer_mem_stream) {
+  buffer_mem_stream->StartBufferOutRecord();
+  CBDB_CHECK(post_script_.SerializeToZeroCopyStream(buffer_mem_stream),
+             cbdb::CException::ExType::kExTypeIOError);
+
+  auto ps_len = (uint64)buffer_mem_stream->EndBufferOutRecord();
+  Assert(ps_len > 0);
+  static_assert(sizeof(ps_len) == ORC_POST_SCRIPT_SIZE,
+                "post script type len not match.");
+  buffer_mem_stream->DirectWrite((char *)&ps_len, ORC_POST_SCRIPT_SIZE);
+}
+
+}  // namespace pax

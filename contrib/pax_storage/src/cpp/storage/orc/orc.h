@@ -23,7 +23,8 @@ class MicroPartitionStats;
 #define ORC_SOFT_VERSION "1"
 #define ORC_FILE_MAJOR_VERSION 1
 #define ORC_WRITER_VERSION 1
-#define ORC_POST_SCRIPT_SIZE 1
+#define ORC_POST_SCRIPT_SIZE 8
+#define ORC_TAIL_SIZE 32768
 
 class OrcWriter : public MicroPartitionWriter {
  public:
@@ -116,13 +117,6 @@ class OrcReader : public MicroPartitionReader {
 
   ~OrcReader() override;
 
-  StripeInformation *GetStripeInfo(size_t index) const;
-
-  PaxColumns *ReadStripe(size_t index, bool *proj_map = nullptr,
-                         size_t proj_len = 0);
-
-  size_t GetNumberOfStripes() const;
-
   void Open(const ReaderOptions &options) override;
 
   void Close() override;
@@ -133,19 +127,20 @@ class OrcReader : public MicroPartitionReader {
  protected:  // NOLINT
 #endif
 
+  StripeInformation *GetStripeInfo(size_t index) const;
+
+  PaxColumns *ReadStripe(size_t index, bool *proj_map = nullptr,
+                         size_t proj_len = 0);
+
+  size_t GetNumberOfStripes() const;
+
   PaxColumns *GetAllColumns() override;
 
   orc::proto::StripeFooter ReadStripeWithProjection(
       DataBuffer<char> *data_buffer, OrcReader::StripeInformation *stripe_info,
       const bool *proj_map, size_t proj_len);
 
-  void ReadMetadata(ssize_t file_length, uint64 post_script_len);
-
   void BuildProtoTypes();
-
-  void ReadFooter(size_t footer_offset, size_t footer_len);
-
-  void ReadPostScript(size_t file_size, uint64 post_script_len);
 
   // Clean up reading status
   void ResetCurrentReading();
