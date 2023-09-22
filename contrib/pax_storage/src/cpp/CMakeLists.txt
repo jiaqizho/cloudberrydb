@@ -154,7 +154,8 @@ set(pax_storage_src
     storage/pax_filter.cc
     storage/strategy.cc
     storage/paxc_block_map_manager.cc
-    storage/orc/orc.cc
+    storage/orc/orc_writer.cc
+    storage/orc/orc_reader.cc
     storage/strategy.cc)
 
 if(NOT BUILD_PAX_FORMAT) 
