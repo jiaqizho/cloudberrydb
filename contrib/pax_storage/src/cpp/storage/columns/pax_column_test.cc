@@ -186,7 +186,8 @@ TEST_F(PaxColumnTest, FixColumnGetRangeBufferTest) {
   ASSERT_EQ(column->GetRows(), 16);
   ASSERT_EQ(column->GetRangeNonNullRows(0, column->GetRows()), 16);
 
-  column->Clear();
+  delete column;
+  column = new PaxCommColumn<int32>(200);
 
   for (int32 i = 0; i < 16; i++) {
     if (i % 3 == 0) {
@@ -229,7 +230,8 @@ TEST_F(PaxColumnTest, NonFixColumnGetRangeBufferTest) {
   ASSERT_EQ(column->GetRows(), 16);
   ASSERT_EQ(column->GetRangeNonNullRows(0, column->GetRows()), 16);
 
-  column->Clear();
+  delete column;
+  column = new PaxNonFixedColumn(200);
 
   for (int64 i = 0; i < 16; i++) {
     if (i % 3 == 0) {

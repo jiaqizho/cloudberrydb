@@ -13,16 +13,19 @@ struct PaxColumnsMeta {
   uint32 rows : 32;
 } __attribute__((__aligned__(8)));
 
-static std::string BuildVecKey(const std::string &file_name,
-                               const size_t column_index) {
-  uuid_t uuid;
+static std::string BuildCacheKey(const std::string &file_name,
+                                 const uint16 column_index,
+                                 const uint16 group_index) {
+  unsigned char key_str[20];
 
-  CBDB_CHECK(uuid_parse(file_name.c_str(), uuid) == 0,
+  CBDB_CHECK(uuid_parse(file_name.c_str(), key_str) == 0,
              cbdb::CException::ExType::kExTypeCError);
-  std::string key((char *)uuid, 16);
-  key.append(std::to_string((uint16)column_index));
 
-  return key;
+  static_assert(sizeof(uuid_t) == 16, "Invalid uuid_t length");
+  memcpy(key_str + 16, &column_index, sizeof(uint16));
+  memcpy(key_str + 18, &group_index, sizeof(uint16));
+
+  return std::string((char *)key_str, 20);
 }
 
 PaxColumnCache::PaxColumnCache(PaxCache *cache, const std::string &file_name,
@@ -45,7 +48,7 @@ static PaxColumn *NewFixColumn(const char *buffer, size_t buffer_len) {
 }
 
 std::tuple<PaxColumns *, std::vector<std::string>, bool *>
-PaxColumnCache::ReadCache() {
+PaxColumnCache::ReadCache(size_t group_index) {
   PaxColumns *columns = new PaxColumns();
   std::vector<std::string> keys;
   std::vector<PaxCache::BatchBuffer> batchs;
@@ -60,7 +63,7 @@ PaxColumnCache::ReadCache() {
     if (!proj_copy[i]) {
       continue;
     }
-    keys.emplace_back(BuildVecKey(file_name_, i));
+    keys.emplace_back(BuildCacheKey(file_name_, i, group_index));
   }
 
   auto status = pax_cache_->Get(keys, batchs);
@@ -89,13 +92,6 @@ PaxColumnCache::ReadCache() {
 
     AssertImply(rows != -1, (size_t)rows == meta->rows);
     rows = meta->rows;
-
-    DataBuffer<bool> *null_bitmap = nullptr;
-    if (meta->null_size != 0) {
-      null_bitmap = new DataBuffer((bool *)(batch_buffer.buffer),
-                                   meta->null_size, false, false);
-      null_bitmap->BrushAll();
-    }
 
     Assert(batch_buffer.buffer_len ==
            (size_t)(meta->null_size + meta->data_size + meta->len_size));
@@ -144,8 +140,13 @@ PaxColumnCache::ReadCache() {
       }
     }
 
-    if (null_bitmap) {
-      column->SetNulls(null_bitmap);
+    if (meta->null_size != 0) {
+      auto null_bitmap = new Bitmap8(
+          BitmapRaw<uint8>((uint8 *)(batch_buffer.buffer), meta->null_size),
+          BitmapTpl<uint8>::ReadOnlyRefBitmap);
+      column->SetBitmap(null_bitmap);
+    } else {
+      column->SetBitmap(nullptr);
     }
 
     columns->Append(column);
@@ -165,7 +166,7 @@ void PaxColumnCache::ReleaseCache(std::vector<std::string> keys) {
   }
 }
 
-void PaxColumnCache::WriteCache(PaxColumns *columns) {
+void PaxColumnCache::WriteCache(PaxColumns *columns, size_t group_index) {
   std::string key;
   PaxColumnsMeta meta{};
   int64 rows = -1;
@@ -176,19 +177,22 @@ void PaxColumnCache::WriteCache(PaxColumns *columns) {
       continue;
     }
 
-    key = BuildVecKey(file_name_, i);
+    key = BuildCacheKey(file_name_, i, group_index);
 
     AssertImply(rows != -1, (size_t)rows == column->GetRows());
     rows = column->GetRows();
 
     std::vector<std::pair<char *, size_t>> buffers;
 
-    DataBuffer<bool> *nulls = nullptr;
     if (column->HasNull()) {
-      nulls = column->GetNulls();
-      meta.null_size = nulls->Used();
+      auto bm = column->GetBitmap();
+      Assert(bm);
+      auto nbytes = bm->MinimalStoredBytes(column->GetRows());
+      Assert(nbytes <= bm->Raw().size);
+
+      meta.null_size = nbytes;
       buffers.emplace_back(
-          std::make_pair((char *)nulls->GetBuffer(), nulls->Used()));
+          std::make_pair(reinterpret_cast<char *>(bm->Raw().bitmap), nbytes));
     } else {
       meta.null_size = 0;
     }

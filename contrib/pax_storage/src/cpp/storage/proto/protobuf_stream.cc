@@ -4,18 +4,16 @@
 
 namespace pax {
 
-BufferedOutputStream::BufferedOutputStream(DataBuffer<char> *data_buffer,
-                                           uint64 block_size)
-    : data_buffer_(data_buffer), block_size_(block_size) {}
+BufferedOutputStream::BufferedOutputStream(uint64 block_size)
+    : data_buffer_(nullptr), block_size_(block_size) {}
 
-void BufferedOutputStream::Set(DataBuffer<char> *data_buffer,
-                               uint64 block_size) {
-  Assert(data_buffer);
+void BufferedOutputStream::Set(DataBuffer<char> *data_buffer) {
+  Assert(data_buffer && !data_buffer_);
   data_buffer_ = data_buffer;
-  block_size_ = block_size;
 }
 
 bool BufferedOutputStream::Next(void **buffer, int *size) {
+  Assert(data_buffer_);
   uint64 old_capacity = data_buffer_->Capacity();
   uint64 new_capacity = data_buffer_->Capacity();
 
@@ -42,6 +40,7 @@ bool BufferedOutputStream::Next(void **buffer, int *size) {
 
 void BufferedOutputStream::BackUp(int count) {
   if (count >= 0) {
+    Assert(data_buffer_);
     if (static_cast<size_t>(count) > data_buffer_->Used()) {
       CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
     }
@@ -50,6 +49,7 @@ void BufferedOutputStream::BackUp(int count) {
 }
 
 google::protobuf::int64 BufferedOutputStream::ByteCount() const {
+  Assert(data_buffer_);
   return static_cast<google::protobuf::int64>(data_buffer_->Used());
 }
 
@@ -60,21 +60,27 @@ bool BufferedOutputStream::WriteAliasedRaw([[maybe_unused]] const void *data,
 
 bool BufferedOutputStream::AllowsAliasing() const { return false; }
 
-uint64 BufferedOutputStream::GetSize() const { return data_buffer_->Used(); }
+uint64 BufferedOutputStream::GetSize() const {
+  Assert(data_buffer_);
+  return data_buffer_->Used();
+}
 
 DataBuffer<char> *BufferedOutputStream::GetDataBuffer() const {
   return data_buffer_;
 }
 
 void BufferedOutputStream::StartBufferOutRecord() {
+  Assert(data_buffer_);
   last_used_ = data_buffer_->Used();
 }
 
 size_t BufferedOutputStream::EndBufferOutRecord() {
+  Assert(data_buffer_);
   return data_buffer_->Used() - last_used_;
 }
 
 void BufferedOutputStream::DirectWrite(char *ptr, size_t size) {
+  Assert(data_buffer_);
   if (data_buffer_->Available() < size) {
     data_buffer_->ReSize(data_buffer_->Capacity() + size);
   }
