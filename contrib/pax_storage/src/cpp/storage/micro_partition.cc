@@ -39,13 +39,4 @@ MicroPartitionWriter *MicroPartitionWriter::SetStatsCollector(
   return this;
 }
 
-const MicroPartitionWriter::WriterOptions &MicroPartitionWriter::Options()
-    const {
-  return writer_options_;
-}
-
-const std::string &MicroPartitionWriter::FileName() const {
-  return writer_options_.file_name;
-}
-
 }  // namespace pax
