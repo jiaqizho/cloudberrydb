@@ -24,8 +24,6 @@ class PaxColumns : public PaxColumn {
   // The columns pass in will be delete
   void Merge(PaxColumns *columns);
 
-  void Clear() override;
-
   PaxColumn *operator[](uint64 i);
 
   void Append(PaxColumn *column);
