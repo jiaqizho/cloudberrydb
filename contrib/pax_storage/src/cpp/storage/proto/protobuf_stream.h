@@ -9,9 +9,9 @@ namespace pax {
 
 class BufferedOutputStream : public google::protobuf::io::ZeroCopyOutputStream {
  public:
-  BufferedOutputStream(DataBuffer<char> *data_buffer, uint64 block_size);
+  explicit BufferedOutputStream(uint64 block_size);
 
-  virtual void Set(DataBuffer<char> *data_buffer, uint64 block_size);
+  virtual void Set(DataBuffer<char> *data_buffer);
 
   bool Next(void **buffer, int *size) override;
 

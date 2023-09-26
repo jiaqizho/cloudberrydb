@@ -1,0 +1,10 @@
+#pragma once
+
+#define ORC_MAGIC_ID "ORC"
+#define ORC_WRITER_ID 1
+#define ORC_SOFT_VERSION "1"
+#define ORC_FILE_MAJOR_VERSION 1
+#define ORC_WRITER_VERSION 1
+
+#define ORC_POST_SCRIPT_SIZE 8
+#define ORC_TAIL_SIZE 32768

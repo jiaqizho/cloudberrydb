@@ -16,11 +16,15 @@ class PaxColumnCache final {
 
   ~PaxColumnCache() = default;
 
-  std::tuple<PaxColumns *, std::vector<std::string>, bool *> ReadCache();
+  // Read the cache from current group
+  // Return the tuple with
+  // <cached PaxColumns, release keyids, a new projection mask>
+  std::tuple<PaxColumns *, std::vector<std::string>, bool *> ReadCache(
+      size_t group_index);
 
   void ReleaseCache(std::vector<std::string> keys);
 
-  void WriteCache(PaxColumns *columns);
+  void WriteCache(PaxColumns *columns, size_t group_index);
 
  private:
   PaxCache *pax_cache_;

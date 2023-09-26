@@ -10,6 +10,7 @@
 
 #include "storage/columns/pax_columns.h"
 #include "storage/micro_partition_metadata.h"
+#include "storage/pax_defined.h"
 
 namespace pax {
 class CTupleSlot {
@@ -56,6 +57,8 @@ class MicroPartitionWriter {
     TupleDesc desc;
     Oid rel_oid;
     std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
+
+    size_t group_limit = VEC_BATCH_LENGTH;
   };
 
   explicit MicroPartitionWriter(const WriterOptions &writer_options);
@@ -87,15 +90,9 @@ class MicroPartitionWriter {
 
   virtual MicroPartitionWriter *SetStatsCollector(MicroPartitionStats *mpstats);
 
-  const WriterOptions &Options() const;
-
-  // return the file name of the current micro partition, excluding its
-  // directory path
-  const std::string &FileName() const;
-
  protected:
   WriteSummaryCallback summary_callback_;
-  const WriterOptions &writer_options_;
+  WriterOptions writer_options_;
   FileSystem *file_system_ = nullptr;
   // only reference the mpstats, not the owner
   MicroPartitionStats *mpstats_ = nullptr;
@@ -107,8 +104,50 @@ class PaxCache;
 
 template <typename T>
 class DataBuffer;
+
 class MicroPartitionReader {
  public:
+  class Group {
+   public:
+    virtual ~Group() = default;
+
+    virtual size_t GetRows() const = 0;
+
+    virtual size_t GetRowOffset() const = 0;
+
+    // `ReadTuple` is the same interface in the `MicroPartitionReader`
+    // this interface at the group level, if no rows remain in current
+    // group, then the first value in return std::pair will be `false`.
+    //
+    // the secord value in return std::pair is the row offset of current
+    // group.
+    virtual std::pair<bool, size_t> ReadTuple(TupleTableSlot *slot) = 0;
+
+    // ------------------------------------------
+    // The below interfaces is used to directly access
+    // the pax columns in the group.
+    // Other `MicroPartitionReader` can quickly perform
+    // some operations, like filter, convert format...
+    // ------------------------------------------
+    virtual bool GetTuple(TupleTableSlot *slot, size_t row_index) = 0;
+
+    virtual std::pair<Datum, bool> GetColumnValue(size_t column_index,
+                                                  size_t row_index) = 0;
+    virtual std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
+                                                  size_t row_index) = 0;
+
+    // Allow different MicroPartitionReader shared columns
+    // but should not let export columns out of micro partition
+    //
+    // In MicroPartition writer/reader implementation, all in-memory data should
+    // be accessed by pax column This is because most of the common logic of
+    // column operation is done in pax column, such as type mapping, bitwise
+    // fetch, compression/encoding. At the same time, pax column can also be
+    // used as a general interface for internal using, because it's zero copy
+    // from buffer. more details in `storage/columns`
+    virtual PaxColumns *GetAllColumns() const = 0;
+  };
+
   struct ReaderOptions {
     // file name(excluding directory path) for read
     std::string file_name;
@@ -143,17 +182,18 @@ class MicroPartitionReader {
   // not. We may optimize to avoid creating the map relation later.
   virtual bool ReadTuple(CTupleSlot *slot) = 0;
 
- protected:
-  // Allow different MicroPartitionReader shared columns
-  // but should not let export columns out of micro partition
+  // ------------------------------------------
+  // below interface different with `ReadTuple`
   //
-  // In MicroPartition writer/reader implementation, all in-memory data should
-  // be accessed by pax column This is because most of the common logic of
-  // column operation is done in pax column, such as type mapping, bitwise
-  // fetch, compression/encoding. At the same time, pax column can also be used
-  // as a general interface for internal using, because it's zero copy from
-  // buffer. more details in `storage/columns`
-  virtual PaxColumns *GetAllColumns() = 0;
+  // direct read with `Group` from current
+  // `MicroPartitionReader` with group index.
+  // The group index will not be changed, and
+  // won't have any middle state in this process.
+  // ------------------------------------------
+  virtual size_t GetGroupNums() = 0;
+
+  virtual Group *ReadGroup(size_t group_index) = 0;
+
 #ifdef VEC_BUILD
  private:
   friend class PaxVecReader;

@@ -115,15 +115,6 @@ void PaxColumns::Merge(PaxColumns *columns) {
   delete columns;
 }
 
-void PaxColumns::Clear() {
-  row_nums_ = 0;
-  for (auto column : columns_) {
-    if (column) column->Clear();
-  }
-
-  data_->Clear();
-}
-
 PaxColumn *PaxColumns::operator[](uint64 i) { return columns_[i]; }
 
 void PaxColumns::Append(PaxColumn *column) { columns_.emplace_back(column); }

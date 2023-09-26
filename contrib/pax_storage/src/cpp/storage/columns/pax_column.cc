@@ -26,14 +26,6 @@ PaxColumnTypeInMem PaxColumn::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeInvalid;
 }
 
-void PaxColumn::Clear() {
-  if (null_bitmap_) {
-    delete null_bitmap_;
-    null_bitmap_ = nullptr;
-  }
-  total_rows_ = 0;
-}
-
 bool PaxColumn::HasNull() { return null_bitmap_ != nullptr; }
 
 void PaxColumn::SetBitmap(Bitmap8 *null_bitmap) {
@@ -41,13 +33,9 @@ void PaxColumn::SetBitmap(Bitmap8 *null_bitmap) {
   null_bitmap_ = null_bitmap;
 }
 
-size_t PaxColumn::GetRows() {
-  return total_rows_;
-}
+size_t PaxColumn::GetRows() { return total_rows_; }
 
-void PaxColumn::SetRows(size_t total_rows) {
-  total_rows_ = total_rows;
-}
+void PaxColumn::SetRows(size_t total_rows) { total_rows_ = total_rows; }
 
 size_t PaxColumn::GetRangeNonNullRows(size_t start_pos, size_t len) {
   CBDB_CHECK((start_pos + len) <= GetRows(),
@@ -128,12 +116,6 @@ void PaxCommColumn<T>::Append(char *buffer, size_t size) {
 template <typename T>
 PaxColumnTypeInMem PaxCommColumn<T>::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeFixed;
-}
-
-template <typename T>
-void PaxCommColumn<T>::Clear() {
-  PaxColumn::Clear();
-  data_->BrushBackAll();
 }
 
 template <typename T>
@@ -258,15 +240,6 @@ DataBuffer<int64> *PaxNonFixedColumn::GetLengthBuffer() const {
 
 PaxColumnTypeInMem PaxNonFixedColumn::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeNonFixed;
-}
-
-void PaxNonFixedColumn::Clear() {
-  PaxColumn::Clear();
-
-  data_->BrushBackAll();
-  lengths_->BrushBackAll();
-
-  offsets_.clear();
 }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer() {

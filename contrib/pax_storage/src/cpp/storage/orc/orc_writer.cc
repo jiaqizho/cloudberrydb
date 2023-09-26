@@ -2,6 +2,8 @@
 
 #include "storage/micro_partition_stats.h"
 #include "storage/orc/orc.h"
+#include "storage/orc/orc_defined.h"
+
 namespace pax {
 
 std::vector<orc::proto::Type_Kind> OrcWriter::BuildSchema(TupleDesc desc) {
@@ -41,8 +43,10 @@ OrcWriter::OrcWriter(
     : MicroPartitionWriter(orc_writer_options),
       column_types_(column_types),
       file_(file),
+      total_rows_(0),
       current_offset_(0) {
-  pax_columns_ = new PaxColumns(column_types, orc_writer_options.encoding_opts);
+  pax_columns_ =
+      new PaxColumns(column_types_, orc_writer_options.encoding_opts);
 
   summary_.rel_oid = orc_writer_options.rel_oid;
   summary_.block_id = orc_writer_options.block_id;
@@ -63,8 +67,6 @@ OrcWriter::OrcWriter(
   post_script_.add_version(ORC_FILE_MAJOR_VERSION);
   post_script_.set_writerversion(ORC_WRITER_VERSION);
   post_script_.set_magic(ORC_MAGIC_ID);
-
-  InitStripe();
 }
 
 OrcWriter::~OrcWriter() {
@@ -80,14 +82,15 @@ MicroPartitionWriter *OrcWriter::SetStatsCollector(
 }
 
 void OrcWriter::Flush() {
-  BufferedOutputStream buffer_mem_stream(nullptr, 2048);
+  BufferedOutputStream buffer_mem_stream(2048);
   if (WriteStripe(&buffer_mem_stream)) {
     Assert(current_offset_ >= buffer_mem_stream.GetDataBuffer()->Used());
     file_->PWriteN(buffer_mem_stream.GetDataBuffer()->GetBuffer(),
                    buffer_mem_stream.GetDataBuffer()->Used(),
                    current_offset_ - buffer_mem_stream.GetDataBuffer()->Used());
     file_->Flush();
-    pax_columns_->Clear();
+    delete pax_columns_;
+    pax_columns_ = new PaxColumns(column_types_, writer_options_.encoding_opts);
   }
 }
 
@@ -169,6 +172,10 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
       }
     }
   }
+
+  if (pax_columns_->GetRows() >= writer_options_.group_limit) {
+    Flush();
+  }
 }
 
 void OrcWriter::WriteTupleN(CTupleSlot **slot, size_t n) {
@@ -179,13 +186,11 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
   std::vector<orc::proto::Stream> streams;
   std::vector<ColumnEncoding> encoding_kinds;
   orc::proto::StripeFooter stripe_footer;
-  auto stripe_stats = meta_data_.add_stripestats();
+  orc::proto::StripeInformation *stripe_info;
+  orc::proto::StripeStatistics *stripe_stats;
 
   size_t data_len = 0;
-  size_t number_of_row = 0;
-
-  number_of_row = pax_columns_->GetRows();
-  stripe_rows_ = number_of_row;
+  size_t number_of_row = pax_columns_->GetRows();
 
   // No need add stripe if nothing in memeory
   if (number_of_row == 0) {
@@ -226,6 +231,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
     data_len += stream.length();
   }
 
+  stripe_stats = meta_data_.add_stripestats();
   for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
     auto pb_stats = stripe_stats->add_colstats();
     PaxColumn *pax_column = (*pax_columns_)[i];
@@ -237,29 +243,28 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
   }
 
   stripe_footer.set_writertimezone("GMT");
-  buffer_mem_stream->Set(data_buffer, 2048);
+  buffer_mem_stream->Set(data_buffer);
 
   // check memory io with protobuf
   CBDB_CHECK(stripe_footer.SerializeToZeroCopyStream(buffer_mem_stream),
              cbdb::CException::ExType::kExTypeIOError);
 
-  stripe_info_.set_indexlength(0);
-  stripe_info_.set_datalength(data_len);
-  stripe_info_.set_footerlength(buffer_mem_stream->GetSize());
-  stripe_info_.set_numberofrows(stripe_rows_);
+  stripe_info = file_footer_.add_stripes();
 
-  *file_footer_.add_stripes() = stripe_info_;
+  stripe_info->set_offset(current_offset_);
+  stripe_info->set_indexlength(0);
+  stripe_info->set_datalength(data_len);
+  stripe_info->set_footerlength(buffer_mem_stream->GetSize());
+  stripe_info->set_numberofrows(number_of_row);
 
   current_offset_ += buffer_mem_stream->GetSize();
-  total_rows_ += stripe_rows_;
+  total_rows_ += number_of_row;
 
-  // reset the stripe
-  InitStripe();
   return true;
 }
 
 void OrcWriter::Close() {
-  BufferedOutputStream buffer_mem_stream(nullptr, 2048);
+  BufferedOutputStream buffer_mem_stream(2048);
   size_t file_offset = current_offset_;
   bool empty_stripe = false;
   DataBuffer<char> *data_buffer;
@@ -267,7 +272,7 @@ void OrcWriter::Close() {
   empty_stripe = !WriteStripe(&buffer_mem_stream);
   if (empty_stripe) {
     data_buffer = new DataBuffer<char>(2048);
-    buffer_mem_stream.Set(data_buffer, 2048);
+    buffer_mem_stream.Set(data_buffer);
   }
 
   WriteMetadata(&buffer_mem_stream);
@@ -288,16 +293,6 @@ void OrcWriter::Close() {
 }
 
 size_t OrcWriter::PhysicalSize() const { return pax_columns_->PhysicalSize(); }
-
-void OrcWriter::InitStripe() {
-  stripe_info_.set_offset(current_offset_);
-  stripe_info_.set_indexlength(0);
-  stripe_info_.set_datalength(0);
-  stripe_info_.set_footerlength(0);
-  stripe_info_.set_numberofrows(0);
-
-  stripe_rows_ = 0;
-}
 
 void OrcWriter::BuildFooterType() {
   auto proto_type = file_footer_.add_types();
