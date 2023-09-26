@@ -70,7 +70,6 @@ CPhysicalSerialUnionAll::CPhysicalSerialUnionAll(
 	// deduplicated.
 
 	SetDistrRequests(3 /*ulDistrReq*/);
-
 	GPOS_ASSERT(0 < UlDistrRequests());
 }
 
@@ -120,15 +119,14 @@ CPhysicalSerialUnionAll::PdsRequired(
 		if (1 == ulOptReq)
 		{
 			// Request 2: NON-SINGLETON from outer child
-			return GPOS_NEW(mp)
-				CDistributionSpecNonSingleton(false /*fAllowReplicated*/, true /* fAllowEnforced */);
+			return GPOS_NEW(mp) CDistributionSpecNonSingleton(
+				false /*fAllowReplicated*/, true /*fAllowEnforced*/);
 		}
 		else
 		{
 			// Request 3: ANY from outer child
 			return GPOS_NEW(mp) CDistributionSpecAny(this->Eopid());
 		}
-
 	}
 
 	// inspect distribution delivered by outer child

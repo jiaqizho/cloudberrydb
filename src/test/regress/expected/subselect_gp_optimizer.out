@@ -3140,7 +3140,7 @@ where dt < '2010-01-01'::date;
                                                                        ->  Seq Scan on subselect_gp.extra_flow_dist extra_flow_dist_1
                                                                              Output: extra_flow_dist_1.b, extra_flow_dist_1.c
  Settings: enable_parallel = 'off', optimizer = 'on'
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: GPORCA
 (59 rows)
 
 -- Check DISTINCT ON clause and ORDER BY clause in SubLink, See https://github.com/greenplum-db/gpdb/issues/12656.
