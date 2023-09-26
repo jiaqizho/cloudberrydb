@@ -10,6 +10,7 @@
 #include "comm/gtest_wrappers.h"
 #include "exceptions/CException.h"
 #include "storage/local_file_system.h"
+#include "storage/pax_filter.h"
 
 namespace pax::tests {
 
@@ -282,8 +283,7 @@ TEST_F(OrcTest, OpenOrc) {
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
 
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
-  reader->GetStripeInfo(0);
+  EXPECT_EQ(1, reader->GetGroupNums());
   reader->Close();
 
   DeleteCTupleSlot(tuple_slot);
@@ -319,12 +319,14 @@ TEST_F(OrcTest, WriteReadStripes) {
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
 
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
-  auto columns = reader->ReadStripe(0);
+  EXPECT_EQ(1, reader->GetGroupNums());
+  auto group = reader->ReadGroup(0);
+  auto columns = group->GetAllColumns();
+
   OrcTest::VerifySingleStripe(columns);
   reader->Close();
 
-  delete columns;
+  delete group;
   DeleteCTupleSlot(tuple_slot);
   delete writer;
   delete reader;
@@ -355,17 +357,18 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
 
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
-  auto columns_stripe = reader->ReadStripe(0);
+  EXPECT_EQ(1, reader->GetGroupNums());
+  auto group = reader->ReadGroup(0);
+  auto columns = group->GetAllColumns();
 
   reader->Close();
   char column_buff[COLUMN_SIZE];
 
   GenFakeBuffer(column_buff, COLUMN_SIZE);
 
-  EXPECT_EQ(COLUMN_NUMS, columns_stripe->GetColumns());
-  auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns_stripe)[0]);
-  auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns_stripe)[1]);
+  EXPECT_EQ(COLUMN_NUMS, columns->GetColumns());
+  auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
+  auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[1]);
 
   EXPECT_EQ(2, column1->GetNonNullRows());
   EXPECT_EQ(0, std::memcmp(column1->GetBuffer(0).first + VARHDRSZ, column_buff,
@@ -378,7 +381,7 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   EXPECT_EQ(0, std::memcmp(column2->GetBuffer(1).first + VARHDRSZ, column_buff,
                            COLUMN_SIZE));
 
-  delete columns_stripe;
+  delete group;
   DeleteCTupleSlot(tuple_slot);
   delete writer;
   delete reader;
@@ -412,15 +415,17 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
 
-  EXPECT_EQ(2, reader->GetNumberOfStripes());
-  auto columns1 = reader->ReadStripe(0);
-  auto columns2 = reader->ReadStripe(1);
+  EXPECT_EQ(2, reader->GetGroupNums());
+  auto group1 = reader->ReadGroup(0);
+  auto columns1 = group1->GetAllColumns();
+  auto group2 = reader->ReadGroup(1);
+  auto columns2 = group2->GetAllColumns();
   OrcTest::VerifySingleStripe(columns1);
   OrcTest::VerifySingleStripe(columns2);
   reader->Close();
 
-  delete columns1;
-  delete columns2;
+  delete group1;
+  delete group2;
 
   DeleteCTupleSlot(tuple_slot);
   delete writer;
@@ -454,11 +459,13 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
 
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
-  auto columns = reader->ReadStripe(0);
+  EXPECT_EQ(1, reader->GetGroupNums());
+  auto group = reader->ReadGroup(0);
+  auto columns = group->GetAllColumns();
   OrcTest::VerifySingleStripe(columns);
   reader->Close();
 
+  delete group;
   delete writer;
   delete reader;
 }
@@ -487,7 +494,7 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
-  EXPECT_EQ(0, reader->GetNumberOfStripes());
+  EXPECT_EQ(0, reader->GetGroupNums());
   reader->Close();
 
   delete writer;
@@ -523,7 +530,7 @@ TEST_F(OrcTest, ReadTuple) {
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
   tuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
   reader->ReadTuple(tuple_slot_empty);
 
@@ -628,7 +635,7 @@ TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
   for (size_t i = 0; i < 10000; i++) {
     ASSERT_TRUE(reader->ReadTuple(ctuple_slot));
     ASSERT_EQ(ctuple_slot->GetTupleTableSlot()->tts_values[0], i);
@@ -711,8 +718,9 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
 
-  ASSERT_EQ(1, reader->GetNumberOfStripes());
-  auto columns = reader->ReadStripe(0);
+  ASSERT_EQ(1, reader->GetGroupNums());
+  auto group = reader->ReadGroup(0);
+  auto columns = group->GetAllColumns();
 
   ASSERT_EQ(2, columns->GetColumns());
 
@@ -732,7 +740,7 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
 
   reader->Close();
 
-  delete columns;
+  delete group;
   OrcTest::DeleteCTupleSlot(ctuple_slot);
   delete writer;
   delete reader;
@@ -767,7 +775,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
 
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
@@ -826,7 +834,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
   TupleTableSlot *slot = tuple_slot_empty->GetTupleTableSlot();
@@ -868,7 +876,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumnWithProjection) {
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
   TupleTableSlot *slot = tuple_slot_empty->GetTupleTableSlot();
@@ -939,7 +947,7 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
   for (size_t i = 0; i < 10000; i++) {
     ASSERT_TRUE(reader->ReadTuple(ctuple_slot));
     ASSERT_EQ(ctuple_slot->GetTupleTableSlot()->tts_values[0], i);
@@ -989,8 +997,9 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
 
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
-  auto columns = reader->ReadStripe(0);
+  EXPECT_EQ(1, reader->GetGroupNums());
+  auto group = reader->ReadGroup(0);
+  auto columns = group->GetAllColumns();
 
   EXPECT_EQ(COLUMN_NUMS, columns->GetColumns());
   auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
@@ -1005,7 +1014,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
 
   reader->Close();
 
-  delete columns;
+  delete group;
   DeleteCTupleSlot(tuple_slot);
   delete writer;
   delete reader;
@@ -1060,7 +1069,7 @@ TEST_F(OrcTest, WriteReadWithNullField) {
   reader->Open(reader_options);
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
   tuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
 
   reader->ReadTuple(tuple_slot_empty);
@@ -1153,7 +1162,7 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
   reader->Open(reader_options);
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
   tuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
 
   reader->ReadTuple(tuple_slot_empty);
@@ -1226,7 +1235,7 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   reader->Open(reader_options);
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
 
-  EXPECT_EQ(1, reader->GetNumberOfStripes());
+  EXPECT_EQ(1, reader->GetGroupNums());
   tuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
   for (size_t i = 0; i < 1000; i++) {
     reader->ReadTuple(tuple_slot_empty);
@@ -1246,9 +1255,12 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
   CTupleSlot *tuple_slot = OrcTest::CreateFakeCTupleSlot();
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
-  bool proj_map[COLUMN_NUMS] = {false, false, false};
   size_t proj_index = ::testing::get<0>(GetParam());
   auto reversal = ::testing::get<1>(GetParam());
+  bool *proj_map;
+
+  proj_map = new bool[COLUMN_NUMS];
+  memset(proj_map, false, COLUMN_NUMS);
 
   ASSERT_LE(proj_index, COLUMN_NUMS);
   ASSERT_GE(proj_index, 0);
@@ -1279,22 +1291,31 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
 
   file_ptr = local_fs->Open(file_name_);
 
+  auto pax_filter = new PaxFilter();
+  pax_filter->SetColumnProjection(proj_map, COLUMN_NUMS);
   MicroPartitionReader::ReaderOptions reader_options;
+  reader_options.filter = pax_filter;
+
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
 
-  EXPECT_EQ(2, reader->GetNumberOfStripes());
+  EXPECT_EQ(2, reader->GetGroupNums());
 
-  auto stripe1 = reader->ReadStripe(0, proj_map, COLUMN_NUMS);
-  auto stripe2 = reader->ReadStripe(1, proj_map, COLUMN_NUMS);
-  OrcTest::VerifySingleStripe(stripe1, proj_map);
-  OrcTest::VerifySingleStripe(stripe2, proj_map);
+  auto group1 = reader->ReadGroup(0);
+  auto columns1 = group1->GetAllColumns();
+
+  auto group2 = reader->ReadGroup(1);
+  auto columns2 = group2->GetAllColumns();
+
+  OrcTest::VerifySingleStripe(columns1, proj_map);
+  OrcTest::VerifySingleStripe(columns2, proj_map);
   reader->Close();
 
-  delete stripe1;
-  delete stripe2;
-
   OrcTest::DeleteCTupleSlot(tuple_slot);
+  delete group1;
+  delete group2;
+
+  delete pax_filter;
   delete writer;
   delete reader;
 }

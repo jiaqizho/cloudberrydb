@@ -5,11 +5,7 @@
 #include "storage/columns/pax_column.h"
 #include "storage/columns/pax_columns.h"
 #include "storage/micro_partition.h"
-
-// TODO(jiaqizho) : after vec define this value to cbdb,
-// then read the GUC value
-#define VEC_BATCH_LENGTH (16384)
-#define MEMORY_ALIGN_SIZE (8)
+#include "storage/pax_defined.h"
 
 namespace pax {
 

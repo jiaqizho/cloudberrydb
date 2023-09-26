@@ -155,6 +155,8 @@ set(pax_storage_src
     storage/strategy.cc
     storage/paxc_block_map_manager.cc
     storage/orc/orc_writer.cc
+    storage/orc/orc_format_reader.cc
+    storage/orc/orc_group.cc
     storage/orc/orc_reader.cc
     storage/strategy.cc)
 

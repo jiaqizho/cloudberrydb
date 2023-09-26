@@ -44,10 +44,6 @@ class PaxColumn {
   // Get the column in memory type
   virtual PaxColumnTypeInMem GetPaxColumnTypeInMem() const;
 
-  // Empties the vector from all its elements, recursively.
-  // Do not alter the current capacity.
-  virtual void Clear();
-
   // Get column buffer from current column
   virtual std::pair<char *, size_t> GetBuffer() = 0;
 
@@ -138,8 +134,6 @@ class PaxCommColumn : public PaxColumn {
 
   size_t GetNonNullRows() const override;
 
-  void Clear() override;
-
   size_t PhysicalSize() const override;
 
   int64 GetOriginLength() const override;
@@ -178,8 +172,6 @@ class PaxNonFixedColumn : public PaxColumn {
   void Append(char *buffer, size_t size) override;
 
   PaxColumnTypeInMem GetPaxColumnTypeInMem() const override;
-
-  void Clear() override;
 
   std::pair<char *, size_t> GetBuffer() override;
 
