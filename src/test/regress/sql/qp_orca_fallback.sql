@@ -114,6 +114,11 @@ alter table ext_part attach partition p2_ext for values in (2);
 explain insert into ext_part values (1);
 explain delete from ext_part where a=1;
 explain update ext_part set a=1;
+set optimizer_enable_orderedagg=off;
+select array_agg(a order by b)
+  from (values (1,4),(2,3),(3,1),(4,2)) v(a,b);
+reset optimizer_enable_orderedagg;
+
 -- start_ignore
 -- FIXME: gpcheckcat fails due to mismatching distribution policy if this table isn't dropped
 -- Keep this table around once this is fixed
