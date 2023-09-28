@@ -194,5 +194,19 @@ int main() {
       InvalidOid               /* pg_type.typcollation */
   );
 
+  /* create pax auxiliary fast sequence table. */
+  printf("create table %s.%s(objid oid not null, seq int not null);\n",
+           PG_PAX_FAST_SEQUENCE_NAMESPACE,
+           PG_PAX_FAST_SEQUENCE_TABLE
+           );
+
+  /* create pax auxiliary fast sequence index. */
+  printf("create index %s.%s on %s.%s(objid);\n",
+            PG_PAX_FAST_SEQUENCE_NAMESPACE,
+            PG_PAX_FAST_SEQUENCE_INDEX_NAME,
+            PG_PAX_FAST_SEQUENCE_NAMESPACE,
+            PG_PAX_FAST_SEQUENCE_TABLE
+  );
+
   return 0;
 }

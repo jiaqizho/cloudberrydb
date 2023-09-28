@@ -175,7 +175,9 @@ set(pax_access_src
     access/pax_scanner.cc)
 
 set(pax_catalog_src
-    catalog/pax_aux_table.cc)
+    catalog/pax_aux_table.cc
+    catalog/pax_fastsequence.cc
+    )
 
 set(pax_vec_src
   storage/vec/pax_vec_adapter.cc
