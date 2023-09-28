@@ -682,6 +682,12 @@ char *GetRelAmName(Oid reloid);
 
 IndexAmRoutine *GetIndexAmRoutineFromAmHandler(Oid am_handler);
 
+PartitionDesc GPDBRelationRetrievePartitionDesc(Relation rel);
+
+PartitionKey GPDBRelationRetrievePartitionKey(Relation rel);
+
+bool TestexprIsHashable(Node *testexpr, List *param_ids);
+
 }  //namespace gpdb
 
 #define ForEach(cell, l) \

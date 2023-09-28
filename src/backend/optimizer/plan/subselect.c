@@ -1018,7 +1018,7 @@ subpath_is_hashable(Path *path)
  * To identify LHS vs RHS of the hash expression, we must be given the
  * list of output Param IDs of the SubLink's subquery.
  */
-static bool
+bool
 testexpr_is_hashable(Node *testexpr, List *param_ids)
 {
 	/*
