@@ -55,7 +55,8 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
 
 #ifdef VEC_BUILD
   if (flags & (1 << 12)) {
-    desc->vec_adapter_ = new VecAdapter(cbdb::RelationGetTupleDesc(relation));
+    desc->vec_adapter_ =
+        new VecAdapter(cbdb::RelationGetTupleDesc(relation), build_bitmap);
     reader_options.is_vec = true;
     reader_options.adapter = desc->vec_adapter_;
   }
@@ -173,7 +174,7 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
   // In some cases (for example, count(*)), targetlist and qual may be null,
   // extractcolumns_walker will return immediately, so no columns are specified.
   // We always scan the first column.
-  if (!found) cols[0] = true;
+  if (!found && !build_bitmap) cols[0] = true;
 
   // The `cols` life cycle will be bound to `PaxFilter`
   filter->SetColumnProjection(cols, natts);
