@@ -11,6 +11,7 @@ extern "C" {
 
 #pragma GCC diagnostic pop
 
+#include "storage/pax_itemptr.h"
 #include "storage/vec/arrow_wrapper.h"
 
 /// export interface wrapper of arrow
@@ -341,13 +342,14 @@ static void ConvSchemaAndDataToVec(
   }
 }
 
-VecAdapter::VecAdapter(TupleDesc tuple_desc)
+VecAdapter::VecAdapter(TupleDesc tuple_desc, bool build_ctid)
     : rel_tuple_desc_(tuple_desc),
       cached_batch_lens_(0),
       vec_cache_buffer_(nullptr),
       vec_cache_buffer_lens_(0),
       process_columns_(nullptr),
-      current_cached_pax_columns_index_(0) {
+      current_cached_pax_columns_index_(0),
+      build_ctid_(build_ctid) {
   Assert(rel_tuple_desc_);
 };
 
@@ -491,6 +493,25 @@ bool VecAdapter::AppendToVecBuffer() {
   return true;
 }
 
+void VecAdapter::FullWithCTID(CTupleSlot *cslot, VecBatchBuffer *batch_buffer) {
+  auto buffer_len = sizeof(int64) * cached_batch_lens_;
+  DataBuffer<int64> ctid_data_buffer((int64 *)cbdb::Palloc(buffer_len),
+                                     buffer_len, false, false);
+
+  uint64 base_ctid =
+      ((uint64)cslot->GetTableNo() << 48) +
+      ((uint64)cslot->GetBlockNumber() << 32) +
+      ((uint64)current_cached_pax_columns_index_ * VEC_BATCH_LENGTH);
+
+  for (size_t i = 0; i < cached_batch_lens_; i++) {
+    ctid_data_buffer[i] = base_ctid + i;
+  }
+  batch_buffer->vec_buffer.Set(ctid_data_buffer.Start(),
+                               ctid_data_buffer.Capacity());
+  batch_buffer->vec_buffer.SetMemTakeOver(false);
+  batch_buffer->vec_buffer.BrushAll();
+}
+
 size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
   ArrowSchema *arrow_schema = nullptr;
   ArrowArray *arrow_array = nullptr;
@@ -577,7 +598,9 @@ size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
   // In step6, file 1 missing the column c, column b in file1 will be filter by
   // `attisdropped` so `schema_types.size()` is 1, we need full null in it. But
   // in file2, `schema_types.size()` is 3, so do nothing.
-  for (int index = schema_types.size(); index < target_desc->natts; index++) {
+  auto natts = build_ctid_ ? target_desc->natts - 1 : target_desc->natts;
+  Assert((int)schema_types.size() <= natts);
+  for (int index = schema_types.size(); index < natts; index++) {
     VecBatchBuffer temp_batch_buffer;
     char *target_column_name = NameStr(target_desc->attrs[index].attname);
 
@@ -588,6 +611,24 @@ size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
     ConvSchemaAndDataToVec(target_desc->attrs[index].atttypid,
                            target_column_name, cached_batch_lens_,
                            &temp_batch_buffer, schema_types, array_vector,
+                           field_names);
+  }
+
+  // The CTID will be full with int64(table no(16) + block number(16) +
+  // offset(32)) The current value of CTID is accurate, But we cannot get the
+  // row data through this CTID. For vectorization, we need to assign CTID datas
+  // to the last column of target_list
+  if (build_ctid_) {
+    Assert((int)schema_types.size() == target_desc->natts - 1);
+    VecBatchBuffer ctid_batch_buffer;
+
+    FullWithCTID(cslot, &ctid_batch_buffer);
+    char *target_column_name =
+        NameStr(target_desc->attrs[target_desc->natts - 1].attname);
+
+    ConvSchemaAndDataToVec(target_desc->attrs[target_desc->natts - 1].atttypid,
+                           target_column_name, cached_batch_lens_,
+                           &ctid_batch_buffer, schema_types, array_vector,
                            field_names);
   }
 
