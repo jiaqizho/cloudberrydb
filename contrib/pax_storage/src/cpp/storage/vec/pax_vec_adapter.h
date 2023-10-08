@@ -24,7 +24,7 @@ class VecAdapter final {
     void SetMemoryTakeOver(bool take);
   };
 
-  explicit VecAdapter(TupleDesc tuple_desc);
+  VecAdapter(TupleDesc tuple_desc, bool build_ctid = false);
 
   ~VecAdapter();
 
@@ -39,6 +39,9 @@ class VecAdapter final {
   size_t FlushVecBuffer(CTupleSlot *cslot);
 
  private:
+  void FullWithCTID(CTupleSlot *cslot, VecBatchBuffer *batch_buffer);
+
+ private:
   TupleDesc rel_tuple_desc_;
   size_t cached_batch_lens_;
   VecBatchBuffer *vec_cache_buffer_;
@@ -46,6 +49,7 @@ class VecAdapter final {
 
   PaxColumns *process_columns_;
   size_t current_cached_pax_columns_index_;
+  bool build_ctid_;
 };
 
 }  // namespace pax
