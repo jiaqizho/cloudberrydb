@@ -23,6 +23,8 @@ class CTupleSlot {
 
   inline uint8 GetTableNo() const { return table_no_; }
 
+  inline int GetBlockNumber() const { return block_number_; }
+
   inline void SetOffset(uint64 offset) { offset_ = offset; }
 
   inline void SetBlockNumber(const int &block_number) {
