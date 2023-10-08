@@ -213,6 +213,8 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
   }
 
   slot->ClearTuple();
+  slot->SetTableNo(table_no_);
+  slot->SetBlockNumber(current_block_number_);
   while (!reader_->ReadTuple(slot)) {
     reader_->Close();
     if (!iterator_->HasNext()) {
@@ -221,8 +223,6 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
     }
     OpenFile();
   }
-  slot->SetTableNo(table_no_);
-  slot->SetBlockNumber(current_block_number_);
   slot->StoreVirtualTuple();
   return true;
 }
@@ -318,8 +318,7 @@ void TableDeleter::Delete() {
     }
 
     auto bitmap = it->second.get();
-    if (bitmap->Test(cslot.GetOffset()))
-      continue;
+    if (bitmap->Test(cslot.GetOffset())) continue;
 
     writer_->WriteTuple(&cslot);
   }
