@@ -153,15 +153,15 @@ void MicroPartitionStats::UpdateMinMaxValue(int column_index, Datum datum,
 }
 
 bool MicroPartitionStats::GetStrategyProcinfo(
-    Oid typid, std::tuple<Oid, Oid, Oid, Oid> &procids,
+    Oid typid, Oid subtype, std::tuple<Oid, Oid, Oid, Oid> &procids,
     std::pair<FmgrInfo, FmgrInfo> &finfos) {
-  return cbdb::MinMaxGetStrategyProcinfo(typid, &std::get<0>(procids), &finfos.first,
+  return cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &std::get<0>(procids), &finfos.first,
                                          BTLessStrategyNumber) &&
-         cbdb::MinMaxGetStrategyProcinfo(typid, &std::get<1>(procids), &finfos.second,
+         cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &std::get<1>(procids), &finfos.second,
                                          BTGreaterStrategyNumber) &&
-         cbdb::MinMaxGetStrategyProcinfo(typid, &std::get<2>(procids), nullptr,
+         cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &std::get<2>(procids), nullptr,
                                          BTLessEqualStrategyNumber) &&
-         cbdb::MinMaxGetStrategyProcinfo(typid, &std::get<3>(procids), nullptr,
+         cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &std::get<3>(procids), nullptr,
                                          BTGreaterEqualStrategyNumber);
 }
 
@@ -176,7 +176,7 @@ void MicroPartitionStats::DoInitialCheck(TupleDesc desc) {
   for (int i = 0; i < natts; i++) {
     auto att = TupleDescAttr(desc, i);
     if (att->attisdropped ||
-        !GetStrategyProcinfo(att->atttypid, procs_[i], finfos_[i])) {
+        !GetStrategyProcinfo(att->atttypid, att->atttypid, procs_[i], finfos_[i])) {
       status_[i] = 'x';
       continue;
     }
