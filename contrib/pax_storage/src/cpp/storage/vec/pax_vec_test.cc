@@ -169,7 +169,7 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
     vslot = (VecTupleTableSlot *)tuple_table_slot;
 
     auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
-    ArrowArray *arrow_array = rb->batch;
+    ArrowArray *arrow_array = &rb->batch;
     ASSERT_EQ(arrow_array->length, VEC_BATCH_LENGTH);
     ASSERT_EQ(arrow_array->null_count, 0);
     ASSERT_EQ(arrow_array->offset, 0);
@@ -230,7 +230,7 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
 
     auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
     ASSERT_NE(rb, nullptr);
-    ArrowArray *arrow_array = rb->batch;
+    ArrowArray *arrow_array = &rb->batch;
     ASSERT_EQ(arrow_array->length, 1000);
     ASSERT_EQ(arrow_array->null_count, 0);
     ASSERT_EQ(arrow_array->offset, 0);
@@ -340,7 +340,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
 
     auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
     ASSERT_NE(rb, nullptr);
-    ArrowArray *arrow_array = rb->batch;
+    ArrowArray *arrow_array = &rb->batch;
     ASSERT_EQ(arrow_array->length, VEC_BATCH_LENGTH);
     ASSERT_EQ(arrow_array->null_count, 0);
     ASSERT_EQ(arrow_array->offset, 0);
@@ -455,7 +455,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
 
     auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
     ASSERT_NE(rb, nullptr);
-    ArrowArray *arrow_array = rb->batch;
+    ArrowArray *arrow_array = &rb->batch;
     ASSERT_EQ(arrow_array->length, range_size);
     ASSERT_EQ(arrow_array->null_count, 0);
     ASSERT_EQ(arrow_array->offset, 0);
@@ -597,7 +597,7 @@ TEST_P(PaxVecTest, PaxColumnToVecNoFull) {
 
     auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
     ASSERT_NE(rb, nullptr);
-    ArrowArray *arrow_array = rb->batch;
+    ArrowArray *arrow_array = &rb->batch;
     ASSERT_EQ(arrow_array->length, 1000);
     ASSERT_EQ(arrow_array->null_count, 0);
     ASSERT_EQ(arrow_array->offset, 0);
@@ -707,7 +707,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVecNoFull) {
 
     auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
     ASSERT_NE(rb, nullptr);
-    ArrowArray *arrow_array = rb->batch;
+    ArrowArray *arrow_array = &rb->batch;
     ASSERT_EQ(arrow_array->length, 1000 + null_counts);
     ASSERT_EQ(arrow_array->null_count, 0);
     ASSERT_EQ(arrow_array->offset, 0);
@@ -842,7 +842,7 @@ TEST_P(PaxVecTest, PaxColumnAllNullToVec) {
 
     auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
     ASSERT_NE(rb, nullptr);
-    ArrowArray *arrow_array = rb->batch;
+    ArrowArray *arrow_array = &rb->batch;
     ASSERT_EQ(arrow_array->length, 1000);
     ASSERT_EQ(arrow_array->null_count, 0);
     ASSERT_EQ(arrow_array->offset, 0);
