@@ -636,8 +636,12 @@ size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
   Assert(array_vector.size() == schema_types.size());
   Assert(field_names.size() == array_vector.size());
 
-  arrow_schema = (ArrowSchema *)cbdb::Palloc0(sizeof(ArrowSchema));
-  arrow_array = (ArrowArray *)cbdb::Palloc0(sizeof(ArrowArray));
+  // `ArrowRecordBatch/ArrowSchema/ArrowArray` alloced by pax memory context.
+  // Can not possible to hold the lifecycle of these three objects in pax.
+  // It will be freed after memory context reset.
+  auto arrow_rb = (ArrowRecordBatch *)cbdb::Palloc0(sizeof(ArrowRecordBatch));
+  arrow_schema = &arrow_rb->schema;
+  arrow_array = &arrow_rb->batch;
 
   auto export_status = arrow::ArrowExportTraits<arrow::DataType>::export_func(
       *arrow::struct_(std::move(schema_types)), arrow_schema);
@@ -674,12 +678,6 @@ size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
     array->release = NULL;
   };
 
-  // `ArrowRecordBatch/ArrowSchema/ArrowArray` alloced by pax memory context.
-  // Can not possible to hold the lifecycle of these three objects in pax.
-  // It will be freed after memory context reset.
-  auto *arrow_rb = (ArrowRecordBatch *)cbdb::Palloc0(sizeof(ArrowRecordBatch));
-  arrow_rb->batch = arrow_array;
-  arrow_rb->schema = arrow_schema;
   vslot->tts_recordbatch = arrow_rb;
 
   rc = cached_batch_lens_;
