@@ -272,7 +272,7 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
   switch (scan_key->sk_strategy) {
     case BTLessStrategyNumber:
     case BTLessEqualStrategyNumber: {
-      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, &procid, &finfo,
+      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &procid, &finfo,
                                                 scan_key->sk_strategy);
       if (!ok || !CheckProcid(minmax, scan_key->sk_strategy, procid))
         return true;
@@ -283,7 +283,7 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
       break;
     }
     case BTEqualStrategyNumber: {
-      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, &procid, &finfo,
+      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &procid, &finfo,
                                                 BTLessEqualStrategyNumber);
       if (!ok || !CheckProcid(minmax, BTLessEqualStrategyNumber, procid))
         return true;
@@ -296,7 +296,7 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
         // not (min <= value) --> min > value
         return false;
 
-      ok = cbdb::MinMaxGetStrategyProcinfo(typid, &procid, &finfo,
+      ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &procid, &finfo,
                                            BTGreaterEqualStrategyNumber);
       if (!ok || !CheckProcid(minmax, BTGreaterEqualStrategyNumber, procid))
         return true;
@@ -308,7 +308,7 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
     }
     case BTGreaterEqualStrategyNumber:
     case BTGreaterStrategyNumber: {
-      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, &procid, &finfo,
+      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &procid, &finfo,
                                                 scan_key->sk_strategy);
       if (!ok || !CheckProcid(minmax, scan_key->sk_strategy, procid))
         return true;
