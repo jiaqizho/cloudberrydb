@@ -67,6 +67,7 @@ class MicroPartitionFileFactoryTest : public ::testing::Test {
         .atttypid = TEXTOID,
         .attlen = -1,
         .attbyval = false,
+        .attalign = TYPALIGN_DOUBLE,
         .attisdropped = false,
     };
 
@@ -74,6 +75,7 @@ class MicroPartitionFileFactoryTest : public ::testing::Test {
         .atttypid = TEXTOID,
         .attlen = -1,
         .attbyval = false,
+        .attalign = TYPALIGN_DOUBLE,
         .attisdropped = false,
     };
 
@@ -81,6 +83,7 @@ class MicroPartitionFileFactoryTest : public ::testing::Test {
         .atttypid = INT4OID,
         .attlen = 4,
         .attbyval = true,
+        .attalign = TYPALIGN_INT,
         .attisdropped = false,
     };
 
@@ -124,18 +127,21 @@ class MicroPartitionFileFactoryTest : public ::testing::Test {
     tuple_desc->attrs[0] = {
         .attlen = -1,
         .attbyval = false,
+        .attalign = TYPALIGN_DOUBLE,
         .attisdropped = false,
     };
 
     tuple_desc->attrs[1] = {
         .attlen = -1,
         .attbyval = false,
+        .attalign = TYPALIGN_DOUBLE,
         .attisdropped = false,
     };
 
     tuple_desc->attrs[2] = {
         .attlen = 4,
         .attbyval = true,
+        .attalign = TYPALIGN_INT,
         .attisdropped = false,
     };
     tuple_slot->tts_tupleDescriptor = tuple_desc;

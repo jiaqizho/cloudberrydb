@@ -68,12 +68,14 @@ class PaxVecTest : public ::testing::TestWithParam<bool> {
           .atttypid = INT4OID,
           .attlen = 4,
           .attbyval = true,
+          .attalign = TYPALIGN_INT,
       };
     } else {
       tuple_desc->attrs[0] = {
           .atttypid = TEXTOID,
           .attlen = -1,
           .attbyval = false,
+          .attalign = TYPALIGN_DOUBLE,
       };
     }
 
@@ -954,7 +956,7 @@ TEST_P(PaxVecTest, PaxVecReaderTest) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(file_name_));
   encoding_opts.emplace_back(
-        std::make_tuple(ColumnEncoding_Kind_NO_ENCODED, 0));
+      std::make_tuple(ColumnEncoding_Kind_NO_ENCODED, 0));
   EXPECT_CALL(*writer, GetRelEncodingOptions())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(encoding_opts));
