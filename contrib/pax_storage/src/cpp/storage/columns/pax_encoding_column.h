@@ -34,6 +34,8 @@ class PaxEncodingColumn : public PaxCommColumn<T> {
 
   size_t PhysicalSize() const override;
 
+  size_t GetAlignSize() const override;
+
  protected:
   void InitEncoder();
 

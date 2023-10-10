@@ -30,6 +30,11 @@ void BlockBufferBase::Write(char *ptr, size_t size) {
   memcpy(block_pos_, ptr, size);
 }
 
+void BlockBufferBase::WriteZero(size_t size) {
+  Assert(block_pos_ + size <= block_buffer_.End());
+  memset(block_pos_, 0, size);
+}
+
 void BlockBufferBase::Combine(const BlockBufferBase &buffer) {
   Assert(Available() > buffer.Used());
   Write(buffer.block_buffer_.Start(), buffer.Used());

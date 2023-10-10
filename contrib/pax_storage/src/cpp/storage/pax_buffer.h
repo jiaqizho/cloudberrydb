@@ -79,6 +79,8 @@ class BlockBufferBase {
 
   void Write(char *ptr, size_t size);
 
+  void WriteZero(size_t size);
+
   void Combine(const BlockBufferBase &buffer);
 
   virtual ~BlockBufferBase() = default;

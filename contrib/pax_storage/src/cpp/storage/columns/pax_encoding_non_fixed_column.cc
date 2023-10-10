@@ -1,5 +1,7 @@
 #include "storage/columns/pax_encoding_non_fixed_column.h"
 
+#include "storage/pax_defined.h"
+
 namespace pax {
 
 PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
@@ -121,6 +123,15 @@ std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetBuffer() {
 
 int64 PaxNonFixedEncodingColumn::GetOriginLength() const {
   return compressor_ ? PaxNonFixedColumn::data_->Used() : NO_ENCODE_ORIGIN_LEN;
+}
+
+size_t PaxNonFixedEncodingColumn::GetAlignSize() const {
+  if (encoder_options_.column_encode_type ==
+      ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+    return PaxColumn::GetAlignSize();
+  }
+
+  return PAX_DATA_NO_ALIGN;
 }
 
 }  // namespace pax
