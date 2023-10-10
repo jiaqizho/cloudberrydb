@@ -9,7 +9,7 @@ namespace pax {
 std::vector<orc::proto::Type_Kind> OrcWriter::BuildSchema(TupleDesc desc) {
   std::vector<orc::proto::Type_Kind> type_kinds;
   for (int i = 0; i < desc->natts; i++) {
-    auto *attr = &desc->attrs[i];
+    auto attr = &desc->attrs[i];
     if (attr->attbyval) {
       switch (attr->attlen) {
         case 1:
@@ -47,6 +47,34 @@ OrcWriter::OrcWriter(
       current_offset_(0) {
   pax_columns_ =
       new PaxColumns(column_types_, orc_writer_options.encoding_opts);
+
+  TupleDesc desc = orc_writer_options.desc;
+  for (int i = 0; i < desc->natts; i++) {
+    auto attr = &desc->attrs[i];
+    Assert((size_t)i < pax_columns_->GetColumns());
+    auto column = (*pax_columns_)[i];
+
+    Assert(column);
+    size_t align_size;
+    switch (attr->attalign) {
+      case TYPALIGN_SHORT:
+        align_size = ALIGNOF_SHORT;
+        break;
+      case TYPALIGN_INT:
+        align_size = ALIGNOF_INT;
+        break;
+      case TYPALIGN_DOUBLE:
+        align_size = ALIGNOF_DOUBLE;
+        break;
+      case TYPALIGN_CHAR:
+        align_size = PAX_DATA_NO_ALIGN;
+        break;
+      default:
+        CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+    }
+
+    column->SetAlignSize(align_size);
+  }
 
   summary_.rel_oid = orc_writer_options.rel_oid;
   summary_.block_id = orc_writer_options.block_id;

@@ -22,6 +22,8 @@ class PaxNonFixedEncodingColumn final : public PaxNonFixedColumn {
 
   int64 GetOriginLength() const override;
 
+  size_t GetAlignSize() const override;
+
   // The reason why `PaxNonFixedEncodingColumn` not override the
   // method `GetRangeBuffer` and `GetNonNullRows` is that
   // `PaxNonFixedEncodingColumn` don't have any streaming encoding, also

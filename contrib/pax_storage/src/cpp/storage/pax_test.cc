@@ -34,11 +34,13 @@ CTupleSlot *CreateFakeCTupleSlot(bool with_value) {
   tuple_desc->attrs[0] = {
       .attlen = 4,
       .attbyval = true,
+      .attalign = TYPALIGN_INT,
   };
 
   tuple_desc->attrs[1] = {
       .attlen = 4,
       .attbyval = true,
+      .attalign = TYPALIGN_INT,
   };
 
   tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);

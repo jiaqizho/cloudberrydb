@@ -83,16 +83,19 @@ class OrcTest : public ::testing::Test {
     tuple_desc->attrs[0] = {
         .attlen = -1,
         .attbyval = false,
+        .attalign = TYPALIGN_DOUBLE,
     };
 
     tuple_desc->attrs[1] = {
         .attlen = -1,
         .attbyval = false,
+        .attalign = TYPALIGN_DOUBLE,
     };
 
     tuple_desc->attrs[2] = {
         .attlen = 4,
         .attbyval = true,
+        .attalign = TYPALIGN_INT,
     };
 
     tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
@@ -135,16 +138,19 @@ class OrcTest : public ::testing::Test {
     tuple_desc->attrs[0] = {
         .attlen = -1,
         .attbyval = false,
+        .attalign = TYPALIGN_DOUBLE,
     };
 
     tuple_desc->attrs[1] = {
         .attlen = -1,
         .attbyval = false,
+        .attalign = TYPALIGN_DOUBLE,
     };
 
     tuple_desc->attrs[2] = {
         .attlen = 4,
         .attbyval = true,
+        .attalign = TYPALIGN_INT,
     };
     tuple_slot->tts_tupleDescriptor = tuple_desc;
     tuple_slot->tts_values = tts_values;
@@ -248,6 +254,7 @@ TEST_F(OrcTest, WriteTuple) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   OrcWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -271,6 +278,7 @@ TEST_F(OrcTest, OpenOrc) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
   auto writer =
       OrcWriter::CreateWriter(writer_options, std::move(types), file_ptr);
 
@@ -304,6 +312,7 @@ TEST_F(OrcTest, WriteReadStripes) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   // file_ptr in orc writer will be freed when writer do destruct
   // current OrcWriter::CreateWriter only for test
@@ -345,6 +354,7 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
   writer->WriteTuple(tuple_slot);
@@ -400,6 +410,7 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -445,6 +456,7 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
   writer->WriteTuple(tuple_slot);
@@ -471,6 +483,7 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
 }
 
 TEST_F(OrcTest, WriteReadEmptyOrc) {
+  CTupleSlot *tuple_slot = CreateFakeCTupleSlot();
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
@@ -482,6 +495,7 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
   // flush empty
@@ -518,6 +532,7 @@ TEST_F(OrcTest, ReadTuple) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
   CTupleSlot *tuple_slot_empty = CreateEmptyCTupleSlot();
@@ -587,11 +602,13 @@ TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
   tuple_desc->attrs[0] = {
       .attlen = 8,
       .attbyval = true,
+      .attalign = TYPALIGN_DOUBLE,
   };
 
   tuple_desc->attrs[1] = {
       .attlen = 8,
       .attbyval = true,
+      .attalign = TYPALIGN_DOUBLE,
   };
 
   tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
@@ -619,6 +636,7 @@ TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
   types_encoding.emplace_back(std::make_tuple(encoding_kind, 0));
   MicroPartitionWriter::WriterOptions writer_options;
   writer_options.encoding_opts = types_encoding;
+  writer_options.desc = tuple_desc;
 
   auto writer = new OrcWriter(writer_options, types, file_ptr);
 
@@ -666,11 +684,13 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
   tuple_desc->attrs[0] = {
       .attlen = -1,
       .attbyval = false,
+      .attalign = TYPALIGN_DOUBLE,
   };
 
   tuple_desc->attrs[1] = {
       .attlen = -1,
       .attbyval = false,
+      .attalign = TYPALIGN_DOUBLE,
   };
 
   tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
@@ -696,6 +716,7 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
   types_encoding.emplace_back(std::make_tuple(encoding_kind, 5));
   MicroPartitionWriter::WriterOptions writer_options;
   writer_options.encoding_opts = types_encoding;
+  writer_options.desc = tuple_desc;
 
   auto writer = new OrcWriter(writer_options, types, file_ptr);
 
@@ -764,6 +785,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -823,6 +845,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -866,6 +889,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumnWithProjection) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
   writer->WriteTuple(tuple_slot);
@@ -904,10 +928,12 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   tuple_desc->attrs[0] = {
       .attlen = 4,
       .attbyval = true,
+      .attalign = TYPALIGN_INT,
   };
   tuple_desc->attrs[1] = {
       .attlen = 4,
       .attbyval = true,
+      .attalign = TYPALIGN_INT,
   };
 
   tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
@@ -931,6 +957,7 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_desc;
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -976,6 +1003,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -1036,6 +1064,7 @@ TEST_F(OrcTest, WriteReadWithNullField) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   OrcWriter::WriterOptions writer_options;
+  writer_options.desc = ctuple_slot->GetTupleDesc();
 
   auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -1132,6 +1161,7 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   OrcWriter::WriterOptions writer_options;
+  writer_options.desc = ctuple_slot->GetTupleDesc();
 
   auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -1217,6 +1247,7 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   OrcWriter::WriterOptions writer_options;
+  writer_options.desc = ctuple_slot->GetTupleDesc();
 
   auto *writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 
@@ -1280,6 +1311,7 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
   types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
   MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = tuple_slot->GetTupleDesc();
 
   auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
 

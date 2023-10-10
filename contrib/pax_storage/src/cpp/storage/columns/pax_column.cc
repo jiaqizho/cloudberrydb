@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "comm/pax_defer.h"
+#include "storage/pax_defined.h"
 
 namespace pax {
 
@@ -14,7 +15,8 @@ PaxColumn::PaxColumn()
     : null_bitmap_(nullptr),
       total_rows_(0),
       encoded_type_(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
-      storage_type_(PaxColumnStorageType::kTypeStorageNonVec) {}
+      storage_type_(PaxColumnStorageType::kTypeStorageNonVec),
+      type_align_size_(PAX_DATA_NO_ALIGN) {}
 
 PaxColumn::~PaxColumn() {
   if (null_bitmap_) {
@@ -61,6 +63,13 @@ void PaxColumn::Append([[maybe_unused]] char *buffer,
                        [[maybe_unused]] size_t size) {
   if (null_bitmap_) null_bitmap_->Set(total_rows_);
   ++total_rows_;
+}
+
+size_t PaxColumn::GetAlignSize() const { return type_align_size_; }
+
+void PaxColumn::SetAlignSize(size_t align_size) {
+  Assert(align_size > 0 && (align_size & (align_size - 1)) == 0);
+  type_align_size_ = align_size;
 }
 
 PaxColumn *PaxColumn::SetColumnEncodeType(ColumnEncoding_Kind encoding_type) {
