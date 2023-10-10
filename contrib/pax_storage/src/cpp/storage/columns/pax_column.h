@@ -93,6 +93,10 @@ class PaxColumn {
 
   void SetRows(size_t total_rows);
 
+  virtual size_t GetAlignSize() const;
+
+  virtual void SetAlignSize(size_t align_size);
+
  protected:
   // null field bit map
   Bitmap8 *null_bitmap_;
@@ -106,6 +110,21 @@ class PaxColumn {
 
   // whether the column is storage
   PaxColumnStorageType storage_type_;
+
+  // data part align size.
+  // This field only takes effect when current column is no encoding/compress.
+  //
+  // About `type_align` in `pg_type` what you need to know:
+  // 1. address alignment: the datum which return need alignment with
+  // `type_align`
+  // 2. datum padding: the datum need padding with `type_align`
+  //
+  // The align logic in pax:
+  // 1. address alignment:
+  //    - write will make sure address alignment(data stream) in disk
+  //    - `ReadTuple` with/without memcpy should get a alignment datum
+  // 2. datum padding: deal it in column `Append`
+  size_t type_align_size_;
 
  private:
   PaxColumn(const PaxColumn &);

@@ -423,6 +423,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
       auto bm_bytes =
           reinterpret_cast<uint8 *>(data_buffer->GetAvailableBuffer());
 
+      Assert(non_null_stream.kind() == orc::proto::Stream_Kind_PRESENT);
       non_null_bitmap = new Bitmap8(BitmapRaw<uint8>(bm_bytes, bm_nbytes),
                                     BitmapTpl<uint8>::ReadOnlyRefBitmap);
       data_buffer->Brush(bm_nbytes);
@@ -444,13 +445,18 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
         const ColumnEncoding &data_encoding =
             stripe_footer.pax_col_encodings(index);
 
+        Assert(len_stream.kind() == orc::proto::Stream_Kind_LENGTH);
+        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
+
         column_lens_size = static_cast<uint32>(len_stream.column());
         column_lens_len = static_cast<uint64>(len_stream.length());
 
         column_len_buffer = new DataBuffer<int64>(
             reinterpret_cast<int64 *>(data_buffer->GetAvailableBuffer()),
             column_lens_len, false, false);
-        column_len_buffer->BrushAll();
+
+        Assert(column_lens_len >= column_lens_size * sizeof(int64));
+        column_len_buffer->Brush(column_lens_size * sizeof(int64));
         data_buffer->Brush(column_lens_len);
 
         column_data_len = data_stream.length();
@@ -501,6 +507,8 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
         DataBuffer<char> *column_data_buffer = nullptr;
         PaxCommColumn<char> *pax_column = nullptr;
 
+        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
+
         column_data_size = static_cast<uint32>(data_stream.column());
         column_data_len = static_cast<uint64>(data_stream.length());
         column_data_buffer = new DataBuffer<char>(
@@ -521,6 +529,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
             stripe_footer.streams(streams_index++);
         const ColumnEncoding &data_encoding =
             stripe_footer.pax_col_encodings(index);
+        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
         pax_columns->Append(GetIntEncodingColumn<int16>(
             data_buffer, data_stream, data_encoding));
         break;
@@ -530,6 +539,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
             stripe_footer.streams(streams_index++);
         const ColumnEncoding &data_encoding =
             stripe_footer.pax_col_encodings(index);
+        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
         pax_columns->Append(GetIntEncodingColumn<int32>(
             data_buffer, data_stream, data_encoding));
         break;
@@ -539,6 +549,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
             stripe_footer.streams(streams_index++);
         const ColumnEncoding &data_encoding =
             stripe_footer.pax_col_encodings(index);
+        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
         pax_columns->Append(GetIntEncodingColumn<int64>(
             data_buffer, data_stream, data_encoding));
         break;

@@ -191,6 +191,7 @@ DataBuffer<char> *PaxColumns::GetDataBuffer(
   buffer_len = MeasureDataBuffer(column_streams_func, column_encoding_func);
   data_->Set(reinterpret_cast<char *>(cbdb::Palloc(buffer_len)), buffer_len, 0);
   CombineDataBuffer();
+  Assert(data_->Used() == buffer_len);
   return data_;
 }
 
@@ -219,6 +220,13 @@ size_t PaxColumns::MeasureDataBuffer(
     switch (column->GetPaxColumnTypeInMem()) {
       case kTypeNonFixed: {
         size_t lengths_size = column_size * sizeof(int64);
+
+        if ((buffer_len + lengths_size) % column->GetAlignSize() != 0) {
+          auto align_buffer_len =
+              TYPEALIGN(column->GetAlignSize(), (buffer_len + lengths_size));
+          Assert(align_buffer_len - buffer_len > lengths_size);
+          lengths_size = align_buffer_len - buffer_len;
+        }
 
         buffer_len += lengths_size;
         column_streams_func(orc::proto::Stream_Kind_LENGTH, column_size,
@@ -275,9 +283,25 @@ void PaxColumns::CombineDataBuffer() {
         auto no_fixed_column = reinterpret_cast<PaxNonFixedColumn *>(column);
         auto length_data_buffer = no_fixed_column->GetLengthBuffer();
 
+        auto lengths_size = length_data_buffer->Used();
+        auto current_buffer_len = data_->Used();
+        if ((current_buffer_len + lengths_size) % column->GetAlignSize() != 0) {
+          auto align_buffer_len = TYPEALIGN(
+              column->GetAlignSize(), (current_buffer_len + lengths_size));
+          Assert(align_buffer_len - current_buffer_len > lengths_size);
+          lengths_size = align_buffer_len - current_buffer_len;
+        }
+
         memcpy(data_->GetAvailableBuffer(), length_data_buffer->GetBuffer(),
                length_data_buffer->Used());
         data_->Brush(length_data_buffer->Used());
+
+        Assert(lengths_size >= length_data_buffer->Used());
+        if (lengths_size > length_data_buffer->Used()) {
+          auto padding = lengths_size - length_data_buffer->Used();
+          data_->WriteZero(padding);
+          data_->Brush(padding);
+        }
 
         std::tie(buffer, buffer_len) = column->GetBuffer();
         data_->Write(buffer, buffer_len);

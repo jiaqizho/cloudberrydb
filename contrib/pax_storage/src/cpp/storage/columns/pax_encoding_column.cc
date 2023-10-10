@@ -1,5 +1,6 @@
 #include "storage/columns/pax_encoding_column.h"
 
+#include "storage/pax_defined.h"
 #include "storage/proto/proto_wrappers.h"
 namespace pax {
 
@@ -264,6 +265,16 @@ size_t PaxEncodingColumn<T>::PhysicalSize() const {
   }
 
   return PaxCommColumn<T>::PhysicalSize();
+}
+
+template <typename T>
+size_t PaxEncodingColumn<T>::GetAlignSize() const {
+  if (encoder_options_.column_encode_type ==
+      ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+    return PaxColumn::GetAlignSize();
+  }
+
+  return PAX_DATA_NO_ALIGN;
 }
 
 template class PaxEncodingColumn<int8>;
