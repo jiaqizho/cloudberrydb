@@ -197,6 +197,7 @@ if(BUILD_PAX_FORMAT)
 
   # export headers
   set(PAX_COMM_HEADERS
+    comm/bitmap.h
     comm/cbdb_api.h
     comm/cbdb_wrappers.h
   )
