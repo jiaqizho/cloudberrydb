@@ -6,21 +6,36 @@
 namespace pax {
 
 PaxVecReader::PaxVecReader(MicroPartitionReader *reader, VecAdapter *adapter)
-    : reader_(reader), adapter_(adapter) {}
+    : reader_(reader),
+      adapter_(adapter),
+      working_group_(nullptr),
+      current_group_index_(0) {
+  Assert(reader && adapter);
+}
 
 PaxVecReader::~PaxVecReader() { delete reader_; }
 
 void PaxVecReader::Open(const ReaderOptions &options) {
   reader_->Open(options);
-  PaxColumns *pax_columns = reader_->GetAllColumns();
-  adapter_->SetDataSource(pax_columns);
 }
 
 void PaxVecReader::Close() { reader_->Close(); }
 
 bool PaxVecReader::ReadTuple(CTupleSlot *cslot) {
+retry_read_group:
+  if (!working_group_) {
+    if (current_group_index_ >= reader_->GetGroupNums()) {
+      return false;
+    }
+
+    working_group_ = reader_->ReadGroup(current_group_index_++);
+    adapter_->SetDataSource(working_group_->GetAllColumns());
+  }
+
   if (!adapter_->AppendToVecBuffer()) {
-    return false;
+    delete working_group_;
+    working_group_ = nullptr;
+    goto retry_read_group;
   }
 
   auto flush_nums_of_rows = adapter_->FlushVecBuffer(cslot);
@@ -28,9 +43,14 @@ bool PaxVecReader::ReadTuple(CTupleSlot *cslot) {
   return true;
 }
 
-PaxColumns *PaxVecReader::GetAllColumns() {
+size_t PaxVecReader::GetGroupNums() {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
+
+MicroPartitionReader::Group *PaxVecReader::ReadGroup(size_t index) {
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+}
+
 };  // namespace pax
 
 #endif  // VEC_BUILD
