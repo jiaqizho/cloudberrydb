@@ -5,3 +5,6 @@
 	path = src/cpp/contrib/zstd
 	url = https://code.hashdata.xyz/cloudberry/lib_zstd.git
 	branch = v1.5.5
+[submodule "src/cpp/contrib/cpp-stub"]
+	path = src/cpp/contrib/cpp-stub
+	url = git@code.hashdata.xyz:cloudberry/cpp-stub.git

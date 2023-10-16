@@ -97,20 +97,6 @@ add_custom_command(OUTPUT ${stats_proto_src}
 
 add_custom_target(generate_protobuf DEPENDS ${orc_proto_src} ${pax_proto_src} ${stats_proto_src})
 
-if (BUILD_GTEST AND NOT BUILD_PAX_FORMAT)
-  add_subdirectory(contrib/googletest)
-  ADD_DEFINITIONS(-DRUN_GTEST)
-  file(GLOB TEST_CASE_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/*/*_test.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/*/*/*_test.cc)
-
-  link_directories($ENV{GPHOME}/lib)
-  add_executable(test_main ${TEST_CASE_SOURCES})
-  add_dependencies(test_main gtest gmock gtest_main)
-  target_include_directories(test_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include)
-  target_link_libraries(test_main gtest gmock gtest_main postgres pax)
-endif(BUILD_GTEST AND NOT BUILD_PAX_FORMAT)
-
 # ztsd
 set(ZSTD_BUILD_PROGRAMS OFF)
 set(ZSTD_BUILD_TESTS OFF)
@@ -230,16 +216,35 @@ if(BUILD_PAX_FORMAT)
   )
 
 else()
+  set(pax_target_src  ${orc_proto_src} ${pax_proto_src} ${pax_storage_src} ${stats_proto_src} ${pax_exceptions_src}
+    ${pax_access_src} ${pax_comm_src} ${pax_catalog_src} ${pax_vec_src})
+  set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
+  set(pax_target_link_libs uuid orc_protobuf zstd z postgres)
+  set(pax_target_dependencies generate_protobuf)
 
-  add_library(pax SHARED ${orc_proto_src} ${pax_proto_src} ${pax_storage_src} ${stats_proto_src} ${pax_exceptions_src}
-                  ${pax_access_src} ${pax_comm_src} ${pax_catalog_src} ${pax_vec_src})
+  add_library(pax SHARED ${pax_target_src})
   set_target_properties(pax PROPERTIES OUTPUT_NAME pax)
-  target_include_directories(pax PUBLIC ${ZTSD_HEADER}  ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
-  target_link_libraries(pax PUBLIC uuid orc_protobuf zstd z postgres)
-  add_dependencies(pax generate_protobuf)
+  target_include_directories(pax PUBLIC ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
+  target_link_libraries(pax PUBLIC ${pax_target_link_libs})
+  add_dependencies(pax ${pax_target_dependencies})
   add_custom_command(TARGET pax POST_BUILD
                   COMMAND ${CMAKE_COMMAND} -E
                   copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
+  
+  if (BUILD_GTEST)
+    add_subdirectory(contrib/googletest)
+    ADD_DEFINITIONS(-DRUN_GTEST)
+    file(GLOB test_case_sources
+      ${CMAKE_CURRENT_SOURCE_DIR}/*/*_test.cc
+      ${CMAKE_CURRENT_SOURCE_DIR}/*/*/*_test.cc)
+
+    link_directories($ENV{GPHOME}/lib)
+    add_executable(test_main ${pax_target_src} ${test_case_sources})
+    add_dependencies(test_main ${pax_target_dependencies} gtest gmock gtest_main)
+    target_include_directories(test_main PUBLIC ${pax_target_include} ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include contrib/cpp-stub/src/ contrib/cpp-stub/src_linux/)
+
+    target_link_libraries(test_main ${pax_target_link_libs} gtest gmock gtest_main postgres)
+  endif(BUILD_GTEST)  
 endif(BUILD_PAX_FORMAT)
 
 
