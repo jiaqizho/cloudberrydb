@@ -58,6 +58,11 @@ else()
   SET(BUILD_GTEST OFF)
 endif(ENABLE_DEBUG)
 
+if (BUILD_GTEST)
+  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -no-pie -fno-stack-protector -Wall -Wno-unused-function  -Wno-unused-variable")
+  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-access-control -fno-inline -Wno-pmf-conversions -Wl,--allow-multiple-definition -no-pie -fno-stack-protector")
+endif(BUILD_GTEST)
+
 # Plasma options
 option (ENABLE_PLASMA "Enable plasma cache" OFF)
 if (ENABLE_PLASMA)
