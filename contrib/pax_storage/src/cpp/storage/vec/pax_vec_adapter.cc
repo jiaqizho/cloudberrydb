@@ -59,14 +59,15 @@ static void CopyNonFixedRawBuffer(PaxColumn *column, size_t range_begin,
                                   size_t data_range_lens,
                                   DataBuffer<int32> *offset_buffer,
                                   DataBuffer<char> *out_data_buffer);
+
+static void CopyBitmap(Bitmap8 *bitmap, size_t range_begin, size_t range_lens,
+                       DataBuffer<char> *null_bits_buffer);
+
 static void ConvSchemaAndDataToVec(
     Oid pg_type_oid, char *attname, size_t all_nums_of_row,
     VecAdapter::VecBatchBuffer *vec_batch_buffer,
     std::vector<std::shared_ptr<arrow::Field>> &schema_types,
     arrow::ArrayVector &array_vector, std::vector<std::string> &field_names);
-
-static void NullBytesToNullBits(bool *null_buffer, size_t buffer_len,
-                                DataBuffer<char> *null_bits_map);
 
 VecAdapter::VecBatchBuffer::VecBatchBuffer()
     : vec_buffer(0), null_bits_buffer(0), offset_buffer(0), null_counts(0) {
@@ -102,12 +103,12 @@ static void CopyFixedRawBufferWithNull(PaxColumn *column, size_t range_begin,
   std::tie(buffer, buffer_len) =
       column->GetRangeBuffer(data_index_begin, data_range_lens);
 
-  auto null_bitmap = column->GetNulls();
+  auto null_bitmap = column->GetBitmap();
   size_t non_null_offset = 0;
   size_t type_len = column->GetTypeLength();
 
   for (size_t i = range_begin; i < (range_begin + range_lens); i++) {
-    if ((*null_bitmap)[i]) {
+    if (null_bitmap->Test(i)) {
       out_data_buffer->Write(buffer + non_null_offset, type_len);
       non_null_offset += type_len;
     }
@@ -124,17 +125,6 @@ static inline void CopyFixedRawBuffer(char *buffer, size_t len,
   data_buffer->Brush(len);
 }
 
-static void NullBytesToNullBits(bool *null_buffer, size_t buffer_len,
-                                DataBuffer<char> *null_bits_map) {
-  Assert(null_bits_map->Capacity() >=
-         (buffer_len % 8 == 0 ? buffer_len / 8 : buffer_len / 8 + 1));
-  for (size_t i = 0; i < buffer_len; i++) {
-    arrow::bit_util::SetBitTo((uint8 *)null_bits_map->GetBuffer(), i,
-                              null_buffer[i]);
-  }
-  null_bits_map->BrushAll();
-}
-
 static void CopyNonFixedRawBuffer(PaxColumn *column, size_t range_begin,
                                   size_t range_lens, size_t data_index_begin,
                                   size_t data_range_lens,
@@ -144,11 +134,11 @@ static void CopyNonFixedRawBuffer(PaxColumn *column, size_t range_begin,
   char *buffer = nullptr;
   size_t buffer_len = 0;
 
-  auto null_bitmap = column->GetNulls();
+  auto null_bitmap = column->GetBitmap();
   size_t non_null_offset = 0;
 
   for (size_t i = range_begin; i < (range_begin + range_lens); i++) {
-    if (null_bitmap && !(*null_bitmap)[i]) {
+    if (null_bitmap && !null_bitmap->Test(i)) {
       offset_buffer->Write(dst_offset);
       offset_buffer->Brush(sizeof(int32));
 
@@ -182,6 +172,35 @@ static void CopyNonFixedRawBuffer(PaxColumn *column, size_t range_begin,
 
   CBDB_CHECK(non_null_offset == data_range_lens,
              cbdb::CException::ExType::kExTypeOutOfRange);
+}
+
+static void CopyBitmap(Bitmap8 *bitmap, size_t range_begin, size_t range_lens,
+                       DataBuffer<char> *null_bits_buffer) {
+  // VEC_BATCH_LENGTH must align with 8
+  // So the `range_begin % 8` must be 0
+  static_assert(VEC_BATCH_LENGTH % 8 == 0, "Assumption is broken.");
+  Assert(range_begin % 8 == 0);
+
+  auto null_buffer = reinterpret_cast<char *>(bitmap->Raw().bitmap);
+  auto write_size = BITS_TO_BYTES(range_lens);
+  auto bitmap_raw_size = bitmap->Raw().size;
+
+  if ((range_begin / 8) >= bitmap_raw_size) {  // all nulls in current range
+    null_bits_buffer->WriteZero(write_size);
+    null_bits_buffer->Brush(write_size);
+  } else {
+    auto remain_size = bitmap_raw_size - (range_begin / 8);
+    if (remain_size >= write_size) {  // full bitmap in current range
+      null_bits_buffer->Write(null_buffer + range_begin / 8, write_size);
+      null_bits_buffer->Brush(write_size);
+    } else {  // part of non-null range with a continuous all nulls range
+      auto write_size_gap = write_size - remain_size;
+      null_bits_buffer->Write(null_buffer + range_begin / 8, remain_size);
+      null_bits_buffer->Brush(remain_size);
+      null_bits_buffer->WriteZero(write_size_gap);
+      null_bits_buffer->Brush(write_size_gap);
+    }
+  }
 }
 
 static std::tuple<std::shared_ptr<arrow::Buffer>,
@@ -400,9 +419,8 @@ bool VecAdapter::AppendToVecBuffer() {
   }
 
   // null length depends on `range_lens`
-  auto null_align_bytes = TYPEALIGN(
-      MEMORY_ALIGN_SIZE,
-      range_lens % 8 == 0 ? (range_lens / 8) : ((range_lens / 8) + 1));
+  auto null_align_bytes =
+      TYPEALIGN(MEMORY_ALIGN_SIZE, BITS_TO_BYTES(range_lens));
 
   for (size_t index = 0; index < columns->GetColumns(); index++) {
     size_t data_index_begin = 0;
@@ -476,16 +494,15 @@ bool VecAdapter::AppendToVecBuffer() {
     }  // switch column type
 
     if (column->HasNull()) {
-      bool *null_buffer;
-      size_t null_buffer_len;
+      Bitmap8 *bitmap = nullptr;
       Assert(!null_bits_buffer->GetBuffer());
       null_bits_buffer->Set((char *)cbdb::Palloc(null_align_bytes),
                             null_align_bytes);
-      std::tie(null_buffer, null_buffer_len) =
-          column->GetRangeNulls(range_begin, range_lens);
-      NullBytesToNullBits(null_buffer, null_buffer_len, null_bits_buffer);
-    }
+      bitmap = column->GetBitmap();
+      Assert(bitmap);
 
+      CopyBitmap(bitmap, range_begin, range_lens, null_bits_buffer);
+    }
   }  // for each column
 
   current_cached_pax_columns_index_ = range_begin + range_lens;
