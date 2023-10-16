@@ -43,6 +43,9 @@ size_t PaxColumn::GetRangeNonNullRows(size_t start_pos, size_t len) {
   CBDB_CHECK((start_pos + len) <= GetRows(),
              cbdb::CException::ExType::kExTypeOutOfRange);
   if (!null_bitmap_) return len;
+  if (len == 0) {
+    return 0;
+  }
   return null_bitmap_->CountBits(start_pos, start_pos + len - 1);
 }
 

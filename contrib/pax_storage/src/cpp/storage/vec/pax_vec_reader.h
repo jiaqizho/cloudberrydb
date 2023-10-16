@@ -22,12 +22,16 @@ class PaxVecReader : public MicroPartitionReader {
 
   bool ReadTuple(CTupleSlot *cslot) override;
 
- protected:
-  PaxColumns *GetAllColumns() override;
+  size_t GetGroupNums() override;
+
+  MicroPartitionReader::Group *ReadGroup(size_t index) override;
 
  private:
   MicroPartitionReader *reader_;
   VecAdapter *adapter_;
+
+  MicroPartitionReader::Group *working_group_;
+  size_t current_group_index_;
 };
 
 }  // namespace pax
