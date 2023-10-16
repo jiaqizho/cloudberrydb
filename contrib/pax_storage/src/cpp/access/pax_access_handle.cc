@@ -134,12 +134,12 @@ void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
 }
 
 TableScanDesc CCPaxAccessMethod::ScanExtractColumns(
-    Relation rel, Snapshot snapshot, ParallelTableScanDesc parallel_scan,
-    List *targetlist, List *qual, uint32 flags) {
+    Relation rel, Snapshot snapshot, int nkeys, struct ScanKeyData *key,
+    ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags) {
   CBDB_TRY();
   {
     return pax::PaxScanDesc::BeginScanExtractColumns(
-        rel, snapshot, parallel_scan, targetlist, qual, flags);
+        rel, snapshot, nkeys, key, parallel_scan, ps, flags);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
