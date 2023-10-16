@@ -20,8 +20,8 @@ class PaxScanDesc {
   static void EndScan(TableScanDesc scan);
 
   static TableScanDesc BeginScanExtractColumns(
-      Relation rel, Snapshot snapshot, ParallelTableScanDesc parallel_scan,
-      List *targetlist, List *qual, uint32 flags);
+      Relation rel, Snapshot snapshot, int nkeys, struct ScanKeyData *key,
+      ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags);
 
   static bool ScanGetNextSlot(TableScanDesc scan, TupleTableSlot *slot);
 
