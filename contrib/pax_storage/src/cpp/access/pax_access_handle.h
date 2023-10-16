@@ -99,9 +99,9 @@ class CCPaxAccessMethod final {
                               TupleTableSlot *slot);
 
   static TableScanDesc ScanExtractColumns(Relation rel, Snapshot snapshot,
+                                          int nkeys, struct ScanKeyData *key,
                                           ParallelTableScanDesc parallel_scan,
-                                          List *targetlist, List *qual,
-                                          uint32 flags);
+                                          struct PlanState *ps, uint32 flags);
 
   /* Manipulations of physical tuples. */
   static void TupleInsert(Relation relation, TupleTableSlot *slot,

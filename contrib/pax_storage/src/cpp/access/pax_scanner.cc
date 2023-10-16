@@ -145,10 +145,12 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
 }
 
 TableScanDesc PaxScanDesc::BeginScanExtractColumns(
-    Relation rel, Snapshot snapshot, ParallelTableScanDesc parallel_scan,
-    List *targetlist, List *qual, uint32 flags) {
+    Relation rel, Snapshot snapshot, int /*nkeys*/, struct ScanKeyData * /*key*/,
+    ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags) {
   TableScanDesc paxscan;
   PaxFilter *filter;
+  List *targetlist = ps->plan->targetlist;
+  List *qual = ps->plan->qual;
   auto natts = cbdb::RelationGetAttributesNumber(rel);
   bool *cols;
   bool found = false;
