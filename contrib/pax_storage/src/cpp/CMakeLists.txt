@@ -222,14 +222,35 @@ else()
   set(pax_target_link_libs uuid orc_protobuf zstd z postgres)
   set(pax_target_dependencies generate_protobuf)
 
+  # enable plasma
+  if (ENABLE_PLASMA)
+    set(pax_target_link_libs ${pax_target_link_libs} plasma)
+  endif()
+
+  # vec build
+  if (VEC_BUILD)
+    set(VEC_HEADER ${VEC_HOME}/src/include/)
+
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GLIB REQUIRED glib-2.0)
+    set(pax_target_include ${pax_target_include} 
+      ${VEC_HEADER} # for utils/tuptable_vec.h
+      ${CBDB_ROOT_INCLUDE_DIR}  # for arrow-glib/arrow-glib.h and otehr arrow interface
+      ${GLIB_INCLUDE_DIRS} # for glib-object.h
+    )
+  endif(VEC_BUILD)
+
   add_library(pax SHARED ${pax_target_src})
   set_target_properties(pax PROPERTIES OUTPUT_NAME pax)
-  target_include_directories(pax PUBLIC ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
+  target_include_directories(pax PUBLIC ${pax_target_include})
   target_link_libraries(pax PUBLIC ${pax_target_link_libs})
   add_dependencies(pax ${pax_target_dependencies})
   add_custom_command(TARGET pax POST_BUILD
                   COMMAND ${CMAKE_COMMAND} -E
                   copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
+  if (VEC_BUILD)
+    target_link_libraries(pax PRIVATE arrow)
+  endif()
   
   if (BUILD_GTEST)
     add_subdirectory(contrib/googletest)
@@ -243,32 +264,10 @@ else()
     add_dependencies(test_main ${pax_target_dependencies} gtest gmock gtest_main)
     target_include_directories(test_main PUBLIC ${pax_target_include} ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include contrib/cpp-stub/src/ contrib/cpp-stub/src_linux/)
 
-    target_link_libraries(test_main ${pax_target_link_libs} gtest gmock gtest_main postgres)
+    target_link_libraries(test_main PUBLIC ${pax_target_link_libs} gtest gmock gtest_main)
+    if (VEC_BUILD)
+      target_link_libraries(test_main PRIVATE arrow)
+    endif(VEC_BUILD)
   endif(BUILD_GTEST)  
 endif(BUILD_PAX_FORMAT)
 
-
-# enable plasma
-if (ENABLE_PLASMA)
-target_link_libraries(pax PUBLIC plasma)
-endif()
-
-# vec build
-if (VEC_BUILD)
-  set(VEC_HEADER ${VEC_HOME}/src/include/)
-
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(GLIB REQUIRED glib-2.0)
-
-  target_include_directories(pax PRIVATE 
-    ${VEC_HEADER} # for utils/tuptable_vec.h
-    ${CBDB_ROOT_INCLUDE_DIR}  # for arrow-glib/arrow-glib.h and otehr arrow interface
-    ${GLIB_INCLUDE_DIRS} # for glib-object.h
-  )
-
-  if(BUILD_GTEST)
-    target_include_directories(test_main PRIVATE ${VEC_HEADER} ${CBDB_ROOT_INCLUDE_DIR} ${GLIB_INCLUDE_DIRS})
-  endif(BUILD_GTEST)
-
-  target_link_libraries(pax PRIVATE arrow)
-endif(VEC_BUILD)
