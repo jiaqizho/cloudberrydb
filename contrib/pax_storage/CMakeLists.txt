@@ -12,6 +12,8 @@ if(NOT PG_CONFIG)
   message(FATAL_ERROR "Unable to find 'pg_config'")
 endif()
 
+find_package(BISON REQUIRED)
+
 # Function to call pg_config and extract values.
 function(GET_PG_CONFIG var)
   set(_temp)
