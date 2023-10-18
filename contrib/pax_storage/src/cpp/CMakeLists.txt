@@ -43,6 +43,8 @@ add_library (orc::protobuf ALIAS orc_protobuf)
 add_library (orc_protoc INTERFACE)
 add_library (orc::protoc ALIAS orc_protoc)
 
+bison_target(paxc_gram access/paxc_gram.y ${CMAKE_CURRENT_BINARY_DIR}/paxc_gram.c)
+
 if (ORC_PREFER_STATIC_PROTOBUF AND ${PROTOBUF_STATIC_LIB})
   target_link_libraries (orc_protobuf INTERFACE ${PROTOBUF_STATIC_LIB})
 else ()
@@ -152,7 +154,9 @@ if(NOT BUILD_PAX_FORMAT)
 endif(NOT BUILD_PAX_FORMAT)
 
 set(pax_access_src
+    ${BISON_paxc_gram_OUTPUTS} # BISON output file
     access/paxc_rel_options.cc
+    access/paxc_scanner.cc
     access/pax_access_handle.cc
     access/pax_deleter.cc
     access/pax_dml_state.cc

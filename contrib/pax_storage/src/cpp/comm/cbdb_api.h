@@ -22,6 +22,7 @@ extern "C" {
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
 #include "catalog/indexing.h"
+#include "catalog/objectaccess.h"
 #include "catalog/oid_dispatch.h"
 #include "catalog/pg_am.h"
 #include "catalog/pg_amop.h"

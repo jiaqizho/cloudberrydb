@@ -105,7 +105,7 @@ static void CPaxCreateMicroPartitionTable(const Relation rel) {
   table_close(pg_class_desc, NoLock);
 
   // 2. insert entry into pg_pax_tables.
-  InsertPaxTablesEntry(pax_relid, aux_relid, "", 0);
+  InsertPaxTablesEntry(pax_relid, aux_relid, "", 0, NULL);
 
   // 3. record pg_depend, pg_pax_blocks_<xxx> depends relation.
   {
@@ -193,7 +193,7 @@ Oid GetPaxAuxRelid(Oid relid) {
   Oid aux_relid = InvalidOid;
   CBDB_WRAP_START;
   {
-    GetPaxTablesEntryAttributes(relid, &aux_relid, NULL, NULL);
+    GetPaxTablesEntryAttributes(relid, &aux_relid, NULL, NULL, NULL);
     return aux_relid;
   }
   CBDB_WRAP_END;

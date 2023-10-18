@@ -6,6 +6,7 @@
 #include "access/pax_scanner.h"
 #include "access/pax_updater.h"
 #include "access/paxc_rel_options.h"
+#include "access/paxc_scanner.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/guc.h"
 #include "exceptions/CException.h"
@@ -21,7 +22,7 @@
                   errmsg("not supported on pax relations: %s", __func__)))
 
 #define RELATION_IS_PAX(rel) \
-  (OidIsValid((rel)->rd_rel->relam) && AMOidIsPax((rel)->rd_rel->relam))
+  (OidIsValid((rel)->rd_rel->relam) && RelationIsPAX(rel))
 
 // CBDB_TRY();
 // {
@@ -88,22 +89,6 @@ cbdb::CException global_exception(cbdb::CException::kExTypeInvalid);
   }                                                                   \
   }                                                                   \
   while (0)
-
-bool AMOidIsPax(Oid am_oid) {
-  HeapTuple tuple;
-  Form_pg_am form;
-  bool is_pax;
-
-  tuple = SearchSysCache1(AMOID, ObjectIdGetDatum(am_oid));
-  if (!HeapTupleIsValid(tuple))
-    elog(ERROR, "cache lookup failed for pg_am.oid = %u", am_oid);
-
-  form = (Form_pg_am)GETSTRUCT(tuple);
-  is_pax = strcmp(NameStr(form->amname), "pax") == 0;
-  ReleaseSysCache(tuple);
-
-  return is_pax;
-}
 
 // access methods that are implemented in C++
 namespace pax {
@@ -543,7 +528,7 @@ uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {
   if (fork_number != MAIN_FORKNUM) return 0;
 
   // Get the oid of pg_pax_blocks_xxx from pg_pax_tables
-  GetPaxTablesEntryAttributes(rel->rd_id, &pax_aux_oid, NULL, NULL);
+  GetPaxTablesEntryAttributes(rel->rd_id, &pax_aux_oid, NULL, NULL, NULL);
 
   // Scan pg_pax_blocks_xxx to calculate size of micro partition
   pax_aux_rel = heap_open(pax_aux_oid, AccessShareLock);
@@ -597,7 +582,7 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
   *allvisfrac = 0;
 
   // Get the oid of pg_pax_blocks_xxx from pg_pax_tables
-  GetPaxTablesEntryAttributes(rel->rd_id, &pax_aux_oid, NULL, NULL);
+  GetPaxTablesEntryAttributes(rel->rd_id, &pax_aux_oid, NULL, NULL, NULL);
 
   // Scan pg_pax_blocks_xxx to get attributes
   pax_aux_rel = heap_open(pax_aux_oid, AccessShareLock);
@@ -824,6 +809,7 @@ Datum pax_tableam_handler(PG_FUNCTION_ARGS) {  // NOLINT
   PG_RETURN_POINTER(&kPaxColumnMethods);
 }
 
+static object_access_hook_type prev_object_access_hook = NULL;
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 static ExecutorStart_hook_type prev_executor_start = NULL;
 static ExecutorEnd_hook_type prev_executor_end = NULL;
@@ -833,6 +819,70 @@ void PaxShmemInit() {
   if (prev_shmem_startup_hook) prev_shmem_startup_hook();
 
   paxc::paxc_shmem_startup();
+}
+
+static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id, Oid object_id, int sub_id, void * arg) {
+  Relation rel;
+  List *part;
+  List *pby;
+  paxc::PaxOptions *options;
+
+  if (prev_object_access_hook)
+    prev_object_access_hook(access, class_id, object_id, sub_id, arg);
+
+  if (access != OAT_POST_CREATE || class_id != RelationRelationId) return;
+  
+  CommandCounterIncrement();
+  rel = relation_open(object_id, RowExclusiveLock);
+  auto ok =  ((rel->rd_rel->relkind == RELKIND_RELATION ||
+               rel->rd_rel->relkind == RELKIND_MATVIEW) &&
+              rel->rd_options && RelationIsPAX(rel));
+  if (!ok) goto out;
+
+  Assert(sub_id == 0);
+
+  options = reinterpret_cast<paxc::PaxOptions *>(rel->rd_options);
+  if (!options->partition_by()) {
+    if (options->partition_ranges()) {
+      elog(ERROR, "set '%s', but partition_by not specified",
+            options->partition_ranges());
+    }
+    goto out;
+  }
+  elog(LOG, "partition_by:'%s'", options->partition_by());
+  elog(LOG, "partition_ranges:'%s'", options->partition_ranges());
+
+  pby = paxc_raw_parse(options->partition_by());
+  part = lappend(NIL, pby);
+  if (options->partition_ranges()) {
+    List *ranges;
+    ListCell *lc;
+    int nparts;
+
+    ranges = paxc_parse_partition_ranges(options->partition_ranges());
+    part = lappend(part, ranges);
+
+    nparts = list_length(pby);
+    if (nparts > 1)
+      elog(ERROR, "pax only support 1 partition key now");
+    foreach(lc, ranges) {
+      auto spec = static_cast<PartitionBoundSpec *>(lfirst(lc));
+      Assert(IsA(spec, PartitionBoundSpec));
+      if (list_length(spec->lowerdatums) != nparts ||
+          list_length(spec->upperdatums) != nparts)
+        elog(ERROR, "length of range values must match the number of partition keys");
+    }
+  }
+  // Currently, partition_ranges must be set to partition pax tables.
+  // We hope this option be removed and automatically partition data set.
+  else
+    elog(ERROR, "partition_ranges must be set for partition_by='%s'",
+                options->partition_by());
+
+  PaxInitializePartitionSpec(rel, reinterpret_cast<Node *>(part));
+
+out:
+  relation_close(rel, NoLock);
 }
 
 static void PaxExecutorStart(QueryDesc *query_desc, int eflags) {
@@ -888,6 +938,9 @@ void _PG_init(void) {  // NOLINT
   DefineGUCs();
   paxc::paxc_shmem_request();
 
+  prev_object_access_hook = object_access_hook;
+  object_access_hook = PaxObjectAccessHook;
+
   prev_shmem_startup_hook = shmem_startup_hook;
   shmem_startup_hook = PaxShmemInit;
 
@@ -905,3 +958,8 @@ void _PG_init(void) {  // NOLINT
   paxc::paxc_reg_rel_options();
 }
 }  // extern "C"
+
+// assume rd_tableam is set
+bool RelationIsPAX(Relation rel) {
+  return rel->rd_tableam == &kPaxColumnMethods;
+}
