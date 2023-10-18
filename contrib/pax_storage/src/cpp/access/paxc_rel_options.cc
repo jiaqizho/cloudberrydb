@@ -1,4 +1,3 @@
-
 #include "access/paxc_rel_options.h"
 
 namespace paxc {
@@ -29,6 +28,10 @@ static const relopt_parse_elt kSelfReloptTab[] = {
     {PAX_SOPT_COMPTYPE, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, compress_type)},
     {PAX_SOPT_COMPLEVEL, RELOPT_TYPE_INT, offsetof(PaxOptions, compress_level)},
+    {PAX_SOPT_PARTITION_BY, RELOPT_TYPE_STRING,
+     offsetof(PaxOptions, partition_by_offset)},
+    {PAX_SOPT_PARTITION_RANGES, RELOPT_TYPE_STRING,
+     offsetof(PaxOptions, partition_ranges_offset)},
 };
 
 static void paxc_validate_rel_options_storage_format(const char *value) {
@@ -205,6 +208,14 @@ void paxc_reg_rel_options() {
   add_int_reloption(self_relopt_kind, PAX_SOPT_COMPLEVEL, "pax compress level",
                     PAX_DEFAULT_COMPRESSLEVEL, PAX_MIN_COMPRESSLEVEL,
                     PAX_MAX_COMPRESSLEVEL, AccessExclusiveLock);
+  add_string_reloption(self_relopt_kind, PAX_SOPT_PARTITION_BY, "partition by",
+                       NULL,
+                       NULL,
+                       AccessExclusiveLock);
+  add_string_reloption(self_relopt_kind, PAX_SOPT_PARTITION_RANGES, "partition ranges",
+                       NULL,
+                       NULL,
+                       AccessExclusiveLock);
 }
 
 }  // namespace paxc
