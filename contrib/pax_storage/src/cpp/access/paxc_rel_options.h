@@ -39,6 +39,8 @@ static const relopt_compress_type_mapping kSelfRelCompressMap[] = {
 #define PAX_SOPT_STORAGE_FORMAT "storage_format"
 #define PAX_SOPT_COMPTYPE SOPT_COMPTYPE
 #define PAX_SOPT_COMPLEVEL SOPT_COMPLEVEL
+#define PAX_SOPT_PARTITION_BY "partition_by"
+#define PAX_SOPT_PARTITION_RANGES "partition_ranges"
 
 // plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
@@ -46,6 +48,15 @@ struct PaxOptions {
   char storage_format[16];
   char compress_type[16];
   int compress_level;
+  int partition_by_offset = 0;
+  int partition_ranges_offset = 0;
+
+  char *partition_by() {
+    return partition_by_offset == 0 ? NULL : reinterpret_cast<char *>(this) + partition_by_offset;
+  }
+  char *partition_ranges() {
+    return partition_ranges_offset == 0 ? NULL : reinterpret_cast<char *>(this) + partition_ranges_offset;
+  }
 };
 
 /*
