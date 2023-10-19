@@ -8,20 +8,17 @@
                         ((ch) >= '0' && (ch) <= '9') || \
                         (ch) == '_')
 
-static const char *paxc_eat_blank(const char *s) {
+static inline const char *paxc_eat_blank(const char *s) {
   while (blank_char(*s))
     s++;
   return s;
 }
 
-static const char *paxc_expect_char(const char *s, char ch) {
-  const char *p = s;
-  while (*p != ch) {
-    if (blank_char(*p))
-      p++;
-    else
-      elog(ERROR, "invalid syntax for partition range:'%s' at '%s'", s, p);
-  }
+static inline const char *paxc_expect_char(const char *s, char ch) {
+  const char *p = paxc_eat_blank(s);
+  if (*p != ch)
+    elog(ERROR, "invalid syntax for partition range:'%s' at '%s'", s, p);
+
   return p + 1;
 }
 
@@ -61,10 +58,14 @@ static const char *paxc_parse_expr_list(const char *expr_list, List **result) {
   *result = NIL;
   p = paxc_eat_blank(expr_list);
   while (*p) {
-    Node *single = NULL;
-    p = paxc_parse_single_integer(p, &single);
-    Assert(single);
-    *result = lappend(*result, single);
+    Node *value = NULL;
+    p = paxc_parse_single_integer(p, &value);
+    Assert(value);
+
+    PartitionRangeDatum *elem = makeNode(PartitionRangeDatum);
+    elem->kind = PARTITION_RANGE_DATUM_VALUE;
+    elem->value = value;
+    *result = lappend(*result, elem);
 
     p = paxc_eat_blank(p);
     if (*p != ',') break;
