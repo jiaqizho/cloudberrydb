@@ -6,6 +6,7 @@
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/micro_partition_iterator.h"
+#include "storage/micro_partition_stats.h"
 #include "storage/orc/orc.h"
 #include "storage/pax.h"
 #include "storage/pax_buffer.h"
@@ -102,8 +103,8 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   if (filter && filter->HasMicroPartitionFilter()) {
     auto wrap = new FilterIterator<MicroPartitionMetadata>(
         std::move(iter), [filter, relation](const auto &x) {
-          auto ok = filter->TestMicroPartitionScan(x.GetStats(),
-                                                   RelationGetDescr(relation));
+          MicroPartitionStatsProvider provider(x.GetStats());
+          auto ok = filter->TestScan(provider, RelationGetDescr(relation));
           PAX_LOG_IF(!ok && pax_enable_debug, "filter micro partition: \"%s\"",
                      x.GetFileName().c_str());
           return ok;
@@ -187,8 +188,9 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
     auto ok = pax::BuildScanKeys(rel, qual, false, &scan_keys, &n_scan_keys);
     if (ok) filter->SetScanKeys(scan_keys, n_scan_keys);
   }
-  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter,
-                      build_bitmap);
+  if (gp_enable_predicate_pushdown && !(flags & (1<<12)))
+    filter->BuildExecutionFilterForColumns(rel, ps);
+  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter, build_bitmap);
 
   return paxscan;
 }

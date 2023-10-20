@@ -22,6 +22,7 @@ package orc.proto;
 
 option java_package = "org.apache.orc";
 import "pax.proto";
+import "micro_partition_stats.proto";
 
 message IntegerStatistics  {
   optional sint64 minimum = 1;
@@ -95,9 +96,11 @@ message ColumnStatistics {
   optional DateStatistics dateStatistics = 7;
   optional BinaryStatistics binaryStatistics = 8;
   optional TimestampStatistics timestampStatistics = 9;
-  optional bool hasNull = 10;
-  optional uint64 bytesOnDisk = 11;
-  optional CollectionStatistics collectionStatistics = 12;
+  optional bool allNull = 10 [default=true];
+  optional bool hasNull = 11 [default=false];
+  optional uint64 bytesOnDisk = 12;
+  optional CollectionStatistics collectionStatistics = 13;
+  optional pax.stats.ColumnDataStats colDataStats = 14;
 }
 
 message RowIndexEntry {
@@ -346,6 +349,8 @@ message Footer {
   // the file. It is assumed to be within a given writer, so for example
   // ORC 1.7.2 = "1.7.2". It may include suffixes, such as "-SNAPSHOT".
   optional string softwareVersion = 12;
+
+  repeated pax.stats.ColumnBasicInfo colInfo = 13;
 }
 
 enum CompressionKind {

@@ -11,6 +11,7 @@
 #include "storage/columns/pax_encoding.h"
 #include "storage/micro_partition_file_factory.h"
 #include "storage/micro_partition_metadata.h"
+#include "storage/micro_partition_row_filter_reader.h"
 #include "storage/micro_partition_stats.h"
 
 #ifdef VEC_BUILD
@@ -258,9 +259,12 @@ void TableReader::OpenFile() {
 #ifdef VEC_BUILD
   if (reader_options_.is_vec) {
     Assert(reader_options_.adapter);
-    reader_ = new PaxVecReader(reader_, reader_options_.adapter);
-  }
+    reader_ = new PaxVecReader(reader_, reader_options_.adapter, reader_options_.filter);
+  } else
 #endif  // VEC_BUILD
+  if (reader_options_.filter && reader_options_.filter->HasRowScanFilter()) {
+    reader_ = MicroPartitionRowFilterReader::New(reader_, reader_options_.filter);
+  }
 
   reader_->Open(options);
 }

@@ -5,18 +5,48 @@
 #include <utility>
 #include <vector>
 
+#include "storage/pax_filter.h"
+
 namespace pax {
 namespace stats {
 class MicroPartitionStatisticsInfo;
+class ColumnBasicInfo;
+class ColumnDataStats;
 }
+
+class MicroPartitionStatsData {
+ public:
+  virtual ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) = 0;
+  virtual ::pax::stats::ColumnDataStats *GetColumnDataStats(int column_index) = 0;
+  virtual int ColumnSize() const = 0;
+  virtual void SetAllNull(int column_index, bool allnull) = 0;
+  virtual void SetHasNull(int column_index, bool hasnull) = 0;
+  virtual ~MicroPartitionStatsData() = default;
+};
+
+class MicroPartittionFileStatsData final : public MicroPartitionStatsData {
+ public:
+  MicroPartittionFileStatsData(::pax::stats::MicroPartitionStatisticsInfo *info, int natts);
+  ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) override;
+  ::pax::stats::ColumnDataStats *GetColumnDataStats(int column_index) override;
+  int ColumnSize() const override;
+  void SetAllNull(int column_index, bool allnull) override;
+  void SetHasNull(int column_index, bool hasnull) override;
+ private:
+  ::pax::stats::MicroPartitionStatisticsInfo *info_ = nullptr;
+};
 
 class MicroPartitionStats final {
  public:
   MicroPartitionStats() = default;
+  ~MicroPartitionStats();
   MicroPartitionStats *SetStatsMessage(
-      pax::stats::MicroPartitionStatisticsInfo *stats, int natts);
+      MicroPartitionStatsData *stats, int natts);
+  MicroPartitionStats *LightReset();
 
   void AddRow(TupleTableSlot *slot);
+  MicroPartitionStatsData *GetStatsData() { return stats_; }
+  const MicroPartitionStatsData *GetStatsData() const { return stats_; }
 
   static std::string ToValue(Datum datum, int typlen, bool typbyval);
   static Datum FromValue(const std::string &s, int typlen, bool typbyval, bool *ok);
@@ -31,7 +61,7 @@ class MicroPartitionStats final {
                                   std::pair<FmgrInfo, FmgrInfo> &finfos);
 
   // stats_: only references the info object by pointer
-  pax::stats::MicroPartitionStatisticsInfo *stats_ = nullptr;
+  MicroPartitionStatsData *stats_ = nullptr;
 
   // less: tuple[0], greater: tuple[1], le: tuple[2], ge: tuple[3]
   std::vector<std::tuple<Oid, Oid, Oid, Oid>> procs_;
@@ -46,6 +76,18 @@ class MicroPartitionStats final {
   // 'y': min-max is set, needs update.
   std::vector<char> status_;
   bool initial_check_ = false;
+};
+
+class MicroPartitionStatsProvider final : public ColumnStatsProvider {
+ public:
+  explicit MicroPartitionStatsProvider(const ::pax::stats::MicroPartitionStatisticsInfo &stats);
+  int ColumnSize() const override;
+  bool AllNull(int column_index) const override;
+  bool HasNull(int column_index) const override;
+  const ::pax::stats::ColumnBasicInfo &ColumnInfo(int column_index) const override;
+  const ::pax::stats::ColumnDataStats &DataStats(int column_index) const override;
+ private:
+  const ::pax::stats::MicroPartitionStatisticsInfo &stats_;
 };
 
 }  // namespace pax
