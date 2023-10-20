@@ -71,8 +71,7 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
       if (!IsA(leftop, Var)) goto ignore_clause;
 
       varattno = ((Var *)leftop)->varattno;
-      if (varattno < 1 || varattno > indnkeyatts)
-        elog(ERROR, "bogus index qualification");
+      if (varattno < 1 || varattno > indnkeyatts) goto ignore_clause;
 
       /*
        * We have to look up the operator's strategy number.  This
@@ -182,6 +181,94 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
   }
   return false;
 }
+
+static inline void FindAttrsInQual(Node *qual, bool *proj, int ncol,
+                                      int *proj_atts, int *num_proj_atts) {
+  int i, k;
+  /* get attrs in qual */
+  extractcolumns_from_node(qual, proj, ncol);
+
+  /* collect the number of proj attr and attr_no from proj[] */
+  k = 0;
+  for (i = 0; i < ncol; i++) {
+    if (proj[i]) proj_atts[k++] = i;
+  }
+  *num_proj_atts = k;
+}
+
+bool BuildExecutionFilterForColumns(Relation rel, PlanState *ps,
+                                    pax::ExecutionFilterContext *ctx) {
+  List *qual = ps->plan->qual;
+  List **qual_list;
+  ListCell *lc;
+  bool *proj;
+  int *qual_atts;
+  int natts = RelationGetNumberOfAttributes(rel);
+
+  if (!qual || !IsA(qual, List)) return false;
+
+  if (list_length(qual) == 1 && IsA(linitial(qual), BoolExpr)) {
+    auto boolexpr = (BoolExpr *)linitial(qual);
+    if (boolexpr->boolop != AND_EXPR) return false;
+    qual = boolexpr->args;
+  }
+  Assert(IsA(qual, List));
+
+  proj = (bool *)palloc(sizeof(bool) * natts);
+  qual_atts = (int *)palloc(sizeof(int) * natts);
+  qual_list = (List **)palloc0(sizeof(List *) * (natts + 1));
+
+  ctx->econtext = ps->ps_ExprContext;
+  ctx->estate_final = nullptr;
+  ctx->estates = nullptr;
+  ctx->attnos = nullptr;
+  ctx->size = 0;
+
+  foreach (lc, qual) {
+    Expr *subexpr = (Expr *)lfirst(lc);
+    int num_qual_atts = 0;
+    int attno;
+
+    Assert(subexpr);
+    memset(proj, 0, sizeof(bool) * natts);
+    FindAttrsInQual((Node *)subexpr, proj, natts, qual_atts, &num_qual_atts);
+    if (num_qual_atts == 0 || num_qual_atts > 1) {
+      qual_list[0] = lappend(qual_list[0], subexpr);
+      continue;
+    }
+    attno = qual_atts[0] + 1;
+    Assert(num_qual_atts == 1 && attno > 0 && attno <= natts);
+    if (!qual_list[attno]) ctx->size++;
+    qual_list[attno] = lappend(qual_list[attno], subexpr);
+  }
+
+  if (ctx->size > 0) {
+    int k = 0;
+    ctx->estates = (ExprState **)palloc(sizeof(ExprState *) * ctx->size);
+    ctx->attnos = (AttrNumber *)palloc(sizeof(AttrNumber) * ctx->size);
+    for (AttrNumber i = 1; i <= (AttrNumber) natts; i++) {
+      if (!qual_list[i]) continue;
+      ctx->estates[k] = ExecInitQual(qual_list[i], ps);
+      ctx->attnos[k] = i;
+      list_free(qual_list[i]);
+      k++;
+    }
+    Assert(ctx->size == k);
+  }
+  if (qual_list[0]) {
+    ctx->estate_final = ExecInitQual(qual_list[0], ps);
+    list_free(qual_list[0]);
+  }
+
+  Assert(ctx->size > 0 || ctx->estate_final);
+  ps->qual = nullptr;
+
+  pfree(proj);
+  pfree(qual_atts);
+  pfree(qual_list);
+  return true;
+}
+
 }  // namespace paxc
 
 namespace pax {
@@ -192,6 +279,13 @@ bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
   {
     return paxc::BuildScanKeys(rel, quals, isorderby, scan_keys, num_scan_keys);
   }
+  CBDB_WRAP_END;
+}
+
+bool BuildExecutionFilterForColumns(Relation rel, PlanState *ps,
+                                    pax::ExecutionFilterContext *ctx) {
+  CBDB_WRAP_START;
+  { return paxc::BuildExecutionFilterForColumns(rel, ps, ctx); }
   CBDB_WRAP_END;
 }
 
@@ -216,7 +310,7 @@ void PaxFilter::SetScanKeys(ScanKey scan_keys, int num_scan_keys) {
 }
 
 static inline bool CheckNullKey(
-    ScanKey scan_key, const ::pax::stats::ColumnStatisitcsInfo &column_stats) {
+    ScanKey scan_key, bool allnull, bool hasnull) {
   // handle null test
   // SK_SEARCHNULL and SK_SEARCHNOTNULL must not co-exist with each other
   Assert(scan_key->sk_flags & SK_ISNULL);
@@ -225,10 +319,10 @@ static inline bool CheckNullKey(
 
   if (scan_key->sk_flags & SK_SEARCHNULL) {
     // test: IS NULL
-    if (!column_stats.hasnull()) return false;
+    if (!hasnull) return false;
   } else if (scan_key->sk_flags & SK_SEARCHNOTNULL) {
     // test: IS NOT NULL
-    if (column_stats.allnull()) return false;
+    if (allnull) return false;
   } else {
     // Neither IS NULL nor IS NOT NULL was used; assume all indexable
     // operators are strict and thus return false with NULL value in
@@ -238,7 +332,7 @@ static inline bool CheckNullKey(
   return true;
 }
 
-static inline bool CheckProcid(const ::pax::stats::MinmaxStatistics &minmax,
+static inline bool CheckProcid(const ::pax::stats::ColumnBasicInfo &minmax,
                                StrategyNumber strategy, Oid procid) {
   switch (strategy) {
     case BTLessStrategyNumber:
@@ -257,7 +351,8 @@ static inline bool CheckProcid(const ::pax::stats::MinmaxStatistics &minmax,
   return false;
 }
 
-static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
+static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
+const ::pax::stats::ColumnDataStats &data_stats,
                               ScanKey scan_key, Form_pg_attribute attr) {
   Oid procid;
   FmgrInfo finfo;
@@ -276,7 +371,7 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
                                                 scan_key->sk_strategy);
       if (!ok || !CheckProcid(minmax, scan_key->sk_strategy, procid))
         return true;
-      datum = pax::MicroPartitionStats::FromValue(minmax.minimal(), typlen,
+      datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(), typlen,
                                                   typbyval, &ok);
       CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
       matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
@@ -287,7 +382,7 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
                                                 BTLessEqualStrategyNumber);
       if (!ok || !CheckProcid(minmax, BTLessEqualStrategyNumber, procid))
         return true;
-      datum = pax::MicroPartitionStats::FromValue(minmax.minimal(), typlen,
+      datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(), typlen,
                                                   typbyval, &ok);
       CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
       matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
@@ -300,7 +395,7 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
                                            BTGreaterEqualStrategyNumber);
       if (!ok || !CheckProcid(minmax, BTGreaterEqualStrategyNumber, procid))
         return true;
-      datum = pax::MicroPartitionStats::FromValue(minmax.maximum(), typlen,
+      datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(), typlen,
                                                   typbyval, &ok);
       CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
       matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
@@ -312,7 +407,7 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
                                                 scan_key->sk_strategy);
       if (!ok || !CheckProcid(minmax, scan_key->sk_strategy, procid))
         return true;
-      datum = pax::MicroPartitionStats::FromValue(minmax.maximum(), typlen,
+      datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(), typlen,
                                                   typbyval, &ok);
       CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
       matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
@@ -328,13 +423,12 @@ static bool CheckNonnullValue(const ::pax::stats::MinmaxStatistics &minmax,
 
 // returns true: if the micro partition needs to scan
 // returns false: the micro partition could be ignored
-bool PaxFilter::TestMicroPartitionScanInternal(
-    const pax::stats::MicroPartitionStatisticsInfo &stats,
-    TupleDesc desc) const {
+bool PaxFilter::TestScanInternal(const ColumnStatsProvider &provider, const TupleDesc desc) const {
   auto natts = desc->natts;
+  auto column_stats_size = provider.ColumnSize();
 
   Assert(num_scan_keys_ > 0);
-  Assert(stats.columnstats_size() <= natts);
+  Assert(column_stats_size <= natts);
   for (int i = 0; i < num_scan_keys_; i++) {
     auto scan_key = &scan_keys_[i];
     auto column_index = scan_key->sk_attno - 1;
@@ -346,27 +440,48 @@ bool PaxFilter::TestMicroPartitionScanInternal(
     // the collation in catalog and scan key should be consistent
     Assert(scan_key->sk_collation == attr->attcollation);
 
-    if (column_index >= stats.columnstats_size())
+    if (column_index >= column_stats_size)
       continue;  // missing attributes have no stats
 
-    const auto &column_stats = stats.columnstats(column_index);
-    const auto &minmax = column_stats.minmaxstats();
+    const auto &info = provider.ColumnInfo(column_index);
+    const auto &data_stats = provider.DataStats(column_index);
 
     // Check whether alter column type will result rewriting whole table.
-    AssertImply(minmax.typid(), attr->atttypid == minmax.typid());
+    AssertImply(info.typid(), attr->atttypid == info.typid());
 
     if (scan_key->sk_flags & SK_ISNULL) {
-      if (!CheckNullKey(scan_key, column_stats)) return false;
-    } else if (column_stats.allnull()) {
+      if (!CheckNullKey(scan_key, provider.AllNull(column_index), provider.HasNull(column_index))) return false;
+    } else if (provider.AllNull(column_index)) {
       // ALL values are null, but the scan key is not null
       return false;
-    } else if (scan_key->sk_collation != minmax.collation()) {
+    } else if (scan_key->sk_collation != info.collation()) {
       // collation doesn't match ignore this scan key
-    } else if (!CheckNonnullValue(minmax, scan_key, attr)) {
+    } else if (!CheckNonnullValue(info, data_stats, scan_key, attr)) {
       return false;
     }
   }
   return true;
+}
+
+void PaxFilter::FillRemainingColumns(Relation rel) {
+  int natts = RelationGetNumberOfAttributes(rel);
+  bool *atts = new bool[natts];
+  if (proj_len_ > 0) {
+    Assert(natts >= 0 && static_cast<size_t>(natts) >= proj_len_);
+    memcpy(atts, proj_, sizeof(bool) * proj_len_);
+    for (auto i = static_cast<int>(proj_len_); i < natts; i++) atts[i] = false;
+  } else {
+    for (int i = 0; i < natts; i++) atts[i] = true;
+  }
+  // minus attnos in efctx_.attnos
+  for (int i = 0; i < efctx_.size; i++) {
+    auto attno = efctx_.attnos[i];
+    Assert(attno > 0 && attno <= natts);
+    atts[attno - 1] = false;
+  }
+  for (AttrNumber attno = 1; attno <= (AttrNumber) natts; attno++) {
+    if (atts[attno - 1]) remaining_attnos_.emplace_back(attno);
+  }
 }
 
 }  // namespace pax

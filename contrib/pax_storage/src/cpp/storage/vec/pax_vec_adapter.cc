@@ -392,6 +392,8 @@ void VecAdapter::SetDataSource(PaxColumns *columns) {
   }
 }
 
+const TupleDesc VecAdapter::GetRelationTupleDesc() const { return rel_tuple_desc_; }
+
 bool VecAdapter::AppendToVecBuffer() {
   PaxColumns *columns;
   PaxColumn *column;

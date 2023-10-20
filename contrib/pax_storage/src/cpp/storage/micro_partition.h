@@ -11,6 +11,7 @@
 #include "storage/columns/pax_columns.h"
 #include "storage/micro_partition_metadata.h"
 #include "storage/pax_defined.h"
+#include "storage/pax_filter.h"
 
 namespace pax {
 class CTupleSlot {
@@ -56,11 +57,31 @@ class MicroPartitionWriter {
   struct WriterOptions {
     std::string file_name;
     std::string block_id;
-    TupleDesc desc;
-    Oid rel_oid;
+    TupleDesc desc = nullptr;
+    Oid rel_oid = InvalidOid;
     std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
 
     size_t group_limit = VEC_BATCH_LENGTH;
+
+    WriterOptions() = default;
+    WriterOptions(const WriterOptions &other) = default;
+    WriterOptions(WriterOptions &&wo)
+      : file_name(std::move(wo.file_name))
+      , block_id(std::move(wo.block_id))
+      , desc(wo.desc)
+      , rel_oid(wo.rel_oid)
+      , encoding_opts(std::move(wo.encoding_opts))
+      , group_limit(wo.group_limit)
+      {}
+    WriterOptions &operator=(WriterOptions &&wo) {
+      file_name = std::move(wo.file_name);
+      block_id = std::move(wo.block_id);
+      desc = wo.desc;
+      rel_oid = wo.rel_oid;
+      encoding_opts = std::move(wo.encoding_opts);
+      group_limit = wo.group_limit;
+      return *this;
+    }
   };
 
   explicit MicroPartitionWriter(const WriterOptions &writer_options);
@@ -138,6 +159,7 @@ class MicroPartitionReader {
     virtual std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
                                                   size_t row_index) = 0;
 
+
     // Allow different MicroPartitionReader shared columns
     // but should not let export columns out of micro partition
     //
@@ -165,7 +187,6 @@ class MicroPartitionReader {
     PaxCache *pax_cache = nullptr;
 #endif  // ENABLE_PLASMA
   };
-
   MicroPartitionReader() = default;
 
   virtual ~MicroPartitionReader() = default;
@@ -196,10 +217,57 @@ class MicroPartitionReader {
 
   virtual Group *ReadGroup(size_t group_index) = 0;
 
+  virtual std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(size_t group_index) = 0;
+
+
 #ifdef VEC_BUILD
  private:
   friend class PaxVecReader;
 #endif
+};
+
+class MicroPartitionReaderProxy : public MicroPartitionReader {
+ public:
+  MicroPartitionReaderProxy() = default;
+
+  ~MicroPartitionReaderProxy() override;
+
+  void Open(const MicroPartitionReader::ReaderOptions &options) override;
+
+  // Close the current reader. It may be re-Open.
+  void Close() override;
+
+  // read tuple from the micro partition with a filter.
+  // the default behavior doesn't push the predicate down to
+  // the low-level storage code.
+  // returns the offset of the tuple in the micro partition
+  // NOTE: the ctid is stored in slot, mapping from block_id to micro partition
+  // is also created during this stage, no matter the map relation is needed or
+  // not. We may optimize to avoid creating the map relation later.
+  bool ReadTuple(CTupleSlot *slot) override;
+
+  size_t GetGroupNums() override;
+
+  std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(size_t group_index) override;
+
+  Group *ReadGroup(size_t index) override;
+
+
+  void SetReader(MicroPartitionReader *reader);
+  MicroPartitionReader *GetReader() { return reader_; }
+  const MicroPartitionReader *GetReader() const { return reader_; }
+ protected:
+  // Allow different MicroPartitionReader shared columns
+  // but should not let export columns out of micro partition
+  //
+  // In MicroPartition writer/reader implementation, all in-memory data should
+  // be accessed by pax column This is because most of the common logic of
+  // column operation is done in pax column, such as type mapping, bitwise
+  // fetch, compression/encoding. At the same time, pax column can also be used
+  // as a general interface for internal using, because it's zero copy from
+  // buffer. more details in `storage/columns`
+
+  MicroPartitionReader *reader_ = nullptr;
 };
 
 }  // namespace pax

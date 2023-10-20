@@ -10,12 +10,30 @@
 #include "storage/columns/pax_columns.h"
 #include "storage/file_system.h"
 #include "storage/micro_partition.h"
+#include "storage/micro_partition_stats.h"
 #include "storage/orc/orc_format_reader.h"
 #include "storage/proto/protobuf_stream.h"
 
 namespace pax {
 class MicroPartitionStats;
 class OrcFormatReader;
+
+class OrcColumnStatsData : public MicroPartitionStatsData {
+ public:
+  OrcColumnStatsData() = default;
+  OrcColumnStatsData *Initialize(int natts);
+  ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) override;
+  ::pax::stats::ColumnDataStats *GetColumnDataStats(int column_index) override;
+  int ColumnSize() const override;
+  void SetAllNull(int column_index, bool allnull) override;
+  void SetHasNull(int column_index, bool hasnull) override;
+  void Reset();
+ private:
+  void CheckVectorSize() const;
+
+  std::vector<::pax::stats::ColumnDataStats> col_data_stats_;
+  std::vector<::pax::stats::ColumnBasicInfo> col_basic_info_;
+};
 
 class OrcWriter : public MicroPartitionWriter {
  public:
@@ -77,6 +95,7 @@ class OrcWriter : public MicroPartitionWriter {
   ::orc::proto::Footer file_footer_;
   ::orc::proto::PostScript post_script_;
   ::orc::proto::Metadata meta_data_;
+  ::pax::MicroPartitionStats stats_collector_;
 };
 
 #ifdef ENABLE_PLASMA
@@ -98,6 +117,8 @@ class OrcReader : public MicroPartitionReader {
   size_t GetGroupNums() override;
 
   MicroPartitionReader::Group *ReadGroup(size_t group_index) override;
+
+  std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(size_t group_index) override;
 
 #ifndef RUN_GTEST
  protected:  // NOLINT

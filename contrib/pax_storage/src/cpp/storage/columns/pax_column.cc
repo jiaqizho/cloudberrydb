@@ -30,6 +30,10 @@ PaxColumnTypeInMem PaxColumn::GetPaxColumnTypeInMem() const {
 
 bool PaxColumn::HasNull() { return null_bitmap_ != nullptr; }
 
+bool PaxColumn::AllNull() const {
+  return null_bitmap_ && null_bitmap_->Empty();
+}
+
 void PaxColumn::SetBitmap(Bitmap8 *null_bitmap) {
   Assert(!null_bitmap_);
   null_bitmap_ = null_bitmap;

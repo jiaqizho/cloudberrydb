@@ -2,13 +2,39 @@
 #include "comm/cbdb_api.h"
 
 #include <utility>
+#include <vector>
 
 namespace pax {
 namespace stats {
 class MicroPartitionStatisticsInfo;
-}
+class ColumnBasicInfo;
+class ColumnDataStats;
+}  // namespace stats
+
+struct ExecutionFilterContext {
+  ExprContext *econtext;
+  ExprState *estate_final = nullptr;
+  ExprState **estates;
+  AttrNumber *attnos;
+  int size = 0;
+  inline bool HasExecutionFilter() const { return size > 0 || estate_final; }
+};
+
 bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
                    ScanKey *scan_keys, int *num_scan_keys);
+bool BuildExecutionFilterForColumns(Relation rel, PlanState *ps,
+                                    pax::ExecutionFilterContext *ctx);
+class ColumnStatsProvider {
+ public:
+  virtual ~ColumnStatsProvider() = default;
+  virtual int ColumnSize() const = 0;
+  virtual bool AllNull(int column_index) const = 0;
+  virtual bool HasNull(int column_index) const = 0;
+  virtual const ::pax::stats::ColumnBasicInfo &ColumnInfo(
+      int column_index) const = 0;
+  virtual const ::pax::stats::ColumnDataStats &DataStats(
+      int column_index) const = 0;
+};
 
 class PaxFilter final {
  public:
@@ -24,20 +50,32 @@ class PaxFilter final {
 
   void SetScanKeys(ScanKey scan_keys, int num_scan_keys);
 
+  ExecutionFilterContext *GetExecutionFilterContext() { return &efctx_; }
+  const std::vector<AttrNumber> &GetRemainingColumns() const {
+    return remaining_attnos_;
+  }
+
   // true: if failed to filter the whole micro-partition, reader SHOULD scan the
   // tuples false: if success to filter the micro-partition, the whole
   // micro-partition SHOULD be ignored.
-  inline bool TestMicroPartitionScan(
-      const pax::stats::MicroPartitionStatisticsInfo &stats,
-      TupleDesc desc) const {
+  inline bool TestScan(const ColumnStatsProvider &provider,
+                       const TupleDesc desc) const {
     if (num_scan_keys_ == 0) return true;
-    return TestMicroPartitionScanInternal(stats, desc);
+    return TestScanInternal(provider, desc);
+  }
+
+  inline bool HasRowScanFilter() const { return efctx_.HasExecutionFilter(); }
+  inline bool BuildExecutionFilterForColumns(Relation rel, PlanState *ps) {
+    auto ok = pax::BuildExecutionFilterForColumns(rel, ps, &efctx_);
+    if (ok) FillRemainingColumns(rel);
+    return ok;
   }
 
  private:
-  bool TestMicroPartitionScanInternal(
-      const pax::stats::MicroPartitionStatisticsInfo &stats,
-      TupleDesc desc) const;
+  bool TestScanInternal(const ColumnStatsProvider &provider,
+                        TupleDesc desc) const;
+
+  void FillRemainingColumns(Relation rel);
 
   // micro partition filter: we use the scan keys to filter a whole of micro
   // partition by comparing the scan keys with the min/max values in micro
@@ -49,6 +87,13 @@ class PaxFilter final {
   // column projection
   bool *proj_ = nullptr;
   size_t proj_len_ = 0;
+
+  // row-level filter
+  ExecutionFilterContext efctx_;
+  // all selected columns - single row filting columns
+  // before running final cross columns expression filtering, the remaining
+  // columns should be filled.
+  std::vector<AttrNumber> remaining_attnos_;
 };  // class PaxFilter
 
 }  // namespace pax

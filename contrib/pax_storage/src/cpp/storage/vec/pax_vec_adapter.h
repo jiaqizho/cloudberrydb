@@ -38,6 +38,8 @@ class VecAdapter final {
 
   size_t FlushVecBuffer(CTupleSlot *cslot);
 
+  const TupleDesc GetRelationTupleDesc() const;
+
  private:
   void FullWithCTID(CTupleSlot *cslot, VecBatchBuffer *batch_buffer);
 
