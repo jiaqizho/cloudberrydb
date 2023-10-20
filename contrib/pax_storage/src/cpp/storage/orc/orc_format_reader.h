@@ -37,6 +37,7 @@ class OrcFormatReader final {
   void BuildProtoTypes();
 
  private:
+  friend class OrcGroupStatsProvider;
   std::vector<orc::proto::Type_Kind> column_types_;
   File *file_;
   DataBuffer<char> *reused_buffer_;

@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "storage/pax_itemptr.h"
+#include "storage/pax_filter.h"
 
 namespace pax {
 
@@ -37,6 +38,41 @@ MicroPartitionWriter *MicroPartitionWriter::SetStatsCollector(
   Assert(mpstats_ == nullptr);
   mpstats_ = mpstats;
   return this;
+}
+
+MicroPartitionReaderProxy::~MicroPartitionReaderProxy() {
+  delete reader_;
+}
+
+void MicroPartitionReaderProxy::Open(const MicroPartitionReader::ReaderOptions &options) {
+  Assert(reader_);
+  reader_->Open(options);
+}
+
+void MicroPartitionReaderProxy::Close() {
+  Assert(reader_);
+  reader_->Close();
+}
+
+bool MicroPartitionReaderProxy::ReadTuple(CTupleSlot *slot) {
+  Assert(reader_);
+  return reader_->ReadTuple(slot);
+}
+
+void MicroPartitionReaderProxy::SetReader(MicroPartitionReader *reader) {
+  Assert(reader);
+  Assert(!reader_);
+  reader_ = reader;
+}
+
+size_t MicroPartitionReaderProxy::GetGroupNums() { return reader_->GetGroupNums(); }
+
+std::unique_ptr<ColumnStatsProvider> MicroPartitionReaderProxy::GetGroupStatsInfo(size_t group_index) {
+  return std::move(reader_->GetGroupStatsInfo(group_index));
+}
+
+MicroPartitionReader::Group *MicroPartitionReaderProxy::ReadGroup(size_t index) {
+  return reader_->ReadGroup(index);
 }
 
 }  // namespace pax
