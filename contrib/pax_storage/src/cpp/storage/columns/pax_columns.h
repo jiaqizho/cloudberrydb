@@ -82,4 +82,6 @@ class PaxColumns : public PaxColumn {
   size_t row_nums_;
 };
 
+std::pair<Datum, bool> GetColumnValue(PaxColumns *columns, size_t column_index, size_t row_index);
+
 }  //  namespace pax

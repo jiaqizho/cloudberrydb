@@ -14,6 +14,32 @@
 
 namespace pax {
 
+class OrcGroupStatsProvider final: public ColumnStatsProvider {
+ public:
+  OrcGroupStatsProvider(const OrcFormatReader &format_reader, size_t group_index)
+    : format_reader_(format_reader), group_index_(group_index) {
+    Assert(group_index >= 0 && group_index < format_reader.GetStripeNums());
+  }
+  int ColumnSize() const override {
+    return static_cast<int>(format_reader_.file_footer_.colinfo_size());
+  }
+  bool AllNull(int column_index) const override {
+    return format_reader_.meta_data_.stripestats(group_index_).colstats(column_index).allnull();
+  }
+  bool HasNull(int column_index) const override {
+    return format_reader_.meta_data_.stripestats(group_index_).colstats(column_index).hasnull();
+  }
+  const ::pax::stats::ColumnBasicInfo &ColumnInfo(int column_index) const override {
+    return format_reader_.file_footer_.colinfo(column_index);
+  }
+  const ::pax::stats::ColumnDataStats &DataStats(int column_index) const override {
+    return format_reader_.meta_data_.stripestats(group_index_).colstats(column_index).coldatastats();
+  }
+ private:
+  const OrcFormatReader &format_reader_;
+  size_t group_index_;
+};
+
 OrcReader::OrcReader(File *file)
     : working_group_(nullptr),
       current_group_index_(0),
@@ -22,6 +48,11 @@ OrcReader::OrcReader(File *file)
       proj_len_(0),
       format_reader_(file),
       is_close_(true) {}
+
+std::unique_ptr<ColumnStatsProvider> OrcReader::GetGroupStatsInfo(size_t group_index) {
+  auto x = new OrcGroupStatsProvider(format_reader_, group_index);
+  return std::unique_ptr<ColumnStatsProvider>(x);
+}
 
 MicroPartitionReader::Group *OrcReader::ReadGroup(size_t group_index) {
   PaxColumns *pax_columns = nullptr;

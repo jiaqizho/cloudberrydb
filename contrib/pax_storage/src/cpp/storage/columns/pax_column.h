@@ -85,6 +85,9 @@ class PaxColumn {
   // Contain null filed or not
   bool HasNull();
 
+  // Are all values null?
+  bool AllNull() const;
+
   // Set null bitmap
   void SetBitmap(Bitmap8 *null_bitmap);
 

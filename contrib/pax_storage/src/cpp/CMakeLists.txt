@@ -136,6 +136,7 @@ set(pax_storage_src
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
     storage/micro_partition_metadata.cc
+    storage/micro_partition_row_filter_reader.cc
     storage/micro_partition_stats.cc
     storage/pax_buffer.cc  
     storage/proto/protobuf_stream.cc
@@ -260,15 +261,16 @@ else()
     add_subdirectory(contrib/googletest)
     ADD_DEFINITIONS(-DRUN_GTEST)
     file(GLOB test_case_sources
+      pax_gtest.cc
       ${CMAKE_CURRENT_SOURCE_DIR}/*/*_test.cc
       ${CMAKE_CURRENT_SOURCE_DIR}/*/*/*_test.cc)
 
     link_directories($ENV{GPHOME}/lib)
     add_executable(test_main ${pax_target_src} ${test_case_sources})
-    add_dependencies(test_main ${pax_target_dependencies} gtest gmock gtest_main)
+    add_dependencies(test_main ${pax_target_dependencies} gtest gmock)
     target_include_directories(test_main PUBLIC ${pax_target_include} ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include contrib/cpp-stub/src/ contrib/cpp-stub/src_linux/)
 
-    target_link_libraries(test_main PUBLIC ${pax_target_link_libs} gtest gmock gtest_main)
+    target_link_libraries(test_main PUBLIC ${pax_target_link_libs} gtest gmock postgres)
     if (VEC_BUILD)
       target_link_libraries(test_main PRIVATE arrow)
     endif(VEC_BUILD)

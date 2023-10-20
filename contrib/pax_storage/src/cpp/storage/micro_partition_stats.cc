@@ -7,18 +7,22 @@
 #include "storage/proto/proto_wrappers.h"
 
 namespace pax {
+MicroPartitionStats::~MicroPartitionStats() {
+  delete stats_;
+}
 // SetStatsMessage may be called several times in a write,
 // one for each micro partition, so all members need to reset.
 // Some metainfo like typid, collation, oids for less/greater,
 // fmgr should be exactly consistent.
 MicroPartitionStats *MicroPartitionStats::SetStatsMessage(
-    pax::stats::MicroPartitionStatisticsInfo *stats, int natts) {
+    MicroPartitionStatsData *stats, int natts) {
   FmgrInfo finfo;
   std::tuple<Oid, Oid, Oid, Oid> zero_oids = {InvalidOid, InvalidOid, InvalidOid, InvalidOid};
 
   Assert(natts > 0);
-  Assert(stats && stats->columnstats_size() == 0);
+  Assert(stats);
   initial_check_ = false;
+  delete stats_;
   stats_ = stats;
 
   memset(&finfo, 0, sizeof(finfo));
@@ -29,11 +33,17 @@ MicroPartitionStats *MicroPartitionStats::SetStatsMessage(
     procs_.emplace_back(zero_oids);
     finfos_.emplace_back(std::pair<FmgrInfo, FmgrInfo>({finfo, finfo}));
     status_.emplace_back('u');
-    auto columnstats = stats_->add_columnstats();
-    Assert(columnstats->allnull());
-    Assert(!columnstats->hasnull());
   }
-  Assert(stats_->columnstats_size() == natts);
+  Assert(stats_->ColumnSize() == natts);
+  return this;
+}
+
+MicroPartitionStats *MicroPartitionStats::LightReset() {
+  for (char &status : status_) {
+    Assert(status == 'n' || status == 'y' || status == 'x');
+    if (status == 'y')
+      status = 'n';
+  }
   return this;
 }
 
@@ -62,8 +72,7 @@ void MicroPartitionStats::AddNullColumn(int column_index) {
   Assert(column_index >= 0);
   Assert(column_index < static_cast<int>(procs_.size()));
 
-  auto column_stats = stats_->mutable_columnstats(column_index);
-  column_stats->set_hasnull(true);
+  stats_->SetHasNull(column_index, true);
 }
 
 void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value,
@@ -75,45 +84,46 @@ void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value,
   auto collation = att->attcollation;
   auto typlen = att->attlen;
   auto typbyval = att->attbyval;
-  auto column_stats = stats_->mutable_columnstats(column_index);
-  column_stats->set_allnull(false);
+  auto info = stats_->GetColumnBasicInfo(column_index);
+  auto data_stats = stats_->GetColumnDataStats(column_index);
+  stats_->SetAllNull(column_index, false);
 
   // update min/max
   switch (status_[column_index]) {
     case 'x':
       break;
     case 'y':
-      Assert(column_stats->minmaxstats().has_typid());
-      Assert(column_stats->minmaxstats().has_minimal());
-      Assert(column_stats->minmaxstats().has_maximum());
-      Assert(column_stats->minmaxstats().has_proclt());
-      Assert(column_stats->minmaxstats().has_procgt());
-      Assert(column_stats->minmaxstats().has_procle());
-      Assert(column_stats->minmaxstats().has_procge());
-      Assert(column_stats->minmaxstats().typid() == att->atttypid);
-      Assert(column_stats->minmaxstats().collation() == collation);
+      Assert(data_stats->has_minimal());
+      Assert(data_stats->has_maximum());
+      Assert(info->has_typid());
+      Assert(info->has_proclt());
+      Assert(info->has_procgt());
+      Assert(info->has_procle());
+      Assert(info->has_procge());
+      Assert(info->typid() == att->atttypid);
+      Assert(info->collation() == collation);
 
       UpdateMinMaxValue(column_index, value, collation, typlen, typbyval);
       break;
     case 'n': {
-      auto minmax = column_stats->mutable_minmaxstats();
+      AssertImply(info->has_typid(), info->typid() == att->atttypid);
+      AssertImply(info->has_collation(), info->collation() == collation);
+      AssertImply(info->has_proclt(), info->proclt() == std::get<0>(procs_[column_index]));
+      AssertImply(info->has_procgt(), info->procgt() == std::get<1>(procs_[column_index]));
+      AssertImply(info->has_procle(), info->procle() == std::get<2>(procs_[column_index]));
+      AssertImply(info->has_procge(), info->procge() == std::get<3>(procs_[column_index]));
 
-      Assert(!minmax->has_proclt());
-      Assert(!minmax->has_procgt());
-      Assert(!minmax->has_procle());
-      Assert(!minmax->has_procge());
-      Assert(!minmax->has_typid());
-      Assert(!minmax->has_minimal());
-      Assert(!minmax->has_maximum());
+      Assert(!data_stats->has_minimal());
+      Assert(!data_stats->has_maximum());
 
-      minmax->set_typid(att->atttypid);
-      minmax->set_collation(collation);
-      minmax->set_proclt(std::get<0>(procs_[column_index]));
-      minmax->set_procgt(std::get<1>(procs_[column_index]));
-      minmax->set_procle(std::get<2>(procs_[column_index]));
-      minmax->set_procge(std::get<3>(procs_[column_index]));
-      minmax->set_minimal(ToValue(value, typlen, typbyval));
-      minmax->set_maximum(ToValue(value, typlen, typbyval));
+      info->set_typid(att->atttypid);
+      info->set_collation(collation);
+      info->set_proclt(std::get<0>(procs_[column_index]));
+      info->set_procgt(std::get<1>(procs_[column_index]));
+      info->set_procle(std::get<2>(procs_[column_index]));
+      info->set_procge(std::get<3>(procs_[column_index]));
+      data_stats->set_minimal(ToValue(value, typlen, typbyval));
+      data_stats->set_maximum(ToValue(value, typlen, typbyval));
       status_[column_index] = 'y';
       break;
     }
@@ -130,25 +140,24 @@ void MicroPartitionStats::UpdateMinMaxValue(int column_index, Datum datum,
   Assert(status_[column_index] == 'y');
 
   auto &finfos = finfos_[column_index];
-  auto minmax =
-      stats_->mutable_columnstats(column_index)->mutable_minmaxstats();
+  auto data_stats = stats_->GetColumnDataStats(column_index);
   bool ok;
 
   {
-    const auto &min = minmax->minimal();
+    const auto &min = data_stats->minimal();
     auto val = FromValue(min, typlen, typbyval, &ok);
     CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
     auto update =
         DatumGetBool(cbdb::FunctionCall2Coll(&finfos.first, collation, datum, val));
-    if (update) minmax->set_minimal(ToValue(datum, typlen, typbyval));
+    if (update) data_stats->set_minimal(ToValue(datum, typlen, typbyval));
   }
   {
-    const auto &max = minmax->maximum();
+    const auto &max = data_stats->maximum();
     auto val = FromValue(max, typlen, typbyval, &ok);
     CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
     auto update =
         DatumGetBool(cbdb::FunctionCall2Coll(&finfos.second, collation, datum, val));
-    if (update) minmax->set_maximum(ToValue(datum, typlen, typbyval));
+    if (update) data_stats->set_maximum(ToValue(datum, typlen, typbyval));
   }
 }
 
@@ -169,7 +178,6 @@ void MicroPartitionStats::DoInitialCheck(TupleDesc desc) {
   auto natts = desc->natts;
 
   Assert(natts == static_cast<int>(status_.size()));
-  Assert(natts == stats_->columnstats_size());
   Assert(status_.size() == procs_.size());
   Assert(status_.size() == finfos_.size());
 
@@ -260,6 +268,50 @@ std::string MicroPartitionStats::ToValue(Datum datum, int typlen,
   return std::string(reinterpret_cast<char *>(cbdb::DatumToPointer(datum)),
                      typlen);
 }
+
+MicroPartittionFileStatsData::MicroPartittionFileStatsData(::pax::stats::MicroPartitionStatisticsInfo *info, int natts)
+: info_(info) {
+  Assert(info);
+  Assert(info->columnstats_size() == 0);
+  for (int i = 0; i < natts; i++) {
+    auto col = info->add_columnstats();
+    Assert(col->allnull() && !col->hasnull());
+  }
+  Assert(info->columnstats_size() == natts);
+}
+
+::pax::stats::ColumnBasicInfo *MicroPartittionFileStatsData::GetColumnBasicInfo(int column_index) {
+  return info_->mutable_columnstats(column_index)->mutable_info();
+}
+::pax::stats::ColumnDataStats *MicroPartittionFileStatsData::GetColumnDataStats(int column_index) {
+  return info_->mutable_columnstats(column_index)->mutable_datastats();
+}
+int MicroPartittionFileStatsData::ColumnSize() const {
+  return info_->columnstats_size();
+}
+void MicroPartittionFileStatsData::SetAllNull(int column_index, bool allnull) {
+  info_->mutable_columnstats(column_index)->set_allnull(allnull);
+}
+void MicroPartittionFileStatsData::SetHasNull(int column_index, bool hasnull) {
+  info_->mutable_columnstats(column_index)->set_hasnull(hasnull);
+}
+
+MicroPartitionStatsProvider::MicroPartitionStatsProvider(const ::pax::stats::MicroPartitionStatisticsInfo &stats) : stats_(stats) {}
+int MicroPartitionStatsProvider::ColumnSize() const {
+  return stats_.columnstats_size();
+}
+bool MicroPartitionStatsProvider::AllNull(int column_index) const {
+  return stats_.columnstats(column_index).allnull();
+}
+bool MicroPartitionStatsProvider::HasNull(int column_index) const {
+  return stats_.columnstats(column_index).hasnull();
+}
+const ::pax::stats::ColumnBasicInfo &MicroPartitionStatsProvider::ColumnInfo(int column_index) const {
+  return stats_.columnstats(column_index).info();
+}
+const ::pax::stats::ColumnDataStats &MicroPartitionStatsProvider::DataStats(int column_index) const {
+  return stats_.columnstats(column_index).datastats();
+}
 }  // namespace pax
 
 static inline const char *BoolToString(bool b) { return b ? "true" : "false"; }
@@ -322,19 +374,18 @@ Datum MicroPartitionStatsOutput(PG_FUNCTION_ARGS) {
     appendStringInfo(&str, "[(%s,%s)", BoolToString(column.allnull()),
                      BoolToString(column.hasnull()));
 
-    if (!column.has_minmaxstats()) {
+    if (!column.has_datastats()) {
       appendStringInfoString(&str, ",None]");
       continue;
     }
 
-    const auto &minmax = column.minmaxstats();
-    appendStringInfo(&str, ",(%u,%u,%u,%u,%s,%s)]", minmax.typid(),
-                     minmax.collation(), minmax.proclt(),
-                     minmax.procgt(),
-                     TypeValueToCString(minmax.typid(), minmax.collation(),
-                                        minmax.minimal()),
-                     TypeValueToCString(minmax.typid(), minmax.collation(),
-                                        minmax.maximum()));
+    const auto &data_stats = column.datastats();
+    const auto &info = column.info();
+    appendStringInfo(&str, ",(%s,%s)]",
+                     TypeValueToCString(info.typid(), info.collation(),
+                                        data_stats.minimal()),
+                     TypeValueToCString(info.typid(), info.collation(),
+                                        data_stats.maximum()));
   }
 
   PG_RETURN_CSTRING(str.data);

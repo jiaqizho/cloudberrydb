@@ -5,6 +5,7 @@
 
 namespace pax {
 
+class PaxFilter;
 class VecAdapter;
 
 class PaxVecReader : public MicroPartitionReader {
@@ -12,7 +13,7 @@ class PaxVecReader : public MicroPartitionReader {
   // If enable read tuple from vec reader,
   // then OrcReader will be hold by PaxVecReader,
   // current MicroPartitionReader lifecycle will be bound to the PaxVecReader)
-  PaxVecReader(MicroPartitionReader *reader, VecAdapter *adapter);
+  PaxVecReader(MicroPartitionReader *reader, VecAdapter *adapter, PaxFilter *filter);
 
   ~PaxVecReader() override;
 
@@ -24,6 +25,8 @@ class PaxVecReader : public MicroPartitionReader {
 
   size_t GetGroupNums() override;
 
+  std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(size_t group_index) override;
+
   MicroPartitionReader::Group *ReadGroup(size_t index) override;
 
  private:
@@ -32,6 +35,7 @@ class PaxVecReader : public MicroPartitionReader {
 
   MicroPartitionReader::Group *working_group_;
   size_t current_group_index_;
+  PaxFilter *filter_;
 };
 
 }  // namespace pax

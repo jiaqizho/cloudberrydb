@@ -1,5 +1,7 @@
 #include "comm/cbdb_api.h"
 
+#include "comm/guc.h"
+#include "comm/log.h"
 #include "storage/micro_partition_stats.h"
 #include "storage/orc/orc.h"
 #include "storage/orc/orc_defined.h"
@@ -46,7 +48,7 @@ OrcWriter::OrcWriter(
       total_rows_(0),
       current_offset_(0) {
   pax_columns_ =
-      new PaxColumns(column_types_, orc_writer_options.encoding_opts);
+      new PaxColumns(column_types_, writer_options_.encoding_opts);
 
   TupleDesc desc = orc_writer_options.desc;
   for (int i = 0; i < desc->natts; i++) {
@@ -95,6 +97,10 @@ OrcWriter::OrcWriter(
   post_script_.add_version(ORC_FILE_MAJOR_VERSION);
   post_script_.set_writerversion(ORC_WRITER_VERSION);
   post_script_.set_magic(ORC_MAGIC_ID);
+
+  auto natts = static_cast<int>(column_types.size());
+  auto stats_data = new OrcColumnStatsData();
+  stats_collector_.SetStatsMessage(stats_data->Initialize(natts), natts);
 }
 
 OrcWriter::~OrcWriter() {
@@ -104,8 +110,10 @@ OrcWriter::~OrcWriter() {
 
 MicroPartitionWriter *OrcWriter::SetStatsCollector(
     MicroPartitionStats *mpstats) {
-  if (mpstats)
-    mpstats->SetStatsMessage(&summary_.mp_stats, column_types_.size());
+  if (mpstats) {
+    auto stats_data = new MicroPartittionFileStatsData(&summary_.mp_stats, static_cast<int>(column_types_.size()));
+    mpstats->SetStatsMessage(stats_data, column_types_.size());
+  }
   return MicroPartitionWriter::SetStatsCollector(mpstats);
 }
 
@@ -139,6 +147,7 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
              cbdb::CException::ExType::kExTypeSchemaNotMatch);
 
   pax_columns_->AddRows(1);
+  stats_collector_.AddRow(table_slot);
 
   for (int i = 0; i < n; i++) {
     type_len = table_desc->attrs[i].attlen;
@@ -201,7 +210,7 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
     }
   }
 
-  if (pax_columns_->GetRows() >= writer_options_.group_limit) {
+  if (pax_columns_->GetRows() >= 16384) {
     Flush();
   }
 }
@@ -260,6 +269,8 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
   }
 
   stripe_stats = meta_data_.add_stripestats();
+  auto stats_data = dynamic_cast<OrcColumnStatsData*>(stats_collector_.GetStatsData());
+  Assert(stats_data);
   for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
     auto pb_stats = stripe_stats->add_colstats();
     PaxColumn *pax_column = (*pax_columns_)[i];
@@ -267,8 +278,17 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
     *stripe_footer.add_pax_col_encodings() = encoding_kinds[i];
 
     pb_stats->set_hasnull(pax_column->HasNull());
+    pb_stats->set_allnull(pax_column->AllNull());
     pb_stats->set_numberofvalues(pax_column->GetRows());
+    *pb_stats->mutable_coldatastats() = *stats_data->GetColumnDataStats(static_cast<int>(i));
+    PAX_LOG_IF(pax_enable_debug, "write group[%lu](allnull=%s, hasnull=%s, nrows=%lu)",
+      i,
+      pax_column->AllNull() ? "true" : "false",
+      pax_column->HasNull() ? "true" : "false",
+      pax_column->GetRows());
   }
+  stats_data->Reset();
+  stats_collector_.LightReset();
 
   stripe_footer.set_writertimezone("GMT");
   buffer_mem_stream->Set(data_buffer);
@@ -347,7 +367,9 @@ void OrcWriter::BuildFooterType() {
 
 void OrcWriter::WriteMetadata(BufferedOutputStream *buffer_mem_stream) {
   buffer_mem_stream->StartBufferOutRecord();
-  CBDB_CHECK(meta_data_.SerializeToZeroCopyStream(buffer_mem_stream),
+  auto ok = meta_data_.SerializeToZeroCopyStream(buffer_mem_stream);
+  PAX_LOG_IF(!ok, "%s SerializeToZeroCopyStream failed:%m", __func__);
+  CBDB_CHECK(ok,
              cbdb::CException::ExType::kExTypeIOError);
 
   post_script_.set_metadatalength(buffer_mem_stream->EndBufferOutRecord());
@@ -357,12 +379,17 @@ void OrcWriter::WriteFileFooter(BufferedOutputStream *buffer_mem_stream) {
   file_footer_.set_contentlength(current_offset_ - file_footer_.headerlength());
   file_footer_.set_numberofrows(total_rows_);
 
+  auto stats_data = dynamic_cast<OrcColumnStatsData*>(stats_collector_.GetStatsData());
+  Assert(file_footer_.colinfo_size() == 0);
   for (size_t i = 0; i < pax_columns_->GetColumns(); i++) {
     auto pb_stats = file_footer_.add_statistics();
     // FIXME(jiaqizho): the statistics in file footer is not accurate
     // but statistics in stripe stats is accurate
     pb_stats->set_hasnull(false);
     pb_stats->set_numberofvalues((*pax_columns_)[i]->GetRows());
+
+    auto pb_colinfo = file_footer_.add_colinfo();
+    *pb_colinfo = *stats_data->GetColumnBasicInfo(static_cast<int>(i));
   }
 
   buffer_mem_stream->StartBufferOutRecord();
@@ -384,4 +411,44 @@ void OrcWriter::WritePostscript(BufferedOutputStream *buffer_mem_stream) {
   buffer_mem_stream->DirectWrite((char *)&ps_len, ORC_POST_SCRIPT_SIZE);
 }
 
+OrcColumnStatsData *OrcColumnStatsData::Initialize(int natts) {
+  Assert(natts > 0);
+  col_data_stats_.resize(natts);
+  col_basic_info_.resize(natts);
+  Reset();
+  return this;
+}
+void OrcColumnStatsData::CheckVectorSize() const {
+  Assert(col_data_stats_.size() == col_basic_info_.size());
+}
+
+void OrcColumnStatsData::Reset() {
+  auto n = col_basic_info_.size();
+  for (size_t i = 0; i < n; i++) {
+    col_data_stats_[i].Clear();
+  }
+}
+
+::pax::stats::ColumnBasicInfo *OrcColumnStatsData::GetColumnBasicInfo(int column_index) {
+  Assert(column_index >= 0 && column_index < ColumnSize());
+  return &col_basic_info_[column_index];
+}
+
+::pax::stats::ColumnDataStats *OrcColumnStatsData::GetColumnDataStats(int column_index) {
+  Assert(column_index >= 0 && column_index < ColumnSize());
+  return &col_data_stats_[column_index];
+}
+
+int OrcColumnStatsData::ColumnSize() const {
+  Assert(col_data_stats_.size() == col_basic_info_.size());
+  return static_cast<int>(col_basic_info_.size());
+}
+
+// PaxColumns has updated all null
+void OrcColumnStatsData::SetAllNull(int column_index, bool allnull) {
+}
+
+// PaxColumns has updated has null
+void OrcColumnStatsData::SetHasNull(int column_index, bool hasnull) {
+}
 }  // namespace pax
