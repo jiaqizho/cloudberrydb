@@ -55,11 +55,7 @@ size_t PaxColumn::GetRangeNonNullRows(size_t start_pos, size_t len) {
 
 void PaxColumn::AppendNull() {
   if (!null_bitmap_) {
-    size_t current_rows = GetNonNullRows();
-    size_t size = current_rows > DEFAULT_CAPACITY
-                      ? (current_rows / DEFAULT_CAPACITY + 1) * DEFAULT_CAPACITY
-                      : DEFAULT_CAPACITY;
-    null_bitmap_ = new Bitmap8(size);
+    null_bitmap_ = new Bitmap8(DEFAULT_CAPACITY);
     null_bitmap_->SetN(total_rows_);
   }
   null_bitmap_->Clear(total_rows_);
