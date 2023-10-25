@@ -396,11 +396,11 @@ bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, int natts) {
   CBDB_WRAP_END;
 }
 
-bool cbdb::MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *procid, FmgrInfo *finfo,
+bool cbdb::MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *opfamily, FmgrInfo *finfo,
                                      StrategyNumber strategynum) {
   CBDB_WRAP_START;
   {
-    return paxc::MinMaxGetStrategyProcinfo(atttypid, subtype, procid, finfo,
+    return paxc::MinMaxGetStrategyProcinfo(atttypid, subtype, opfamily, finfo,
                                            strategynum);
   }
   CBDB_WRAP_END;

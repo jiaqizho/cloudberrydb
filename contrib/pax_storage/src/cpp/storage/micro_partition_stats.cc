@@ -17,7 +17,6 @@ MicroPartitionStats::~MicroPartitionStats() {
 MicroPartitionStats *MicroPartitionStats::SetStatsMessage(
     MicroPartitionStatsData *stats, int natts) {
   FmgrInfo finfo;
-  std::tuple<Oid, Oid, Oid, Oid> zero_oids = {InvalidOid, InvalidOid, InvalidOid, InvalidOid};
 
   Assert(natts > 0);
   Assert(stats);
@@ -26,11 +25,11 @@ MicroPartitionStats *MicroPartitionStats::SetStatsMessage(
   stats_ = stats;
 
   memset(&finfo, 0, sizeof(finfo));
-  procs_.clear();
+  opfamilies_.clear();
   finfos_.clear();
   status_.clear();
   for (int i = 0; i < natts; i++) {
-    procs_.emplace_back(zero_oids);
+    opfamilies_.emplace_back(InvalidOid);
     finfos_.emplace_back(std::pair<FmgrInfo, FmgrInfo>({finfo, finfo}));
     status_.emplace_back('u');
   }
@@ -70,7 +69,7 @@ void MicroPartitionStats::AddRow(TupleTableSlot *slot) {
 
 void MicroPartitionStats::AddNullColumn(int column_index) {
   Assert(column_index >= 0);
-  Assert(column_index < static_cast<int>(procs_.size()));
+  Assert(column_index < static_cast<int>(opfamilies_.size()));
 
   stats_->SetHasNull(column_index, true);
 }
@@ -78,7 +77,7 @@ void MicroPartitionStats::AddNullColumn(int column_index) {
 void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value,
                                            TupleDesc desc) {
   Assert(column_index >= 0);
-  Assert(column_index < static_cast<int>(procs_.size()));
+  Assert(column_index < static_cast<int>(opfamilies_.size()));
 
   auto att = TupleDescAttr(desc, column_index);
   auto collation = att->attcollation;
@@ -96,32 +95,23 @@ void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value,
       Assert(data_stats->has_minimal());
       Assert(data_stats->has_maximum());
       Assert(info->has_typid());
-      Assert(info->has_proclt());
-      Assert(info->has_procgt());
-      Assert(info->has_procle());
-      Assert(info->has_procge());
+      Assert(info->has_opfamily());
       Assert(info->typid() == att->atttypid);
       Assert(info->collation() == collation);
+      Assert(info->opfamily() == opfamilies_[column_index]);
 
       UpdateMinMaxValue(column_index, value, collation, typlen, typbyval);
       break;
     case 'n': {
       AssertImply(info->has_typid(), info->typid() == att->atttypid);
       AssertImply(info->has_collation(), info->collation() == collation);
-      AssertImply(info->has_proclt(), info->proclt() == std::get<0>(procs_[column_index]));
-      AssertImply(info->has_procgt(), info->procgt() == std::get<1>(procs_[column_index]));
-      AssertImply(info->has_procle(), info->procle() == std::get<2>(procs_[column_index]));
-      AssertImply(info->has_procge(), info->procge() == std::get<3>(procs_[column_index]));
-
+      AssertImply(info->has_opfamily(), info->opfamily() == opfamilies_[column_index]);
       Assert(!data_stats->has_minimal());
       Assert(!data_stats->has_maximum());
 
       info->set_typid(att->atttypid);
       info->set_collation(collation);
-      info->set_proclt(std::get<0>(procs_[column_index]));
-      info->set_procgt(std::get<1>(procs_[column_index]));
-      info->set_procle(std::get<2>(procs_[column_index]));
-      info->set_procge(std::get<3>(procs_[column_index]));
+      info->set_opfamily(opfamilies_[column_index]);
       data_stats->set_minimal(ToValue(value, typlen, typbyval));
       data_stats->set_maximum(ToValue(value, typlen, typbyval));
       status_[column_index] = 'y';
@@ -162,29 +152,33 @@ void MicroPartitionStats::UpdateMinMaxValue(int column_index, Datum datum,
 }
 
 bool MicroPartitionStats::GetStrategyProcinfo(
-    Oid typid, Oid subtype, std::tuple<Oid, Oid, Oid, Oid> &procids,
+    Oid typid, Oid subtype, Oid *opfamily,
     std::pair<FmgrInfo, FmgrInfo> &finfos) {
-  return cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &std::get<0>(procids), &finfos.first,
+  Oid opfamily1;
+  Oid opfamily2;
+  auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &opfamily1, &finfos.first,
                                          BTLessStrategyNumber) &&
-         cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &std::get<1>(procids), &finfos.second,
-                                         BTGreaterStrategyNumber) &&
-         cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &std::get<2>(procids), nullptr,
-                                         BTLessEqualStrategyNumber) &&
-         cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &std::get<3>(procids), nullptr,
-                                         BTGreaterEqualStrategyNumber);
+         cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &opfamily2, &finfos.second,
+                                         BTGreaterStrategyNumber);
+  if (ok) {
+    Assert(opfamily1 == opfamily2);
+    Assert(OidIsValid(opfamily1));
+    *opfamily = opfamily1;
+  }
+  return ok;
 }
 
 void MicroPartitionStats::DoInitialCheck(TupleDesc desc) {
   auto natts = desc->natts;
 
   Assert(natts == static_cast<int>(status_.size()));
-  Assert(status_.size() == procs_.size());
+  Assert(status_.size() == opfamilies_.size());
   Assert(status_.size() == finfos_.size());
 
   for (int i = 0; i < natts; i++) {
     auto att = TupleDescAttr(desc, i);
     if (att->attisdropped ||
-        !GetStrategyProcinfo(att->atttypid, att->atttypid, procs_[i], finfos_[i])) {
+        !GetStrategyProcinfo(att->atttypid, att->atttypid, &opfamilies_[i], finfos_[i])) {
       status_[i] = 'x';
       continue;
     }

@@ -57,14 +57,13 @@ class MicroPartitionStats final {
   void DoInitialCheck(TupleDesc desc);
   void UpdateMinMaxValue(int column_index, Datum datum, Oid collation,
                          int typlen, bool typbyval);
-  static bool GetStrategyProcinfo(Oid typid, Oid subtype, std::tuple<Oid, Oid, Oid, Oid> &procids,
+  static bool GetStrategyProcinfo(Oid typid, Oid subtype, Oid *opfamily,
                                   std::pair<FmgrInfo, FmgrInfo> &finfos);
 
   // stats_: only references the info object by pointer
   MicroPartitionStatsData *stats_ = nullptr;
 
-  // less: tuple[0], greater: tuple[1], le: tuple[2], ge: tuple[3]
-  std::vector<std::tuple<Oid, Oid, Oid, Oid>> procs_;
+  std::vector<Oid> opfamilies_;
   // less: pair[0], greater: pair[1]
   std::vector<std::pair<FmgrInfo, FmgrInfo>> finfos_;
 

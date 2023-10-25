@@ -224,12 +224,11 @@ static void DeletePaxDirectoryPathRecursive(
   }
 }
 
-bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *procid, FmgrInfo *finfo, StrategyNumber strategynum)
+bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *opfamily, FmgrInfo *finfo, StrategyNumber strategynum)
 {
   FmgrInfo dummy;
   HeapTuple tuple;
   Oid opclass;
-  Oid opfamily;
   Oid oprid;
   RegProcedure opcode;
   bool isNull;
@@ -238,8 +237,8 @@ bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *procid, FmgrInfo 
   if (!OidIsValid(opclass))
     return false;
 
-  opfamily = get_opclass_family(opclass);
-  tuple = SearchSysCache4(AMOPSTRATEGY, ObjectIdGetDatum(opfamily),
+  *opfamily = get_opclass_family(opclass);
+  tuple = SearchSysCache4(AMOPSTRATEGY, ObjectIdGetDatum(*opfamily),
                            ObjectIdGetDatum(atttypid),
                            ObjectIdGetDatum(subtype),
                            Int16GetDatum(strategynum));
@@ -257,8 +256,6 @@ bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *procid, FmgrInfo 
     return false;
 
   fmgr_info_cxt(opcode, finfo ? finfo : &dummy, CurrentMemoryContext);
-  *procid = opcode;
-
   return true;
 }
 
