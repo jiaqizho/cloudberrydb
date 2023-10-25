@@ -8,10 +8,7 @@ message ColumnDataStats {
 message ColumnBasicInfo {
   optional uint32 typid = 1;              // type oid of the column
   optional uint32 collation = 2;          // collation oid of the column
-  optional uint32 procLt = 3;             // Proc id <
-  optional uint32 procGt = 4;             // Proc id >
-  optional uint32 procLe = 5;             // Proc id <=
-  optional uint32 procGe = 6;             // Proc id >=
+  optional uint32 opfamily = 3;
 }
 
 message MicroPartitionStatisticsInfo

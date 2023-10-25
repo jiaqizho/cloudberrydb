@@ -167,7 +167,7 @@ bool ExtractcolumnsFromNode(Node *expr, bool *cols, int natts);
 
 std::string BuildPaxFilePath(Relation rel, const std::string &block_id);
 
-bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *procid, FmgrInfo *finfo,
+bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *opfamily, FmgrInfo *finfo,
                                StrategyNumber strategynum);
 
 Datum FunctionCall1Coll(FmgrInfo *flinfo, Oid collation, Datum arg1);
