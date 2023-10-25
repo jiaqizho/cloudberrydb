@@ -332,29 +332,15 @@ static inline bool CheckNullKey(
   return true;
 }
 
-static inline bool CheckProcid(const ::pax::stats::ColumnBasicInfo &minmax,
-                               StrategyNumber strategy, Oid procid) {
-  switch (strategy) {
-    case BTLessStrategyNumber:
-      return minmax.proclt() == procid;
-    case BTLessEqualStrategyNumber:
-      return minmax.procle() == procid;
-    case BTGreaterStrategyNumber:
-      return minmax.procgt() == procid;
-    case BTGreaterEqualStrategyNumber:
-      return minmax.procge() == procid;
-    default:
-      Assert(false);
-      break;
-  }
-  // should not reach here, otherwise we ignore the scan key.
-  return false;
+static inline bool CheckOpfamily(const ::pax::stats::ColumnBasicInfo &info,
+                               Oid opfamily) {
+  return info.opfamily() == opfamily;
 }
 
 static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
 const ::pax::stats::ColumnDataStats &data_stats,
                               ScanKey scan_key, Form_pg_attribute attr) {
-  Oid procid;
+  Oid opfamily;
   FmgrInfo finfo;
   Datum datum;
   Datum matches;
@@ -367,9 +353,9 @@ const ::pax::stats::ColumnDataStats &data_stats,
   switch (scan_key->sk_strategy) {
     case BTLessStrategyNumber:
     case BTLessEqualStrategyNumber: {
-      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &procid, &finfo,
+      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &opfamily, &finfo,
                                                 scan_key->sk_strategy);
-      if (!ok || !CheckProcid(minmax, scan_key->sk_strategy, procid))
+      if (!ok || !CheckOpfamily(minmax, opfamily))
         return true;
       datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(), typlen,
                                                   typbyval, &ok);
@@ -378,9 +364,9 @@ const ::pax::stats::ColumnDataStats &data_stats,
       break;
     }
     case BTEqualStrategyNumber: {
-      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &procid, &finfo,
+      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &opfamily, &finfo,
                                                 BTLessEqualStrategyNumber);
-      if (!ok || !CheckProcid(minmax, BTLessEqualStrategyNumber, procid))
+      if (!ok || !CheckOpfamily(minmax, opfamily))
         return true;
       datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(), typlen,
                                                   typbyval, &ok);
@@ -391,9 +377,9 @@ const ::pax::stats::ColumnDataStats &data_stats,
         // not (min <= value) --> min > value
         return false;
 
-      ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &procid, &finfo,
+      ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &opfamily, &finfo,
                                            BTGreaterEqualStrategyNumber);
-      if (!ok || !CheckProcid(minmax, BTGreaterEqualStrategyNumber, procid))
+      if (!ok || !CheckOpfamily(minmax, opfamily))
         return true;
       datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(), typlen,
                                                   typbyval, &ok);
@@ -403,9 +389,9 @@ const ::pax::stats::ColumnDataStats &data_stats,
     }
     case BTGreaterEqualStrategyNumber:
     case BTGreaterStrategyNumber: {
-      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &procid, &finfo,
+      auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, &opfamily, &finfo,
                                                 scan_key->sk_strategy);
-      if (!ok || !CheckProcid(minmax, scan_key->sk_strategy, procid))
+      if (!ok || !CheckOpfamily(minmax, opfamily))
         return true;
       datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(), typlen,
                                                   typbyval, &ok);
