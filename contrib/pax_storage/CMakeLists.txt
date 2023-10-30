@@ -37,6 +37,9 @@ get_pg_config(PG_INCLUDEDIR --includedir)
 # TODO check exists if this is needed
 set(CBDB_INCLUDE_DIR ${PG_INCLUDEDIR}/postgresql/server)
 
+# use sequential block number to enable btree index
+option(ENABLE_LOCAL_INDEX "Enable local index support" OFF)
+
 # Debug options
 option(ENABLE_DEBUG "Enable debug" ON)
 
@@ -46,6 +49,9 @@ option(BUILD_GTEST "Build with google test" ON)
 # Build pax format lib
 option(BUILD_PAX_FORMAT "Build pax format lib" OFF)
 
+if (ENABLE_LOCAL_INDEX)
+  ADD_DEFINITIONS(-DENABLE_LOCAL_INDEX)
+endif(ENABLE_LOCAL_INDEX)
 
 if (ENABLE_DEBUG)
   ADD_DEFINITIONS(-DENABLE_DEBUG)

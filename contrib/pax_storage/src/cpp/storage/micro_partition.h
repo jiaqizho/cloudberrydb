@@ -18,21 +18,11 @@ class CTupleSlot {
  public:
   explicit CTupleSlot(TupleTableSlot *tuple_slot);
 
-  inline void ClearTuple() { slot_->tts_ops->clear(slot_); }
-
-  inline uint32 GetOffset() const { return offset_; }
-
-  inline uint8 GetTableNo() const { return table_no_; }
-
-  inline int GetBlockNumber() const { return block_number_; }
-
-  inline void SetOffset(uint64 offset) { offset_ = offset; }
-
-  inline void SetBlockNumber(const int &block_number) {
-    block_number_ = block_number;
-  }
-
-  inline void SetTableNo(uint8 table_no) { table_no_ = table_no; }
+  inline void SetCtid(ItemPointerData ctid) { ctid_ = ctid; }
+  inline ItemPointerData GetCtid() const { return ctid_; }
+  void SetOffset(uint32 offset);
+  void SetBlockNumber(uint32 block_number);
+  void SetTableNo(uint8 table_no);
 
   void StoreVirtualTuple();
 
@@ -42,9 +32,7 @@ class CTupleSlot {
 
  private:
   TupleTableSlot *slot_;
-  uint8 table_no_;
-  int block_number_;
-  uint32 offset_;
+  ItemPointerData ctid_;
 };
 
 struct WriteSummary;
@@ -67,13 +55,12 @@ class MicroPartitionWriter {
     WriterOptions() = default;
     WriterOptions(const WriterOptions &other) = default;
     WriterOptions(WriterOptions &&wo)
-      : file_name(std::move(wo.file_name))
-      , block_id(std::move(wo.block_id))
-      , desc(wo.desc)
-      , rel_oid(wo.rel_oid)
-      , encoding_opts(std::move(wo.encoding_opts))
-      , group_limit(wo.group_limit)
-      {}
+        : file_name(std::move(wo.file_name)),
+          block_id(std::move(wo.block_id)),
+          desc(wo.desc),
+          rel_oid(wo.rel_oid),
+          encoding_opts(std::move(wo.encoding_opts)),
+          group_limit(wo.group_limit) {}
     WriterOptions &operator=(WriterOptions &&wo) {
       file_name = std::move(wo.file_name);
       block_id = std::move(wo.block_id);
@@ -160,7 +147,6 @@ class MicroPartitionReader {
     virtual std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
                                                   size_t row_index) = 0;
 
-
     // Allow different MicroPartitionReader shared columns
     // but should not let export columns out of micro partition
     //
@@ -218,8 +204,8 @@ class MicroPartitionReader {
 
   virtual Group *ReadGroup(size_t group_index) = 0;
 
-  virtual std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(size_t group_index) = 0;
-
+  virtual std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
+      size_t group_index) = 0;
 
 #ifdef VEC_BUILD
  private:
@@ -249,14 +235,15 @@ class MicroPartitionReaderProxy : public MicroPartitionReader {
 
   size_t GetGroupNums() override;
 
-  std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(size_t group_index) override;
+  std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
+      size_t group_index) override;
 
   Group *ReadGroup(size_t index) override;
-
 
   void SetReader(MicroPartitionReader *reader);
   MicroPartitionReader *GetReader() { return reader_; }
   const MicroPartitionReader *GetReader() const { return reader_; }
+
  protected:
   // Allow different MicroPartitionReader shared columns
   // but should not let export columns out of micro partition
