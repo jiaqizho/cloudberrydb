@@ -21,7 +21,7 @@ using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::Return;
 
-const char *pax_file_name = "./test.pax";
+const char *pax_file_name = "12";
 #define COLUMN_NUMS 2
 
 CTupleSlot *CreateFakeCTupleSlot(bool with_value) {

@@ -14,9 +14,8 @@
 #include "storage/micro_partition.h"
 #include "storage/micro_partition_metadata.h"
 #include "storage/orc/orc.h"
-#include "storage/pax_block_id.h"
-#include "storage/pax_defined.h"
 #include "storage/pax_filter.h"
+#include "storage/pax_itemptr.h"
 #include "storage/paxc_block_map_manager.h"
 #include "storage/strategy.h"
 
@@ -114,16 +113,17 @@ class TableReader final {
   void OpenFile();
 
  private:
-  const std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
+  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
   MicroPartitionReader *reader_ = nullptr;
   bool is_empty_ = false;
   const ReaderOptions reader_options_;
-  int current_block_number_ = 0;
+  uint32 current_block_number_ = 0;
 
   std::string micro_partition_id_;
+#ifndef ENABLE_LOCAL_INDEX
   // only for ctid bitmap
-  uint8 table_no_;
-  uint32 table_index_;
+  BlockNumberManager block_number_manager_;
+#endif
 };
 
 class TableDeleter final {

@@ -146,8 +146,9 @@ void PaxScanDesc::EndScan(TableScanDesc scan) {
 }
 
 TableScanDesc PaxScanDesc::BeginScanExtractColumns(
-    Relation rel, Snapshot snapshot, int /*nkeys*/, struct ScanKeyData * /*key*/,
-    ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags) {
+    Relation rel, Snapshot snapshot, int /*nkeys*/,
+    struct ScanKeyData * /*key*/, ParallelTableScanDesc parallel_scan,
+    struct PlanState *ps, uint32 flags) {
   TableScanDesc paxscan;
   PaxFilter *filter;
   List *targetlist = ps->plan->targetlist;
@@ -188,9 +189,10 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
     auto ok = pax::BuildScanKeys(rel, qual, false, &scan_keys, &n_scan_keys);
     if (ok) filter->SetScanKeys(scan_keys, n_scan_keys);
   }
-  if (gp_enable_predicate_pushdown && !(flags & (1<<12)))
+  if (gp_enable_predicate_pushdown && !(flags & (1 << 12)))
     filter->BuildExecutionFilterForColumns(rel, ps);
-  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter, build_bitmap);
+  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter,
+                      build_bitmap);
 
   return paxscan;
 }
