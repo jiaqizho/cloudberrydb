@@ -1,108 +1,161 @@
 #pragma once
 #include "comm/cbdb_api.h"
 
-#include <stdint.h>
-
 #include <string>
 
+#ifdef ENABLE_LOCAL_INDEX
+namespace pax {
+#define PAX_BLOCK_BIT_SIZE 24
+#define PAX_TUPLE_BIT_SIZE (48 - (PAX_BLOCK_BIT_SIZE + 1))
+
+static inline ItemPointerData MakeCTID(uint32 block_number,
+                                       uint32 tuple_offset) {
+  ItemPointerData ctid;
+
+  static_assert(16 < PAX_BLOCK_BIT_SIZE && PAX_BLOCK_BIT_SIZE < 32,
+                "bit number of block number < 32");
+  static_assert(16 < PAX_TUPLE_BIT_SIZE && PAX_TUPLE_BIT_SIZE < 32,
+                "bit number of tuple number < 32");
+
+  Assert(block_number < (1UL << PAX_BLOCK_BIT_SIZE));
+  Assert(tuple_offset < (1UL << PAX_TUPLE_BIT_SIZE));
+
+  ctid.ip_blkid.bi_hi = block_number >> (PAX_BLOCK_BIT_SIZE - 16);
+  ctid.ip_blkid.bi_lo = block_number << (32 - PAX_BLOCK_BIT_SIZE);
+  ctid.ip_blkid.bi_lo |= tuple_offset >> 15;
+  ctid.ip_posid = (tuple_offset & 0x7FFF) + 1;
+  return ctid;
+}
+
+static inline uint32 GetBlockNumber(ItemPointerData ctid) {
+  uint32 block_number = ((uint32)ctid.ip_blkid.bi_hi)
+                        << (PAX_BLOCK_BIT_SIZE - 16);
+  return block_number |
+         ((uint32)ctid.ip_blkid.bi_lo) >> (32 - PAX_BLOCK_BIT_SIZE);
+}
+
+static inline void SetBlockNumber(ItemPointer ctid, uint32 block_number) {
+  Assert(block_number < (1UL << PAX_BLOCK_BIT_SIZE));
+
+  uint32 mask = (1UL << (32 - PAX_BLOCK_BIT_SIZE)) - 1;
+  ctid->ip_blkid.bi_hi = block_number >> (PAX_BLOCK_BIT_SIZE - 16);
+  ctid->ip_blkid.bi_lo = (ctid->ip_blkid.bi_lo & mask) |
+                         (block_number << (32 - PAX_BLOCK_BIT_SIZE));
+}
+
+static inline std::string MapToBlockNumber(Relation /* rel */,
+                                           ItemPointerData ctid) {
+  auto block_number = pax::GetBlockNumber(ctid);
+  return std::to_string(block_number);
+}
+
+}  // namespace pax
+
+#else
 namespace pax {
 #define PAX_TABLE_NUM_BIT_SIZE 5
 #define PAX_BLOCK_BIT_SIZE 22
-#define PAX_TUPLE_BIT_SIZE (48 - 7 - PAX_BLOCK_BIT_SIZE)
+#define PAX_TUPLE_BIT_SIZE \
+  (48 - (PAX_TABLE_NUM_BIT_SIZE + PAX_BLOCK_BIT_SIZE + 1))
+
 #define MAX_TABLE_NUM_IN_CTID ((1 << PAX_TABLE_NUM_BIT_SIZE) - 1)
+static inline ItemPointerData MakeCTID(uint8 table_no, uint32 block_number,
+                                       uint32 tuple_offset) {
+  ItemPointerData ctid;
 
-#define BLOCK_NO_BITS_IN_BYTES_0_1 (16 - PAX_TABLE_NUM_BIT_SIZE)
-#define TUPLE_NO_BITS_IN_BYTES_2_3 (PAX_TUPLE_BIT_SIZE - 16)
-#define BLOCK_NO_BITS_IN_BYTES_2_3 (16 - TUPLE_NO_BITS_IN_BYTES_2_3)
+  static_assert(PAX_TABLE_NUM_BIT_SIZE < 16, "bit number of table numer < 16");
+  static_assert(16 < PAX_BLOCK_BIT_SIZE && PAX_BLOCK_BIT_SIZE < 32,
+                "bit number of block number < 32");
+  static_assert(PAX_TABLE_NUM_BIT_SIZE + PAX_BLOCK_BIT_SIZE < 32,
+                "bits(table_no) + bits(block) < 32");
+  static_assert(16 < PAX_TUPLE_BIT_SIZE && PAX_TUPLE_BIT_SIZE < 32,
+                "bits(tuple_offset) < 32");
 
-// 9bit
-// 0x1ff
-#define BLOCK_NO_MASK_IN_BYTES_0_1 (0xffff >> PAX_TABLE_NUM_BIT_SIZE)
-// 11bit
-// 0x07fff
-#define BLOCK_NO_MASK_IN_BYTES_2_3 (0xffff >> TUPLE_NO_BITS_IN_BYTES_2_3)
+  Assert(table_no < (1UL << PAX_TABLE_NUM_BIT_SIZE));
+  Assert(block_number < (1UL << PAX_BLOCK_BIT_SIZE));
+  Assert(tuple_offset < (1UL << PAX_TUPLE_BIT_SIZE));
 
-// 5bit
-// 0x001f
-#define TUPLE_NO_MASK_IN_BYTES_2_3 (0xffff >> BLOCK_NO_BITS_IN_BYTES_2_3)
+  ctid.ip_blkid.bi_hi = table_no << (16 - PAX_TABLE_NUM_BIT_SIZE);
+  ctid.ip_blkid.bi_hi |=
+      block_number >> (PAX_TABLE_NUM_BIT_SIZE + PAX_BLOCK_BIT_SIZE - 16);
+  ctid.ip_blkid.bi_lo = (block_number)
+                        << (32 - (PAX_TABLE_NUM_BIT_SIZE + PAX_BLOCK_BIT_SIZE));
+  ctid.ip_blkid.bi_lo |= tuple_offset >> 15;
 
-// #define PAX_BLOCK_BIT_IN_BI_LO_BITS (PAX_BLOCK_BIT_SIZE - 16)
-// #define PAX_TUPLE_BIT_IN_BI_LO_BITS (32 - PAX_BLOCK_BIT_SIZE)
-// #define PAX_TUPLE_BIT_IN_BI_LO_MASK (0xFFFF >> PAX_BLOCK_BIT_IN_BI_LO_BITS)
+  ctid.ip_posid = (tuple_offset & 0x7FFF) + 1;
 
-#define PAX_TUPLE_ID_MAX_ROW_NUM INT64CONST((1 << (PAX_TUPLE_BIT_SIZE - 1)) - 1)
+  return ctid;
+}
 
-// | block number (24 bits) | tuple number (23 bits) |
-// | (16 bits) | 8bit       |8bit |1bit |7bit | 8bit |
-struct PaxItemPointer final {
-  uint16 bytes_0_1;
-  uint16 bytes_2_3;
-  uint16 bytes_4_5;
-  PaxItemPointer() {
-    bytes_0_1 = 0;
-    bytes_2_3 = 0;
-    bytes_4_5 = 0;
-  }
-  PaxItemPointer(uint8 table_no, uint32 block_number, uint32 tuple_number) {
-    bytes_0_1 = (table_no << BLOCK_NO_BITS_IN_BYTES_0_1);
-    bytes_0_1 |= (block_number >> BLOCK_NO_BITS_IN_BYTES_2_3);
+static inline uint8 GetTableNo(ItemPointerData ctid) {
+  return ctid.ip_blkid.bi_hi >> (16 - PAX_TABLE_NUM_BIT_SIZE);
+}
 
-    // |7bit 9bit|11 bit 5 biy| 16bit|
+static inline void SetTableNo(ItemPointer ctid, uint8 table_no) {
+  uint32 shift = 16 - PAX_TABLE_NUM_BIT_SIZE;
+  uint32 mask = (1UL << shift) - 1;
+  uint16 number = table_no;
+  ctid->ip_blkid.bi_hi = (ctid->ip_blkid.bi_hi & mask) | (number << shift);
+}
 
-    bytes_2_3 |= (block_number & BLOCK_NO_MASK_IN_BYTES_2_3)
-                 << TUPLE_NO_BITS_IN_BYTES_2_3;
-    bytes_2_3 = (tuple_number >> 15);
+static inline uint32 GetBlockNumber(ItemPointerData ctid) {
+  uint32 mask1 = (1UL << (16 - PAX_TABLE_NUM_BIT_SIZE)) - 1;
+  uint32 shift1 = PAX_TABLE_NUM_BIT_SIZE + PAX_BLOCK_BIT_SIZE - 16;
+  uint32 shift2 = (32 - (PAX_TABLE_NUM_BIT_SIZE + PAX_BLOCK_BIT_SIZE));
+  uint32 block_number = (ctid.ip_blkid.bi_hi & mask1) << shift1;
+  return block_number | (ctid.ip_blkid.bi_lo >> shift2);
+}
 
-    bytes_4_5 = (tuple_number & 0x7FFF) + 1;
-  }
+static inline void SetBlockNumber(ItemPointer ctid, uint32 block_number) {
+  Assert(block_number < (1UL << PAX_BLOCK_BIT_SIZE));
 
-  explicit PaxItemPointer(const PaxItemPointer *tid) {
-    bytes_0_1 = tid->bytes_0_1;
-    bytes_2_3 = tid->bytes_2_3;
-    bytes_4_5 = tid->bytes_4_5;
-  }
+  uint32 mask1 = (1UL << (16 - PAX_TABLE_NUM_BIT_SIZE)) - 1;
+  uint32 shift1 = PAX_TABLE_NUM_BIT_SIZE + PAX_BLOCK_BIT_SIZE - 16;
+  uint32 shift2 = (32 - (PAX_TABLE_NUM_BIT_SIZE + PAX_BLOCK_BIT_SIZE));
+  uint32 mask2 = (1UL << shift2) - 1;
+  ctid->ip_blkid.bi_hi =
+      (ctid->ip_blkid.bi_hi & ~mask1) | (block_number >> shift1);
+  ctid->ip_blkid.bi_lo =
+      (ctid->ip_blkid.bi_lo & mask2) | (block_number << shift2);
+}
 
-  inline bool Valid() const { return bytes_4_5 != 0; }
-  static ItemPointerData GetTupleId(uint8 table_no, uint32 block_number,
-                                    uint32 tuple_number) {
-    ItemPointerData tid;
-    // table_no in bi_hi
-    tid.ip_blkid.bi_hi = (table_no << BLOCK_NO_BITS_IN_BYTES_0_1);
+class BlockNumberManager {
+ public:
+  void InitOpen(Oid relid);
+  uint32 GetBlockNumber(Oid relid, const std::string &blockid) const;
+  uint8 GetTableNo() const { return table_no_; }
 
-    // block_number in bi_hi
-    tid.ip_blkid.bi_hi |= (block_number >> BLOCK_NO_BITS_IN_BYTES_2_3);
-
-    // |7bit 9bit|11 bit 5 biy| 16bit|
-
-    // block_number in bi_lo
-    tid.ip_blkid.bi_lo = (block_number & BLOCK_NO_MASK_IN_BYTES_2_3)
-                         << TUPLE_NO_BITS_IN_BYTES_2_3;
-    // tuple_number in bi_lo
-    tid.ip_blkid.bi_lo |= (tuple_number >> 15);
-    // tuple_number in ip_posid
-    tid.ip_posid = (tuple_number & 0x7FFF) + 1;
-    return tid;
-  }
-
-  uint8 GetTableNo() const { return bytes_0_1 >> BLOCK_NO_BITS_IN_BYTES_0_1; }
-
-  uint32 GetBlockNumber() const {
-    Assert(Valid());
-    // get block_number in bytes_0_1
-    uint32 block_number = (bytes_0_1 & BLOCK_NO_MASK_IN_BYTES_0_1)
-                          << BLOCK_NO_BITS_IN_BYTES_2_3;
-    block_number |= (bytes_2_3 >> TUPLE_NO_BITS_IN_BYTES_2_3);
-    return block_number;
-  }
-  uint32 GetTupleNumber() const {
-    Assert(Valid());
-    return bytes_4_5 - 1 + ((bytes_2_3 & TUPLE_NO_MASK_IN_BYTES_2_3) << 15);
-  }
-
-  void Clear() {
-    bytes_0_1 = 0;
-    bytes_2_3 = 0;
-    bytes_4_5 = 0;
-  }
+ private:
+  uint8 table_no_ = 0;
+  uint32 table_index_ = 0;
 };
+
+extern std::string MapToBlockNumber(Relation rel, ItemPointerData ctid);
+}  // namespace pax
+
+#endif
+
+namespace pax {
+static inline uint32 GetTupleOffsetInternal(ItemPointerData ctid) {
+  uint32 mask = (1UL << (PAX_TUPLE_BIT_SIZE - 15)) - 1;
+  uint32 hi = ctid.ip_blkid.bi_lo & mask;
+  uint32 lo = ctid.ip_posid - 1;
+  return (hi << 15) | lo;
+}
+
+static inline uint32 GetTupleOffset(ItemPointerData ctid) {
+  Assert(ItemPointerIsValid(&ctid));
+  return GetTupleOffsetInternal(ctid);
+}
+
+static inline void SetTupleOffset(ItemPointer ctid, uint32 offset) {
+  Assert(offset < (1UL << PAX_TUPLE_BIT_SIZE));
+
+  uint32 mask = (1UL << (PAX_TUPLE_BIT_SIZE - 15)) - 1;
+  ctid->ip_blkid.bi_lo = (ctid->ip_blkid.bi_lo & ~mask) | (offset >> 15);
+  ctid->ip_posid = (offset & 0x7FFF) + 1;
+}
+
+extern std::string GenerateBlockID(Relation relation);
+
 }  // namespace pax

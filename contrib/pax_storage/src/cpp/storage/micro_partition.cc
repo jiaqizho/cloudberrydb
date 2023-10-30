@@ -2,20 +2,33 @@
 
 #include <utility>
 
-#include "storage/pax_itemptr.h"
 #include "storage/pax_filter.h"
+#include "storage/pax_itemptr.h"
 
 namespace pax {
 
 CTupleSlot::CTupleSlot(TupleTableSlot *tuple_slot)
-    : slot_(tuple_slot), table_no_(0), block_number_(0), offset_(0) {}
+    : slot_(tuple_slot), ctid_() {
+  ItemPointerSetInvalid(&ctid_);
+}
 
 void CTupleSlot::StoreVirtualTuple() {
-  // TODO(gongxun): set tts_tid, how to get block number from block id
-  slot_->tts_tid =
-      PaxItemPointer::GetTupleId(table_no_, block_number_, offset_);
+  slot_->tts_tid = ctid_;
   slot_->tts_flags &= ~TTS_FLAG_EMPTY;
   slot_->tts_nvalid = slot_->tts_tupleDescriptor->natts;
+}
+
+#ifndef ENABLE_LOCAL_INDEX
+void CTupleSlot::SetTableNo(uint8 table_no) {
+  pax::SetTableNo(&ctid_, table_no);
+}
+#endif
+
+void CTupleSlot::SetBlockNumber(uint32 block_number) {
+  pax::SetBlockNumber(&ctid_, block_number);
+}
+void CTupleSlot::SetOffset(uint32 offset) {
+  pax::SetTupleOffset(&ctid_, offset);
 }
 
 TupleDesc CTupleSlot::GetTupleDesc() const {
@@ -40,11 +53,10 @@ MicroPartitionWriter *MicroPartitionWriter::SetStatsCollector(
   return this;
 }
 
-MicroPartitionReaderProxy::~MicroPartitionReaderProxy() {
-  delete reader_;
-}
+MicroPartitionReaderProxy::~MicroPartitionReaderProxy() { delete reader_; }
 
-void MicroPartitionReaderProxy::Open(const MicroPartitionReader::ReaderOptions &options) {
+void MicroPartitionReaderProxy::Open(
+    const MicroPartitionReader::ReaderOptions &options) {
   Assert(reader_);
   reader_->Open(options);
 }
@@ -65,13 +77,17 @@ void MicroPartitionReaderProxy::SetReader(MicroPartitionReader *reader) {
   reader_ = reader;
 }
 
-size_t MicroPartitionReaderProxy::GetGroupNums() { return reader_->GetGroupNums(); }
+size_t MicroPartitionReaderProxy::GetGroupNums() {
+  return reader_->GetGroupNums();
+}
 
-std::unique_ptr<ColumnStatsProvider> MicroPartitionReaderProxy::GetGroupStatsInfo(size_t group_index) {
+std::unique_ptr<ColumnStatsProvider>
+MicroPartitionReaderProxy::GetGroupStatsInfo(size_t group_index) {
   return std::move(reader_->GetGroupStatsInfo(group_index));
 }
 
-MicroPartitionReader::Group *MicroPartitionReaderProxy::ReadGroup(size_t index) {
+MicroPartitionReader::Group *MicroPartitionReaderProxy::ReadGroup(
+    size_t index) {
   return reader_->ReadGroup(index);
 }
 

@@ -2,12 +2,31 @@
 
 #include "comm/cbdb_api.h"
 
-#include "storage/pax_block_id.h"
 #include "storage/pax_itemptr.h"
 
-namespace paxc {
+#ifdef ENABLE_LOCAL_INDEX
+namespace cbdb {
+static inline void InitCommandResource() {}
+static inline void ReleaseCommandResource() {}
+}  // namespace cbdb
 
+#else
+
+namespace paxc {
 #define BLOCK_MAPPING_ARRAY_SIZE 64
+#define BLOCK_ID_SIZE 36
+
+struct PaxBlockId {
+  char pax_block_id[BLOCK_ID_SIZE + 1];
+  explicit PaxBlockId(const char *block_id) {
+    Assert(strlen(block_id) == BLOCK_ID_SIZE);
+    strncpy(pax_block_id, block_id, BLOCK_ID_SIZE);
+    pax_block_id[BLOCK_ID_SIZE] = '\0';
+  }
+
+  const char *ToStr() const { return pax_block_id; }
+};
+
 struct SharedTableBlockMappingData {
   Oid relid_;
   uint32 shared_size_block_ids_;
@@ -69,15 +88,20 @@ struct PaxSharedState {
 
 void paxc_shmem_request();
 void paxc_shmem_startup();
-
 void init_command_resource();
 void release_command_resource();
 
-void get_table_index_and_table_number(const Oid table_rel_oid, uint8 *table_no,
+void get_table_index_and_table_number(Oid table_rel_oid, uint8 *table_no,
                                       uint32 *table_index);
 
-uint32 get_block_number(const Oid table_rel_oid, const uint32 table_index,
-                        const PaxBlockId block_id);
-PaxBlockId get_block_id(const Oid table_rel_oid, const uint8 table_no,
-                        const uint32 block_number);
+uint32 get_block_number(Oid table_rel_oid, uint32 table_index,
+                        const PaxBlockId &block_id);
+PaxBlockId get_block_id(Oid table_rel_oid, uint8 table_no, uint32 block_number);
 }  // namespace paxc
+
+namespace cbdb {
+void InitCommandResource();
+void ReleaseCommandResource();
+}  // namespace cbdb
+
+#endif

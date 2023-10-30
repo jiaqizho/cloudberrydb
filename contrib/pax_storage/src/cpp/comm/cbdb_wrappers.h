@@ -6,7 +6,6 @@
 #include <string>
 
 #include "exceptions/CException.h"
-#include "storage/pax_block_id.h"
 
 struct PaxcExtractcolumnContext {
   // If cols set and call ExtractcolumnsFromNode with
@@ -120,16 +119,6 @@ Datum DatumFromPointer(const void *p, int16 typlen);
 #endif
 
 struct varlena *PgDeToastDatumPacked(struct varlena *datum);
-
-// pax ctid mapping functions
-void InitCommandResource();
-void ReleaseCommandResource();
-void GetTableIndexAndTableNumber(Oid table_rel_oid, uint8 *table_no,
-                                 uint32 *table_index);
-uint32 GetBlockNumber(Oid table_rel_oid, uint32 table_index,
-                      paxc::PaxBlockId block_id);
-paxc::PaxBlockId GetBlockId(Oid table_rel_oid, uint8 table_no,
-                            uint32 block_number);
 
 void RelationCreateStorageDirectory(RelFileNode rnode, char relpersistence,
                                     SMgrImpl smgr_which, Relation rel);
