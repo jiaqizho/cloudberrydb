@@ -1,6 +1,5 @@
 #include "storage/pax.h"
 
-#include <uuid/uuid.h>
 
 #include <map>
 #include <utility>
@@ -19,21 +18,6 @@
 #endif
 
 namespace pax {
-
-static std::string GenRandomBlockId() {
-  CBDB_WRAP_START;
-  {
-    uuid_t uuid;
-    char str[36] = {0};
-
-    uuid_generate(uuid);
-    uuid_unparse(uuid, str);
-
-    std::string uuid_str = str;
-    return uuid_str;
-  }
-  CBDB_WRAP_END;
-}
 
 TableWriter::TableWriter(Relation relation)
     : relation_(relation), summary_callback_(nullptr) {
@@ -129,7 +113,7 @@ void TableWriter::Open() {
   Assert(strategy_);
   Assert(summary_callback_);
 
-  block_id = GenRandomBlockId();
+  block_id = GenerateBlockID(relation_);
   file_path = GenFilePath(block_id);
 
   options.rel_oid = relation_->rd_id;
@@ -178,9 +162,7 @@ TableReader::TableReader(
     : iterator_(std::move(iterator)),
       reader_(nullptr),
       is_empty_(true),
-      reader_options_(options),
-      table_no_(0),
-      table_index_(0) {}
+      reader_options_(options) {}
 
 TableReader::~TableReader() {
   if (reader_) {
@@ -195,12 +177,12 @@ void TableReader::Open() {
     is_empty_ = true;
     return;
   }
-
+#ifndef ENABLE_LOCAL_INDEX
   if (reader_options_.build_bitmap) {
     // first open, now alloc a table no in pax shmem for scan
-    cbdb::GetTableIndexAndTableNumber(reader_options_.rel_oid, &table_no_,
-                                      &table_index_);
+    block_number_manager_.InitOpen(reader_options_.rel_oid);
   }
+#endif
   OpenFile();
   is_empty_ = false;
 }
@@ -227,8 +209,10 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
     return false;
   }
 
-  slot->ClearTuple();
-  slot->SetTableNo(table_no_);
+  ExecClearTuple(slot->GetTupleTableSlot());
+#ifndef ENABLE_LOCAL_INDEX
+  slot->SetTableNo(block_number_manager_.GetTableNo());
+#endif
   slot->SetBlockNumber(current_block_number_);
   while (!reader_->ReadTuple(slot)) {
     reader_->Close();
@@ -247,15 +231,18 @@ void TableReader::OpenFile() {
   auto it = iterator_->Next();
   MicroPartitionReader::ReaderOptions options;
   micro_partition_id_ = options.block_id = it.GetMicroPartitionId();
+#ifdef ENABLE_LOCAL_INDEX
+  current_block_number_ = std::stol(options.block_id);
+#else
   if (reader_options_.build_bitmap) {
     int block_number = 0;
-    block_number =
-        cbdb::GetBlockNumber(reader_options_.rel_oid, table_index_,
-                             paxc::PaxBlockId(options.block_id.c_str()));
+    block_number = block_number_manager_.GetBlockNumber(reader_options_.rel_oid,
+                                                        options.block_id);
 
     Assert(block_number >= 0);
     current_block_number_ = block_number;
   }
+#endif
   options.file_name = it.GetFileName();
   options.filter = reader_options_.filter;
   options.reused_buffer = reader_options_.reused_buffer;
@@ -273,12 +260,14 @@ void TableReader::OpenFile() {
 #ifdef VEC_BUILD
   if (reader_options_.is_vec) {
     Assert(reader_options_.adapter);
-    reader_ = new PaxVecReader(reader_, reader_options_.adapter, reader_options_.filter);
+    reader_ = new PaxVecReader(reader_, reader_options_.adapter,
+                               reader_options_.filter);
   } else
 #endif  // VEC_BUILD
-  if (reader_options_.filter && reader_options_.filter->HasRowScanFilter()) {
-    reader_ = MicroPartitionRowFilterReader::New(reader_, reader_options_.filter);
-  }
+    if (reader_options_.filter && reader_options_.filter->HasRowScanFilter()) {
+      reader_ =
+          MicroPartitionRowFilterReader::New(reader_, reader_options_.filter);
+    }
 
   reader_->Open(options);
 }
@@ -336,7 +325,7 @@ void TableDeleter::Delete() {
     }
 
     auto bitmap = it->second.get();
-    if (bitmap->Test(cslot.GetOffset())) continue;
+    if (bitmap->Test(pax::GetTupleOffset(cslot.GetCtid()))) continue;
 
     writer_->WriteTuple(&cslot);
   }

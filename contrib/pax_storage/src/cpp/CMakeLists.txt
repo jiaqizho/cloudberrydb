@@ -133,13 +133,14 @@ set(pax_storage_src
     storage/columns/pax_vec_encoding_column.cc
     storage/file_system.cc
     storage/pax_filter.cc
+    storage/pax_itemptr.cc
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
     storage/micro_partition_metadata.cc
     storage/micro_partition_row_filter_reader.cc
     storage/micro_partition_stats.cc
-    storage/pax_buffer.cc  
+    storage/pax_buffer.cc
     storage/proto/protobuf_stream.cc
     storage/pax_filter.cc
     storage/strategy.cc
@@ -151,7 +152,7 @@ set(pax_storage_src
     storage/orc/orc_reader.cc
     storage/strategy.cc)
 
-if(NOT BUILD_PAX_FORMAT) 
+if(NOT BUILD_PAX_FORMAT)
   set(pax_storage_src ${pax_storage_src} storage/pax.cc)
   set(pax_storage_src ${pax_storage_src} storage/micro_partition_iterator.cc)
 endif(NOT BUILD_PAX_FORMAT)
@@ -227,8 +228,13 @@ else()
   set(pax_target_src  ${orc_proto_src} ${pax_proto_src} ${pax_storage_src} ${stats_proto_src} ${pax_exceptions_src}
     ${pax_access_src} ${pax_comm_src} ${pax_catalog_src} ${pax_vec_src})
   set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
-  set(pax_target_link_libs uuid orc_protobuf zstd z postgres)
+  set(pax_target_link_libs orc_protobuf zstd z postgres)
   set(pax_target_dependencies generate_protobuf)
+
+  # enable local index, not use uuid to generate file name
+  if (NOT ENABLE_LOCAL_INDEX OR ENABLE_PLASMA)
+    set(pax_target_link_libs ${pax_target_link_libs} uuid)
+  endif()
 
   # enable plasma
   if (ENABLE_PLASMA)
@@ -241,7 +247,7 @@ else()
 
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GLIB REQUIRED glib-2.0)
-    set(pax_target_include ${pax_target_include} 
+    set(pax_target_include ${pax_target_include}
       ${VEC_HEADER} # for utils/tuptable_vec.h
       ${CBDB_ROOT_INCLUDE_DIR}  # for arrow-glib/arrow-glib.h and otehr arrow interface
       ${GLIB_INCLUDE_DIRS} # for glib-object.h
@@ -259,7 +265,7 @@ else()
   if (VEC_BUILD)
     target_link_libraries(pax PRIVATE arrow)
   endif()
-  
+
   if (BUILD_GTEST)
     add_subdirectory(contrib/googletest)
     ADD_DEFINITIONS(-DRUN_GTEST)
@@ -277,6 +283,6 @@ else()
     if (VEC_BUILD)
       target_link_libraries(test_main PRIVATE arrow)
     endif(VEC_BUILD)
-  endif(BUILD_GTEST)  
+  endif(BUILD_GTEST)
 endif(BUILD_PAX_FORMAT)
 

@@ -12,8 +12,6 @@ namespace pax {
 CPaxDeleter::CPaxDeleter(Relation rel, Snapshot snapshot)
     : rel_(rel), snapshot_(snapshot) {}
 
-CPaxDeleter::~CPaxDeleter() = default;
-
 TM_Result CPaxDeleter::DeleteTuple(Relation relation, ItemPointer tid,
                                    CommandId cid, Snapshot snapshot,
                                    TM_FailureData *tmfd) {
@@ -30,24 +28,19 @@ TM_Result CPaxDeleter::DeleteTuple(Relation relation, ItemPointer tid,
 }
 
 TM_Result CPaxDeleter::MarkDelete(ItemPointer tid) {
-  PaxItemPointer pax_tid(reinterpret_cast<PaxItemPointer *>(tid));
-  uint8 table_no = pax_tid.GetTableNo();
-  uint32 block_number = pax_tid.GetBlockNumber();
-  uint32 tuple_number = pax_tid.GetTupleNumber();
+  uint32 tuple_offset = pax::GetTupleOffset(*tid);
 
-  std::string block_id =
-      cbdb::GetBlockId(rel_->rd_id, table_no, block_number).ToStr();
+  std::string block_id = MapToBlockNumber(rel_, *tid);
 
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
-    // TODO(gongxun): bitmap should support dynamic raise size
     block_bitmap_map_[block_id] =
         std::unique_ptr<Bitmap64>(new Bitmap64());  // NOLINT
   }
   auto bitmap = block_bitmap_map_[block_id].get();
-  if (bitmap->Test(tuple_number)) {
+  if (bitmap->Test(tuple_offset)) {
     return TM_SelfModified;
   }
-  bitmap->Set(tuple_number);
+  bitmap->Set(tuple_offset);
   return TM_Ok;
 }
 

@@ -3,8 +3,9 @@
 #include <unistd.h>
 
 #include "comm/cbdb_wrappers.h"
-namespace paxc {
 
+#ifndef ENABLE_LOCAL_INDEX
+namespace paxc {
 static PaxXactSharedState *current_xact_shared_pax_ss = NULL;
 
 #define DEFAULT_BLOCK_IDS_SIZE 16
@@ -26,14 +27,9 @@ static HTAB *pax_xact_hash = NULL;
 // common PaxSharedState
 static PaxSharedState *pax_shared_state;
 
-void init_local_command_resource();
-void init_command_shmem_resource();
-void cleanup_local_command_resource();
-void cleanup_command_shmem_resource();
+static Size struct_mem_size() { return sizeof(PaxSharedState); }
 
-Size struct_mem_size() { return sizeof(PaxSharedState); }
-
-Size pax_mem_size() {
+static Size pax_mem_size() {
   Size size = 0;
   size = add_size(size, struct_mem_size());
   // hash size
@@ -41,7 +37,7 @@ Size pax_mem_size() {
   return size;
 }
 
-void init_pax_xact_hash() {
+static void init_pax_xact_hash() {
   HASHCTL info;
   memset(&info, 0, sizeof(HASHCTL));
   info.keysize = sizeof(XactHashKey);
@@ -50,7 +46,7 @@ void init_pax_xact_hash() {
                                 HASH_ELEM | HASH_BLOBS);
 }
 
-void init_shmem_locks() {
+static void init_shmem_locks() {
   pax_hash_lock = GetNamedLWLockTranche("pax_hash_lock");
 }
 
@@ -86,20 +82,10 @@ void paxc_shmem_startup() {
   }
 }
 
-void init_command_resource() {
-  init_command_shmem_resource();
-  init_local_command_resource();
-}
-
-void release_command_resource() {
-  cleanup_local_command_resource();
-  cleanup_command_shmem_resource();
-}
-
 // there may be multiple scan processes scanning the same table,
 // which will modify the current_xact_shared_pax_ss state,
 // so a LW_EXCLUSIVE lock is required
-void get_table_index_and_table_number(const Oid table_rel_oid, uint8 *table_no,
+void get_table_index_and_table_number(Oid table_rel_oid, uint8 *table_no,
                                       uint32 *table_index) {
   LWLockAcquire(&current_xact_shared_pax_ss->lock_, LW_EXCLUSIVE);
   uint8 alloc_table_no = 0;
@@ -142,7 +128,7 @@ void get_table_index_and_table_number(const Oid table_rel_oid, uint8 *table_no,
 
 // FIXME(gongxun): the delete and update processes only read
 // current_xact_shared_pax_ss , whether it is possible to not add a shared lock?
-uint32 pax_get_table_index(const Oid table_rel_oid, const uint8 table_no) {
+static uint32 pax_get_table_index(Oid table_rel_oid, uint8 table_no) {
   LWLockAcquire(&current_xact_shared_pax_ss->lock_, LW_SHARED);
   uint8 tmp_table_no = -1;
   int index = -1;
@@ -161,7 +147,7 @@ uint32 pax_get_table_index(const Oid table_rel_oid, const uint8 table_no) {
   return index;
 }
 
-void dump_shared_block_ids(const Oid table_rel_oid, const uint32 table_index) {
+static void dump_shared_block_ids(Oid table_rel_oid, uint32 table_index) {
   LocalTableBlockMappingData *block_mapping_data =
       &local_pax_block_mapping_data[table_index];
 
@@ -246,7 +232,7 @@ void dump_shared_block_ids(const Oid table_rel_oid, const uint32 table_index) {
   }
 }
 
-void load_shared_block_ids(const Oid table_rel_oid, const uint32 table_index) {
+static void load_shared_block_ids(Oid table_rel_oid, uint32 table_index) {
   dsm_handle table_block_mapping_handle;
   dsm_segment *attached_block_ids;
   PaxBlockId *shared_ptr;
@@ -311,8 +297,8 @@ void load_shared_block_ids(const Oid table_rel_oid, const uint32 table_index) {
   dsm_detach(attached_block_ids);
 }
 
-uint32 get_block_number(const Oid table_rel_oid, const uint32 table_index,
-                        const PaxBlockId block_id) {
+uint32 get_block_number(Oid table_rel_oid, uint32 table_index,
+                        const PaxBlockId &block_id) {
   LocalTableBlockMappingData *block_mapping_data =
       &local_pax_block_mapping_data[table_index];
 
@@ -341,8 +327,8 @@ uint32 get_block_number(const Oid table_rel_oid, const uint32 table_index,
   return block_number;
 }
 
-PaxBlockId pax_get_block_id(const Oid table_rel_oid, const uint32 table_index,
-                            const uint32 block_number) {
+static PaxBlockId pax_get_block_id(Oid table_rel_oid, uint32 table_index,
+                                   uint32 block_number) {
   LocalTableBlockMappingData *block_mapping_data =
       &local_pax_block_mapping_data[table_index];
 
@@ -359,13 +345,13 @@ PaxBlockId pax_get_block_id(const Oid table_rel_oid, const uint32 table_index,
   return block_mapping_data->block_ids_[block_number];
 }
 
-PaxBlockId get_block_id(const Oid table_rel_oid, const uint8 table_no,
-                        const uint32 block_number) {
+PaxBlockId get_block_id(Oid table_rel_oid, uint8 table_no,
+                        uint32 block_number) {
   uint32 table_index = pax_get_table_index(table_rel_oid, table_no);
   return pax_get_block_id(table_rel_oid, table_index, block_number);
 }
 
-void init_command_shmem_resource() {
+static void init_command_shmem_resource() {
   XactHashKey pax_xact_hash_key;
   pax_xact_hash_key.session_id_ = gp_session_id;
   pax_xact_hash_key.command_id_ = gp_command_count;
@@ -403,7 +389,7 @@ void init_command_shmem_resource() {
 
 // FIXME(gongxun): do we need to lock current_xact_shared_pax_ss here to protect
 // the case where gp_reader is still executing dump_shared_block_ids
-void cleanup_command_shmem_resource() {
+static void cleanup_command_shmem_resource() {
   if (Gp_is_writer && current_xact_shared_pax_ss != NULL) {
     XactHashKey pax_xact_hash_key;
     pax_xact_hash_key.session_id_ = gp_session_id;
@@ -439,7 +425,7 @@ void cleanup_command_shmem_resource() {
   }
 }
 
-void init_local_command_resource() {
+static void init_local_command_resource() {
   for (uint32 i = 0; i < BLOCK_MAPPING_ARRAY_SIZE; i++) {
     local_pax_block_mapping_data[i].relid_ = InvalidOid;
     local_pax_block_mapping_data[i].size_block_ids_ = 0;
@@ -459,7 +445,7 @@ void init_local_command_resource() {
   }
 }
 
-void cleanup_local_command_resource() {
+static void cleanup_local_command_resource() {
   // TODO(gongxun): should only clean the slot used
   for (uint32 i = 0; i < BLOCK_MAPPING_ARRAY_SIZE; i++) {
     local_pax_block_mapping_data[i].relid_ = InvalidOid;
@@ -476,4 +462,31 @@ void cleanup_local_command_resource() {
   }
   MemoryContextReset(pax_block_mapping_context);
 }
+
+void init_command_resource() {
+  init_command_shmem_resource();
+  init_local_command_resource();
+}
+
+void release_command_resource() {
+  cleanup_local_command_resource();
+  cleanup_command_shmem_resource();
+}
+
 }  // namespace paxc
+
+namespace cbdb {
+void InitCommandResource() {
+  CBDB_WRAP_START;
+  { paxc::init_command_resource(); }
+  CBDB_WRAP_END;
+}
+
+void ReleaseCommandResource() {
+  CBDB_WRAP_START;
+  { paxc::release_command_resource(); }
+  CBDB_WRAP_END;
+}
+}  // namespace cbdb
+
+#endif
