@@ -124,8 +124,8 @@ TableScanDesc CCPaxAccessMethod::ScanExtractColumns(
     ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags) {
   CBDB_TRY();
   {
-    return pax::PaxScanDesc::BeginScanExtractColumns(
-        rel, snapshot, nkeys, key, parallel_scan, ps, flags);
+    return pax::PaxScanDesc::BeginScanExtractColumns(rel, snapshot, nkeys, key,
+                                                     parallel_scan, ps, flags);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
@@ -811,18 +811,55 @@ Datum pax_tableam_handler(PG_FUNCTION_ARGS) {  // NOLINT
 }
 
 static object_access_hook_type prev_object_access_hook = NULL;
+
+#ifndef ENABLE_LOCAL_INDEX
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 static ExecutorStart_hook_type prev_executor_start = NULL;
 static ExecutorEnd_hook_type prev_executor_end = NULL;
 static uint32 executor_run_ref_count = 0;
 
-void PaxShmemInit() {
+static void PaxShmemInit() {
   if (prev_shmem_startup_hook) prev_shmem_startup_hook();
 
   paxc::paxc_shmem_startup();
 }
 
-static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id, Oid object_id, int sub_id, void * arg) {
+static void PaxExecutorStart(QueryDesc *query_desc, int eflags) {
+  if (prev_executor_start)
+    prev_executor_start(query_desc, eflags);
+  else
+    standard_ExecutorStart(query_desc, eflags);
+
+  executor_run_ref_count++;
+}
+
+static void PaxExecutorEnd(QueryDesc *query_desc) {
+  if (prev_executor_end)
+    prev_executor_end(query_desc);
+  else
+    standard_ExecutorEnd(query_desc);
+
+  executor_run_ref_count--;
+  Assert(executor_run_ref_count >= 0);
+  if (executor_run_ref_count == 0) {
+    paxc::release_command_resource();
+  }
+}
+
+static void PaxXactCallback(XactEvent event, void * /*arg*/) {
+  if (event == XACT_EVENT_COMMIT || event == XACT_EVENT_ABORT ||
+      event == XACT_EVENT_PARALLEL_ABORT ||
+      event == XACT_EVENT_PARALLEL_COMMIT) {
+    if (executor_run_ref_count > 0) {
+      executor_run_ref_count = 0;
+      paxc::release_command_resource();
+    }
+  }
+}
+#endif
+
+static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id,
+                                Oid object_id, int sub_id, void *arg) {
   Relation rel;
   PartitionKey pkey;
   List *part;
@@ -833,12 +870,12 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id, Oid objec
     prev_object_access_hook(access, class_id, object_id, sub_id, arg);
 
   if (access != OAT_POST_CREATE || class_id != RelationRelationId) return;
-  
+
   CommandCounterIncrement();
   rel = relation_open(object_id, RowExclusiveLock);
-  auto ok =  ((rel->rd_rel->relkind == RELKIND_RELATION ||
-               rel->rd_rel->relkind == RELKIND_MATVIEW) &&
-              rel->rd_options && RelationIsPAX(rel));
+  auto ok = ((rel->rd_rel->relkind == RELKIND_RELATION ||
+              rel->rd_rel->relkind == RELKIND_MATVIEW) &&
+             rel->rd_options && RelationIsPAX(rel));
   if (!ok) goto out;
 
   Assert(sub_id == 0);
@@ -877,43 +914,10 @@ out:
   relation_close(rel, NoLock);
 }
 
-static void PaxExecutorStart(QueryDesc *query_desc, int eflags) {
-  if (prev_executor_start)
-    prev_executor_start(query_desc, eflags);
-  else
-    standard_ExecutorStart(query_desc, eflags);
-
-  executor_run_ref_count++;
-}
-
-static void PaxExecutorEnd(QueryDesc *query_desc) {
-  if (prev_executor_end)
-    prev_executor_end(query_desc);
-  else
-    standard_ExecutorEnd(query_desc);
-
-  executor_run_ref_count--;
-  Assert(executor_run_ref_count >= 0);
-  if (executor_run_ref_count == 0) {
-    paxc::release_command_resource();
-  }
-}
-
-static void PaxXactCallback(XactEvent event, void * /*arg*/) {
-  if (event == XACT_EVENT_COMMIT || event == XACT_EVENT_ABORT ||
-      event == XACT_EVENT_PARALLEL_ABORT ||
-      event == XACT_EVENT_PARALLEL_COMMIT) {
-    if (executor_run_ref_count > 0) {
-      executor_run_ref_count = 0;
-      paxc::release_command_resource();
-    }
-  }
-}
-
 static void DefineGUCs() {
   DefineCustomBoolVariable("pax.enable_debug", "enable pax debug", NULL,
-                           &pax::pax_enable_debug, true, PGC_USERSET, 0, NULL, NULL,
-                           NULL);
+                           &pax::pax_enable_debug, true, PGC_USERSET, 0, NULL,
+                           NULL, NULL);
 #ifdef ENABLE_PLASMA
   DefineCustomBoolVariable(
       "pax.enable_plasma", "Enable plasma cache the set of columns", NULL,
@@ -922,17 +926,12 @@ static void DefineGUCs() {
 }
 
 void _PG_init(void) {  // NOLINT
+#ifndef ENABLE_LOCAL_INDEX
   if (!process_shared_preload_libraries_in_progress) {
     ereport(ERROR, (errmsg("pax must be loaded via shared_preload_libraries")));
     return;
   }
-
-  DefineGUCs();
   paxc::paxc_shmem_request();
-
-  prev_object_access_hook = object_access_hook;
-  object_access_hook = PaxObjectAccessHook;
-
   prev_shmem_startup_hook = shmem_startup_hook;
   shmem_startup_hook = PaxShmemInit;
 
@@ -942,11 +941,18 @@ void _PG_init(void) {  // NOLINT
   prev_executor_end = ExecutorEnd_hook;
   ExecutorEnd_hook = PaxExecutorEnd;
 
+  RegisterXactCallback(PaxXactCallback, NULL);
+#endif
+
+  prev_object_access_hook = object_access_hook;
+  object_access_hook = PaxObjectAccessHook;
+
   ext_dml_init_hook = pax::CCPaxAccessMethod::ExtDmlInit;
   ext_dml_finish_hook = pax::CCPaxAccessMethod::ExtDmlFini;
   file_unlink_hook = pax::CCPaxAccessMethod::RelationFileUnlink;
 
-  RegisterXactCallback(PaxXactCallback, NULL);
+  DefineGUCs();
+
   paxc::paxc_reg_rel_options();
 }
 }  // extern "C"

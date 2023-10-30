@@ -196,42 +196,6 @@ void *cbdb::PointerAndLenFromDatum(Datum d, int *len) {
   CBDB_WRAP_END;
 }
 
-// pax ctid mapping functions
-
-void cbdb::InitCommandResource() {
-  CBDB_WRAP_START;
-  { paxc::init_command_resource(); }
-  CBDB_WRAP_END;
-}
-void cbdb::ReleaseCommandResource() {
-  CBDB_WRAP_START;
-  { paxc::release_command_resource(); }
-  CBDB_WRAP_END;
-}
-
-void cbdb::GetTableIndexAndTableNumber(Oid table_rel_oid, uint8 *table_no,
-                                       uint32 *table_index) {
-  CBDB_WRAP_START;
-  {
-    paxc::get_table_index_and_table_number(table_rel_oid, table_no,
-                                           table_index);
-  }
-  CBDB_WRAP_END;
-}
-
-uint32 cbdb::GetBlockNumber(Oid table_rel_oid, uint32 table_index,
-                            paxc::PaxBlockId block_id) {
-  CBDB_WRAP_START;
-  { return paxc::get_block_number(table_rel_oid, table_index, block_id); }
-  CBDB_WRAP_END;
-}
-paxc::PaxBlockId cbdb::GetBlockId(Oid table_rel_oid, uint8 table_no,
-                                  uint32 block_number) {
-  CBDB_WRAP_START;
-  { return paxc::get_block_id(table_rel_oid, table_no, block_number); }
-  CBDB_WRAP_END;
-}
-
 void cbdb::RelationCreateStorageDirectory(RelFileNode rnode,
                                           char relpersistence,
                                           SMgrImpl smgr_which, Relation rel) {
