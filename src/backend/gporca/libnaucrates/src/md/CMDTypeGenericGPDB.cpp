@@ -508,8 +508,7 @@ CMDTypeGenericGPDB::HasByte2IntMapping(const IMDType *mdtype)
 {
 	IMDId *mdid = mdtype->MDId();
 	return mdtype->IsTextRelated() || mdid->Equals(&CMDIdGPDB::m_mdid_uuid) ||
-		   mdid->Equals(&CMDIdGPDB::m_mdid_cash) ||
-		   IsTimeRelatedTypeMappableToLint(mdid);
+		   mdid->Equals(&CMDIdGPDB::m_mdid_cash);
 }
 
 IDatum *
@@ -537,8 +536,7 @@ CMDTypeGenericGPDB::HasByte2DoubleMapping(const IMDId *mdid)
 {
 	return mdid->Equals(&CMDIdGPDB::m_mdid_numeric) ||
 		   mdid->Equals(&CMDIdGPDB::m_mdid_float4) ||
-		   mdid->Equals(&CMDIdGPDB::m_mdid_float8) ||
-		   IsTimeRelatedTypeMappableToDouble(mdid) ||
+		   mdid->Equals(&CMDIdGPDB::m_mdid_float8) || IsTimeRelatedType(mdid) ||
 		   IsNetworkRelatedType(mdid);
 }
 
