@@ -207,6 +207,10 @@ void PaxNonFixedColumn::Set(DataBuffer<char> *data, DataBuffer<int64> *lengths,
   estimated_size_ = total_size;
   data_ = data;
   lengths_ = lengths;
+  BuildOffsets();
+}
+
+void PaxNonFixedColumn::BuildOffsets() {
   offsets_.clear();
   for (size_t i = 0; i < lengths_->GetSize(); i++) {
     offsets_.emplace_back(i == 0 ? 0 : offsets_[i - 1] + (*lengths_)[i - 1]);
