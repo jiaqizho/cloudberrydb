@@ -10,8 +10,6 @@ PaxEncodingColumn<T>::PaxEncodingColumn(
     : PaxCommColumn<T>(capacity),
       encoder_options_(encoding_option),
       encoder_(nullptr),
-      origin_len_(NO_ENCODE_ORIGIN_LEN),
-      non_null_rows_(0),
       decoder_(nullptr),
       shared_data_(nullptr),
       compressor_(nullptr),
@@ -22,8 +20,6 @@ PaxEncodingColumn<T>::PaxEncodingColumn(
     uint64 capacity, const PaxDecoder::DecodingOption &decoding_option)
     : PaxCommColumn<T>(capacity),
       encoder_(nullptr),
-      origin_len_(NO_ENCODE_ORIGIN_LEN),
-      non_null_rows_(0),
       decoder_options_{decoding_option},
       decoder_(nullptr),
       shared_data_(nullptr),
@@ -58,32 +54,23 @@ void PaxEncodingColumn<T>::InitEncoder() {
   // Not allow pass `default`type` of `encoded_type_` into
   // `CreateStreamingEncoder`, caller should change it before create a encoder.
   encoder_ = PaxEncoder::CreateStreamingEncoder(encoder_options_);
-
   if (encoder_) {
-    origin_len_ = 0;
-    // The memory owner change to `shared_data_`
-    // Because PaxEncodingColumn can not predict when to resize the memory.
-    // Should allow call memory resize in the encoding.
-    PaxCommColumn<T>::data_->SetMemTakeOver(false);
-    shared_data_ = new DataBuffer<char>(*PaxCommColumn<T>::data_);
-    shared_data_->SetMemTakeOver(true);
-
-    encoder_->SetDataBuffer(shared_data_);
-  } else {
-    // Create a block compressor
-    // Compressor have a different interface with pax encoder
-    // If no pax encoder no provided, then try to create a compressor.
-    compressor_ =
-        PaxCompressor::CreateBlockCompressor(PaxColumn::encoded_type_);
-
-    // can't find any encoder or compressor
-    // then should reset encode type
-    // or will got origin length is -1 but still have encode type
-    if (!compressor_) {
-      PaxColumn::encoded_type_ =
-          ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED;
-    }
+    return;
   }
+
+  // Create a block compressor
+  // Compressor have a different interface with pax encoder
+  // If no pax encoder no provided, then try to create a compressor.
+  compressor_ = PaxCompressor::CreateBlockCompressor(PaxColumn::encoded_type_);
+  if (compressor_) {
+    return;
+  }
+
+  // can't find any encoder or compressor
+  // then should reset encode type
+  // or will got origin length is -1 but still have encode type
+  PaxColumn::encoded_type_ =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED;
 }
 
 template <typename T>
@@ -94,18 +81,14 @@ void PaxEncodingColumn<T>::InitDecoder() {
 
   decoder_ = PaxDecoder::CreateDecoder<T>(decoder_options_);
   if (decoder_) {
+    // init the shared_data_ with the buffer from PaxCommColumn<T>::data_
+    // cause decoder_ need a DataBuffer<char> * as dst buffer
     shared_data_ = new DataBuffer<char>(*PaxCommColumn<T>::data_);
     decoder_->SetDataBuffer(shared_data_);
-    // still need set source data buffer in `Set`
-  } else {
-    compressor_ =
-        PaxCompressor::CreateBlockCompressor(PaxColumn::encoded_type_);
-    if (compressor_) {
-      PaxCommColumn<T>::data_->SetMemTakeOver(false);
-      shared_data_ = new DataBuffer<char>(*PaxCommColumn<T>::data_);
-      shared_data_->SetMemTakeOver(true);
-    }
+    return;
   }
+
+  compressor_ = PaxCompressor::CreateBlockCompressor(PaxColumn::encoded_type_);
 }
 
 template <typename T>
@@ -115,32 +98,28 @@ void PaxEncodingColumn<T>::Set(DataBuffer<T> *data) {
     if (data->Used() != 0) {
       Assert(shared_data_);
       decoder_->SetSrcBuffer(data->Start(), data->Used());
-      // should not setting null bitmap until vec version
       decoder_->Decoding(nullptr, 0);
+
+      // `data_` have the same buffer with `shared_data_`
+      PaxCommColumn<T>::data_->Brush(shared_data_->Used());
     }
 
     Assert(!data->IsMemTakeOver());
     delete data;
   } else if (compressor_) {
     if (data->Used() != 0) {
-      Assert(shared_data_);
-      size_t d_size = compressor_->Decompress(shared_data_->Start(),
-                                              shared_data_->Capacity(),
-                                              data->Start(), data->Used());
+      // should not init `shared_data_`, direct uncompress to `data_`
+      Assert(!shared_data_);
+      size_t d_size = compressor_->Decompress(
+          PaxCommColumn<T>::data_->Start(), PaxCommColumn<T>::data_->Capacity(),
+          data->Start(), data->Used());
       if (compressor_->IsError(d_size)) {
         // log error with `compressor_->ErrorName(d_size)`
         CBDB_RAISE(cbdb::CException::ExType::kExTypeCompressError);
       }
 
-      shared_data_->Brush(d_size);
+      PaxCommColumn<T>::data_->Brush(d_size);
     }
-
-    // FIXME(jiaqizho): DataBuffer copy should change to ptr copy
-    // Then we don't need update back `data_`
-    PaxCommColumn<T>::data_->Reset();
-    PaxCommColumn<T>::data_->Set(shared_data_->Start(),
-                                 shared_data_->Capacity(), 0);
-    PaxCommColumn<T>::data_->Brush(shared_data_->Used());
 
     Assert(!data->IsMemTakeOver());
     delete data;
@@ -150,33 +129,31 @@ void PaxEncodingColumn<T>::Set(DataBuffer<T> *data) {
 }
 
 template <typename T>
-std::pair<char *, size_t> PaxEncodingColumn<T>::GetBuffer(size_t position) {
-  CBDB_CHECK(!encoder_, cbdb::CException::ExType::kExTypeLogicError);
-
-  if (decoder_) {
-    Assert(shared_data_);
-    CBDB_CHECK(position < shared_data_->Used() / sizeof(T),
-               cbdb::CException::ExType::kExTypeOutOfRange);
-
-    return std::make_pair(shared_data_->Start() + (sizeof(T) * position),
-                          sizeof(T));
-  }
-  return PaxCommColumn<T>::GetBuffer(position);
-}
-
-template <typename T>
 std::pair<char *, size_t> PaxEncodingColumn<T>::GetBuffer() {
-  if (encoder_) {
-    encoder_->Flush();
-  }
+  if (compress_route_) {
+    // already done with decoding/compress
+    if (shared_data_) {
+      return std::make_pair(shared_data_->Start(), shared_data_->Used());
+    }
 
-  if (shared_data_) {
-    return std::make_pair(shared_data_->Start(), shared_data_->Used());
-  } else if (compressor_ && !shared_data_ && compress_route_) {
-    // all null field should not compress
+    // no data for encoding
     if (PaxCommColumn<T>::data_->Used() == 0) {
       return PaxCommColumn<T>::GetBuffer();
-    } else {
+    }
+
+    if (encoder_) {
+      // changed streaming encode to blocking encode
+      // because we still need store a origin data in `PaxCommColumn<T>`
+      auto origin_data_buffer = PaxCommColumn<T>::data_;
+
+      shared_data_ = new DataBuffer<char>(origin_data_buffer->Used());
+      encoder_->SetDataBuffer(shared_data_);
+      for (size_t i = 0; i < origin_data_buffer->GetSize(); i++) {
+        encoder_->Append((*origin_data_buffer)[i]);
+      }
+      encoder_->Flush();
+      return std::make_pair(shared_data_->Start(), shared_data_->Used());
+    } else if (compressor_) {
       size_t bound_size =
           compressor_->GetCompressBound(PaxCommColumn<T>::data_->Used());
       shared_data_ = new DataBuffer<char>(bound_size);
@@ -194,68 +171,19 @@ std::pair<char *, size_t> PaxEncodingColumn<T>::GetBuffer() {
       shared_data_->Brush(c_size);
       return std::make_pair(shared_data_->Start(), shared_data_->Used());
     }
-  } else {
-    return PaxCommColumn<T>::GetBuffer();
+
+    // no encoding here, fall through
   }
 
-  // unreach
-  Assert(false);
-}
-
-template <typename T>
-std::pair<char *, size_t> PaxEncodingColumn<T>::GetRangeBuffer(size_t start_pos,
-                                                               size_t len) {
-  CBDB_CHECK(!encoder_, cbdb::CException::ExType::kExTypeLogicError);
-
-  if (decoder_) {
-    Assert(shared_data_);
-    CBDB_CHECK((start_pos + len) <= GetNonNullRows(),
-               cbdb::CException::ExType::kExTypeOutOfRange);
-    return std::make_pair(shared_data_->Start() + (sizeof(T) * start_pos),
-                          sizeof(T) * len);
-  }
-
-  return PaxCommColumn<T>::GetRangeBuffer(start_pos, len);
-}
-
-template <typename T>
-void PaxEncodingColumn<T>::Append(char *buffer, size_t size) {
-  Assert(size == sizeof(T));
-  if (encoder_) {
-    // Should not call `PaxCommColumn::Append`,
-    // but still need call `PaxColumn::Append` to push null bitmap.
-    PaxColumn::Append(buffer, size);  // NOLINT
-
-    non_null_rows_++;
-    origin_len_ += size;
-    encoder_->Append(*reinterpret_cast<T *>(buffer));
-    if (shared_data_->Capacity() != PaxCommColumn<T>::capacity_) {
-      PaxCommColumn<T>::capacity_ = shared_data_->Capacity();
-    }
-    return;
-  }
-
-  PaxCommColumn<T>::Append(buffer, size);
+  return PaxCommColumn<T>::GetBuffer();
 }
 
 template <typename T>
 int64 PaxEncodingColumn<T>::GetOriginLength() const {
-  return compressor_ ? PaxCommColumn<T>::data_->Used() : origin_len_;
-}
-
-template <typename T>
-size_t PaxEncodingColumn<T>::GetNonNullRows() const {
-  if (decoder_) {
-    // must be decoded
-    Assert(shared_data_);
-    return shared_data_->Used() / sizeof(T);
-  }
-
-  if (encoder_) {
-    return non_null_rows_;
-  }
-
-  return PaxCommColumn<T>::GetNonNullRows();
+  return encoder_options_.column_encode_type ==
+                 ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED
+             ? NO_ENCODE_ORIGIN_LEN
+             : PaxCommColumn<T>::data_->Used();
 }
 
 template <typename T>
