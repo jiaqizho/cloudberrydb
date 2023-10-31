@@ -35,11 +35,6 @@ PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
          ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED);
   PaxColumn::encoded_type_ = decoder_options_.column_encode_type;
   compressor_ = PaxCompressor::CreateBlockCompressor(PaxColumn::encoded_type_);
-  if (compressor_) {
-    PaxNonFixedColumn::data_->SetMemTakeOver(false);
-    shared_data_ = new DataBuffer<char>(*PaxNonFixedColumn::data_);
-    shared_data_->SetMemTakeOver(true);
-  }
 }
 
 PaxNonFixedEncodingColumn::~PaxNonFixedEncodingColumn() {
@@ -51,39 +46,25 @@ void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
                                     DataBuffer<int64> *lengths,
                                     size_t total_size) {
   if (compressor_) {
-    Assert(shared_data_);
+    Assert(!compress_route_);
 
     // still need update origin logic
-    if (lengths_) {
-      delete lengths_;
-    }
-
+    delete lengths_;
     estimated_size_ = total_size;
     lengths_ = lengths;
-    offsets_.clear();
-    for (size_t i = 0; i < lengths_->GetSize(); i++) {
-      offsets_.emplace_back(i == 0 ? 0 : offsets_[i - 1] + (*lengths_)[i - 1]);
-    }
+    BuildOffsets();
 
     if (data->Used() != 0) {
-      auto d_size = compressor_->Decompress(shared_data_->Start(),
-                                            shared_data_->Capacity(),
-                                            data->Start(), data->Used());
+      auto d_size = compressor_->Decompress(
+          PaxNonFixedColumn::data_->Start(),
+          PaxNonFixedColumn::data_->Capacity(), data->Start(), data->Used());
       if (compressor_->IsError(d_size)) {
         // log error with `compressor_->ErrorName(d_size)`
         CBDB_RAISE(cbdb::CException::ExType::kExTypeCompressError);
       }
-      shared_data_->Brush(d_size);
+      PaxNonFixedColumn::data_->Brush(d_size);
     }
 
-    // FIXME(jiaqizho): DataBuffer copy should change to ptr copy
-    // Then we don't need update back `data_`
-    PaxNonFixedColumn::data_->Reset();
-    PaxNonFixedColumn::data_->Set(shared_data_->Start(),
-                                  shared_data_->Capacity(), 0);
-    PaxNonFixedColumn::data_->Brush(shared_data_->Used());
-
-    Assert(!data->IsMemTakeOver());
     delete data;
   } else {
     PaxNonFixedColumn::Set(data, lengths, total_size);
@@ -91,34 +72,37 @@ void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
 }
 
 std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetBuffer() {
-  if (shared_data_) {
-    return std::make_pair(shared_data_->Start(), shared_data_->Used());
-  } else if (compressor_ && !shared_data_ && compress_route_) {
-    if (PaxNonFixedColumn::data_->Used() == 0) {
-      return PaxNonFixedColumn::GetBuffer();
-    } else {
-      size_t bound_size =
-          compressor_->GetCompressBound(PaxNonFixedColumn::data_->Used());
-      shared_data_ = new DataBuffer<char>(bound_size);
-
-      auto c_size = compressor_->Compress(
-          shared_data_->Start(), shared_data_->Capacity(),
-          PaxNonFixedColumn::data_->Start(), PaxNonFixedColumn::data_->Used(),
-          encoder_options_.compress_level);
-
-      if (compressor_->IsError(c_size)) {
-        // log error with `compressor_->ErrorName(d_size)`
-        CBDB_RAISE(cbdb::CException::ExType::kExTypeCompressError);
-      }
-      shared_data_->Brush(c_size);
+  if (compressor_ && compress_route_) {
+    // already compressed
+    if (shared_data_) {
       return std::make_pair(shared_data_->Start(), shared_data_->Used());
     }
-  } else {
-    return PaxNonFixedColumn::GetBuffer();
+
+    // do compressed
+    if (PaxNonFixedColumn::data_->Used() == 0) {
+      return PaxNonFixedColumn::GetBuffer();
+    }
+
+    size_t bound_size =
+        compressor_->GetCompressBound(PaxNonFixedColumn::data_->Used());
+    shared_data_ = new DataBuffer<char>(bound_size);
+
+    auto c_size = compressor_->Compress(
+        shared_data_->Start(), shared_data_->Capacity(),
+        PaxNonFixedColumn::data_->Start(), PaxNonFixedColumn::data_->Used(),
+        encoder_options_.compress_level);
+
+    if (compressor_->IsError(c_size)) {
+      // log error with `compressor_->ErrorName(d_size)`
+      CBDB_RAISE(cbdb::CException::ExType::kExTypeCompressError);
+    }
+
+    shared_data_->Brush(c_size);
+    return std::make_pair(shared_data_->Start(), shared_data_->Used());
   }
 
-  // unreach
-  Assert(false);
+  // no compress or uncompressed
+  return PaxNonFixedColumn::GetBuffer();
 }
 
 int64 PaxNonFixedEncodingColumn::GetOriginLength() const {
