@@ -217,6 +217,9 @@ class PaxNonFixedColumn : public PaxColumn {
   void SetMemTakeOver(bool take_over);
 
  protected:
+  void BuildOffsets();
+
+ protected:
   size_t estimated_size_;
   DataBuffer<char> *data_;
 
