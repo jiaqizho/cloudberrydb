@@ -164,6 +164,7 @@ set(pax_access_src
     access/pax_deleter.cc
     access/pax_dml_state.cc
     access/pax_inserter.cc
+    access/pax_partition.cc
     access/pax_updater.cc
     access/pax_scanner.cc)
 
