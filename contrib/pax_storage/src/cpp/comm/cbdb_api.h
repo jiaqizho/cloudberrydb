@@ -29,6 +29,19 @@ extern "C" {
 #include "catalog/pg_amproc.h"
 #include "catalog/pg_attribute_encoding.h"
 #include "catalog/pg_namespace.h"
+#include "catalog/pg_opclass.h"
+#include "funcapi.h"
+#include "partitioning/partdesc.h"
+#include "partitioning/partbounds.h"
+#include "utils/partcache.h"
+#include "utils/ruleutils.h"
+#include "commands/tablecmds.h"
+#include "access/nbtree.h"
+#include "access/hash.h"
+#include "parser/parse_utilcmd.h"
+#include "nodes/makefuncs.h"
+#include "parser/parse_oper.h"
+#include "parser/parse_expr.h"
 #ifndef BUILD_PAX_FORMAT
 #include "access/reloptions.h"
 #include "catalog/pg_pax_tables.h"
@@ -64,6 +77,8 @@ extern BlockNumber system_nextsampleblock(SampleScanState *node,  // NOLINT
                                           BlockNumber nblocks);
 extern bool extractcolumns_from_node(Node *expr, bool *cols,  // NOLINT
                                      AttrNumber natts);
+extern int get_partition_for_tuple(PartitionKey key, PartitionDesc partdesc, // NOLINT
+                                   Datum *values, bool *isnull);
 extern Oid GetDefaultOpClass(Oid type_id, Oid am_id);
 
 #pragma GCC diagnostic pop
