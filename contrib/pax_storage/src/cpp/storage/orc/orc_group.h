@@ -6,7 +6,7 @@
 
 namespace pax {
 
-class OrcGroup final : public MicroPartitionReader::Group {
+class OrcGroup : public MicroPartitionReader::Group {
  public:
   OrcGroup(PaxColumns *pax_column, size_t row_offset);
 
@@ -28,7 +28,7 @@ class OrcGroup final : public MicroPartitionReader::Group {
   std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
                                         size_t row_index) override;
 
- private:
+ protected:
   // Used in `ReadTuple`
   // Different from the other `GetColumnValue` function, in this function, if a
   // null row is encountered, then we will perform an accumulation operation on
@@ -36,14 +36,37 @@ class OrcGroup final : public MicroPartitionReader::Group {
   // will be calculated through `null_counts`. The other `GetColumnValue`
   // function are less efficient in `foreach` because they have to calculate the
   // offset of the row data from scratch every time.
-  std::pair<Datum, bool> GetColumnValue(PaxColumn *column, size_t row_index,
-                                        uint32 *null_counts);
+  virtual std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
+                                                size_t row_index,
+                                                uint32 *null_counts);
 
- private:
+ protected:
   PaxColumns *pax_columns_;
   size_t row_offset_;
   size_t current_row_index_;
+
+ private:
   uint32 *current_nulls_ = nullptr;
+};
+
+class OrcVecGroup final : public OrcGroup {
+ public:
+  OrcVecGroup(PaxColumns *pax_column, size_t row_offset);
+
+  ~OrcVecGroup() override;
+
+  std::pair<Datum, bool> GetColumnValue(size_t column_index,
+                                        size_t row_index) override;
+
+  std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
+                                        size_t row_index) override;
+
+ private:
+  std::pair<Datum, bool> GetColumnValue(PaxColumn *column, size_t row_index,
+                                        uint32 *null_counts) override;
+
+ private:
+  std::vector<text *> buffer_holder_;
 };
 
 }  // namespace pax

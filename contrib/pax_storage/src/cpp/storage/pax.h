@@ -15,6 +15,7 @@
 #include "storage/micro_partition_metadata.h"
 #include "storage/orc/orc.h"
 #include "storage/pax_block_id.h"
+#include "storage/pax_defined.h"
 #include "storage/pax_filter.h"
 #include "storage/paxc_block_map_manager.h"
 #include "storage/strategy.h"
@@ -32,6 +33,8 @@ class TableWriter {
   explicit TableWriter(Relation relation);
 
   virtual ~TableWriter();
+
+  PaxStorageFormat GetStorageFormat();
 
   virtual const FileSplitStrategy *GetFileSplitStrategy() const;
 
@@ -63,6 +66,9 @@ class TableWriter {
 
   size_t num_tuples_ = 0;
   size_t total_tuples_ = 0;
+
+  bool already_get_format_ = false;
+  PaxStorageFormat storage_format_ = PaxStorageFormat::kTypeStorageOrcNonVec;
 };
 
 class TableReader final {
@@ -122,11 +128,10 @@ class TableReader final {
 
 class TableDeleter final {
  public:
-  TableDeleter(
-      Relation rel,
-      std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
-      std::map<std::string, std::unique_ptr<Bitmap64>> &&delete_bitmap,
-      Snapshot snapshot);
+  TableDeleter(Relation rel,
+               std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
+               std::map<std::string, std::unique_ptr<Bitmap64>> &&delete_bitmap,
+               Snapshot snapshot);
 
   ~TableDeleter();
 

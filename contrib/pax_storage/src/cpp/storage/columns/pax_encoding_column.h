@@ -32,7 +32,7 @@ class PaxEncodingColumn : public PaxCommColumn<T> {
 
   void InitDecoder();
 
-  virtual ColumnEncoding_Kind GetDefaultColumnType() = 0;
+  ColumnEncoding_Kind GetDefaultColumnType();
 
  protected:
   PaxEncoder::EncodingOption encoder_options_;

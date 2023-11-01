@@ -86,7 +86,10 @@ bool OrcGroup::GetTuple(TupleTableSlot * /*slot*/, size_t /*row_index*/) {
   return false;
 }
 
-static Datum GetColumnValueNonNull(PaxColumn *column, size_t non_null_offset) {
+// Used in `GetColumnValue`
+// After accumulating `null_counts` in `GetColumnValue`
+// Then we can direct get Datum when storage type is `orc`
+static Datum GetDatumWithNonNull(PaxColumn *column, size_t non_null_offset) {
   Assert(column);
   Datum datum = 0;
   char *buffer;
@@ -140,7 +143,7 @@ std::pair<Datum, bool> OrcGroup::GetColumnValue(PaxColumn *column,  // NOLINT
     }
   }
 
-  return {GetColumnValueNonNull(column, row_index - *null_counts), false};
+  return {GetDatumWithNonNull(column, row_index - *null_counts), false};
 }
 
 std::pair<Datum, bool> OrcGroup::GetColumnValue(size_t column_index,
@@ -167,7 +170,7 @@ std::pair<Datum, bool> OrcGroup::GetColumnValue(PaxColumn *column,
   }
 
   return {
-      GetColumnValueNonNull(column, column->GetRangeNonNullRows(0, row_index)),
+      GetDatumWithNonNull(column, column->GetRangeNonNullRows(0, row_index)),
       false};
 }
 

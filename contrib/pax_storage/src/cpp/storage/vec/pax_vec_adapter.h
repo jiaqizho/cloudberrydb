@@ -2,7 +2,6 @@
 
 #ifdef VEC_BUILD
 
-#include "storage/columns/pax_column.h"
 #include "storage/columns/pax_columns.h"
 #include "storage/micro_partition.h"
 #include "storage/pax_defined.h"
@@ -42,6 +41,7 @@ class VecAdapter final {
 
  private:
   void FullWithCTID(CTupleSlot *cslot, VecBatchBuffer *batch_buffer);
+  bool AppendVecFormat();
 
  private:
   TupleDesc rel_tuple_desc_;
