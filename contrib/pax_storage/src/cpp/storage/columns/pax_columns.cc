@@ -6,71 +6,71 @@
 #include <utility>
 #include <vector>
 
-#include "storage/columns/pax_column_int.h"
-#include "storage/columns/pax_encoding_column.h"
-#include "storage/columns/pax_encoding_non_fixed_column.h"
+#include "storage/columns/pax_column_traits.h"
 
 namespace pax {
 
+template <typename N>
+static PaxColumn *CreateCommColumn(bool is_vec,
+                                   const PaxEncoder::EncodingOption &opts) {
+  return is_vec
+             ? (PaxColumn *)traits::ColumnOptCreateTraits<
+                   PaxVecEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
+                                                             opts)
+             : (PaxColumn *)traits::ColumnOptCreateTraits<
+                   PaxEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
+                                                          opts);
+}
+
 PaxColumns::PaxColumns(const std::vector<orc::proto::Type_Kind> &types,
                        const std::vector<std::tuple<ColumnEncoding_Kind, int>>
-                           &column_encoding_types)
-    : row_nums_(0) {
+                           &column_encoding_types,
+                       const PaxStorageFormat &storage_format)
+    : row_nums_(0), storage_format_(storage_format) {
+  Assert(columns_.empty());
   Assert(types.size() == column_encoding_types.size());
   data_ = new DataBuffer<char>(0);
+  auto is_vec = storage_format_ == PaxStorageFormat::kTypeStorageOrcVec;
+
   for (size_t i = 0; i < types.size(); i++) {
     auto type = types[i];
+
+    PaxEncoder::EncodingOption encoding_option;
+    encoding_option.column_encode_type = std::get<0>(column_encoding_types[i]);
+    encoding_option.is_sign = true;
+    encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
+
     switch (type) {
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
-        PaxEncoder::EncodingOption encoding_option;
-        encoding_option.column_encode_type =
-            std::get<0>(column_encoding_types[i]);
         encoding_option.is_sign = false;
-        encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
-
-        auto pax_non_fixed_column = new PaxNonFixedEncodingColumn(  //
-            DEFAULT_CAPACITY, std::move(encoding_option));
-        // current memory will copy from tuple, so should take over it
-        pax_non_fixed_column->SetMemTakeOver(true);
-        columns_.emplace_back(pax_non_fixed_column);
+        columns_.emplace_back(
+            is_vec ? (PaxColumn *)traits::ColumnOptCreateTraits2<
+                         PaxVecNonFixedEncodingColumn>::
+                         create_encoding(DEFAULT_CAPACITY,
+                                         std::move(encoding_option))
+                   : (PaxColumn *)traits::ColumnOptCreateTraits2<
+                         PaxNonFixedEncodingColumn>::
+                         create_encoding(DEFAULT_CAPACITY,
+                                         std::move(encoding_option)));
         break;
       }
       case (orc::proto::Type_Kind::Type_Kind_BOOLEAN):
-      case (orc::proto::Type_Kind::Type_Kind_BYTE): {  // len 1 integer
-        columns_.emplace_back(new PaxCommColumn<char>());
-        break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_SHORT): {  // len 2 integer
-        PaxEncoder::EncodingOption encoding_option;
-        encoding_option.column_encode_type =
-            std::get<0>(column_encoding_types[i]);
-        encoding_option.is_sign = true;
-        encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
+      case (orc::proto::Type_Kind::Type_Kind_BYTE):  // len 1 integer
         columns_.emplace_back(
-            new PaxIntColumn<int16>(std::move(encoding_option)));
+            CreateCommColumn<int8>(is_vec, std::move(encoding_option)));
         break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_INT): {  // len 4 integer
-        PaxEncoder::EncodingOption encoding_option;
-        encoding_option.column_encode_type =
-            std::get<0>(column_encoding_types[i]);
-        encoding_option.is_sign = true;
-        encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
+      case (orc::proto::Type_Kind::Type_Kind_SHORT):  // len 2 integer
         columns_.emplace_back(
-            new PaxIntColumn<int32>(std::move(encoding_option)));
+            CreateCommColumn<int16>(is_vec, std::move(encoding_option)));
         break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_LONG): {  // len 8 integer
-        PaxEncoder::EncodingOption encoding_option;
-        encoding_option.column_encode_type =
-            std::get<0>(column_encoding_types[i]);
-        encoding_option.is_sign = true;
-        encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
+      case (orc::proto::Type_Kind::Type_Kind_INT):  // len 4 integer
         columns_.emplace_back(
-            new PaxIntColumn<int64>(std::move(encoding_option)));
-
+            CreateCommColumn<int32>(is_vec, std::move(encoding_option)));
         break;
-      }
+      case (orc::proto::Type_Kind::Type_Kind_LONG):  // len 8 integer
+        columns_.emplace_back(
+            CreateCommColumn<int64>(is_vec, std::move(encoding_option)));
+        break;
       default:
         // TODO(jiaqizho): support other column type
         // but now should't be here
@@ -80,7 +80,10 @@ PaxColumns::PaxColumns(const std::vector<orc::proto::Type_Kind> &types,
   }
 }
 
-PaxColumns::PaxColumns() : row_nums_(0) { data_ = new DataBuffer<char>(0); }
+PaxColumns::PaxColumns()
+    : row_nums_(0), storage_format_(PaxStorageFormat::kTypeStorageOrcNonVec) {
+  data_ = new DataBuffer<char>(0);
+}
 
 PaxColumns::~PaxColumns() {
   // Notice that: the resources freed here,
@@ -92,6 +95,14 @@ PaxColumns::~PaxColumns() {
     delete holder;
   }
   delete data_;
+}
+
+void PaxColumns::SetStorageFormat(PaxStorageFormat format) {
+  storage_format_ = format;
+}
+
+PaxStorageFormat PaxColumns::GetStorageFormat() const {
+  return storage_format_;
 }
 
 void PaxColumns::Merge(PaxColumns *columns) {
@@ -177,6 +188,15 @@ std::pair<char *, size_t> PaxColumns::GetRangeBuffer(size_t /*start_pos*/,
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
+size_t PaxColumns::AlignSize(size_t buf_len, size_t len, size_t align_size) {
+  if ((buf_len + len) % align_size != 0) {
+    auto align_buf_len = TYPEALIGN(align_size, (buf_len + len));
+    Assert(align_buf_len - buf_len > len);
+    len = align_buf_len - buf_len;
+  }
+  return len;
+}
+
 DataBuffer<char> *PaxColumns::GetDataBuffer(
     const ColumnStreamsFunc &column_streams_func,
     const ColumnEncodingFunc &column_encoding_func) {
@@ -188,14 +208,110 @@ DataBuffer<char> *PaxColumns::GetDataBuffer(
     data_->Clear();
   }
 
-  buffer_len = MeasureDataBuffer(column_streams_func, column_encoding_func);
-  data_->Set(reinterpret_cast<char *>(cbdb::Palloc(buffer_len)), buffer_len, 0);
-  CombineDataBuffer();
+#ifdef ENABLE_DEBUG
+  auto storage_format = GetStorageFormat();
+  for (auto column : columns_) {
+    AssertImply(column, column->GetStorageFormat() == storage_format);
+  }
+#endif
+
+  if (COLUMN_STORAGE_FORMAT_IS_VEC(this)) {
+    buffer_len =
+        MeasureVecDataBuffer(column_streams_func, column_encoding_func);
+    data_->Set(reinterpret_cast<char *>(cbdb::Palloc(buffer_len)), buffer_len,
+               0);
+    CombineVecDataBuffer();
+  } else {
+    buffer_len =
+        MeasureOrcDataBuffer(column_streams_func, column_encoding_func);
+    data_->Set(reinterpret_cast<char *>(cbdb::Palloc(buffer_len)), buffer_len,
+               0);
+    CombineOrcDataBuffer();
+  }
+
   Assert(data_->Used() == buffer_len);
+  Assert(data_->Available() == 0);
   return data_;
 }
 
-size_t PaxColumns::MeasureDataBuffer(
+size_t PaxColumns::MeasureVecDataBuffer(
+    const ColumnStreamsFunc &column_streams_func,
+    const ColumnEncodingFunc &column_encoding_func) {
+  size_t buffer_len = 0;
+  for (auto column : columns_) {
+    if (!column) {
+      continue;
+    }
+
+    size_t total_rows = column->GetRows();
+    size_t non_null_rows = column->GetNonNullRows();
+
+    // has null will generate a bitmap in current stripe
+    if (column->HasNull()) {
+      auto bm = column->GetBitmap();
+      Assert(bm);
+      size_t bm_length = bm->MinimalStoredBytes(total_rows);
+
+      bm_length = TYPEALIGN(MEMORY_ALIGN_SIZE, bm_length);
+      buffer_len += bm_length;
+      column_streams_func(orc::proto::Stream_Kind_PRESENT, total_rows,
+                          bm_length);
+    }
+
+    switch (column->GetPaxColumnTypeInMem()) {
+      case kTypeNonFixed: {
+        size_t offsets_size =
+            TYPEALIGN(MEMORY_ALIGN_SIZE, (total_rows + 1) * sizeof(int32));
+        buffer_len += offsets_size;
+        column_streams_func(orc::proto::Stream_Kind_LENGTH, total_rows,
+                            offsets_size);
+
+        auto data_length = column->GetBuffer().second;
+        if (column->GetEncodingType() ==
+            ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+          data_length = TYPEALIGN(MEMORY_ALIGN_SIZE, data_length);
+        }
+
+        buffer_len += data_length;
+        column_streams_func(orc::proto::Stream_Kind_DATA, non_null_rows,
+                            data_length);
+
+        break;
+      }
+      case kTypeFixed: {
+        auto data_length = column->GetBuffer().second;
+        if (column->GetEncodingType() ==
+            ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+          data_length = TYPEALIGN(MEMORY_ALIGN_SIZE, data_length);
+        }
+
+        buffer_len += data_length;
+        column_streams_func(orc::proto::Stream_Kind_DATA, non_null_rows,
+                            data_length);
+        break;
+      }
+      case kTypeInvalid:
+      default: {
+        CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+        break;
+      }
+    }
+
+    AssertImply(column->GetEncodingType() !=
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
+                column->GetOriginLength() >= 0);
+
+    column_encoding_func(
+        column->GetEncodingType(),
+        (column->GetEncodingType() !=
+         ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED)
+            ? TYPEALIGN(MEMORY_ALIGN_SIZE, column->GetOriginLength())
+            : column->GetOriginLength());
+  }
+  return buffer_len;
+}
+
+size_t PaxColumns::MeasureOrcDataBuffer(
     const ColumnStreamsFunc &column_streams_func,
     const ColumnEncodingFunc &column_encoding_func) {
   size_t buffer_len = 0;
@@ -260,7 +376,87 @@ size_t PaxColumns::MeasureDataBuffer(
   return buffer_len;
 }
 
-void PaxColumns::CombineDataBuffer() {
+void PaxColumns::CombineVecDataBuffer() {
+  char *buffer = nullptr;
+  size_t buffer_len = 0;
+
+  auto fill_padding_buffer = [](PaxColumn *column,
+                                DataBuffer<char> *data_buffer,
+                                size_t buffer_len, size_t align) {
+    Assert(data_buffer);
+
+    if (column && (column->GetEncodingType() !=
+                   ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED)) {
+      return;
+    }
+
+    auto gap_size = TYPEALIGN(align, buffer_len) - buffer_len;
+    if (!gap_size) {
+      return;
+    }
+
+    data_buffer->WriteZero(gap_size);
+    data_buffer->Brush(gap_size);
+  };
+
+  for (auto column : columns_) {
+    if (!column) {
+      continue;
+    }
+
+    if (column->HasNull()) {
+      auto bm = column->GetBitmap();
+      auto nbytes = bm->MinimalStoredBytes(column->GetRows());
+      Assert(nbytes <= bm->Raw().size);
+
+      Assert(data_->Available() >= nbytes);
+      data_->Write(reinterpret_cast<char *>(bm->Raw().bitmap), nbytes);
+      data_->Brush(nbytes);
+
+      fill_padding_buffer(nullptr, data_, nbytes, MEMORY_ALIGN_SIZE);
+    }
+
+    switch (column->GetPaxColumnTypeInMem()) {
+      case kTypeNonFixed: {
+        auto no_fixed_column = reinterpret_cast<PaxVecNonFixedColumn *>(column);
+        auto offset_data_buffer = no_fixed_column->GetOffsetBuffer(true);
+
+        Assert(data_->Available() >= offset_data_buffer->Used());
+        data_->Write((char *)offset_data_buffer->GetBuffer(),
+                     offset_data_buffer->Used());
+        data_->Brush(offset_data_buffer->Used());
+
+        fill_padding_buffer(nullptr, data_, offset_data_buffer->Used(),
+                            MEMORY_ALIGN_SIZE);
+
+        std::tie(buffer, buffer_len) = column->GetBuffer();
+        Assert(data_->Available() >= buffer_len);
+        data_->Write(buffer, buffer_len);
+        data_->Brush(buffer_len);
+
+        fill_padding_buffer(no_fixed_column, data_, buffer_len,
+                            MEMORY_ALIGN_SIZE);
+
+        break;
+      }
+      case kTypeFixed: {
+        std::tie(buffer, buffer_len) = column->GetBuffer();
+
+        Assert(data_->Available() >= buffer_len);
+        data_->Write(buffer, buffer_len);
+        data_->Brush(buffer_len);
+
+        fill_padding_buffer(column, data_, buffer_len, MEMORY_ALIGN_SIZE);
+        break;
+      }
+      case kTypeInvalid:
+      default:
+        break;
+    }
+  }
+}
+
+void PaxColumns::CombineOrcDataBuffer() {
   char *buffer = nullptr;
   size_t buffer_len = 0;
 
@@ -322,7 +518,8 @@ void PaxColumns::CombineDataBuffer() {
   }
 }
 
-std::pair<Datum, bool> GetColumnValue(PaxColumns *columns, size_t column_index, size_t row_index) {
+std::pair<Datum, bool> GetColumnValue(PaxColumns *columns, size_t column_index,
+                                      size_t row_index) {
   Assert(column_index < columns->GetColumns());
   Assert(row_index < columns->GetRows());
 
@@ -339,7 +536,7 @@ std::pair<Datum, bool> GetColumnValue(PaxColumns *columns, size_t column_index, 
   auto nonnulls = column->GetRangeNonNullRows(0, row_index);
   column->GetBuffer();
   std::tie(buffer, buffer_len) = column->GetBuffer(nonnulls);
-  switch(column->GetPaxColumnTypeInMem()) {
+  switch (column->GetPaxColumnTypeInMem()) {
     case kTypeNonFixed:
       datum = PointerGetDatum(buffer);
       break;
@@ -347,17 +544,17 @@ std::pair<Datum, bool> GetColumnValue(PaxColumns *columns, size_t column_index, 
       Assert(buffer_len > 0);
       switch (buffer_len) {
         case 1:
-         datum = cbdb::Int8ToDatum(*reinterpret_cast<int8 *>(buffer));
-         break;
+          datum = cbdb::Int8ToDatum(*reinterpret_cast<int8 *>(buffer));
+          break;
         case 2:
-         datum = cbdb::Int16ToDatum(*reinterpret_cast<int16 *>(buffer));
-         break;
+          datum = cbdb::Int16ToDatum(*reinterpret_cast<int16 *>(buffer));
+          break;
         case 4:
-         datum = cbdb::Int32ToDatum(*reinterpret_cast<int32 *>(buffer));
-         break;
+          datum = cbdb::Int32ToDatum(*reinterpret_cast<int32 *>(buffer));
+          break;
         case 8:
-         datum = cbdb::Int64ToDatum(*reinterpret_cast<int64 *>(buffer));
-         break;
+          datum = cbdb::Int64ToDatum(*reinterpret_cast<int64 *>(buffer));
+          break;
         default:
           Assert(!"should't be here, fixed type len should be 1, 2, 4, 8");
       }

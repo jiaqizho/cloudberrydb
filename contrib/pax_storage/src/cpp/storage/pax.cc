@@ -36,7 +36,20 @@ static std::string GenRandomBlockId() {
 }
 
 TableWriter::TableWriter(Relation relation)
-    : relation_(relation), summary_callback_(nullptr) {}
+    : relation_(relation), summary_callback_(nullptr) {
+  Assert(relation);
+}
+
+PaxStorageFormat TableWriter::GetStorageFormat() {
+  if (!already_get_format_) {
+    Assert(relation_);
+    storage_format_ = StorageFormatKeyToPaxStorageFormat(RelationGetOptions(
+        relation_, storage_format, STORAGE_FORMAT_TYPE_DEFAULT));
+    already_get_format_ = true;
+  }
+
+  return storage_format_;
+}
 
 TableWriter *TableWriter::SetWriteSummaryCallback(
     WriteSummaryCallback callback) {
@@ -124,6 +137,7 @@ void TableWriter::Open() {
   options.block_id = std::move(block_id);
   options.file_name = std::move(file_path);
   options.encoding_opts = std::move(GetRelEncodingOptions());
+  options.storage_format = GetStorageFormat();
 
   File *file =
       Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name);

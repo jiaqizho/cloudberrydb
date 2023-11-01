@@ -14,7 +14,8 @@ class PaxColumns : public PaxColumn {
  public:
   explicit PaxColumns(const std::vector<orc::proto::Type_Kind> &types,
                       const std::vector<std::tuple<ColumnEncoding_Kind, int>>
-                          &column_encoding_types);
+                          &column_encoding_types,
+                      const PaxStorageFormat &storage_format);
 
   PaxColumns();
 
@@ -32,11 +33,15 @@ class PaxColumns : public PaxColumn {
 
   void Set(DataBuffer<char> *data);
 
+  void SetStorageFormat(PaxStorageFormat format);
+
   size_t PhysicalSize() const override;
 
   int64 GetOriginLength() const override;
 
   int32 GetTypeLength() const override;
+
+  PaxStorageFormat GetStorageFormat() const override;
 
   // Get number of column in columns
   virtual size_t GetColumns() const;
@@ -66,22 +71,30 @@ class PaxColumns : public PaxColumn {
       const ColumnEncodingFunc &column_encoding_func);
 
   inline void AddRows(size_t row_num) { row_nums_ += row_num; }
-  inline size_t GetRows() override { return row_nums_; }
+  inline size_t GetRows() const override { return row_nums_; }
 
  protected:
-  virtual size_t MeasureDataBuffer(
-      const ColumnStreamsFunc &column_streams_func,
-      const ColumnEncodingFunc &column_encoding_func);
+  static size_t AlignSize(size_t buf_len, size_t len, size_t align_size);
 
-  virtual void CombineDataBuffer();
+  size_t MeasureOrcDataBuffer(const ColumnStreamsFunc &column_streams_func,
+                              const ColumnEncodingFunc &column_encoding_func);
+
+  size_t MeasureVecDataBuffer(const ColumnStreamsFunc &column_streams_func,
+                              const ColumnEncodingFunc &column_encoding_func);
+
+  void CombineOrcDataBuffer();
+  void CombineVecDataBuffer();
 
  protected:
   std::vector<PaxColumn *> columns_;
   std::vector<DataBuffer<char> *> data_holder_;
   DataBuffer<char> *data_;
   size_t row_nums_;
+
+  PaxStorageFormat storage_format_;
 };
 
-std::pair<Datum, bool> GetColumnValue(PaxColumns *columns, size_t column_index, size_t row_index);
+std::pair<Datum, bool> GetColumnValue(PaxColumns *columns, size_t column_index,
+                                      size_t row_index);
 
 }  //  namespace pax

@@ -2,6 +2,34 @@
 
 namespace paxc {
 
+typedef struct {
+  const char *optname; /* option's name */
+  const pax::ColumnEncoding_Kind kind;
+} relopt_compress_type_mapping;
+
+static const relopt_compress_type_mapping kSelfRelCompressMap[] = {
+    {ColumnEncoding_Kind_NO_ENCODED_STR,
+     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED},
+    {ColumnEncoding_Kind_RLE_V2_STR,
+     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2},
+    {ColumnEncoding_Kind_DIRECT_DELTA_STR,
+     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA},
+    {ColumnEncoding_Kind_COMPRESS_ZSTD_STR,
+     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZSTD},
+    {ColumnEncoding_Kind_COMPRESS_ZLIB_STR,
+     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZLIB},
+};
+
+typedef struct {
+  const char *optname; /* option's name */
+  const pax::PaxStorageFormat format;
+} relopt_format_type_mapping;
+
+static const relopt_format_type_mapping kSelfRelFormatMap[] = {
+    {STORAGE_FORMAT_TYPE_ORC, pax::PaxStorageFormat::kTypeStorageOrcNonVec},
+    {STORAGE_FORMAT_TYPE_ORC_VEC, pax::PaxStorageFormat::kTypeStorageOrcVec},
+};
+
 // reloptions structure and variables.
 static relopt_kind self_relopt_kind;
 
@@ -36,13 +64,9 @@ static const relopt_parse_elt kSelfReloptTab[] = {
 
 static void paxc_validate_rel_options_storage_format(const char *value) {
   size_t i;
-  static const char *storage_formats[] = {
-      "orc",
-      // expand this list if support new formats
-  };
 
-  for (i = 0; i < lengthof(storage_formats); i++) {
-    if (strcmp(value, storage_formats[i]) == 0) return;
+  for (i = 0; i < lengthof(kSelfRelFormatMap); i++) {
+    if (strcmp(value, kSelfRelFormatMap[i].optname) == 0) return;
   }
   ereport(ERROR, (errmsg("unsupported storage format: '%s'", value)));
 }
@@ -219,3 +243,32 @@ void paxc_reg_rel_options() {
 }
 
 }  // namespace paxc
+
+namespace pax {
+
+ColumnEncoding_Kind CompressKeyToColumnEncodingKind(const char *encoding_str) {
+  Assert(encoding_str);
+
+  for (size_t i = 0; i < lengthof(paxc::kSelfRelCompressMap); i++) {
+    if (strcmp(paxc::kSelfRelCompressMap[i].optname, encoding_str) == 0) {
+      return paxc::kSelfRelCompressMap[i].kind;
+    }
+  }
+
+  CBDB_RAISE(cbdb::CException::kExTypeLogicError);
+}
+
+PaxStorageFormat StorageFormatKeyToPaxStorageFormat(
+    const char *storage_format_str) {
+  Assert(storage_format_str);
+
+  for (size_t i = 0; i < lengthof(paxc::kSelfRelFormatMap); i++) {
+    if (strcmp(paxc::kSelfRelFormatMap[i].optname, storage_format_str) == 0) {
+      return paxc::kSelfRelFormatMap[i].format;
+    }
+  }
+
+  CBDB_RAISE(cbdb::CException::kExTypeLogicError);
+}
+
+}  // namespace pax

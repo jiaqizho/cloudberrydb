@@ -120,7 +120,6 @@ set(pax_storage_src
     storage/cache/pax_plasma_cache.cc
     storage/columns/pax_column_cache.cc
     storage/columns/pax_column.cc
-    storage/columns/pax_column_int.cc
     storage/columns/pax_compress.cc
     storage/columns/pax_columns.cc
     storage/columns/pax_encoding_utils.cc
@@ -130,6 +129,8 @@ set(pax_storage_src
     storage/columns/pax_encoding.cc
     storage/columns/pax_rlev2_decoding.cc
     storage/columns/pax_rlev2_encoding.cc
+    storage/columns/pax_vec_column.cc
+    storage/columns/pax_vec_encoding_column.cc
     storage/file_system.cc
     storage/pax_filter.cc
     storage/local_file_system.cc
@@ -146,6 +147,7 @@ set(pax_storage_src
     storage/orc/orc_writer.cc
     storage/orc/orc_format_reader.cc
     storage/orc/orc_group.cc
+    storage/orc/orc_vec_group.cc
     storage/orc/orc_reader.cc
     storage/strategy.cc)
 

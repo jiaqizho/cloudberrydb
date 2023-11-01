@@ -13,7 +13,9 @@ PaxEncodingColumn<T>::PaxEncodingColumn(
       decoder_(nullptr),
       shared_data_(nullptr),
       compressor_(nullptr),
-      compress_route_(true) {}
+      compress_route_(true) {
+  InitEncoder();
+}
 
 template <typename T>
 PaxEncodingColumn<T>::PaxEncodingColumn(
@@ -24,7 +26,9 @@ PaxEncodingColumn<T>::PaxEncodingColumn(
       decoder_(nullptr),
       shared_data_(nullptr),
       compressor_(nullptr),
-      compress_route_(false) {}
+      compress_route_(false) {
+  InitDecoder();
+}
 
 template <typename T>
 PaxEncodingColumn<T>::~PaxEncodingColumn() {
@@ -203,6 +207,15 @@ size_t PaxEncodingColumn<T>::GetAlignSize() const {
   }
 
   return PAX_DATA_NO_ALIGN;
+}
+
+template <typename T>
+ColumnEncoding_Kind PaxEncodingColumn<T>::GetDefaultColumnType() {
+  return ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
+  // TODO(jiaqizho): after support DELTA encoding
+  // return sizeof(T) >= 4 ? ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2
+  //                       :
+  //                       ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA;
 }
 
 template class PaxEncodingColumn<int8>;
