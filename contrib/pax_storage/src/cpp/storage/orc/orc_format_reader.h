@@ -42,6 +42,7 @@ class OrcFormatReader final {
   File *file_;
   DataBuffer<char> *reused_buffer_;
   size_t num_of_stripes_;
+  bool is_vec_;
 
   orc::proto::PostScript post_script_;
   orc::proto::Footer file_footer_;

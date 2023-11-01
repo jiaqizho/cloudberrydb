@@ -351,6 +351,7 @@ message Footer {
   optional string softwareVersion = 12;
 
   repeated pax.stats.ColumnBasicInfo colInfo = 13;
+  required bool isVec = 14;
 }
 
 enum CompressionKind {
