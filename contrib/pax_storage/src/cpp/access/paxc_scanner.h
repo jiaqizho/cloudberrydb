@@ -1,4 +1,5 @@
 #pragma once
+#include "comm/cbdb_api.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -3,6 +3,7 @@
 #include "comm/cbdb_api.h"
 
 #include "access/pax_dml_state.h"
+#include "access/pax_partition.h"
 #include "access/pax_scanner.h"
 #include "access/pax_updater.h"
 #include "access/paxc_rel_options.h"
@@ -823,6 +824,7 @@ void PaxShmemInit() {
 
 static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id, Oid object_id, int sub_id, void * arg) {
   Relation rel;
+  PartitionKey pkey;
   List *part;
   List *pby;
   paxc::PaxOptions *options;
@@ -849,29 +851,19 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id, Oid objec
     }
     goto out;
   }
-  elog(LOG, "partition_by:'%s'", options->partition_by());
-  elog(LOG, "partition_ranges:'%s'", options->partition_ranges());
 
   pby = paxc_raw_parse(options->partition_by());
+  pkey = paxc::PaxRelationBuildPartitionKey(rel, pby);
+  if (pkey->partnatts > 1)
+    elog(ERROR, "pax only support 1 partition key now");
+
   part = lappend(NIL, pby);
   if (options->partition_ranges()) {
     List *ranges;
-    ListCell *lc;
-    int nparts;
 
     ranges = paxc_parse_partition_ranges(options->partition_ranges());
+    ranges = paxc::PaxValidatePartitionRanges(rel, pkey, ranges);
     part = lappend(part, ranges);
-
-    nparts = list_length(pby);
-    if (nparts > 1)
-      elog(ERROR, "pax only support 1 partition key now");
-    foreach(lc, ranges) {
-      auto spec = static_cast<PartitionBoundSpec *>(lfirst(lc));
-      Assert(IsA(spec, PartitionBoundSpec));
-      if (list_length(spec->lowerdatums) != nparts ||
-          list_length(spec->upperdatums) != nparts)
-        elog(ERROR, "length of range values must match the number of partition keys");
-    }
   }
   // Currently, partition_ranges must be set to partition pax tables.
   // We hope this option be removed and automatically partition data set.
