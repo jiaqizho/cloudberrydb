@@ -18,6 +18,12 @@
 #ifndef GPDXL_CDXLTranslateContext_H
 #define GPDXL_CDXLTranslateContext_H
 
+extern "C" {
+#include "postgres.h"
+
+#include "nodes/plannodes.h"
+}
+
 #include "gpos/base.h"
 #include "gpos/common/CHashMap.h"
 #include "gpos/common/CHashMapIter.h"
@@ -80,6 +86,8 @@ private:
 	// to use OUTER instead of 0 for Var::varno in Agg target lists (MPP-12034)
 	BOOL m_is_child_agg_node;
 
+	const Query *m_query{nullptr};
+
 	// copy the params hashmap
 	void CopyParamHashmap(ULongToColParamMap *original);
 	void CopyTargetEntryHashmap(ULongToTargetEntryMap *original);
@@ -88,7 +96,8 @@ public:
 	CDXLTranslateContext(const CDXLTranslateContext &) = delete;
 
 	// ctor/dtor
-	CDXLTranslateContext(CMemoryPool *mp, BOOL is_child_agg_node);
+	CDXLTranslateContext(CMemoryPool *mp, BOOL is_child_agg_node,
+						 const Query *query);
 
 	CDXLTranslateContext(CMemoryPool *mp, BOOL is_child_agg_node,
 						 ULongToColParamMap *original);
@@ -109,6 +118,12 @@ public:
 	GetColIdToTargetEntryMap() const
 	{
 		return m_colid_to_target_entry_map;
+	}
+
+	const Query *
+	GetQuery()
+	{
+		return m_query;
 	}
 
 	// return the target entry corresponding to the given ColId
