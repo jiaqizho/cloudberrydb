@@ -113,7 +113,10 @@ MicroPartitionReader::Group *OrcReader::ReadGroup(size_t group_index) {
 #endif  // ENABLE_DEBUG
 
   current_row_offset_ += format_reader_.GetStripeNumberOfRows(group_index);
-  return new OrcGroup(pax_columns, current_row_offset_);
+  if (COLUMN_STORAGE_FORMAT_IS_VEC(pax_columns))
+    return new OrcVecGroup(pax_columns, current_row_offset_);
+  else
+    return new OrcGroup(pax_columns, current_row_offset_);
 }
 
 size_t OrcReader::GetGroupNums() { return format_reader_.GetStripeNums(); }

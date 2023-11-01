@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "comm/pax_defer.h"
+#include "storage/columns/pax_column_traits.h"
 #include "storage/pax_defined.h"
 
 namespace pax {
@@ -14,8 +15,8 @@ namespace pax {
 PaxColumn::PaxColumn()
     : null_bitmap_(nullptr),
       total_rows_(0),
+      non_null_rows_(0),
       encoded_type_(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
-      storage_type_(PaxColumnStorageType::kTypeStorageNonVec),
       type_align_size_(PAX_DATA_NO_ALIGN) {}
 
 PaxColumn::~PaxColumn() {
@@ -39,7 +40,9 @@ void PaxColumn::SetBitmap(Bitmap8 *null_bitmap) {
   null_bitmap_ = null_bitmap;
 }
 
-size_t PaxColumn::GetRows() { return total_rows_; }
+size_t PaxColumn::GetRows() const { return total_rows_; }
+
+size_t PaxColumn::GetNonNullRows() const { return non_null_rows_; }
 
 void PaxColumn::SetRows(size_t total_rows) { total_rows_ = total_rows; }
 
@@ -66,6 +69,7 @@ void PaxColumn::Append([[maybe_unused]] char *buffer,
                        [[maybe_unused]] size_t size) {
   if (null_bitmap_) null_bitmap_->Set(total_rows_);
   ++total_rows_;
+  ++non_null_rows_;
 }
 
 size_t PaxColumn::GetAlignSize() const { return type_align_size_; }
@@ -77,11 +81,6 @@ void PaxColumn::SetAlignSize(size_t align_size) {
 
 PaxColumn *PaxColumn::SetColumnEncodeType(ColumnEncoding_Kind encoding_type) {
   encoded_type_ = encoding_type;
-  return this;
-}
-
-PaxColumn *PaxColumn::SetColumnStorageType(PaxColumnStorageType storage_type) {
-  storage_type_ = storage_type;
   return this;
 }
 
@@ -128,6 +127,11 @@ void PaxCommColumn<T>::Append(char *buffer, size_t size) {
 template <typename T>
 PaxColumnTypeInMem PaxCommColumn<T>::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeFixed;
+}
+
+template <typename T>
+PaxStorageFormat PaxCommColumn<T>::GetStorageFormat() const {
+  return PaxStorageFormat::kTypeStorageOrcNonVec;
 }
 
 template <typename T>
@@ -218,14 +222,14 @@ void PaxNonFixedColumn::BuildOffsets() {
 }
 
 void PaxNonFixedColumn::Append(char *buffer, size_t size) {
-  Assert(likely(reinterpret_cast<char *> MAXALIGN(data_->Position()) ==
-                data_->Position()));
-
   size_t origin_size;
   origin_size = size;
 
-  // FIMXE(gongxun): maybe it should be aligned base on the typalign?
-  size = MAXALIGN(size);
+  if (!COLUMN_STORAGE_FORMAT_IS_VEC(this)) {
+    Assert(likely(reinterpret_cast<char *> MAXALIGN(data_->Position()) ==
+                  data_->Position()));
+    size = MAXALIGN(size);
+  }
 
   PaxColumn::Append(buffer, origin_size);
   while (data_->Available() < size) {
@@ -256,6 +260,10 @@ DataBuffer<int64> *PaxNonFixedColumn::GetLengthBuffer() const {
 
 PaxColumnTypeInMem PaxNonFixedColumn::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeNonFixed;
+}
+
+PaxStorageFormat PaxNonFixedColumn::GetStorageFormat() const {
+  return PaxStorageFormat::kTypeStorageOrcNonVec;
 }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer() {
@@ -297,16 +305,6 @@ std::pair<char *, size_t> PaxNonFixedColumn::GetRangeBuffer(size_t start_pos,
 
   Assert(start_pos < offsets_.size());
   return std::make_pair(data_->GetBuffer() + offsets_[start_pos], range_len);
-}
-
-bool PaxNonFixedColumn::IsMemTakeOver() const {
-  Assert(data_->IsMemTakeOver() == lengths_->IsMemTakeOver());
-  return data_->IsMemTakeOver();
-}
-
-void PaxNonFixedColumn::SetMemTakeOver(bool take_over) {
-  data_->SetMemTakeOver(take_over);
-  lengths_->SetMemTakeOver(take_over);
 }
 
 };  // namespace pax

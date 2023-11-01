@@ -3,6 +3,7 @@
 #include "comm/cbdb_api.h"
 
 #include "exceptions/CException.h"
+#include "storage/pax_defined.h"
 #include "storage/proto/proto_wrappers.h"  // for ColumnEncoding_Kind
 
 namespace paxc {
@@ -13,23 +14,9 @@ namespace paxc {
 #define ColumnEncoding_Kind_COMPRESS_ZSTD_STR "zstd"
 #define ColumnEncoding_Kind_COMPRESS_ZLIB_STR "zlib"
 
-typedef struct {
-  const char *optname; /* option's name */
-  const pax::ColumnEncoding_Kind kind;
-} relopt_compress_type_mapping;
-
-static const relopt_compress_type_mapping kSelfRelCompressMap[] = {
-    {ColumnEncoding_Kind_NO_ENCODED_STR,
-     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED},
-    {ColumnEncoding_Kind_RLE_V2_STR,
-     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2},
-    {ColumnEncoding_Kind_DIRECT_DELTA_STR,
-     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA},
-    {ColumnEncoding_Kind_COMPRESS_ZSTD_STR,
-     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZSTD},
-    {ColumnEncoding_Kind_COMPRESS_ZLIB_STR,
-     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZLIB},
-};
+#define STORAGE_FORMAT_TYPE_ORC "orc"
+#define STORAGE_FORMAT_TYPE_ORC_VEC "orc_vec"
+#define STORAGE_FORMAT_TYPE_DEFAULT STORAGE_FORMAT_TYPE_ORC
 
 #define PAX_DEFAULT_COMPRESSLEVEL AO_DEFAULT_COMPRESSLEVEL
 #define PAX_MIN_COMPRESSLEVEL AO_MIN_COMPRESSLEVEL
@@ -58,6 +45,11 @@ struct PaxOptions {
     return partition_ranges_offset == 0 ? NULL : reinterpret_cast<char *>(this) + partition_ranges_offset;
   }
 };
+
+#define RelationGetOptions(relation, field_name, default_opt)     \
+  ((relation)->rd_options                                         \
+       ? ((paxc::PaxOptions *)(relation)->rd_options)->field_name \
+       : (default_opt))
 
 /*
  * used to register pax rel options
@@ -102,17 +94,10 @@ List *paxc_transform_column_encoding_clauses(List *encoding_opts, bool validate,
 namespace pax {
 
 // use to transform compress type str to encoding kind
-static inline ColumnEncoding_Kind CompressKeyToColumnEncodingKind(
-    const char *encoding_str) {
-  Assert(encoding_str);
+extern ColumnEncoding_Kind CompressKeyToColumnEncodingKind(
+    const char *encoding_str);
 
-  for (size_t i = 0; i < lengthof(paxc::kSelfRelCompressMap); i++) {
-    if (encoding_str &&
-        strcmp(paxc::kSelfRelCompressMap[i].optname, encoding_str) == 0) {
-      return paxc::kSelfRelCompressMap[i].kind;
-    }
-  }
+extern PaxStorageFormat StorageFormatKeyToPaxStorageFormat(
+    const char *storage_format_str);
 
-  CBDB_RAISE(cbdb::CException::kExTypeLogicError);
-}
 }  // namespace pax

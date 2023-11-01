@@ -2,8 +2,7 @@
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_defer.h"
-#include "storage/columns/pax_column_int.h"
-#include "storage/columns/pax_encoding_non_fixed_column.h"
+#include "storage/columns/pax_column_traits.h"
 #include "storage/orc/orc_defined.h"
 
 namespace pax {
@@ -22,7 +21,10 @@ struct StripeInformation {
 };
 
 OrcFormatReader::OrcFormatReader(File *file)
-    : file_(file), reused_buffer_(nullptr), num_of_stripes_(0) {}
+    : file_(file),
+      reused_buffer_(nullptr),
+      num_of_stripes_(0),
+      is_vec_(false) {}
 
 OrcFormatReader::~OrcFormatReader() { delete file_; }
 
@@ -114,6 +116,8 @@ void OrcFormatReader::Open() {
 
 finish_read:
   num_of_stripes_ = file_footer_.stripes_size();
+  is_vec_ = file_footer_.isvec();
+
   if (post_script_.metadatalength() != 0) {
     uint64 meta_len = post_script_.metadatalength();
     uint64 footer_len = post_script_.footerlength();
@@ -305,40 +309,171 @@ orc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
 }
 
 template <typename T>
-static PaxColumn *GetIntEncodingColumn(DataBuffer<char> *data_buffer,
-                                       const orc::proto::Stream &data_stream,
-                                       const ColumnEncoding &data_encoding) {
-  uint32 column_data_size = 0;
+static PaxColumn *BuildEncodingColumn(DataBuffer<char> *data_buffer,
+                                      const orc::proto::Stream &data_stream,
+                                      const ColumnEncoding &data_encoding,
+                                      bool is_vec) {
+  uint32 not_null_rows = 0;
   uint64 column_data_len = 0;
-
   DataBuffer<T> *column_data_buffer = nullptr;
-  PaxIntColumn<T> *pax_column = nullptr;
 
-  column_data_size = static_cast<uint32>(data_stream.column());
+  Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
+
+  not_null_rows = static_cast<uint32>(data_stream.column());
   column_data_len = static_cast<uint64>(data_stream.length());
 
   column_data_buffer = new DataBuffer<T>(
       reinterpret_cast<T *>(data_buffer->GetAvailableBuffer()), column_data_len,
       false, false);
-  column_data_buffer->BrushAll();
 
+  column_data_buffer->BrushAll();
   data_buffer->Brush(column_data_len);
 
   PaxDecoder::DecodingOption decoding_option;
   decoding_option.column_encode_type = data_encoding.kind();
   decoding_option.is_sign = true;
 
-  if (data_encoding.kind() ==
+  size_t alloc_size = 0;
+
+  if (data_encoding.kind() !=
       ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
-    Assert(column_data_size == column_data_buffer->GetSize());
-    pax_column = new PaxIntColumn<T>(std::move(decoding_option));
-  } else {
-    Assert(data_encoding.length() / sizeof(T) == column_data_size);
-    pax_column =
-        new PaxIntColumn<T>(column_data_size, std::move(decoding_option));
+    alloc_size = data_encoding.length();
   }
 
-  pax_column->Set(column_data_buffer);
+  if (is_vec) {
+    auto pax_column =
+        traits::ColumnOptCreateTraits<PaxVecEncodingColumn, T>::create_decoding(
+            alloc_size, decoding_option);
+    pax_column->Set(column_data_buffer, (size_t)not_null_rows);
+    return pax_column;
+  } else {
+    AssertImply(data_encoding.kind() ==
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
+                not_null_rows == column_data_buffer->GetSize());
+    AssertImply(data_encoding.kind() !=
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
+                data_encoding.length() / sizeof(T) == not_null_rows);
+    auto pax_column =
+        traits::ColumnOptCreateTraits<PaxEncodingColumn, T>::create_decoding(
+            alloc_size, decoding_option);
+    pax_column->Set(column_data_buffer);
+    return pax_column;
+  }
+
+  Assert(false);
+}
+
+static PaxColumn *BuildEncodingVecNonFixedColumn(
+    DataBuffer<char> *data_buffer, const orc::proto::Stream &data_stream,
+    const orc::proto::Stream &len_stream, const ColumnEncoding &data_encoding) {
+  uint32 not_null_rows = 0;
+  uint64 column_lens_len = 0;
+  uint64 column_data_len = 0;
+  DataBuffer<int32> *column_offset_buffer = nullptr;
+  DataBuffer<char> *column_data_buffer = nullptr;
+  PaxVecNonFixedColumn *pax_column = nullptr;
+
+  auto total_rows = static_cast<uint32>(len_stream.column());
+  not_null_rows = static_cast<uint32>(data_stream.column());
+  column_data_len = static_cast<uint64>(data_stream.length());
+  column_lens_len = static_cast<uint64>(len_stream.length());
+
+  Assert(column_lens_len >= ((total_rows + 1) * sizeof(int32)));
+  column_offset_buffer = new DataBuffer<int32>(
+      reinterpret_cast<int32 *>(data_buffer->GetAvailableBuffer()),
+      column_lens_len, false, false);
+
+  column_offset_buffer->Brush((total_rows + 1) * sizeof(int32));
+  // at lease 2
+  Assert(column_offset_buffer->GetSize() >= 2);
+
+  data_buffer->Brush(column_lens_len);
+
+  column_data_buffer = new DataBuffer<char>(data_buffer->GetAvailableBuffer(),
+                                            column_data_len, false, false);
+
+  if (data_encoding.kind() ==
+      ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+    column_data_buffer->Brush(
+        (*column_offset_buffer)[column_offset_buffer->GetSize() - 1]);
+    data_buffer->Brush(column_data_len);
+
+    Assert(column_data_len == column_data_buffer->GetSize());
+    pax_column = traits::ColumnCreateTraits2<PaxVecNonFixedColumn>::create(0);
+  } else {
+    data_buffer->Brush(column_data_len);
+    column_data_buffer->BrushAll();
+
+    PaxDecoder::DecodingOption decoding_option;
+    decoding_option.column_encode_type = data_encoding.kind();
+    decoding_option.is_sign = true;
+
+    pax_column =
+        traits::ColumnOptCreateTraits2<PaxVecNonFixedEncodingColumn>::  //
+        create_decoding(data_encoding.length(), std::move(decoding_option));
+  }
+  pax_column->Set(column_data_buffer, column_offset_buffer, column_data_len,
+                  not_null_rows);
+  return pax_column;
+}
+
+static PaxColumn *BuildEncodingNonFixedColumn(
+    DataBuffer<char> *data_buffer, const orc::proto::Stream &data_stream,
+    const orc::proto::Stream &len_stream, const ColumnEncoding &data_encoding) {
+  uint32 column_lens_size = 0;
+  uint64 column_lens_len = 0;
+  uint64 column_data_len = 0;
+  DataBuffer<int64> *column_len_buffer = nullptr;
+  DataBuffer<char> *column_data_buffer = nullptr;
+  PaxNonFixedColumn *pax_column = nullptr;
+
+  column_lens_size = static_cast<uint32>(len_stream.column());
+  column_lens_len = static_cast<uint64>(len_stream.length());
+
+  column_len_buffer = new DataBuffer<int64>(
+      reinterpret_cast<int64 *>(data_buffer->GetAvailableBuffer()),
+      column_lens_len, false, false);
+
+  Assert(column_lens_len >= column_lens_size * sizeof(int64));
+  column_len_buffer->Brush(column_lens_size * sizeof(int64));
+  data_buffer->Brush(column_lens_len);
+
+  column_data_len = data_stream.length();
+
+#ifdef ENABLE_DEBUG
+  if (data_encoding.kind() ==
+      ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+    size_t segs_size = 0;
+    for (size_t i = 0; i < column_len_buffer->GetSize(); i++) {
+      segs_size += (*column_len_buffer)[i];
+    }
+    Assert(column_data_len == segs_size);
+  }
+#endif
+
+  column_data_buffer = new DataBuffer<char>(data_buffer->GetAvailableBuffer(),
+                                            column_data_len, false, false);
+  column_data_buffer->BrushAll();
+  data_buffer->Brush(column_data_len);
+
+  Assert(static_cast<uint32>(data_stream.column()) == column_lens_size);
+
+  if (data_encoding.kind() ==
+      ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
+    Assert(column_data_len == column_data_buffer->GetSize());
+    pax_column = traits::ColumnCreateTraits2<PaxNonFixedColumn>::create(0);
+  } else {
+    PaxDecoder::DecodingOption decoding_option;
+    decoding_option.column_encode_type = data_encoding.kind();
+    decoding_option.is_sign = true;
+
+    pax_column = traits::ColumnOptCreateTraits2<
+        PaxNonFixedEncodingColumn>::create_decoding(data_encoding.length(),
+                                                    std::move(decoding_option));
+  }
+
+  // current memory will be freed in pax_columns->data_
+  pax_column->Set(column_data_buffer, column_len_buffer, column_data_len);
   return pax_column;
 }
 
@@ -375,6 +510,9 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
     data_buffer = new DataBuffer<char>(stripe_info->footer_length);
   }
   pax_columns->Set(data_buffer);
+  pax_columns->SetStorageFormat(is_vec_
+                                    ? PaxStorageFormat::kTypeStorageOrcVec
+                                    : PaxStorageFormat::kTypeStorageOrcNonVec);
 
   /* `ReadStripeWithProjection` will read the column memory which filter by
    * `proj_map`, and initialize `stripe_footer`
@@ -431,13 +569,6 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
 
     switch (column_types_[index]) {
       case (orc::proto::Type_Kind::Type_Kind_STRING): {
-        uint32 column_lens_size = 0;
-        uint64 column_lens_len = 0;
-        uint64 column_data_len = 0;
-        DataBuffer<int64> *column_len_buffer = nullptr;
-        DataBuffer<char> *column_data_buffer = nullptr;
-        PaxNonFixedColumn *pax_column = nullptr;
-
         const orc::proto::Stream &len_stream =
             stripe_footer.streams(streams_index++);
         const orc::proto::Stream &data_stream =
@@ -448,110 +579,34 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
         Assert(len_stream.kind() == orc::proto::Stream_Kind_LENGTH);
         Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
 
-        column_lens_size = static_cast<uint32>(len_stream.column());
-        column_lens_len = static_cast<uint64>(len_stream.length());
-
-        column_len_buffer = new DataBuffer<int64>(
-            reinterpret_cast<int64 *>(data_buffer->GetAvailableBuffer()),
-            column_lens_len, false, false);
-
-        Assert(column_lens_len >= column_lens_size * sizeof(int64));
-        column_len_buffer->Brush(column_lens_size * sizeof(int64));
-        data_buffer->Brush(column_lens_len);
-
-        column_data_len = data_stream.length();
-
-#ifdef ENABLE_DEBUG
-        if (data_encoding.kind() ==
-            ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
-          size_t segs_size = 0;
-          for (size_t i = 0; i < column_len_buffer->GetSize(); i++) {
-            segs_size += (*column_len_buffer)[i];
-          }
-          Assert(column_data_len == segs_size);
-        }
-#endif
-
-        column_data_buffer = new DataBuffer<char>(
-            data_buffer->GetAvailableBuffer(), column_data_len, false, false);
-        column_data_buffer->BrushAll();
-        data_buffer->Brush(column_data_len);
-
-        Assert(static_cast<uint32>(data_stream.column()) == column_lens_size);
-
-        PaxDecoder::DecodingOption decoding_option;
-        decoding_option.column_encode_type = data_encoding.kind();
-        decoding_option.is_sign = true;
-
-        if (data_encoding.kind() ==
-            ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED) {
-          Assert(column_data_len == column_data_buffer->GetSize());
-          pax_column = new PaxNonFixedColumn(0);
-        } else {
-          pax_column = new PaxNonFixedEncodingColumn(
-              data_encoding.length(), std::move(decoding_option));
-        }
-
-        // current memory will be freed in pax_columns->data_
-        pax_column->Set(column_data_buffer, column_len_buffer, column_data_len);
-        pax_column->SetMemTakeOver(false);
-        pax_columns->Append(pax_column);
+        pax_columns->Append(
+            is_vec_ ? BuildEncodingVecNonFixedColumn(data_buffer, data_stream,
+                                                     len_stream, data_encoding)
+                    : BuildEncodingNonFixedColumn(data_buffer, data_stream,
+                                                  len_stream, data_encoding));
         break;
       }
       case (orc::proto::Type_Kind::Type_Kind_BOOLEAN):
-      case (orc::proto::Type_Kind::Type_Kind_BYTE): {
-        const orc::proto::Stream &data_stream =
-            stripe_footer.streams(streams_index++);
-        uint32 column_data_size = 0;
-        uint64 column_data_len = 0;
-        DataBuffer<char> *column_data_buffer = nullptr;
-        PaxCommColumn<char> *pax_column = nullptr;
-
-        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
-
-        column_data_size = static_cast<uint32>(data_stream.column());
-        column_data_len = static_cast<uint64>(data_stream.length());
-        column_data_buffer = new DataBuffer<char>(
-            reinterpret_cast<char *>(data_buffer->GetAvailableBuffer()),
-            column_data_len, false, false);
-
-        column_data_buffer->BrushAll();
-        data_buffer->Brush(column_data_len);
-
-        Assert(column_data_size == column_data_buffer->GetSize());
-        pax_column = new PaxCommColumn<char>();
-        pax_column->Set(column_data_buffer);
-        pax_columns->Append(pax_column);
+      case (orc::proto::Type_Kind::Type_Kind_BYTE):
+        pax_columns->Append(BuildEncodingColumn<int8>(
+            data_buffer, stripe_footer.streams(streams_index++),
+            stripe_footer.pax_col_encodings(index), is_vec_));
         break;
-      }
-      case (orc::proto::Type_Kind::Type_Kind_SHORT): {
-        const orc::proto::Stream &data_stream =
-            stripe_footer.streams(streams_index++);
-        const ColumnEncoding &data_encoding =
-            stripe_footer.pax_col_encodings(index);
-        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
-        pax_columns->Append(GetIntEncodingColumn<int16>(
-            data_buffer, data_stream, data_encoding));
+      case (orc::proto::Type_Kind::Type_Kind_SHORT):
+        pax_columns->Append(BuildEncodingColumn<int16>(
+            data_buffer, stripe_footer.streams(streams_index++),
+            stripe_footer.pax_col_encodings(index), is_vec_));
         break;
-      }
       case (orc::proto::Type_Kind::Type_Kind_INT): {
-        const orc::proto::Stream &data_stream =
-            stripe_footer.streams(streams_index++);
-        const ColumnEncoding &data_encoding =
-            stripe_footer.pax_col_encodings(index);
-        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
-        pax_columns->Append(GetIntEncodingColumn<int32>(
-            data_buffer, data_stream, data_encoding));
+        pax_columns->Append(BuildEncodingColumn<int32>(
+            data_buffer, stripe_footer.streams(streams_index++),
+            stripe_footer.pax_col_encodings(index), is_vec_));
         break;
       }
       case (orc::proto::Type_Kind::Type_Kind_LONG): {
-        const orc::proto::Stream &data_stream =
-            stripe_footer.streams(streams_index++);
-        const ColumnEncoding &data_encoding =
-            stripe_footer.pax_col_encodings(index);
-        Assert(data_stream.kind() == orc::proto::Stream_Kind_DATA);
-        pax_columns->Append(GetIntEncodingColumn<int64>(
-            data_buffer, data_stream, data_encoding));
+        pax_columns->Append(BuildEncodingColumn<int64>(
+            data_buffer, stripe_footer.streams(streams_index++),
+            stripe_footer.pax_col_encodings(index), is_vec_));
         break;
       }
       default:
@@ -563,12 +618,27 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
     // fill nulls data buffer
     Assert(pax_columns->GetColumns() > 0);
     auto last_column = (*pax_columns)[pax_columns->GetColumns() - 1];
+    last_column->SetRows(stripe_info->numbers_of_row);
     if (has_null) {
       Assert(non_null_bitmap);
       last_column->SetBitmap(non_null_bitmap);
     }
-    last_column->SetRows(stripe_info->numbers_of_row);
   }
+
+#ifdef ENABLE_DEBUG
+
+  auto storage_tyep_verify = is_vec_ ? PaxStorageFormat::kTypeStorageOrcVec
+                                     : PaxStorageFormat::kTypeStorageOrcNonVec;
+
+  Assert(storage_tyep_verify == pax_columns->GetStorageFormat());
+  for (size_t index = 0; index < column_types_.size(); index++) {
+    auto column_verify = (*pax_columns)[index];
+    if (column_verify) {
+      Assert(storage_tyep_verify == column_verify->GetStorageFormat());
+    }
+  }
+
+#endif
 
   Assert(streams_size == streams_index);
   return pax_columns;
