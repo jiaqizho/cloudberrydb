@@ -10,8 +10,11 @@
 
 #include "comm/bitmap.h"
 #include "storage/columns/pax_compress.h"
+#include "storage/columns/pax_decoding.h"
+#include "storage/columns/pax_encoding.h"
 #include "storage/columns/pax_encoding_utils.h"
 #include "storage/pax_buffer.h"
+#include "storage/pax_defined.h"
 #include "storage/proto/proto_wrappers.h"
 
 namespace pax {
@@ -22,15 +25,6 @@ namespace pax {
 // Used to mapping pg_type
 enum PaxColumnTypeInMem { kTypeInvalid = 1, kTypeFixed = 2, kTypeNonFixed = 3 };
 
-enum PaxColumnStorageType {
-  // default non-vec store
-  // which split null field and null bitmap
-  kTypeStorageNonVec,
-  // vec storage format
-  // spec the storage format
-  kTypeStorageVec,
-};
-
 class PaxColumn {
  public:
   PaxColumn();
@@ -39,26 +33,109 @@ class PaxColumn {
 
   virtual PaxColumn *SetColumnEncodeType(ColumnEncoding_Kind encoding_type);
 
-  virtual PaxColumn *SetColumnStorageType(PaxColumnStorageType storage_type);
-
   // Get the column in memory type
   virtual PaxColumnTypeInMem GetPaxColumnTypeInMem() const;
 
   // Get column buffer from current column
   virtual std::pair<char *, size_t> GetBuffer() = 0;
 
-  // Get buffer by position
+  // The interface `GetBuffer(size_t position)` and
+  // `GetRangeBuffer(size_t start_pos, size_t len)`
+  // will return the different values in different
+  // `ColumnStorageType` + `ColumnTypeInMem`
+  //
+  // Also they should NEVER call in write path with encoding option!!!
+  // But without encoding option, still can direct call it.
+  //
+  // If `storage_type_` is kTypeStorageOrcVec
+  // Then data part contains `null field` which means no need use
+  // `row index - null counts` to get the data.
+  //
+  // But If `storage_type_` is not kTypeStorageOrcVec
+  // Then position should be `row index - null counts`, because
+  // data part will not contains `null field`.
+  //
+  // Also it is kind different in fixed-length column and non-fixed-length
+  // column when `storage_type_` is kTypeStorageOrcVec. For the fixed-length
+  // column, If we got a `null field`, then it will return the buffer with zero
+  // fill. But in non-fixed-length column, once we got  `null field`, the buffer
+  // will be nullptr.
+  //
+  // A example to explain:
+  //  std::tuple<char *, size_t, bool> GetBufferWithNull(
+  //     size_t row_index,
+  //     size_t null_counts) {
+  //
+  //    PaxColumn *column = source();
+  //    char * buffer = nullptr;
+  //    size_t length = 0;
+  //    switch (GetPaxColumnTypeInMem()) {
+  //      case kTypeFixed: {
+  //        if (COLUMN_STORAGE_FORMAT_IS_VEC(column)) {
+  //          std::tie(buffer, length) = column->GetBuffer(row_index);
+  //          assert(buffer);  // different return in different ColumnTypeInMem
+  //          if (!length) {
+  //            return {nullptr, 0, true};
+  //          }
+  //        } else {
+  //          std::tie(buffer, length) = column->GetBuffer(
+  //            row_index - null_counts);
+  //        }
+  //        assert(buffer && length);
+  //        return {buffer, length, false};
+  //      }
+  //      case kTypeNonFixed: {
+  //        if (COLUMN_STORAGE_FORMAT_IS_VEC(column)) {
+  //          std::tie(buffer, length) = column->GetBuffer(row_index);
+  //          // different return in different ColumnTypeInMem
+  //          assert((!buffer && !length) || (buffer && length));
+  //          if (!buffer && !length) {
+  //            return {nullptr, 0, true};
+  //          }
+  //        } else {
+  //          std::tie(buffer, length) = column->GetBuffer(
+  //            row_index - null_counts);
+  //        }
+  //        return {buffer, length, false};
+  //        break;
+  //      }
+  //      default:
+  //        // nothing
+  //    }
+  //    // should not react here!
+  //    assert(false);
+  //   }
+  //
+  // A simplest example:
+  //  std::tuple<char *, size_t, bool> GetBufferWithNull(size_t row_index,
+  //  size_t null_counts) {
+  //    PaxColumn *column = source();
+  //    char * buffer = nullptr;
+  //    size_t length = 0;
+  //    if (COLUMN_STORAGE_FORMAT_IS_VEC(column)) {
+  //      std::tie(buffer, length) = column->GetBuffer(row_index);
+  //      if (!length) {
+  //        return {nullptr, 0, true};
+  //      }
+  //    } else {
+  //      std::tie(buffer, length) = column->GetBuffer(row_index - null_counts);
+  //    }
+  //    assert(buffer && length);
+  //    return {buffer, length, false};
+  //  }
+  //
   virtual std::pair<char *, size_t> GetBuffer(size_t position) = 0;
 
   // Get buffer by range [start_pos, start_pos + len)
+  // Should never call in write path with encoding option
   virtual std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
                                                    size_t len) = 0;
 
   // Get all rows number(contain null) from column
-  virtual size_t GetRows();
+  virtual size_t GetRows() const;
 
   // Get rows number(not null) from column
-  virtual size_t GetNonNullRows() const = 0;
+  virtual size_t GetNonNullRows() const;
 
   // Get all rows number(not null) from column by range [start_pos, start_pos +
   // len)
@@ -75,6 +152,9 @@ class PaxColumn {
 
   // Get current encoding type
   virtual ColumnEncoding_Kind GetEncodingType() const;
+
+  // Get current storage type
+  virtual PaxStorageFormat GetStorageFormat() const = 0;
 
   // Get the data size without encoding/compress
   virtual int64 GetOriginLength() const = 0;
@@ -108,11 +188,12 @@ class PaxColumn {
   // Reader: total rows
   uint32 total_rows_;
 
+  // some of subclass will not implements the not null logic,
+  // but can direct get not null rows by data part.
+  size_t non_null_rows_;
+
   // the column is encoded type
   ColumnEncoding_Kind encoded_type_;
-
-  // whether the column is storage
-  PaxColumnStorageType storage_type_;
 
   // data part align size.
   // This field only takes effect when current column is no encoding/compress.
@@ -146,6 +227,8 @@ class PaxCommColumn : public PaxColumn {
   virtual void Set(DataBuffer<T> *data);
 
   PaxColumnTypeInMem GetPaxColumnTypeInMem() const override;
+
+  PaxStorageFormat GetStorageFormat() const override;
 
   void Append(char *buffer, size_t size) override;
 
@@ -195,6 +278,8 @@ class PaxNonFixedColumn : public PaxColumn {
 
   PaxColumnTypeInMem GetPaxColumnTypeInMem() const override;
 
+  PaxStorageFormat GetStorageFormat() const override;
+
   std::pair<char *, size_t> GetBuffer() override;
 
   size_t PhysicalSize() const override;
@@ -212,9 +297,7 @@ class PaxNonFixedColumn : public PaxColumn {
 
   DataBuffer<int64> *GetLengthBuffer() const;
 
-  bool IsMemTakeOver() const;
-
-  void SetMemTakeOver(bool take_over);
+  DataBuffer<int32> *GetOffsetBuffer(bool append_last = false);
 
  protected:
   void BuildOffsets();

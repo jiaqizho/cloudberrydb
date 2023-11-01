@@ -11,6 +11,7 @@ extern "C" {
 
 #pragma GCC diagnostic pop
 
+#include "storage/columns/pax_column_traits.h"
 #include "storage/pax_itemptr.h"
 #include "storage/vec/arrow_wrapper.h"
 
@@ -215,16 +216,22 @@ ConvToVecBuffer(VecAdapter::VecBatchBuffer *vec_batch_buffer) {
       (uint8 *)vec_batch_buffer->vec_buffer.GetBuffer(),
       (int64)vec_batch_buffer->vec_buffer.Capacity());
 
+  Assert(vec_batch_buffer->vec_buffer.Capacity() % MEMORY_ALIGN_SIZE == 0);
+
   if (vec_batch_buffer->null_bits_buffer.GetBuffer()) {
     arrow_null_buffer = std::make_shared<arrow::Buffer>(
         (uint8 *)vec_batch_buffer->null_bits_buffer.GetBuffer(),
         (int64)vec_batch_buffer->null_bits_buffer.Capacity());
+
+    Assert(vec_batch_buffer->null_bits_buffer.Capacity() % MEMORY_ALIGN_SIZE ==
+           0);
   }
 
   if (vec_batch_buffer->offset_buffer.GetBuffer()) {
     arrow_offset_buffer = std::make_shared<arrow::Buffer>(
         (uint8 *)vec_batch_buffer->offset_buffer.GetBuffer(),
         (int64)vec_batch_buffer->offset_buffer.Capacity());
+    Assert(vec_batch_buffer->offset_buffer.Capacity() % MEMORY_ALIGN_SIZE == 0);
   }
   return std::make_tuple(arrow_buffer, arrow_null_buffer, arrow_offset_buffer);
 }
@@ -386,13 +393,20 @@ void VecAdapter::SetDataSource(PaxColumns *columns) {
   process_columns_ = columns;
   current_cached_pax_columns_index_ = 0;
   cached_batch_lens_ = 0;
+  // FIXME(jiaqizho): should expand vec_cache_buffer_
+  // if columns number not match vec_cache_buffer_ will not take care of schema
+  // it only handle buffer
+  AssertImply(vec_cache_buffer_,
+              columns->GetColumns() == (size_t)vec_cache_buffer_lens_);
   if (!vec_cache_buffer_) {
     vec_cache_buffer_ = new VecBatchBuffer[columns->GetColumns()];
     vec_cache_buffer_lens_ = columns->GetColumns();
   }
 }
 
-const TupleDesc VecAdapter::GetRelationTupleDesc() const { return rel_tuple_desc_; }
+const TupleDesc VecAdapter::GetRelationTupleDesc() const {
+  return rel_tuple_desc_;
+}
 
 bool VecAdapter::AppendToVecBuffer() {
   PaxColumns *columns;
@@ -413,6 +427,11 @@ bool VecAdapter::AppendToVecBuffer() {
   }
 
   Assert(range_begin <= columns->GetRows());
+
+  if (COLUMN_STORAGE_FORMAT_IS_VEC(columns)) {
+    // direct redict
+    return AppendVecFormat();
+  }
 
   // recompute `range_lens`, if remain data LT `VEC_BATCH_LENGTH`
   // then should reduce `range_lens`
@@ -529,6 +548,149 @@ void VecAdapter::FullWithCTID(CTupleSlot *cslot, VecBatchBuffer *batch_buffer) {
                                ctid_data_buffer.Capacity());
   batch_buffer->vec_buffer.SetMemTakeOver(false);
   batch_buffer->vec_buffer.BrushAll();
+}
+
+template <typename T>
+static std::pair<bool, size_t> ColumnTransMemory(PaxColumn *column) {
+  Assert(column->GetStorageFormat() == PaxStorageFormat::kTypeStorageOrcVec);
+
+  auto vec_column = dynamic_cast<T *>(column);
+  auto data_buffer = vec_column->GetDataBuffer();
+  if (!data_buffer->IsMemTakeOver()) {
+    return {false, 0};
+  } else {
+    Assert(data_buffer->Capacity() % MEMORY_ALIGN_SIZE == 0);
+
+    data_buffer->SetMemTakeOver(false);
+    return {true, data_buffer->Capacity()};
+  }
+}
+
+bool VecAdapter::AppendVecFormat() {
+  PaxColumns *columns;
+  PaxColumn *column;
+
+  columns = process_columns_;
+  Assert(cached_batch_lens_ == 0);
+  Assert(columns->GetRows() <= VEC_BATCH_LENGTH);
+
+  size_t total_rows = columns->GetRows();
+
+  auto null_align_bytes =
+      TYPEALIGN(MEMORY_ALIGN_SIZE, BITS_TO_BYTES(total_rows));
+
+  for (size_t index = 0; index < columns->GetColumns(); index++) {
+    if ((*columns)[index] == nullptr) {
+      continue;
+    }
+
+    DataBuffer<char> *vec_buffer = &(vec_cache_buffer_[index].vec_buffer);
+    DataBuffer<char> *null_bits_buffer =
+        &(vec_cache_buffer_[index].null_bits_buffer);
+    DataBuffer<int32> *offset_buffer =
+        &(vec_cache_buffer_[index].offset_buffer);
+
+    column = (*columns)[index];
+    Assert(index < (size_t)vec_cache_buffer_lens_ && vec_cache_buffer_);
+
+    char *buffer = nullptr;
+    size_t buffer_len = 0;
+    bool trans_succ = false;
+    size_t cap_len = 0;
+
+    vec_cache_buffer_[index].null_counts =
+        total_rows - column->GetNonNullRows();
+
+    switch (column->GetPaxColumnTypeInMem()) {
+      case PaxColumnTypeInMem::kTypeNonFixed: {
+        Assert(!vec_buffer->GetBuffer());
+        Assert(!offset_buffer->GetBuffer());
+
+        std::tie(buffer, buffer_len) = column->GetBuffer();
+        std::tie(trans_succ, cap_len) =
+            ColumnTransMemory<PaxVecNonFixedColumn>(column);
+
+        if (trans_succ) {
+          vec_buffer->Set(buffer, cap_len);
+          vec_buffer->BrushAll();
+        } else {
+          vec_buffer->Set(
+              (char *)cbdb::Palloc0(TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),
+              TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len));
+          vec_buffer->Write(buffer, buffer_len);
+          vec_buffer->BrushAll();
+        }
+
+        auto offset_buffer_from_column =
+            dynamic_cast<PaxVecNonFixedColumn *>(column)->GetOffsetBuffer();
+        Assert(offset_buffer_from_column);
+        buffer = (char *)offset_buffer_from_column->GetBuffer();
+        buffer_len = offset_buffer_from_column->Capacity();
+
+        offset_buffer->Set(
+            (char *)cbdb::Palloc0(TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),
+            TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len));
+        offset_buffer->Write((int *)buffer, buffer_len);
+        offset_buffer->BrushAll();
+        break;
+      }
+      case PaxColumnTypeInMem::kTypeFixed: {
+        Assert(!vec_buffer->GetBuffer());
+        std::tie(buffer, buffer_len) = column->GetBuffer();
+
+        switch (column->GetTypeLength()) {
+          case 1:
+            std::tie(trans_succ, cap_len) =
+                ColumnTransMemory<PaxVecCommColumn<int8>>(column);
+            break;
+          case 2:
+            std::tie(trans_succ, cap_len) =
+                ColumnTransMemory<PaxVecCommColumn<int16>>(column);
+            break;
+          case 4:
+            std::tie(trans_succ, cap_len) =
+                ColumnTransMemory<PaxVecCommColumn<int32>>(column);
+            break;
+          case 8:
+            std::tie(trans_succ, cap_len) =
+                ColumnTransMemory<PaxVecCommColumn<int64>>(column);
+            break;
+          default:
+            Assert(false);
+        }
+
+        if (trans_succ) {
+          vec_buffer->Set(buffer, cap_len);
+          vec_buffer->BrushAll();
+        } else {
+          vec_buffer->Set(
+              (char *)cbdb::Palloc0(TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),
+              TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len));
+          vec_buffer->Write(buffer, buffer_len);
+          vec_buffer->BrushAll();
+        }
+        break;
+      }
+      default: {
+        CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+      }
+    }
+
+    if (column->HasNull()) {
+      Bitmap8 *bitmap = nullptr;
+      Assert(!null_bits_buffer->GetBuffer());
+      null_bits_buffer->Set((char *)cbdb::Palloc(null_align_bytes),
+                            null_align_bytes);
+      bitmap = column->GetBitmap();
+      Assert(bitmap);
+
+      CopyBitmap(bitmap, 0, total_rows, null_bits_buffer);
+    }
+  }
+
+  current_cached_pax_columns_index_ = total_rows;
+  cached_batch_lens_ += total_rows;
+  return true;
 }
 
 size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
@@ -675,27 +837,33 @@ size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
   CBDB_CHECK(export_status.ok(),
              cbdb::CException::ExType::kExTypeArrowExportError);
 
-  arrow_array->release = [](struct ArrowArray *array) {  //
-    for (int64 i = 0; i < array->n_children; i++) {
-      if (array->children && array->children[i] &&
-          array->children[i]->release) {
-        array->children[i]->release(array->children[i]);
+  // FIXME(jiaqizho): use `arrow_array->private` to
+  // decide which part of memory should free
+  // and which part of memory should free with pax_columns
+  if (!COLUMN_STORAGE_FORMAT_IS_VEC(columns)) {
+    arrow_array->release = [](struct ArrowArray *array) {  //
+      for (int64 i = 0; i < array->n_children; i++) {
+        if (array->children && array->children[i] &&
+            array->children[i]->release) {
+          array->children[i]->release(array->children[i]);
+        }
       }
-    }
 
-    for (int64 i = 0; i < array->n_buffers; i++) {
-      if (array->buffers[i]) {
-        // cbdb::Pfree CException will not be deal
-        // just let long jump happen
-        pfree((void *)array->buffers[i]);
+      for (int64 i = 0; i < array->n_buffers; i++) {
+        if (array->buffers[i]) {
+          // cbdb::Pfree CException will not be deal
+          // just let long jump happen
+          pfree((void *)array->buffers[i]);
+        }
       }
-    }
 
-    // FIXME(jiaqizho): memory leak here
-    // Will consider not use `arrow::ExportArray`
-    // delete reinterpret_cast<ExportedArrayPrivateData*>(array->private_data);
-    array->release = NULL;
-  };
+      // FIXME(jiaqizho): memory leak here
+      // Will consider not use `arrow::ExportArray`
+      // delete
+      // reinterpret_cast<ExportedArrayPrivateData*>(array->private_data);
+      array->release = NULL;
+    };
+  }
 
   vslot->tts_recordbatch = arrow_rb;
 
