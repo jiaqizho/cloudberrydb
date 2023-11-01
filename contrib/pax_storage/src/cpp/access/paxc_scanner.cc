@@ -1,6 +1,6 @@
 #include "access/paxc_scanner.h"
 
-#include "comm/cbdb_api.h"
+#include "access/pax_partition.h"
 
 #define blank_char(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n')
 #define ident_char(ch) (((ch) >= 'a' && (ch) <= 'z') || \
@@ -25,10 +25,13 @@ static inline const char *paxc_expect_char(const char *s, char ch) {
 static const char *paxc_expect_ident(const char *s, const char *ident) {
   const char *p = s;
   const char *q;
+  size_t n;
+
+  n = strlen(ident);
   p = paxc_eat_blank(s);
-  if (strstr(p, ident) != p)
+  if (strncasecmp(p, ident, n) != 0)
     elog(ERROR, "unexpected ident: %s, want %s", s, ident);
-  q = p + strlen(ident);
+  q = p + n;
   if (ident_char(*q))
     elog(ERROR, "unexpected ident: %s, want %s", s, ident);
 
@@ -62,10 +65,7 @@ static const char *paxc_parse_expr_list(const char *expr_list, List **result) {
     p = paxc_parse_single_integer(p, &value);
     Assert(value);
 
-    PartitionRangeDatum *elem = makeNode(PartitionRangeDatum);
-    elem->kind = PARTITION_RANGE_DATUM_VALUE;
-    elem->value = value;
-    *result = lappend(*result, elem);
+    *result = lappend(*result, value);
 
     p = paxc_eat_blank(p);
     if (*p != ',') break;
@@ -82,6 +82,7 @@ List *paxc_parse_partition_ranges(const char *ranges) {
   while (*p && (p = paxc_expect_ident(p, "from"))) {
     List *from_list = NIL;
     List *to_list = NIL;
+    List *every_list = NIL;
 
     p = paxc_expect_char(p, '(');
     p = paxc_parse_expr_list(p, &from_list);
@@ -95,6 +96,15 @@ List *paxc_parse_partition_ranges(const char *ranges) {
     Assert(to_list);
 
     p = paxc_eat_blank(p);
+    if (strncasecmp(p, "every", 5) == 0) {
+      // from(X) to(Y) every(Z)
+      p += 5;
+      p = paxc_expect_char(p, '(');
+      p = paxc_parse_expr_list(p, &every_list);
+      p = paxc_expect_char(p, ')');
+      Assert(every_list);
+      p = paxc_eat_blank(p);
+    }
     if (*p == ',') {
       p++;
     } else if (*p != '\0') {
@@ -107,13 +117,15 @@ List *paxc_parse_partition_ranges(const char *ranges) {
       list_length(from_list), list_length(to_list));
     }
 
-    PartitionBoundSpec *n = makeNode(PartitionBoundSpec);
+    PartitionRangeExtension *ext = (PartitionRangeExtension *)palloc0(sizeof(PartitionRangeExtension));
+    PartitionBoundSpec *n = &ext->spec;
+    n->type = T_PartitionBoundSpec;
     n->strategy = PARTITION_STRATEGY_RANGE;
     n->is_default = false;
     n->lowerdatums = from_list;
     n->upperdatums = to_list;
-    result = lappend(result, n);
+    ext->every = every_list;
+    result = lappend(result, ext);
   }
   return result;
 }
-
