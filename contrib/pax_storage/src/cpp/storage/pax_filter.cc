@@ -7,122 +7,96 @@
 #include "storage/proto/proto_wrappers.h"
 
 namespace paxc {
-static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
-                          ScanKey *p_scan_keys, int *p_num_scan_keys) {
-  ListCell *qual_cell;
-  ScanKey scan_keys;
-  int n_scan_keys;
-  int j;
-  TupleDesc desc;
 
-  /* Allocate array for ScanKey structs: one per qual */
-  n_scan_keys = list_length(quals);
-  scan_keys = (ScanKey)palloc(n_scan_keys * sizeof(ScanKeyData));
-  desc = rel->rd_att;
-  Oid *opfamilies = (Oid *)palloc(sizeof(Oid) * desc->natts);
-  for (auto i = 0; i < desc->natts; i++) {
-    auto attr = &desc->attrs[i];
-    if (attr->attisdropped) {
-      opfamilies[i] = 0;
-      continue;
-    }
-    Oid opclass = GetDefaultOpClass(attr->atttypid, BRIN_AM_OID);
-    if (!OidIsValid(opclass)) {
-      opfamilies[i] = 0;
-      continue;
-    }
-    opfamilies[i] = get_opclass_family(opclass);
+static bool BuildScanKeyOpExpr(ScanKey this_scan_key, Expr *clause, const Oid * opfamilies, bool isorderby, int indnkeyatts);
+static bool BuildScanKeyNullTest(ScanKey this_scan_key, Expr *clause);
+
+static bool BuildScanKeyOpExpr(ScanKey this_scan_key, Expr *clause, const Oid * opfamilies, bool isorderby, int indnkeyatts) {
+  /* indexkey op const or indexkey op expression */
+  int flags = 0;
+  Datum scanvalue;
+
+  Oid opno;              /* operator's OID */
+  RegProcedure opfuncid; /* operator proc id used in scan */
+  Oid opfamily;          /* opfamily of index column */
+  int op_strategy;       /* operator's strategy number */
+  Oid op_lefttype;       /* operator's declared input types */
+  Oid op_righttype;
+  Expr *leftop;        /* expr on lhs of operator */
+  Expr *rightop;       /* expr on rhs ... */
+  AttrNumber varattno; /* att number used in scan */
+
+  opno = ((OpExpr *)clause)->opno;
+  opfuncid = ((OpExpr *)clause)->opfuncid;
+
+  /*
+   * leftop should be the index key Var, possibly relabeled
+   */
+  leftop = (Expr *)get_leftop(clause);
+
+  if (leftop && IsA(leftop, RelabelType))
+    leftop = ((RelabelType *)leftop)->arg;
+
+  Assert(leftop != NULL);
+
+  if (!IsA(leftop, Var)) goto ignore_clause;
+
+  varattno = ((Var *)leftop)->varattno;
+  if (varattno < 1 || varattno > indnkeyatts) goto ignore_clause;
+
+  /*
+   * We have to look up the operator's strategy number.  This
+   * provides a cross-check that the operator does match the index.
+   */
+  opfamily = opfamilies[varattno - 1];
+  if (!OidIsValid(opfamily) || !op_in_opfamily(opno, opfamily))
+    goto ignore_clause;
+
+  get_op_opfamily_properties(opno, opfamily, isorderby, &op_strategy,
+                              &op_lefttype, &op_righttype);
+
+  if (isorderby) flags |= SK_ORDER_BY;
+
+  /*
+   * rightop is the constant or variable comparison value
+   */
+  rightop = (Expr *)get_rightop(clause);
+
+  if (rightop && IsA(rightop, RelabelType))
+    rightop = ((RelabelType *)rightop)->arg;
+
+  Assert(rightop != NULL);
+
+  if (IsA(rightop, Const)) {
+    /* OK, simple constant comparison value */
+    scanvalue = ((Const *)rightop)->constvalue;
+    if (((Const *)rightop)->constisnull) flags |= SK_ISNULL;
+  } else {
+    // No support for runtime keys now
+    goto ignore_clause;
   }
 
-  j = 0;
-  foreach (qual_cell, quals) {
-    Expr *clause = (Expr *)lfirst(qual_cell);
-    ScanKey this_scan_key = &scan_keys[j];
-    Oid opno;              /* operator's OID */
-    RegProcedure opfuncid; /* operator proc id used in scan */
-    Oid opfamily;          /* opfamily of index column */
-    int op_strategy;       /* operator's strategy number */
-    Oid op_lefttype;       /* operator's declared input types */
-    Oid op_righttype;
-    Expr *leftop;        /* expr on lhs of operator */
-    Expr *rightop;       /* expr on rhs ... */
-    AttrNumber varattno; /* att number used in scan */
-    int indnkeyatts;
-
-    indnkeyatts = RelationGetNumberOfAttributes(rel);
-    if (IsA(clause, OpExpr)) {
-      /* indexkey op const or indexkey op expression */
-      int flags = 0;
-      Datum scanvalue;
-
-      opno = ((OpExpr *)clause)->opno;
-      opfuncid = ((OpExpr *)clause)->opfuncid;
-
-      /*
-       * leftop should be the index key Var, possibly relabeled
-       */
-      leftop = (Expr *)get_leftop(clause);
-
-      if (leftop && IsA(leftop, RelabelType))
-        leftop = ((RelabelType *)leftop)->arg;
-
-      Assert(leftop != NULL);
-
-      if (!IsA(leftop, Var)) goto ignore_clause;
-
-      varattno = ((Var *)leftop)->varattno;
-      if (varattno < 1 || varattno > indnkeyatts) goto ignore_clause;
-
-      /*
-       * We have to look up the operator's strategy number.  This
-       * provides a cross-check that the operator does match the index.
-       */
-      opfamily = opfamilies[varattno - 1];
-      if (!OidIsValid(opfamily) || !op_in_opfamily(opno, opfamily))
-        goto ignore_clause;
-
-      get_op_opfamily_properties(opno, opfamily, isorderby, &op_strategy,
-                                 &op_lefttype, &op_righttype);
-
-      if (isorderby) flags |= SK_ORDER_BY;
-
-      /*
-       * rightop is the constant or variable comparison value
-       */
-      rightop = (Expr *)get_rightop(clause);
-
-      if (rightop && IsA(rightop, RelabelType))
-        rightop = ((RelabelType *)rightop)->arg;
-
-      Assert(rightop != NULL);
-
-      if (IsA(rightop, Const)) {
-        /* OK, simple constant comparison value */
-        scanvalue = ((Const *)rightop)->constvalue;
-        if (((Const *)rightop)->constisnull) flags |= SK_ISNULL;
-      } else {
-        // No support for runtime keys now
-        goto ignore_clause;
-      }
-
-      /*
-       * initialize the scan key's fields appropriately
-       */
-      ScanKeyEntryInitialize(this_scan_key, flags,
+  /*
+   * initialize the scan key's fields appropriately
+   */
+  ScanKeyEntryInitialize(this_scan_key, flags,
                              varattno,     /* attribute number to scan */
                              op_strategy,  /* op's strategy */
                              op_righttype, /* strategy subtype */
                              ((OpExpr *)clause)->inputcollid, /* collation */
                              opfuncid,   /* reg proc to use */
                              scanvalue); /* constant */
-      j++;
-    } else if (IsA(clause, NullTest)) {
-      /* indexkey IS NULL or indexkey IS NOT NULL */
-      auto ntest = reinterpret_cast<NullTest *>(clause);
-      int flags;
+  return true;
+ignore_clause: 
+  return false;
+}
 
-      Assert(!isorderby);
+static bool BuildScanKeyNullTest(ScanKey this_scan_key, Expr *clause) {
+  auto ntest = reinterpret_cast<NullTest *>(clause);
+  int flags;
 
+  Expr *leftop;        /* expr on lhs of operator */
+  AttrNumber varattno; /* att number used in scan */
       /*
        * argument should be the index key Var, possibly relabeled
        */
@@ -161,22 +135,92 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
                              InvalidOid,      /* no collation */
                              InvalidOid,      /* no reg proc for this */
                              (Datum)0);       /* constant */
-      j++;
+
+  return true;
+ignore_clause: 
+  return false;
+}
+
+static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
+                          ScanKey *p_scan_keys, int *p_num_scan_keys) {
+  List *flat_quals = NIL;
+  ListCell *qual_cell, *lc1;
+  ScanKey scan_keys;
+  int n_scan_keys;
+  int index_of_scan_key;
+  TupleDesc desc;
+
+  foreach (qual_cell, quals) {
+    Expr *clause = (Expr *)lfirst(qual_cell);
+
+    if (IsA(clause, BoolExpr)) {
+      if (is_andclause(clause)){
+        foreach(lc1, ((BoolExpr *) clause)->args)
+        {
+          Expr *sub_clause = (Expr *)lfirst(lc1);
+          flat_quals = lappend(flat_quals, sub_clause);
+        }
+      } 
+      else if (is_orclause(clause))
+			{
+        // TODO: support it
+      } 
+    } else {
+      flat_quals = lappend(flat_quals, clause);
+    }
+  }
+
+  /* Allocate array for ScanKey structs: one per qual */
+  n_scan_keys = list_length(flat_quals);
+  scan_keys = (ScanKey)palloc(n_scan_keys * sizeof(ScanKeyData));
+  desc = rel->rd_att;
+  Oid *opfamilies = (Oid *)palloc(sizeof(Oid) * desc->natts);
+  for (auto i = 0; i < desc->natts; i++) {
+    auto attr = &desc->attrs[i];
+    if (attr->attisdropped) {
+      opfamilies[i] = 0;
+      continue;
+    }
+    Oid opclass = GetDefaultOpClass(attr->atttypid, BRIN_AM_OID);
+    if (!OidIsValid(opclass)) {
+      opfamilies[i] = 0;
+      continue;
+    }
+    opfamilies[i] = get_opclass_family(opclass);
+  }
+
+  index_of_scan_key = 0;
+  foreach (qual_cell, flat_quals) {
+    Expr *clause = (Expr *)lfirst(qual_cell);
+    ScanKey this_scan_key = &scan_keys[index_of_scan_key];
+    int indnkeyatts;
+
+    indnkeyatts = RelationGetNumberOfAttributes(rel);
+    
+    if (IsA(clause, OpExpr)) {
+      /* indexkey op const or indexkey op expression */
+      if (BuildScanKeyOpExpr(this_scan_key, clause, opfamilies, isorderby, indnkeyatts)) {
+        index_of_scan_key++;  
+      }
+    } else if (IsA(clause, NullTest)) {
+      /* indexkey IS NULL or indexkey IS NOT NULL */
+      Assert(!isorderby);
+      if (BuildScanKeyNullTest(this_scan_key, clause)){
+        index_of_scan_key++;
+      }
     } else {
       // not support other qual types yet
     }
-
-  ignore_clause:
-    continue;
   }
   pfree(opfamilies);
+  list_free(flat_quals);
 
   /*
    * Return info to our caller.
    */
-  if (j > 0) {
+  if (index_of_scan_key > 0) {
     *p_scan_keys = scan_keys;
-    *p_num_scan_keys = j;
+    *p_num_scan_keys = index_of_scan_key;
     return true;
   }
   return false;
