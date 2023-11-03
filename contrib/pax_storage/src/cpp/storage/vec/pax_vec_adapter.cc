@@ -531,18 +531,19 @@ bool VecAdapter::AppendToVecBuffer() {
   return true;
 }
 
+bool VecAdapter::ShouldBuildCtid() const { return build_ctid_; }
+
 void VecAdapter::FullWithCTID(CTupleSlot *cslot, VecBatchBuffer *batch_buffer) {
   auto buffer_len = sizeof(int64) * cached_batch_lens_;
   DataBuffer<int64> ctid_data_buffer((int64 *)cbdb::Palloc(buffer_len),
                                      buffer_len, false, false);
 
-  uint64 base_ctid =
-      ((uint64)cslot->GetTableNo() << 48) +
-      ((uint64)cslot->GetBlockNumber() << 32) +
-      ((uint64)current_cached_pax_columns_index_ * VEC_BATCH_LENGTH);
+  auto item_ptr = cslot->GetCtid();
+  auto base_offset = GetTupleOffset(item_ptr);
 
   for (size_t i = 0; i < cached_batch_lens_; i++) {
-    ctid_data_buffer[i] = base_ctid + i;
+    SetTupleOffset(&item_ptr, base_offset + i);
+    ctid_data_buffer[i] = CTIDToUint64(item_ptr);
   }
   batch_buffer->vec_buffer.Set(ctid_data_buffer.Start(),
                                ctid_data_buffer.Capacity());

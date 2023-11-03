@@ -7,12 +7,14 @@
 
 namespace pax {
 
-PaxVecReader::PaxVecReader(MicroPartitionReader *reader, VecAdapter *adapter, PaxFilter *filter)
+PaxVecReader::PaxVecReader(MicroPartitionReader *reader, VecAdapter *adapter,
+                           PaxFilter *filter)
     : reader_(reader),
       adapter_(adapter),
       working_group_(nullptr),
       current_group_index_(0),
-      filter_(filter) {
+      filter_(filter),
+      ctid_offset_(0) {
   Assert(reader && adapter);
 }
 
@@ -34,8 +36,8 @@ retry_read_group:
     auto group_index = current_group_index_++;
     auto info = reader_->GetGroupStatsInfo(group_index);
     if (filter_ && !filter_->TestScan(*info, desc)) {
-      PAX_LOG_IF(pax_enable_debug, "PAX: filter group[%lu]/%lu",
-        group_index, reader_->GetGroupNums());
+      PAX_LOG_IF(pax_enable_debug, "PAX: filter group[%lu]/%lu", group_index,
+                 reader_->GetGroupNums());
       goto retry_read_group;
     }
 
@@ -49,7 +51,15 @@ retry_read_group:
     goto retry_read_group;
   }
 
-  auto flush_nums_of_rows = adapter_->FlushVecBuffer(cslot);
+  size_t flush_nums_of_rows = 0;
+  if (adapter_->ShouldBuildCtid()) {
+    cslot->SetOffset(ctid_offset_);
+    flush_nums_of_rows = adapter_->FlushVecBuffer(cslot);
+    ctid_offset_ += flush_nums_of_rows;
+  } else {
+    flush_nums_of_rows = adapter_->FlushVecBuffer(cslot);
+  }
+
   Assert(flush_nums_of_rows);
   return true;
 }
@@ -58,7 +68,8 @@ size_t PaxVecReader::GetGroupNums() {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
-std::unique_ptr<ColumnStatsProvider> PaxVecReader::GetGroupStatsInfo(size_t group_index) {
+std::unique_ptr<ColumnStatsProvider> PaxVecReader::GetGroupStatsInfo(
+    size_t group_index) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
   return nullptr;
 }

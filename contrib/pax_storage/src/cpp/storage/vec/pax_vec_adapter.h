@@ -39,6 +39,8 @@ class VecAdapter final {
 
   const TupleDesc GetRelationTupleDesc() const;
 
+  bool ShouldBuildCtid() const;
+
  private:
   void FullWithCTID(CTupleSlot *cslot, VecBatchBuffer *batch_buffer);
   bool AppendVecFormat();

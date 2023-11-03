@@ -1,6 +1,6 @@
 #pragma once
 #include "comm/cbdb_api.h"
-
+#include "comm/cbdb_wrappers.h"
 #include <string>
 
 #ifdef ENABLE_LOCAL_INDEX
@@ -51,7 +51,8 @@ static inline std::string MapToBlockNumber(Relation /* rel */,
 
 }  // namespace pax
 
-#else
+#else // #ifdef ENABLE_LOCAL_INDEX
+
 namespace pax {
 #define PAX_TABLE_NUM_BIT_SIZE 5
 #define PAX_BLOCK_BIT_SIZE 22
@@ -133,7 +134,7 @@ class BlockNumberManager {
 extern std::string MapToBlockNumber(Relation rel, ItemPointerData ctid);
 }  // namespace pax
 
-#endif
+#endif // #ifdef ENABLE_LOCAL_INDEX
 
 namespace pax {
 static inline uint32 GetTupleOffsetInternal(ItemPointerData ctid) {
@@ -154,6 +155,15 @@ static inline void SetTupleOffset(ItemPointer ctid, uint32 offset) {
   uint32 mask = (1UL << (PAX_TUPLE_BIT_SIZE - 15)) - 1;
   ctid->ip_blkid.bi_lo = (ctid->ip_blkid.bi_lo & ~mask) | (offset >> 15);
   ctid->ip_posid = (offset & 0x7FFF) + 1;
+}
+
+static inline uint64 CTIDToUint64(ItemPointerData ctid) {
+  uint64 ctid_u64 = 0;
+  ctid_u64 |= ((uint64)ctid.ip_blkid.bi_hi) << 48;
+  ctid_u64 |= ((uint64)ctid.ip_blkid.bi_lo) << 32;
+  ctid_u64 |= ctid.ip_posid;
+
+  return ctid_u64;
 }
 
 extern std::string GenerateBlockID(Relation relation);
