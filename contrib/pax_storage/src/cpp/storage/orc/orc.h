@@ -28,6 +28,7 @@ class OrcColumnStatsData : public MicroPartitionStatsData {
   void SetAllNull(int column_index, bool allnull) override;
   void SetHasNull(int column_index, bool hasnull) override;
   void Reset();
+
  private:
   void CheckVectorSize() const;
 
@@ -118,7 +119,8 @@ class OrcReader : public MicroPartitionReader {
 
   MicroPartitionReader::Group *ReadGroup(size_t group_index) override;
 
-  std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(size_t group_index) override;
+  std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
+      size_t group_index) override;
 
 #ifndef RUN_GTEST
  protected:  // NOLINT
@@ -130,7 +132,6 @@ class OrcReader : public MicroPartitionReader {
  protected:
   MicroPartitionReader::Group *working_group_;
   size_t current_group_index_;
-  size_t current_row_offset_;
 
   bool *proj_map_;
   size_t proj_len_;

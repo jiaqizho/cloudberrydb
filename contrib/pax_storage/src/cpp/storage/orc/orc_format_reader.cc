@@ -155,6 +155,13 @@ finish_read:
 
     column_types_.emplace_back(sub_type.kind());
   }
+
+  // Build stripe row offset array
+  size_t cur_stripe_row_offset = 0;
+  for (int i = 0; i < num_of_stripes_; i++) {
+    stripe_row_offsets_.emplace_back(cur_stripe_row_offset);
+    cur_stripe_row_offset += file_footer_.stripes(i).numberofrows();
+  }
 }
 
 void OrcFormatReader::Close() { file_->Close(); }
@@ -164,6 +171,11 @@ size_t OrcFormatReader::GetStripeNums() const { return num_of_stripes_; }
 size_t OrcFormatReader::GetStripeNumberOfRows(size_t stripe_index) {
   Assert(stripe_index < GetStripeNums());
   return file_footer_.stripes(static_cast<int>(stripe_index)).numberofrows();
+}
+
+size_t OrcFormatReader::GetStripeOffset(size_t stripe_index) {
+  Assert(stripe_index < GetStripeNums());
+  return stripe_row_offsets_[stripe_index];
 }
 
 StripeInformation *OrcFormatReader::GetStripeInfo(size_t index) const {
