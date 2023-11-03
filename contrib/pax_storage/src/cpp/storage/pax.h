@@ -55,6 +55,9 @@ class TableWriter {
   virtual std::vector<std::tuple<ColumnEncoding_Kind, int>>
   GetRelEncodingOptions();
 
+  MicroPartitionWriter *CreateMicroPartitionWriter(
+      MicroPartitionStats *mp_stats);
+
  protected:
   const Relation relation_ = nullptr;
   MicroPartitionWriter *writer_ = nullptr;
@@ -64,8 +67,6 @@ class TableWriter {
   const FileSystem *file_system_ = Singleton<LocalFileSystem>::GetInstance();
 
   size_t num_tuples_ = 0;
-  size_t total_tuples_ = 0;
-
   bool already_get_format_ = false;
   PaxStorageFormat storage_format_ = PaxStorageFormat::kTypeStorageOrcNonVec;
 };

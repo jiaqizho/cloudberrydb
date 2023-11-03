@@ -141,6 +141,22 @@ T *DataBuffer<T>::GetAvailableBuffer() const {
 }
 
 template <typename T>
+void DataBuffer<T>::ReSize(size_t size, double mul_ratio) {
+  Assert(mul_ratio > 1);
+  auto cap = Capacity();
+
+  if (size <= cap) {
+    return;
+  }
+
+  while (cap < size) {
+    cap = cap * mul_ratio;
+  }
+
+  ReSize(cap);
+}
+
+template <typename T>
 void DataBuffer<T>::ReSize(size_t size) {
   if (!mem_take_over_) {
     CBDB_RAISE(cbdb::CException::ExType::kExTypeInvalidMemoryOperation);
@@ -234,6 +250,13 @@ void UntreatedDataBuffer<T>::TreatedAll() {
 
   BlockBufferBase::block_pos_ = write_pos;
   untreated_pos_ = BlockBufferBase::block_buffer_.Start();
+}
+
+template <typename T>
+void UntreatedDataBuffer<T>::ReSize(size_t size, double mul_ratio) {
+  size_t untreated = UnTreated();
+  DataBuffer<T>::ReSize(size, mul_ratio);
+  untreated_pos_ = BlockBufferBase::block_buffer_.Start() + untreated;
 }
 
 template <typename T>

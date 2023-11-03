@@ -6,7 +6,7 @@ namespace pax {
 template <typename T>
 class PaxVecCommColumn : public PaxColumn {
  public:
-  explicit PaxVecCommColumn(uint64 capacity);
+  explicit PaxVecCommColumn(uint32 capacity);
 
   ~PaxVecCommColumn() override;
 
@@ -55,7 +55,7 @@ extern template class PaxVecCommColumn<double>;
 
 class PaxVecNonFixedColumn : public PaxColumn {
  public:
-  explicit PaxVecNonFixedColumn(uint64 capacity);
+  explicit PaxVecNonFixedColumn(uint32 capacity);
 
   PaxVecNonFixedColumn();
 

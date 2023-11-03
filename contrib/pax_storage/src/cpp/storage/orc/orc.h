@@ -17,16 +17,20 @@
 namespace pax {
 class MicroPartitionStats;
 class OrcFormatReader;
+class OrcGroup;
 
 class OrcColumnStatsData : public MicroPartitionStatsData {
  public:
   OrcColumnStatsData() = default;
   OrcColumnStatsData *Initialize(int natts);
+  void CopyFrom(MicroPartitionStatsData *stats) override;
   ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) override;
   ::pax::stats::ColumnDataStats *GetColumnDataStats(int column_index) override;
   int ColumnSize() const override;
   void SetAllNull(int column_index, bool allnull) override;
   void SetHasNull(int column_index, bool hasnull) override;
+  bool GetAllNull(int column_index) override;
+  bool GetHasNull(int column_index) override;
   void Reset();
 
  private:
@@ -48,6 +52,8 @@ class OrcWriter : public MicroPartitionWriter {
   void WriteTuple(CTupleSlot *slot) override;
 
   void WriteTupleN(CTupleSlot **slot, size_t n) override;
+
+  void MergeTo(MicroPartitionWriter *writer) override;
 
   void Close() override;
 
@@ -79,15 +85,25 @@ class OrcWriter : public MicroPartitionWriter {
   }
 
   void BuildFooterType();
+  bool WriteStripe(BufferedOutputStream *buffer_mem_stream,
+                   PaxColumns *pax_columns);
   bool WriteStripe(BufferedOutputStream *buffer_mem_stream);
   void WriteMetadata(BufferedOutputStream *buffer_mem_stream);
   void WriteFileFooter(BufferedOutputStream *buffer_mem_stream);
   void WritePostscript(BufferedOutputStream *buffer_mem_stream);
 
+  void MergePaxColumns(PaxColumns *columns);
+  void MergeGroups(OrcWriter *orc_writer);
+  void MergeGroup(OrcWriter *orc_writer, int group_index,
+                  DataBuffer<char> *merge_buffer);
+  void DeleteUnstateFile();
+
  protected:
+  bool is_closed_;
   PaxColumns *pax_columns_;
   const std::vector<orc::proto::Type_Kind> column_types_;
   File *file_;
+  MicroPartitionStats *mp_stats_;
   WriteSummary summary_;
 
   uint64 total_rows_;
@@ -137,7 +153,7 @@ class OrcReader : public MicroPartitionReader {
   size_t proj_len_;
 
   OrcFormatReader format_reader_;
-  bool is_close_;
+  bool is_closed_;
 
 #ifdef ENABLE_PLASMA
   PaxColumnCache *pax_column_cache_ = nullptr;

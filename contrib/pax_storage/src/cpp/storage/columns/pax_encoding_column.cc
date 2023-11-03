@@ -6,7 +6,7 @@ namespace pax {
 
 template <typename T>
 PaxEncodingColumn<T>::PaxEncodingColumn(
-    uint64 capacity, const PaxEncoder::EncodingOption &encoding_option)
+    uint32 capacity, const PaxEncoder::EncodingOption &encoding_option)
     : PaxCommColumn<T>(capacity),
       encoder_options_(encoding_option),
       encoder_(nullptr),
@@ -19,7 +19,7 @@ PaxEncodingColumn<T>::PaxEncodingColumn(
 
 template <typename T>
 PaxEncodingColumn<T>::PaxEncodingColumn(
-    uint64 capacity, const PaxDecoder::DecodingOption &decoding_option)
+    uint32 capacity, const PaxDecoder::DecodingOption &decoding_option)
     : PaxCommColumn<T>(capacity),
       encoder_(nullptr),
       decoder_options_{decoding_option},

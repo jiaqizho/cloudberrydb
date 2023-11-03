@@ -92,6 +92,15 @@ class MicroPartitionWriter {
   virtual void WriteTuple(CTupleSlot *slot) = 0;
   virtual void WriteTupleN(CTupleSlot **slot, size_t n) = 0;
 
+  // The current writer merges with another open `MicroPartitionWriter`
+  // two of `MicroPartitionWriter` must be the same sub-class.
+  // Notice that: not support different format writer call `Merge`
+  //
+  // - Combine the group in memory
+  // - Merge the group from disk and remove the unstate file in disk
+  // - Merge the summary
+  virtual void MergeTo(MicroPartitionWriter *writer) = 0;
+
   using WriteSummaryCallback = std::function<void(const WriteSummary &summary)>;
 
   // summary callback is invoked after the file is closed.

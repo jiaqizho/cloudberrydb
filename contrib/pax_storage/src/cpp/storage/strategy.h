@@ -8,8 +8,7 @@ class FileSplitStrategy {
  public:
   virtual ~FileSplitStrategy() = default;
 
-  virtual bool ShouldSplit(MicroPartitionWriter *writer,
-                           size_t num_tuples) const = 0;
+  virtual bool ShouldSplit(size_t phy_size, size_t num_tuples) const = 0;
 
   virtual size_t SplitTupleNumbers() const = 0;
 
@@ -25,7 +24,6 @@ class PaxDefaultSplitStrategy final : public FileSplitStrategy {
 
   size_t SplitFileSize() const override;
 
-  bool ShouldSplit(MicroPartitionWriter *writer,
-                   size_t num_tuples) const override;
+  bool ShouldSplit(size_t phy_size, size_t num_tuples) const override;
 };
 }  // namespace pax
