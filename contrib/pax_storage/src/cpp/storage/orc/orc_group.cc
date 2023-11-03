@@ -12,7 +12,7 @@ OrcGroup::OrcGroup(PaxColumns *pax_column, size_t row_offset)
 
 OrcGroup::~OrcGroup() {
   delete pax_columns_;
-  delete current_nulls_;
+  delete[] current_nulls_;
 }
 
 size_t OrcGroup::GetRows() const { return pax_columns_->GetRows(); }

@@ -4,7 +4,7 @@ namespace pax {
 
 template <typename T>
 PaxVecEncodingColumn<T>::PaxVecEncodingColumn(
-    uint64 capacity, const PaxEncoder::EncodingOption &encoding_option)
+    uint32 capacity, const PaxEncoder::EncodingOption &encoding_option)
     : PaxVecCommColumn<T>(capacity),
       encoder_options_(encoding_option),
       encoder_(nullptr),
@@ -17,7 +17,7 @@ PaxVecEncodingColumn<T>::PaxVecEncodingColumn(
 
 template <typename T>
 PaxVecEncodingColumn<T>::PaxVecEncodingColumn(
-    uint64 capacity, const PaxDecoder::DecodingOption &decoding_option)
+    uint32 capacity, const PaxDecoder::DecodingOption &decoding_option)
     : PaxVecCommColumn<T>(capacity),
       encoder_(nullptr),
       decoder_options_{decoding_option},
@@ -205,7 +205,7 @@ template class PaxVecEncodingColumn<int32>;
 template class PaxVecEncodingColumn<int64>;
 
 PaxVecNonFixedEncodingColumn::PaxVecNonFixedEncodingColumn(
-    uint64 capacity, const PaxEncoder::EncodingOption &encoder_options)
+    uint32 capacity, const PaxEncoder::EncodingOption &encoder_options)
     : PaxVecNonFixedColumn(capacity),
       encoder_options_(encoder_options),
       compressor_(nullptr),
@@ -225,7 +225,7 @@ PaxVecNonFixedEncodingColumn::PaxVecNonFixedEncodingColumn(
 }
 
 PaxVecNonFixedEncodingColumn::PaxVecNonFixedEncodingColumn(
-    uint64 capacity, const PaxDecoder::DecodingOption &decoding_option)
+    uint32 capacity, const PaxDecoder::DecodingOption &decoding_option)
     : PaxVecNonFixedColumn(capacity),
       decoder_options_(decoding_option),
       compressor_(nullptr),

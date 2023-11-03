@@ -233,13 +233,9 @@ void paxc_reg_rel_options() {
                     PAX_DEFAULT_COMPRESSLEVEL, PAX_MIN_COMPRESSLEVEL,
                     PAX_MAX_COMPRESSLEVEL, AccessExclusiveLock);
   add_string_reloption(self_relopt_kind, PAX_SOPT_PARTITION_BY, "partition by",
-                       NULL,
-                       NULL,
-                       AccessExclusiveLock);
-  add_string_reloption(self_relopt_kind, PAX_SOPT_PARTITION_RANGES, "partition ranges",
-                       NULL,
-                       NULL,
-                       AccessExclusiveLock);
+                       NULL, NULL, AccessExclusiveLock);
+  add_string_reloption(self_relopt_kind, PAX_SOPT_PARTITION_RANGES,
+                       "partition ranges", NULL, NULL, AccessExclusiveLock);
 }
 
 }  // namespace paxc

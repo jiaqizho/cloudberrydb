@@ -57,15 +57,6 @@ ssize_t LocalFile::PWrite(const void *ptr, size_t n, off_t offset) {
   return num;
 }
 
-void LocalFile::Close() {
-  int rc;
-
-  do {
-    rc = close(fd_);
-  } while (unlikely(rc == -1 && errno == EINTR));
-  CBDB_CHECK(rc == 0, cbdb::CException::ExType::kExTypeIOError);
-}
-
 size_t LocalFile::FileLength() const {
   struct stat file_stat {};
 
@@ -76,6 +67,23 @@ size_t LocalFile::FileLength() const {
 
 void LocalFile::Flush() {
   CBDB_CHECK(fsync(fd_) == 0, cbdb::CException::ExType::kExTypeIOError);
+}
+
+void LocalFile::Delete() {
+  int rc;
+
+  rc = remove(file_path_.c_str());
+  CBDB_CHECK(rc == 0 || errno == ENOENT,
+             cbdb::CException::ExType::kExTypeIOError);
+}
+
+void LocalFile::Close() {
+  int rc;
+
+  do {
+    rc = close(fd_);
+  } while (unlikely(rc == -1 && errno == EINTR));
+  CBDB_CHECK(rc == 0, cbdb::CException::ExType::kExTypeIOError);
 }
 
 std::string LocalFile::GetPath() const { return file_path_; }
@@ -146,4 +154,3 @@ void LocalFileSystem::DeleteDirectory(const std::string &path,
 }
 
 }  // namespace pax
-

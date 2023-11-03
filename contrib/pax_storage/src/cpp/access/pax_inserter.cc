@@ -4,6 +4,8 @@
 #include <utility>
 
 #include "access/pax_dml_state.h"
+#include "access/pax_partition.h"
+#include "access/paxc_rel_options.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/micro_partition_stats.h"
@@ -11,8 +13,20 @@
 
 namespace pax {
 
-CPaxInserter::CPaxInserter(Relation rel) : rel_(rel), insert_count_(0) {
-  writer_ = new TableWriter(rel);
+CPaxInserter::CPaxInserter(Relation rel)
+    : rel_(rel), insert_count_(0), part_obj_(nullptr), writer_(nullptr) {
+  part_obj_ = new PartitionObject();
+  auto ok = part_obj_->Initialize(rel_);
+  if (ok) {
+    writer_ = new TableParitionWriter(rel, part_obj_);
+  } else {
+    // fallback to TableWriter
+    writer_ = new TableWriter(rel);
+    part_obj_->Release();
+    delete part_obj_;
+    part_obj_ = nullptr;
+  }
+
   writer_->SetWriteSummaryCallback(&cbdb::AddMicroPartitionEntry)
       ->SetFileSplitStrategy(new PaxDefaultSplitStrategy())
       ->SetStatsCollector(new MicroPartitionStats())
@@ -53,6 +67,12 @@ void CPaxInserter::FinishInsert() {
   writer_->Close();
   delete writer_;
   writer_ = nullptr;
+
+  if (part_obj_) {
+    part_obj_->Release();
+    delete part_obj_;
+    part_obj_ = nullptr;
+  }
 }
 
 void CPaxInserter::TupleInsert(Relation relation, TupleTableSlot *slot,
