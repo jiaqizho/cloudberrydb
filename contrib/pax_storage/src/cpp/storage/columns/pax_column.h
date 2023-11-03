@@ -159,7 +159,9 @@ class PaxColumn {
   // Get the data size without encoding/compress
   virtual int64 GetOriginLength() const = 0;
 
-  // Get the type length, if non-fixed, will return -1
+  // Get the type length, used to identify sub-class
+  // - `PaxCommColumn<T>` will return the <T> length
+  // - `PaxNonFixedColumn` will return -1
   virtual int32 GetTypeLength() const = 0;
 
   // Contain null filed or not
@@ -179,6 +181,9 @@ class PaxColumn {
   virtual size_t GetAlignSize() const;
 
   virtual void SetAlignSize(size_t align_size);
+
+ private:
+  void CreateNulls(size_t cap);
 
  protected:
   // null field bit map
@@ -218,7 +223,7 @@ class PaxColumn {
 template <typename T>
 class PaxCommColumn : public PaxColumn {
  public:
-  explicit PaxCommColumn(uint64 capacity);
+  explicit PaxCommColumn(uint32 capacity);
 
   ~PaxCommColumn() override;
 
@@ -248,10 +253,6 @@ class PaxCommColumn : public PaxColumn {
   int32 GetTypeLength() const override;
 
  protected:
-  virtual void ReSize(uint64 capacity);
-
- protected:
-  uint64 capacity_;
   DataBuffer<T> *data_;
 };
 
@@ -265,7 +266,7 @@ extern template class PaxCommColumn<double>;
 
 class PaxNonFixedColumn : public PaxColumn {
  public:
-  explicit PaxNonFixedColumn(uint64 capacity);
+  explicit PaxNonFixedColumn(uint32 capacity);
 
   PaxNonFixedColumn();
 

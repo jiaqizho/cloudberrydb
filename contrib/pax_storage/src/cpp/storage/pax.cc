@@ -104,7 +104,8 @@ TableWriter::GetRelEncodingOptions() {
   return encoding_opts;
 }
 
-void TableWriter::Open() {
+MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
+    MicroPartitionStats *mp_stats) {
   MicroPartitionWriter::WriterOptions options;
   std::string file_path;
   std::string block_id;
@@ -126,27 +127,31 @@ void TableWriter::Open() {
   File *file =
       Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name);
 
-  writer_ = MicroPartitionFileFactory::CreateMicroPartitionWriter(
+  auto mp_writer = MicroPartitionFileFactory::CreateMicroPartitionWriter(
       MICRO_PARTITION_TYPE_PAX, file, std::move(options));
 
-  writer_->SetWriteSummaryCallback(summary_callback_);
-  writer_->SetStatsCollector(mp_stats_);
+  mp_writer->SetWriteSummaryCallback(summary_callback_);
+  mp_writer->SetStatsCollector(mp_stats);
+  return mp_writer;
 }
+
+void TableWriter::Open() { writer_ = CreateMicroPartitionWriter(mp_stats_); }
 
 void TableWriter::WriteTuple(CTupleSlot *slot) {
   Assert(writer_);
   Assert(strategy_);
   // should check split strategy before write tuple
   // otherwise, may got a empty file in the disk
-  if (strategy_->ShouldSplit(writer_, num_tuples_)) {
-    this->Close();
-    this->Open();
+  if (strategy_->ShouldSplit(writer_->PhysicalSize(), num_tuples_)) {
+    writer_->Close();
+    delete writer_;
+    writer_ = CreateMicroPartitionWriter(mp_stats_);
+    num_tuples_ = 0;
   }
   if (mp_stats_) mp_stats_->AddRow(slot->GetTupleTableSlot());
 
   writer_->WriteTuple(slot);
   ++num_tuples_;
-  ++total_tuples_;
 }
 
 void TableWriter::Close() {

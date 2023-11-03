@@ -7,9 +7,7 @@
 #include "storage/proto/proto_wrappers.h"
 
 namespace pax {
-MicroPartitionStats::~MicroPartitionStats() {
-  delete stats_;
-}
+MicroPartitionStats::~MicroPartitionStats() { delete stats_; }
 // SetStatsMessage may be called several times in a write,
 // one for each micro partition, so all members need to reset.
 // Some metainfo like typid, collation, oids for less/greater,
@@ -40,8 +38,7 @@ MicroPartitionStats *MicroPartitionStats::SetStatsMessage(
 MicroPartitionStats *MicroPartitionStats::LightReset() {
   for (char &status : status_) {
     Assert(status == 'n' || status == 'y' || status == 'x');
-    if (status == 'y')
-      status = 'n';
+    if (status == 'y') status = 'n';
   }
   return this;
 }
@@ -64,6 +61,68 @@ void MicroPartitionStats::AddRow(TupleTableSlot *slot) {
       AddNullColumn(i);
     else
       AddNonNullColumn(i, slot->tts_values[i], desc);
+  }
+}
+
+void MicroPartitionStats::MergeTo(MicroPartitionStats *stats, TupleDesc desc) {
+  Assert(status_.size() == stats->status_.size());
+  for (size_t column_index = 0; column_index < status_.size(); column_index++) {
+    Assert(status_[column_index] != 'u' && stats->status_[column_index] != 'u');
+    AssertImply(stats->status_[column_index] == 'x',
+                status_[column_index] == 'x');
+
+    if (stats->status_[column_index] == 'n' ||
+        stats->status_[column_index] == 'x') {
+      continue;
+    }
+
+    Assert(stats->status_[column_index] == 'y');
+    Assert(status_[column_index] != 'x');
+    if (status_[column_index] == 'y') {
+      auto col_basic_stats_merge =
+          stats->stats_->GetColumnBasicInfo(column_index);
+      auto col_data_stats_merge =
+          stats->stats_->GetColumnDataStats(column_index);
+
+      auto col_basic_stats = stats_->GetColumnBasicInfo(column_index);
+
+      auto att = TupleDescAttr(desc, column_index);
+      auto collation = att->attcollation;
+      auto typlen = att->attlen;
+      auto typbyval = att->attbyval;
+
+      Assert(col_basic_stats->typid() == col_basic_stats_merge->typid());
+      Assert(col_basic_stats->opfamily() == col_basic_stats_merge->opfamily());
+      Assert(col_basic_stats->collation() ==
+             col_basic_stats_merge->collation());
+      Assert(col_basic_stats->collation() == collation);
+
+      if (stats_->GetAllNull(column_index) &&
+          !stats->stats_->GetAllNull(column_index)) {
+        stats_->SetAllNull(column_index, false);
+      }
+
+      if (!stats_->GetHasNull(column_index) &&
+          stats->stats_->GetHasNull(column_index)) {
+        stats_->SetHasNull(column_index, true);
+      }
+
+      bool ok = false;
+      auto min_val =
+          FromValue(col_data_stats_merge->minimal(), typlen, typbyval, &ok);
+      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
+      auto max_val =
+          FromValue(col_data_stats_merge->maximum(), typlen, typbyval, &ok);
+      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
+
+      UpdateMinMaxValue(column_index, min_val, collation, typlen, typbyval);
+      UpdateMinMaxValue(column_index, max_val, collation, typlen, typbyval);
+    } else if (status_[column_index] == 'n') {
+      stats_->CopyFrom(stats->stats_);
+      status_[column_index] = 'y';
+    } else {
+      Assert(false);
+    }
   }
 }
 
@@ -105,7 +164,8 @@ void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value,
     case 'n': {
       AssertImply(info->has_typid(), info->typid() == att->atttypid);
       AssertImply(info->has_collation(), info->collation() == collation);
-      AssertImply(info->has_opfamily(), info->opfamily() == opfamilies_[column_index]);
+      AssertImply(info->has_opfamily(),
+                  info->opfamily() == opfamilies_[column_index]);
       Assert(!data_stats->has_minimal());
       Assert(!data_stats->has_maximum());
 
@@ -126,7 +186,8 @@ void MicroPartitionStats::UpdateMinMaxValue(int column_index, Datum datum,
                                             Oid collation, int typlen,
                                             bool typbyval) {
   Assert(initial_check_);
-  Assert(column_index >= 0 && static_cast<size_t>(column_index) < status_.size());
+  Assert(column_index >= 0 &&
+         static_cast<size_t>(column_index) < status_.size());
   Assert(status_[column_index] == 'y');
 
   auto &finfos = finfos_[column_index];
@@ -137,16 +198,16 @@ void MicroPartitionStats::UpdateMinMaxValue(int column_index, Datum datum,
     const auto &min = data_stats->minimal();
     auto val = FromValue(min, typlen, typbyval, &ok);
     CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
-    auto update =
-        DatumGetBool(cbdb::FunctionCall2Coll(&finfos.first, collation, datum, val));
+    auto update = DatumGetBool(
+        cbdb::FunctionCall2Coll(&finfos.first, collation, datum, val));
     if (update) data_stats->set_minimal(ToValue(datum, typlen, typbyval));
   }
   {
     const auto &max = data_stats->maximum();
     auto val = FromValue(max, typlen, typbyval, &ok);
     CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError);
-    auto update =
-        DatumGetBool(cbdb::FunctionCall2Coll(&finfos.second, collation, datum, val));
+    auto update = DatumGetBool(
+        cbdb::FunctionCall2Coll(&finfos.second, collation, datum, val));
     if (update) data_stats->set_maximum(ToValue(datum, typlen, typbyval));
   }
 }
@@ -156,10 +217,11 @@ bool MicroPartitionStats::GetStrategyProcinfo(
     std::pair<FmgrInfo, FmgrInfo> &finfos) {
   Oid opfamily1;
   Oid opfamily2;
-  auto ok = cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &opfamily1, &finfos.first,
-                                         BTLessStrategyNumber) &&
-         cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &opfamily2, &finfos.second,
-                                         BTGreaterStrategyNumber);
+  auto ok =
+      cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &opfamily1, &finfos.first,
+                                      BTLessStrategyNumber) &&
+      cbdb::MinMaxGetStrategyProcinfo(typid, subtype, &opfamily2,
+                                      &finfos.second, BTGreaterStrategyNumber);
   if (ok) {
     Assert(opfamily1 == opfamily2);
     Assert(OidIsValid(opfamily1));
@@ -178,7 +240,8 @@ void MicroPartitionStats::DoInitialCheck(TupleDesc desc) {
   for (int i = 0; i < natts; i++) {
     auto att = TupleDescAttr(desc, i);
     if (att->attisdropped ||
-        !GetStrategyProcinfo(att->atttypid, att->atttypid, &opfamilies_[i], finfos_[i])) {
+        !GetStrategyProcinfo(att->atttypid, att->atttypid, &opfamilies_[i],
+                             finfos_[i])) {
       status_[i] = 'x';
       continue;
     }
@@ -263,8 +326,9 @@ std::string MicroPartitionStats::ToValue(Datum datum, int typlen,
                      typlen);
 }
 
-MicroPartittionFileStatsData::MicroPartittionFileStatsData(::pax::stats::MicroPartitionStatisticsInfo *info, int natts)
-: info_(info) {
+MicroPartittionFileStatsData::MicroPartittionFileStatsData(
+    ::pax::stats::MicroPartitionStatisticsInfo *info, int natts)
+    : info_(info) {
   Assert(info);
   Assert(info->columnstats_size() == 0);
   for (int i = 0; i < natts; i++) {
@@ -274,10 +338,19 @@ MicroPartittionFileStatsData::MicroPartittionFileStatsData(::pax::stats::MicroPa
   Assert(info->columnstats_size() == natts);
 }
 
-::pax::stats::ColumnBasicInfo *MicroPartittionFileStatsData::GetColumnBasicInfo(int column_index) {
+void MicroPartittionFileStatsData::CopyFrom(MicroPartitionStatsData *stats) {
+  Assert(stats);
+  auto file_stats = dynamic_cast<MicroPartittionFileStatsData *>(stats);
+  Assert(file_stats);
+  info_->CopyFrom(*file_stats->info_);
+}
+
+::pax::stats::ColumnBasicInfo *MicroPartittionFileStatsData::GetColumnBasicInfo(
+    int column_index) {
   return info_->mutable_columnstats(column_index)->mutable_info();
 }
-::pax::stats::ColumnDataStats *MicroPartittionFileStatsData::GetColumnDataStats(int column_index) {
+::pax::stats::ColumnDataStats *MicroPartittionFileStatsData::GetColumnDataStats(
+    int column_index) {
   return info_->mutable_columnstats(column_index)->mutable_datastats();
 }
 int MicroPartittionFileStatsData::ColumnSize() const {
@@ -290,7 +363,17 @@ void MicroPartittionFileStatsData::SetHasNull(int column_index, bool hasnull) {
   info_->mutable_columnstats(column_index)->set_hasnull(hasnull);
 }
 
-MicroPartitionStatsProvider::MicroPartitionStatsProvider(const ::pax::stats::MicroPartitionStatisticsInfo &stats) : stats_(stats) {}
+bool MicroPartittionFileStatsData::GetAllNull(int column_index) {
+  return info_->columnstats(column_index).allnull();
+}
+
+bool MicroPartittionFileStatsData::GetHasNull(int column_index) {
+  return info_->columnstats(column_index).hasnull();
+}
+
+MicroPartitionStatsProvider::MicroPartitionStatsProvider(
+    const ::pax::stats::MicroPartitionStatisticsInfo &stats)
+    : stats_(stats) {}
 int MicroPartitionStatsProvider::ColumnSize() const {
   return stats_.columnstats_size();
 }
@@ -300,10 +383,12 @@ bool MicroPartitionStatsProvider::AllNull(int column_index) const {
 bool MicroPartitionStatsProvider::HasNull(int column_index) const {
   return stats_.columnstats(column_index).hasnull();
 }
-const ::pax::stats::ColumnBasicInfo &MicroPartitionStatsProvider::ColumnInfo(int column_index) const {
+const ::pax::stats::ColumnBasicInfo &MicroPartitionStatsProvider::ColumnInfo(
+    int column_index) const {
   return stats_.columnstats(column_index).info();
 }
-const ::pax::stats::ColumnDataStats &MicroPartitionStatsProvider::DataStats(int column_index) const {
+const ::pax::stats::ColumnDataStats &MicroPartitionStatsProvider::DataStats(
+    int column_index) const {
   return stats_.columnstats(column_index).datastats();
 }
 }  // namespace pax
@@ -327,8 +412,7 @@ static char *TypeValueToCString(Oid typid, Oid collation,
 
   datum = pax::MicroPartitionStats::FromValue(value, form->typlen,
                                               form->typbyval, &ok);
-  if (!ok)
-    elog(ERROR, "unexpected typlen: %d\n", form->typlen);
+  if (!ok) elog(ERROR, "unexpected typlen: %d\n", form->typlen);
 
   fmgr_info_cxt(form->typoutput, &finfo, CurrentMemoryContext);
   datum = FunctionCall1Coll(&finfo, collation, datum);

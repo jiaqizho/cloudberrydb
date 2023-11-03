@@ -130,8 +130,7 @@ PaxColumn *PaxColumns::operator[](uint64 i) { return columns_[i]; }
 
 void PaxColumns::Append(PaxColumn *column) { columns_.emplace_back(column); }
 
-void PaxColumns::Append([[maybe_unused]] char *buffer,
-                        [[maybe_unused]] size_t size) {
+void PaxColumns::Append(char * /*buffer*/, size_t /*size*/) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 

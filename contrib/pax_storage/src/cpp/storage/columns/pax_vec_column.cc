@@ -3,7 +3,7 @@
 namespace pax {
 
 template <typename T>
-PaxVecCommColumn<T>::PaxVecCommColumn(uint64 capacity) {
+PaxVecCommColumn<T>::PaxVecCommColumn(uint32 capacity) {
   data_ = new DataBuffer<T>(TYPEALIGN(MEMORY_ALIGN_SIZE, capacity * sizeof(T)));
 }
 
@@ -110,7 +110,7 @@ template class PaxVecCommColumn<int64>;
 template class PaxVecCommColumn<float>;
 template class PaxVecCommColumn<double>;
 
-PaxVecNonFixedColumn::PaxVecNonFixedColumn(uint64 capacity)
+PaxVecNonFixedColumn::PaxVecNonFixedColumn(uint32 capacity)
     : estimated_size_(0),
       data_(new DataBuffer<char>(
           TYPEALIGN(MEMORY_ALIGN_SIZE, capacity * sizeof(char)))),

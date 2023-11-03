@@ -53,8 +53,8 @@ google::protobuf::int64 BufferedOutputStream::ByteCount() const {
   return static_cast<google::protobuf::int64>(data_buffer_->Used());
 }
 
-bool BufferedOutputStream::WriteAliasedRaw([[maybe_unused]] const void *data,
-                                           [[maybe_unused]] int size) {
+bool BufferedOutputStream::WriteAliasedRaw(const void * /*data*/,
+                                           int /*size*/) {
   return false;
 }
 

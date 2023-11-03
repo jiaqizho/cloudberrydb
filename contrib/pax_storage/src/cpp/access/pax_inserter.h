@@ -4,9 +4,9 @@
 
 #include "storage/micro_partition_metadata.h"
 #include "storage/pax.h"
-
+#include "storage/pax_table_partition_writer.h"
 namespace pax {
-
+class PartitionObject;
 class CPaxInserter {
  public:
   explicit CPaxInserter(Relation rel);
@@ -29,6 +29,7 @@ class CPaxInserter {
   Relation rel_;
   uint32 insert_count_;
 
+  PartitionObject *part_obj_;
   TableWriter *writer_;
 };  // class CPaxInserter
 

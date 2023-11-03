@@ -39,10 +39,14 @@ struct PaxOptions {
   int partition_ranges_offset = 0;
 
   char *partition_by() {
-    return partition_by_offset == 0 ? NULL : reinterpret_cast<char *>(this) + partition_by_offset;
+    return partition_by_offset == 0
+               ? NULL
+               : reinterpret_cast<char *>(this) + partition_by_offset;
   }
   char *partition_ranges() {
-    return partition_ranges_offset == 0 ? NULL : reinterpret_cast<char *>(this) + partition_ranges_offset;
+    return partition_ranges_offset == 0
+               ? NULL
+               : reinterpret_cast<char *>(this) + partition_ranges_offset;
   }
 };
 

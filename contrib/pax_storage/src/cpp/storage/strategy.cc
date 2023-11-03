@@ -16,10 +16,9 @@ size_t PaxDefaultSplitStrategy::SplitFileSize() const {
   return 64 * 1024 * 1024;
 }
 
-bool PaxDefaultSplitStrategy::ShouldSplit(MicroPartitionWriter *writer,
+bool PaxDefaultSplitStrategy::ShouldSplit(size_t phy_size,
                                           size_t num_tuples) const {
-  return (num_tuples >= SplitTupleNumbers()) ||
-         (writer->PhysicalSize() >= SplitFileSize());
+  return (num_tuples >= SplitTupleNumbers()) || (phy_size >= SplitFileSize());
 }
 
 }  // namespace pax

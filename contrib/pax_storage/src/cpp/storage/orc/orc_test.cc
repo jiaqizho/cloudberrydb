@@ -670,7 +670,8 @@ INSTANTIATE_TEST_CASE_P(
     OrcEncodingTestCombine, OrcEncodingTest,
     testing::Values(ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED,
                     ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
-                    ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2));
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2,
+                    ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZSTD));
 
 TEST_P(OrcCompressTest, ReadTupleWithCompress) {
   TupleTableSlot *tuple_slot = nullptr;
@@ -1355,5 +1356,115 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
 INSTANTIATE_TEST_CASE_P(OrcTestProjectionCombine, OrcTestProjection,
                         testing::Combine(testing::Values(0, 1, 2, 3),
                                          testing::Values(false, true)));
+
+TEST_P(OrcEncodingTest, WriterMerge) {
+  char column_buff[COLUMN_SIZE];
+  GenFakeBuffer(column_buff, COLUMN_SIZE);
+  CTupleSlot *ctuple_slot = OrcTest::CreateFakeCTupleSlot();
+  const std::string file1_name = "./test1.file";
+  const std::string file2_name = "./test2.file";
+  const std::string file3_name = "./test3.file";
+  auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
+  CTupleSlot *tuple_slot_empty = OrcTest::CreateEmptyCTupleSlot();
+  auto encoding_kind = GetParam();
+
+  remove(file1_name.c_str());
+  remove(file2_name.c_str());
+  remove(file3_name.c_str());
+
+  ASSERT_NE(nullptr, local_fs);
+
+  auto file1_ptr = local_fs->Open(file1_name);
+  auto file2_ptr = local_fs->Open(file2_name);
+  auto file3_ptr = local_fs->Open(file3_name);
+  EXPECT_NE(nullptr, file1_ptr);
+  EXPECT_NE(nullptr, file2_ptr);
+  EXPECT_NE(nullptr, file3_ptr);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+  OrcWriter::WriterOptions writer_options;
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> types_encoding;
+  types_encoding.emplace_back(std::make_tuple(encoding_kind, 0));
+  types_encoding.emplace_back(std::make_tuple(encoding_kind, 0));
+  types_encoding.emplace_back(std::make_tuple(encoding_kind, 0));
+  writer_options.encoding_opts = types_encoding;
+  writer_options.group_limit = 100;
+  writer_options.desc = ctuple_slot->GetTupleDesc();
+
+  auto *writer1 = new OrcWriter(writer_options, types, file1_ptr);
+  auto *writer2 = new OrcWriter(writer_options, types, file2_ptr);
+  auto *writer3 = new OrcWriter(writer_options, types, file3_ptr);
+
+  // two group + 51 rows in memory
+  for (size_t i = 0; i < 251; i++) {
+    if (i % 3 == 0) {
+      ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = true;
+      ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = true;
+      ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = true;
+    } else {
+      ctuple_slot->GetTupleTableSlot()->tts_isnull[0] = false;
+      ctuple_slot->GetTupleTableSlot()->tts_isnull[1] = false;
+      ctuple_slot->GetTupleTableSlot()->tts_isnull[2] = false;
+    }
+    writer1->WriteTuple(ctuple_slot);
+    writer2->WriteTuple(ctuple_slot);
+  }
+
+  for (size_t i = 0; i < 20; i++) {
+    writer3->WriteTuple(ctuple_slot);
+  }
+
+  // writer1 merge writer2, writer3 merge writer1
+  // writer3 must contains all of datas
+  writer1->MergeTo(writer2);
+  writer3->MergeTo(writer1);
+  writer3->Close();
+
+  delete writer1;
+  delete writer2;
+  delete writer3;
+
+  ASSERT_NE(0, access(file1_name.c_str(), 0));
+  ASSERT_NE(0, access(file2_name.c_str(), 0));
+
+  MicroPartitionReader::ReaderOptions reader_options;
+  file3_ptr = local_fs->Open(file3_name);
+
+  auto reader = new OrcReader(file3_ptr);
+  reader->Open(reader_options);
+
+  // no memory merge
+  ASSERT_EQ(7, reader->GetGroupNums());
+
+  size_t total_rows = (251 * 2) + 20;
+
+  for (size_t i = 0; i < total_rows; i++) {
+    ASSERT_TRUE(reader->ReadTuple(tuple_slot_empty));
+    if (!tuple_slot_empty->GetTupleTableSlot()->tts_isnull[0]) {
+      auto vl = (struct varlena *)DatumGetPointer(
+          tuple_slot_empty->GetTupleTableSlot()->tts_values[0]);
+      auto tunpacked = pg_detoast_datum_packed(vl);
+      EXPECT_EQ((Pointer)vl, (Pointer)tunpacked);
+      int read_len = VARSIZE(tunpacked);
+      char *read_data = VARDATA_ANY(tunpacked);
+      EXPECT_EQ(read_len, COLUMN_SIZE + VARHDRSZ);
+      EXPECT_EQ(0, std::memcmp(read_data, column_buff, COLUMN_SIZE));
+    }
+  }
+
+  ASSERT_FALSE(reader->ReadTuple(tuple_slot_empty));
+
+  OrcTest::DeleteCTupleSlot(ctuple_slot);
+  OrcTest::DeleteCTupleSlot(tuple_slot_empty);
+
+  reader->Close();
+  delete reader;
+
+  // only remain file3
+  remove(file3_name.c_str());
+}
 
 }  // namespace pax::tests

@@ -5,7 +5,7 @@
 namespace pax {
 
 PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
-    uint64 capacity, const PaxEncoder::EncodingOption &encoder_options)
+    uint32 capacity, const PaxEncoder::EncodingOption &encoder_options)
     : PaxNonFixedColumn(capacity),
       encoder_options_(encoder_options),
       compressor_(nullptr),
@@ -25,7 +25,7 @@ PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
 }
 
 PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
-    uint64 capacity, const PaxDecoder::DecodingOption &decoding_option)
+    uint32 capacity, const PaxDecoder::DecodingOption &decoding_option)
     : PaxNonFixedColumn(capacity),
       decoder_options_(decoding_option),
       compressor_(nullptr),
