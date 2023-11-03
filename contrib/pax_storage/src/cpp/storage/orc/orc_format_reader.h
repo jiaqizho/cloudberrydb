@@ -24,6 +24,8 @@ class OrcFormatReader final {
 
   size_t GetStripeNumberOfRows(size_t stripe_index);
 
+  size_t GetStripeOffset(size_t stripe_index);
+
   PaxColumns *ReadStripe(size_t group_index, bool *proj_map = nullptr,
                          size_t proj_len = 0);
 
@@ -43,6 +45,8 @@ class OrcFormatReader final {
   DataBuffer<char> *reused_buffer_;
   size_t num_of_stripes_;
   bool is_vec_;
+
+  std::vector<size_t> stripe_row_offsets_;
 
   orc::proto::PostScript post_script_;
   orc::proto::Footer file_footer_;

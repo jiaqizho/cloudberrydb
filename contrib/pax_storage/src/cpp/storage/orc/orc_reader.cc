@@ -14,27 +14,37 @@
 
 namespace pax {
 
-class OrcGroupStatsProvider final: public ColumnStatsProvider {
+class OrcGroupStatsProvider final : public ColumnStatsProvider {
  public:
-  OrcGroupStatsProvider(const OrcFormatReader &format_reader, size_t group_index)
-    : format_reader_(format_reader), group_index_(group_index) {
+  OrcGroupStatsProvider(const OrcFormatReader &format_reader,
+                        size_t group_index)
+      : format_reader_(format_reader), group_index_(group_index) {
     Assert(group_index >= 0 && group_index < format_reader.GetStripeNums());
   }
   int ColumnSize() const override {
     return static_cast<int>(format_reader_.file_footer_.colinfo_size());
   }
   bool AllNull(int column_index) const override {
-    return format_reader_.meta_data_.stripestats(group_index_).colstats(column_index).allnull();
+    return format_reader_.meta_data_.stripestats(group_index_)
+        .colstats(column_index)
+        .allnull();
   }
   bool HasNull(int column_index) const override {
-    return format_reader_.meta_data_.stripestats(group_index_).colstats(column_index).hasnull();
+    return format_reader_.meta_data_.stripestats(group_index_)
+        .colstats(column_index)
+        .hasnull();
   }
-  const ::pax::stats::ColumnBasicInfo &ColumnInfo(int column_index) const override {
+  const ::pax::stats::ColumnBasicInfo &ColumnInfo(
+      int column_index) const override {
     return format_reader_.file_footer_.colinfo(column_index);
   }
-  const ::pax::stats::ColumnDataStats &DataStats(int column_index) const override {
-    return format_reader_.meta_data_.stripestats(group_index_).colstats(column_index).coldatastats();
+  const ::pax::stats::ColumnDataStats &DataStats(
+      int column_index) const override {
+    return format_reader_.meta_data_.stripestats(group_index_)
+        .colstats(column_index)
+        .coldatastats();
   }
+
  private:
   const OrcFormatReader &format_reader_;
   size_t group_index_;
@@ -43,13 +53,13 @@ class OrcGroupStatsProvider final: public ColumnStatsProvider {
 OrcReader::OrcReader(File *file)
     : working_group_(nullptr),
       current_group_index_(0),
-      current_row_offset_(0),
       proj_map_(nullptr),
       proj_len_(0),
       format_reader_(file),
       is_close_(true) {}
 
-std::unique_ptr<ColumnStatsProvider> OrcReader::GetGroupStatsInfo(size_t group_index) {
+std::unique_ptr<ColumnStatsProvider> OrcReader::GetGroupStatsInfo(
+    size_t group_index) {
   auto x = new OrcGroupStatsProvider(format_reader_, group_index);
   return std::unique_ptr<ColumnStatsProvider>(x);
 }
@@ -112,11 +122,11 @@ MicroPartitionReader::Group *OrcReader::ReadGroup(size_t group_index) {
   }
 #endif  // ENABLE_DEBUG
 
-  current_row_offset_ += format_reader_.GetStripeNumberOfRows(group_index);
+  size_t group_offset = format_reader_.GetStripeOffset(group_index);
   if (COLUMN_STORAGE_FORMAT_IS_VEC(pax_columns))
-    return new OrcVecGroup(pax_columns, current_row_offset_);
+    return new OrcVecGroup(pax_columns, group_offset);
   else
-    return new OrcGroup(pax_columns, current_row_offset_);
+    return new OrcGroup(pax_columns, group_offset);
 }
 
 size_t OrcReader::GetGroupNums() { return format_reader_.GetStripeNums(); }
@@ -202,7 +212,7 @@ retry_read_group:
     goto retry_read_group;
   }
 
-  cslot->SetOffset(current_row_offset_ + group_row_offset);
+  cslot->SetOffset(working_group_->GetRowOffset() + group_row_offset);
   return true;
 }
 
