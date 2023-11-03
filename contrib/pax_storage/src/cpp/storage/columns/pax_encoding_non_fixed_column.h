@@ -7,10 +7,10 @@
 namespace pax {
 class PaxNonFixedEncodingColumn final : public PaxNonFixedColumn {
  public:
-  PaxNonFixedEncodingColumn(uint64 capacity,
+  PaxNonFixedEncodingColumn(uint32 capacity,
                             const PaxEncoder::EncodingOption &encoder_options);
 
-  PaxNonFixedEncodingColumn(uint64 capacity,
+  PaxNonFixedEncodingColumn(uint32 capacity,
                             const PaxDecoder::DecodingOption &decoding_option);
 
   ~PaxNonFixedEncodingColumn() override;

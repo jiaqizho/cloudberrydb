@@ -132,24 +132,23 @@ set(pax_storage_src
     storage/columns/pax_vec_column.cc
     storage/columns/pax_vec_encoding_column.cc
     storage/file_system.cc
-    storage/pax_filter.cc
-    storage/pax_itemptr.cc
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
     storage/micro_partition_metadata.cc
     storage/micro_partition_row_filter_reader.cc
     storage/micro_partition_stats.cc
-    storage/pax_buffer.cc
-    storage/proto/protobuf_stream.cc
-    storage/pax_filter.cc
-    storage/strategy.cc
-    storage/paxc_block_map_manager.cc
-    storage/orc/orc_writer.cc
     storage/orc/orc_format_reader.cc
     storage/orc/orc_group.cc
     storage/orc/orc_vec_group.cc
     storage/orc/orc_reader.cc
+    storage/orc/orc_writer.cc
+    storage/pax_buffer.cc
+    storage/pax_filter.cc
+    storage/pax_itemptr.cc
+    storage/pax_table_partition_writer.cc
+    storage/paxc_block_map_manager.cc
+    storage/proto/protobuf_stream.cc
     storage/strategy.cc)
 
 if(NOT BUILD_PAX_FORMAT)

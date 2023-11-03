@@ -10,10 +10,10 @@ namespace pax {
 template <typename T>
 class PaxVecEncodingColumn : public PaxVecCommColumn<T> {
  public:
-  PaxVecEncodingColumn(uint64 capacity,
+  PaxVecEncodingColumn(uint32 capacity,
                        const PaxEncoder::EncodingOption &encoding_option);
 
-  PaxVecEncodingColumn(uint64 capacity,
+  PaxVecEncodingColumn(uint32 capacity,
                        const PaxDecoder::DecodingOption &decoding_option);
 
   ~PaxVecEncodingColumn() override;
@@ -55,10 +55,10 @@ extern template class PaxVecEncodingColumn<int64>;
 class PaxVecNonFixedEncodingColumn : public PaxVecNonFixedColumn {
  public:
   PaxVecNonFixedEncodingColumn(
-      uint64 capacity, const PaxEncoder::EncodingOption &encoder_options);
+      uint32 capacity, const PaxEncoder::EncodingOption &encoder_options);
 
   PaxVecNonFixedEncodingColumn(
-      uint64 capacity, const PaxDecoder::DecodingOption &decoding_option);
+      uint32 capacity, const PaxDecoder::DecodingOption &decoding_option);
 
   ~PaxVecNonFixedEncodingColumn() override;
 

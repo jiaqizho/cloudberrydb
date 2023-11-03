@@ -56,17 +56,21 @@ size_t PaxColumn::GetRangeNonNullRows(size_t start_pos, size_t len) {
   return null_bitmap_->CountBits(start_pos, start_pos + len - 1);
 }
 
+void PaxColumn::CreateNulls(size_t cap) {
+  Assert(!null_bitmap_);
+  null_bitmap_ = new Bitmap8(cap);
+  null_bitmap_->SetN(total_rows_);
+}
+
 void PaxColumn::AppendNull() {
   if (!null_bitmap_) {
-    null_bitmap_ = new Bitmap8(DEFAULT_CAPACITY);
-    null_bitmap_->SetN(total_rows_);
+    CreateNulls(DEFAULT_CAPACITY);
   }
   null_bitmap_->Clear(total_rows_);
   ++total_rows_;
 }
 
-void PaxColumn::Append([[maybe_unused]] char *buffer,
-                       [[maybe_unused]] size_t size) {
+void PaxColumn::Append(char * /*buffer*/, size_t /*size*/) {
   if (null_bitmap_) null_bitmap_->Set(total_rows_);
   ++total_rows_;
   ++non_null_rows_;
@@ -87,7 +91,7 @@ PaxColumn *PaxColumn::SetColumnEncodeType(ColumnEncoding_Kind encoding_type) {
 ColumnEncoding_Kind PaxColumn::GetEncodingType() const { return encoded_type_; }
 
 template <typename T>
-PaxCommColumn<T>::PaxCommColumn(uint64 capacity) : capacity_(capacity) {
+PaxCommColumn<T>::PaxCommColumn(uint32 capacity) {
   data_ = new DataBuffer<T>(capacity * sizeof(T));
 }
 
@@ -114,19 +118,14 @@ void PaxCommColumn<T>::Append(char *buffer, size_t size) {
   // TODO(jiaqizho): Is it necessary to support multiple buffer insertions for
   // bulk insert push to mirco partition?
   Assert(size == sizeof(T));
-  Assert(GetNonNullRows() <= capacity_);
+  Assert(data_->Capacity() >= sizeof(T));
 
-  if (GetNonNullRows() == capacity_) {
-    ReSize(capacity_ * 2);
+  if (data_->Available() == 0) {
+    data_->ReSize(data_->Used() + size, 2);
   }
 
   data_->Write(buffer_t, sizeof(T));
   data_->Brush(sizeof(T));
-}
-
-template <typename T>
-PaxColumnTypeInMem PaxCommColumn<T>::GetPaxColumnTypeInMem() const {
-  return PaxColumnTypeInMem::kTypeFixed;
 }
 
 template <typename T>
@@ -135,11 +134,8 @@ PaxStorageFormat PaxCommColumn<T>::GetStorageFormat() const {
 }
 
 template <typename T>
-void PaxCommColumn<T>::ReSize(uint64 cap) {
-  if (capacity_ < cap) {
-    data_->ReSize(cap * sizeof(T));
-    capacity_ = cap;
-  }
+PaxColumnTypeInMem PaxCommColumn<T>::GetPaxColumnTypeInMem() const {
+  return PaxColumnTypeInMem::kTypeFixed;
 }
 
 template <typename T>
@@ -191,7 +187,7 @@ template class PaxCommColumn<int64>;
 template class PaxCommColumn<float>;
 template class PaxCommColumn<double>;
 
-PaxNonFixedColumn::PaxNonFixedColumn(uint64 capacity) : estimated_size_(0) {
+PaxNonFixedColumn::PaxNonFixedColumn(uint32 capacity) : estimated_size_(0) {
   data_ = new DataBuffer<char>(capacity * sizeof(char));
   lengths_ = new DataBuffer<int64>(capacity * sizeof(char));
 }
@@ -232,12 +228,12 @@ void PaxNonFixedColumn::Append(char *buffer, size_t size) {
   }
 
   PaxColumn::Append(buffer, origin_size);
-  while (data_->Available() < size) {
-    data_->ReSize(data_->Capacity() * 2);
+  if (data_->Available() < size) {
+    data_->ReSize(data_->Used() + size, 2);
   }
 
   if (lengths_->Available() == 0) {
-    lengths_->ReSize(lengths_->Capacity() * 2);
+    lengths_->ReSize(lengths_->Used() + sizeof(int64), 2);
   }
 
   estimated_size_ += size;
