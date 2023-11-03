@@ -6,11 +6,14 @@
 #include <utility>
 #include <vector>
 
+#include "access/pax_partition.h"
 #include "comm/gtest_wrappers.h"
 #include "exceptions/CException.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/orc/orc.h"
+#include "storage/pax_table_partition_writer.h"
+#include "stub.h"
 
 #ifdef ENABLE_PLASMA
 #include "storage/cache/pax_plasma_cache.h"
@@ -20,6 +23,7 @@ namespace pax::tests {
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::Return;
+using ::testing::ReturnRoundRobin;
 
 const char *pax_file_name = "12";
 #define COLUMN_NUMS 2
@@ -98,7 +102,11 @@ class PaxWriterTest : public ::testing::Test {
  public:
   void SetUp() override {
     Singleton<LocalFileSystem>::GetInstance();
-    CurrentResourceOwner = ResourceOwnerCreate(NULL, "OrcTestResourceOwner");
+    MemoryContext pax_memory_context = AllocSetContextCreate(
+        (MemoryContext)NULL, "PaxMemoryContext", 80 * 1024 * 1024,
+        80 * 1024 * 1024, 80 * 1024 * 1024);
+    MemoryContextSwitchTo(pax_memory_context);
+    CurrentResourceOwner = ResourceOwnerCreate(NULL, "PaxTestResourceOwner");
   }
 
   void TearDown() override {
@@ -369,6 +377,155 @@ TEST_F(PaxWriterTest, TestCacheColumns) {
   delete pax_cache;
 }
 
-#endif
+#endif  // #ifdef ENABLE_PLASMA
+
+class MockParitionWriter : public TableParitionWriter {
+ public:
+  MockParitionWriter(const Relation relation, PartitionObject *bucket,
+                     WriteSummaryCallback callback)
+      : TableParitionWriter(relation, bucket) {
+    SetWriteSummaryCallback(callback);
+    SetFileSplitStrategy(new PaxDefaultSplitStrategy());
+  }
+
+  MOCK_METHOD(std::string, GenFilePath, (const std::string &), (override));
+  MOCK_METHOD((std::vector<std::tuple<ColumnEncoding_Kind, int>>),
+              GetRelEncodingOptions, (), (override));
+};
+
+namespace mock_partition_test {
+int NumPartitions() { return 10; }
+int FindPartition(TupleTableSlot * /*slot*/) {
+  static int round = 0;
+  auto index = round % 8;
+  static std::vector<int> round_indexs = {0, 2, 3, 4, 5, 6, 8, 9};
+  ++round;
+  return round_indexs[index];
+};
+
+std::vector<std::vector<size_t>> GetPartitionMergeInfos() {
+  return {{0, 2, 3}, {4, 5}, {6, 8, 9}};
+}
+
+void MicroPartitionStatsMerge(MicroPartitionStats *stats, TupleDesc desc) {}
+}  // namespace mock_partition_test
+
+TEST_F(PaxWriterTest, ParitionWriteReadTuple) {
+  std::vector<const char *> file_names = {
+      "pax_parition_0.file", "pax_parition_2.file", "pax_parition_3.file",
+      "pax_parition_4.file", "pax_parition_5.file", "pax_parition_6.file",
+      "pax_parition_8.file", "pax_parition_9.file",
+  };
+  CTupleSlot *slot = CreateFakeCTupleSlot(true);
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
+  auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
+  relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
+  bool callback_called = false;
+  Stub *stub;
+  stub = new Stub();
+
+  auto clear_disk_file = [file_names] {
+    for (const auto &file_name : file_names) {
+      std::remove(file_name);
+    }
+  };
+
+  clear_disk_file();
+
+  TableWriter::WriteSummaryCallback callback =
+      [&callback_called](const WriteSummary & /*summary*/) {
+        callback_called = true;
+      };
+
+  for (size_t i = 0; i < COLUMN_NUMS; i++) {
+    encoding_opts.emplace_back(
+        std::make_tuple(ColumnEncoding_Kind_NO_ENCODED, 0));
+  }
+
+  stub->set(ADDR(PartitionObject, NumPartitions),
+            mock_partition_test::NumPartitions);
+  stub->set(ADDR(PartitionObject, FindPartition),
+            mock_partition_test::FindPartition);
+  stub->set(ADDR(MockParitionWriter, GetPartitionMergeInfos),
+            mock_partition_test::GetPartitionMergeInfos);
+  stub->set(ADDR(MicroPartitionStats, MergeTo),
+            mock_partition_test::MicroPartitionStatsMerge);
+
+  auto part_obj = new PartitionObject();
+  auto writer = new MockParitionWriter(relation, part_obj, callback);
+
+  EXPECT_CALL(*writer, GenFilePath(_))
+      .Times(8)  // must be 8
+      .WillRepeatedly(ReturnRoundRobin(file_names));
+
+  EXPECT_CALL(*writer, GetRelEncodingOptions())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(encoding_opts));
+
+  writer->Open();
+
+  for (size_t i = 0; i < 400; i++) {
+    writer->WriteTuple(slot);
+  }
+
+  writer->Close();
+  ASSERT_TRUE(callback_called);
+
+  cbdb::Pfree(slot->GetTupleTableSlot());
+  delete part_obj;
+  delete writer;
+
+  // will remain pax_parition_0.file, pax_parition_4.file,
+  // pax_parition_6.file after merge
+  ASSERT_EQ(0, access(file_names[0], 0));
+  ASSERT_NE(0, access(file_names[1], 0));
+  ASSERT_NE(0, access(file_names[2], 0));
+  ASSERT_EQ(0, access(file_names[3], 0));
+  ASSERT_NE(0, access(file_names[4], 0));
+  ASSERT_EQ(0, access(file_names[5], 0));
+  ASSERT_NE(0, access(file_names[6], 0));
+  ASSERT_NE(0, access(file_names[7], 0));
+
+  std::vector<MicroPartitionMetadata> meta_info_list;
+  MicroPartitionMetadata meta_info;
+  meta_info.SetFileName(file_names[0]);
+  meta_info.SetMicroPartitionId(file_names[0]);
+  meta_info_list.push_back(meta_info);
+
+  meta_info.SetFileName(file_names[3]);
+  meta_info.SetMicroPartitionId(file_names[3]);
+  meta_info_list.push_back(meta_info);
+
+  meta_info.SetFileName(file_names[5]);
+  meta_info.SetMicroPartitionId(file_names[5]);
+  meta_info_list.push_back(meta_info);
+
+  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
+      std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(
+          new MockReaderInterator(meta_info_list));
+
+  TableReader *reader;
+  TableReader::ReaderOptions reader_options{};
+  reader_options.build_bitmap = false;
+  reader_options.rel_oid = 0;
+  reader = new TableReader(std::move(meta_info_iterator), reader_options);
+  reader->Open();
+
+  CTupleSlot *rslot = CreateFakeCTupleSlot(true);
+
+  for (int i = 0; i < 400; i++) {
+    ASSERT_TRUE(reader->ReadTuple(rslot));
+
+    ASSERT_EQ(1, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[0]));
+    ASSERT_EQ(2, cbdb::DatumToInt32(rslot->GetTupleTableSlot()->tts_values[1]));
+  }
+
+  ASSERT_FALSE(reader->ReadTuple(rslot));
+  delete relation;
+  delete reader;
+  delete stub;
+
+  clear_disk_file();
+}
 
 }  // namespace pax::tests

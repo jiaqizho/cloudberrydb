@@ -179,6 +179,12 @@ class DataBuffer : public BlockBufferBase {
 
   // Resize the internal buffer, size should bigger than capacity of internal
   // buffer `mem_take_over` should be true
+  // The `mul_rate` means that the current Buffer will be expanded according to
+  // this ratio If `mul_rate` is 0 means derict do realloc
+  virtual void ReSize(size_t size, double mul_ratio);
+
+  // Direct resize the internal buffer, size should bigger than capacity of
+  // internal buffer `mem_take_over` should be true
   virtual void ReSize(size_t size);
 
   // Is current internal buffer take over by DataBuffer
@@ -212,6 +218,8 @@ template <typename T>
 class UntreatedDataBuffer final : public DataBuffer<T> {
  public:
   explicit UntreatedDataBuffer(size_t size);
+
+  void ReSize(size_t size, double mul_ratio) override;
 
   void ReSize(size_t size) override;
 

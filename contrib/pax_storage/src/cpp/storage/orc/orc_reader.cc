@@ -56,7 +56,7 @@ OrcReader::OrcReader(File *file)
       proj_map_(nullptr),
       proj_len_(0),
       format_reader_(file),
-      is_close_(true) {}
+      is_closed_(true) {}
 
 std::unique_ptr<ColumnStatsProvider> OrcReader::GetGroupStatsInfo(
     size_t group_index) {
@@ -98,7 +98,7 @@ MicroPartitionReader::Group *OrcReader::ReadGroup(size_t group_index) {
       pax_columns = columns_readed;
     } else if (still_remain) {
       Assert(columns_readed);
-      pax_columns->Merge(columns_readed);
+      pax_columns->MergeTo(columns_readed);
     }
 
   } else {
@@ -133,7 +133,7 @@ size_t OrcReader::GetGroupNums() { return format_reader_.GetStripeNums(); }
 
 void OrcReader::Open(const ReaderOptions &options) {
   // Must not open twice.
-  Assert(is_close_);
+  Assert(is_closed_);
   if (options.reused_buffer) {
     CBDB_CHECK(options.reused_buffer->IsMemTakeOver(),
                cbdb::CException::ExType::kExTypeLogicError);
@@ -152,7 +152,7 @@ void OrcReader::Open(const ReaderOptions &options) {
 #endif
   format_reader_.Open();
 
-  is_close_ = false;
+  is_closed_ = false;
 }
 
 void OrcReader::ResetCurrentReading() {
@@ -164,7 +164,7 @@ void OrcReader::ResetCurrentReading() {
 }
 
 void OrcReader::Close() {
-  if (is_close_) {
+  if (is_closed_) {
     return;
   }
 
@@ -177,7 +177,7 @@ void OrcReader::Close() {
 
   ResetCurrentReading();
   format_reader_.Close();
-  is_close_ = true;
+  is_closed_ = true;
 }
 
 bool OrcReader::ReadTuple(CTupleSlot *cslot) {

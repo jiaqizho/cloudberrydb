@@ -512,8 +512,9 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
 
   if (reused_buffer_) {
     Assert(reused_buffer_->Capacity() >= 4);
-    while (reused_buffer_->Capacity() < stripe_info->footer_length) {
-      reused_buffer_->ReSize(reused_buffer_->Capacity() / 2 * 3);
+    if (reused_buffer_->Available() < stripe_info->footer_length) {
+      reused_buffer_->ReSize(
+          reused_buffer_->Used() + stripe_info->footer_length, 1.5);
     }
     data_buffer = new DataBuffer<char>(
         reused_buffer_->GetBuffer(), reused_buffer_->Capacity(), false, false);

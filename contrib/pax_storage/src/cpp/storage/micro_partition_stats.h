@@ -12,26 +12,36 @@ namespace stats {
 class MicroPartitionStatisticsInfo;
 class ColumnBasicInfo;
 class ColumnDataStats;
-}
+}  // namespace stats
 
 class MicroPartitionStatsData {
  public:
-  virtual ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) = 0;
-  virtual ::pax::stats::ColumnDataStats *GetColumnDataStats(int column_index) = 0;
+  virtual void CopyFrom(MicroPartitionStatsData *stats) = 0;
+  virtual ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(
+      int column_index) = 0;
+  virtual ::pax::stats::ColumnDataStats *GetColumnDataStats(
+      int column_index) = 0;
   virtual int ColumnSize() const = 0;
   virtual void SetAllNull(int column_index, bool allnull) = 0;
   virtual void SetHasNull(int column_index, bool hasnull) = 0;
+  virtual bool GetAllNull(int column_index) = 0;
+  virtual bool GetHasNull(int column_index) = 0;
   virtual ~MicroPartitionStatsData() = default;
 };
 
 class MicroPartittionFileStatsData final : public MicroPartitionStatsData {
  public:
-  MicroPartittionFileStatsData(::pax::stats::MicroPartitionStatisticsInfo *info, int natts);
+  MicroPartittionFileStatsData(::pax::stats::MicroPartitionStatisticsInfo *info,
+                               int natts);
+  void CopyFrom(MicroPartitionStatsData *stats) override;
   ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) override;
   ::pax::stats::ColumnDataStats *GetColumnDataStats(int column_index) override;
   int ColumnSize() const override;
   void SetAllNull(int column_index, bool allnull) override;
   void SetHasNull(int column_index, bool hasnull) override;
+  bool GetAllNull(int column_index) override;
+  bool GetHasNull(int column_index) override;
+
  private:
   ::pax::stats::MicroPartitionStatisticsInfo *info_ = nullptr;
 };
@@ -40,16 +50,19 @@ class MicroPartitionStats final {
  public:
   MicroPartitionStats() = default;
   ~MicroPartitionStats();
-  MicroPartitionStats *SetStatsMessage(
-      MicroPartitionStatsData *stats, int natts);
+  MicroPartitionStats *SetStatsMessage(MicroPartitionStatsData *stats,
+                                       int natts);
   MicroPartitionStats *LightReset();
 
   void AddRow(TupleTableSlot *slot);
   MicroPartitionStatsData *GetStatsData() { return stats_; }
   const MicroPartitionStatsData *GetStatsData() const { return stats_; }
 
+  void MergeTo(MicroPartitionStats *stats, TupleDesc desc);
+
   static std::string ToValue(Datum datum, int typlen, bool typbyval);
-  static Datum FromValue(const std::string &s, int typlen, bool typbyval, bool *ok);
+  static Datum FromValue(const std::string &s, int typlen, bool typbyval,
+                         bool *ok);
 
  private:
   void AddNullColumn(int column_index);
@@ -79,12 +92,16 @@ class MicroPartitionStats final {
 
 class MicroPartitionStatsProvider final : public ColumnStatsProvider {
  public:
-  explicit MicroPartitionStatsProvider(const ::pax::stats::MicroPartitionStatisticsInfo &stats);
+  explicit MicroPartitionStatsProvider(
+      const ::pax::stats::MicroPartitionStatisticsInfo &stats);
   int ColumnSize() const override;
   bool AllNull(int column_index) const override;
   bool HasNull(int column_index) const override;
-  const ::pax::stats::ColumnBasicInfo &ColumnInfo(int column_index) const override;
-  const ::pax::stats::ColumnDataStats &DataStats(int column_index) const override;
+  const ::pax::stats::ColumnBasicInfo &ColumnInfo(
+      int column_index) const override;
+  const ::pax::stats::ColumnDataStats &DataStats(
+      int column_index) const override;
+
  private:
   const ::pax::stats::MicroPartitionStatisticsInfo &stats_;
 };

@@ -9,10 +9,10 @@ namespace pax {
 template <typename T>
 class PaxEncodingColumn : public PaxCommColumn<T> {
  public:
-  PaxEncodingColumn(uint64 capacity,
+  PaxEncodingColumn(uint32 capacity,
                     const PaxEncoder::EncodingOption &encoding_option);
 
-  PaxEncodingColumn(uint64 capacity,
+  PaxEncodingColumn(uint32 capacity,
                     const PaxDecoder::DecodingOption &decoding_option);
 
   ~PaxEncodingColumn() override;
