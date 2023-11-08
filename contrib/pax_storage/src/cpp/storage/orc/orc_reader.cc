@@ -52,6 +52,7 @@ class OrcGroupStatsProvider final : public ColumnStatsProvider {
 
 OrcReader::OrcReader(File *file)
     : working_group_(nullptr),
+      cached_group_(nullptr),
       current_group_index_(0),
       proj_map_(nullptr),
       proj_len_(0),
@@ -156,10 +157,12 @@ void OrcReader::Open(const ReaderOptions &options) {
 }
 
 void OrcReader::ResetCurrentReading() {
-  if (working_group_) {
-    delete working_group_;
-    working_group_ = nullptr;
-  }
+  delete working_group_;
+  working_group_ = nullptr;
+
+  delete cached_group_;
+  cached_group_ = nullptr;
+
   current_group_index_ = 0;
 }
 
@@ -214,6 +217,59 @@ retry_read_group:
 
   cslot->SetOffset(working_group_->GetRowOffset() + group_row_offset);
   return true;
+}
+
+bool OrcReader::GetTuple(CTupleSlot *cslot, size_t row_index) {
+  int32 group_index = -1;
+  size_t nums_of_group;
+  int left, right;
+
+  TupleTableSlot *slot;
+  size_t group_offset, number_of_rows;
+
+  nums_of_group = GetGroupNums();
+  left = 0;
+  right = nums_of_group - 1;
+
+  slot = cslot->GetTupleTableSlot();
+
+  // current `row_index` in group
+  if (cached_group_ && cached_group_->GetRowOffset() >= row_index &&
+      row_index < (cached_group_->GetRowOffset() + cached_group_->GetRows())) {
+    goto found;
+  }
+
+  while (left <= right) {
+    auto mid = (right - left) / 2 + left;
+    group_offset = format_reader_.GetStripeOffset(mid);
+    number_of_rows = format_reader_.GetStripeNumberOfRows(mid);
+
+    if (row_index >= group_offset &&
+        row_index < (group_offset + number_of_rows)) {
+      group_index = mid;
+      break;
+    } else if (row_index < group_offset) {
+      right = mid - 1;
+    } else {  // row_index >= (group_offset + number_of_rows)
+      left = mid + 1;
+    }
+  }
+
+  if (group_index == -1) {
+    return false;
+  }
+
+  // group_offset have been inited in loop
+  // and must not in cached_group_
+  delete cached_group_;
+  cached_group_ = ReadGroup(group_index);
+
+found:
+  auto ok =
+      cached_group_->GetTuple(slot, row_index - cached_group_->GetRowOffset());
+  Assert(ok);
+  cslot->SetOffset(row_index);
+  return ok;
 }
 
 }  // namespace pax
