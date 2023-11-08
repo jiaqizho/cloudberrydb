@@ -64,6 +64,10 @@ retry_read_group:
   return true;
 }
 
+bool PaxVecReader::GetTuple(CTupleSlot *slot, size_t row_index) {
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+}
+
 size_t PaxVecReader::GetGroupNums() {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }

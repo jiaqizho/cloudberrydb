@@ -24,6 +24,8 @@ class PaxVecReader : public MicroPartitionReader {
 
   bool ReadTuple(CTupleSlot *cslot) override;
 
+  bool GetTuple(CTupleSlot *slot, size_t row_index) override;
+
   size_t GetGroupNums() override;
 
   std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
