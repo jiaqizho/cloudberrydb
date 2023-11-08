@@ -9,6 +9,7 @@
 #include "access/paxc_rel_options.h"
 #include "access/paxc_scanner.h"
 #include "catalog/pax_aux_table.h"
+#include "catalog/pax_fastsequence.h"
 #include "comm/guc.h"
 #include "exceptions/CException.h"
 #include "storage/paxc_block_map_manager.h"
@@ -138,11 +139,63 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
                                                char persistence,
                                                TransactionId *freeze_xid,
                                                MultiXactId *minmulti) {
+  Relation pax_tables_rel;
+  ScanKeyData scan_key[1];
+  SysScanDesc scan;
+  HeapTuple tuple;
+  Oid pax_relid;
+  bool exists;
+
+  *freeze_xid = *minmulti = InvalidTransactionId;
+
+  pax_tables_rel = table_open(PaxTablesRelationId, RowExclusiveLock);
+  pax_relid = RelationGetRelid(rel);
+
+  ScanKeyInit(&scan_key[0], Anum_pg_pax_tables_relid, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(pax_relid));
+  scan = systable_beginscan(pax_tables_rel, PaxTablesRelidIndexId, true, NULL,
+                            1, scan_key);
+  tuple = systable_getnext(scan);
+  exists = HeapTupleIsValid(tuple);
+  if (exists) {
+    // set new filenode, not create new table
+    //
+    // 1. truncate aux table by new relfilenode
+    Relation aux_rel;
+    Oid aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tuple))->blocksrelid;
+
+    Assert(OidIsValid(aux_relid));
+    aux_rel = relation_open(aux_relid, AccessExclusiveLock);
+    RelationSetNewRelfilenode(aux_rel, aux_rel->rd_rel->relpersistence);
+    relation_close(aux_rel, NoLock);
+  } else {
+    // create new table
+    //
+    // 1. create aux table
+    // 2. initialize fast sequence in pg_pax_fastsequence
+    // 3. setup dependency
+    paxc::CPaxCreateMicroPartitionTable(rel);
+  }
+  // initialize or reset the fast sequence number
+  paxc::CPaxInitializeFastSequenceEntry(
+      pax_relid,
+      exists ? FASTSEQUENCE_INIT_TYPE_UPDATE : FASTSEQUENCE_INIT_TYPE_CREATE);
+
+  systable_endscan(scan);
+  table_close(pax_tables_rel, NoLock);
+
+  // create relfilenode file for pax table
+  auto srel = RelationCreateStorage(*newrnode, persistence, SMGR_MD, rel);
+  smgrclose(srel);
+
+  // create data directory
   CBDB_TRY();
   {
-    *freeze_xid = *minmulti = InvalidTransactionId;
-    pax::CCPaxAuxTable::PaxAuxRelationSetNewFilenode(rel, newrnode,
-                                                     persistence);
+    FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
+    auto path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
+    Assert(!path.empty());
+    CBDB_CHECK((fs->CreateDirectory(path) == 0),
+               cbdb::CException::ExType::kExTypeIOError);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
@@ -884,15 +937,14 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id,
   if (!options->partition_by()) {
     if (options->partition_ranges()) {
       elog(ERROR, "set '%s', but partition_by not specified",
-            options->partition_ranges());
+           options->partition_ranges());
     }
     goto out;
   }
 
   pby = paxc_raw_parse(options->partition_by());
   pkey = paxc::PaxRelationBuildPartitionKey(rel, pby);
-  if (pkey->partnatts > 1)
-    elog(ERROR, "pax only support 1 partition key now");
+  if (pkey->partnatts > 1) elog(ERROR, "pax only support 1 partition key now");
 
   part = lappend(NIL, pby);
   if (options->partition_ranges()) {
@@ -906,7 +958,7 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id,
   // We hope this option be removed and automatically partition data set.
   else
     elog(ERROR, "partition_ranges must be set for partition_by='%s'",
-                options->partition_by());
+         options->partition_by());
 
   PaxInitializePartitionSpec(rel, reinterpret_cast<Node *>(part));
 
@@ -924,6 +976,64 @@ static void DefineGUCs() {
       &pax::pax_enable_plasma_in_mem, true, PGC_USERSET, 0, NULL, NULL, NULL);
 #endif
 }
+
+struct PaxObjectProperty {
+  const char *name;
+  Oid class_oid;
+  Oid index_oid;
+  AttrNumber attnum_oid;
+};
+
+static const struct PaxObjectProperty kPaxObjectProperties[] = {
+  {"fast-sequence", PAX_FASTSEQUENCE_OID, PAX_FASTSEQUENCE_INDEX_OID, ANUM_PG_PAX_FAST_SEQUENCE_OBJID},
+  // add pg_pax_tables here
+};
+
+static const struct PaxObjectProperty *FindPaxObjectProperty(Oid class_id) {
+  for (const auto &property : kPaxObjectProperties) {
+    const auto p = &property;
+    if (p->class_oid == class_id)
+      return p;
+  }
+  return NULL;
+}
+
+static void PaxDeleteObject(struct CustomObjectClass * /*self*/,
+                            const ObjectAddress *object, int /*flags*/) {
+  Relation rel;
+  HeapTuple tup;
+  SysScanDesc scan;
+  ScanKeyData skey[1];
+
+  const auto object_property = FindPaxObjectProperty(object->classId);
+  Assert(object_property);
+  Assert(object_property->class_oid == object->classId);
+
+  rel = table_open(object->classId, RowExclusiveLock);
+  ScanKeyInit(&skey[0], object_property->attnum_oid,
+              BTEqualStrategyNumber, F_OIDEQ,
+              ObjectIdGetDatum(object->objectId));
+
+  scan = systable_beginscan(rel, object_property->index_oid, true, NULL, 1,
+                            skey);
+
+  /* we expect exactly one match */
+  tup = systable_getnext(scan);
+  if (!HeapTupleIsValid(tup))
+    elog(ERROR, "could not find tuple for %s %u", object_property->name,
+         object->objectId);
+
+  CatalogTupleDelete(rel, &tup->t_self);
+
+  systable_endscan(scan);
+
+  table_close(rel, RowExclusiveLock);
+}
+
+static struct CustomObjectClass pax_fastsequence_coc = {
+    .class_id = PAX_FASTSEQUENCE_OID,
+    .do_delete = PaxDeleteObject,
+};
 
 void _PG_init(void) {  // NOLINT
 #ifndef ENABLE_LOCAL_INDEX
@@ -950,6 +1060,8 @@ void _PG_init(void) {  // NOLINT
   ext_dml_init_hook = pax::CCPaxAccessMethod::ExtDmlInit;
   ext_dml_finish_hook = pax::CCPaxAccessMethod::ExtDmlFini;
   file_unlink_hook = pax::CCPaxAccessMethod::RelationFileUnlink;
+
+  register_custom_object_class(&pax_fastsequence_coc);
 
   DefineGUCs();
 

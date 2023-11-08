@@ -99,6 +99,15 @@ add_custom_command(OUTPUT ${stats_proto_src}
 
 add_custom_target(generate_protobuf DEPENDS ${orc_proto_src} ${pax_proto_src} ${stats_proto_src})
 
+add_executable(generate_sql_script_program "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/gen_sql.c")
+target_include_directories(generate_sql_script_program PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
+add_custom_command(OUTPUT generate_sql_file
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/generate_sql_script_program > "${CMAKE_CURRENT_SOURCE_DIR}/../data/pax-cdbinit--1.0.sql"
+  DEPENDS generate_sql_script_program
+  COMMENT "dynamically generate sql script file"
+)
+add_custom_target(create_sql_script DEPENDS generate_sql_script_program generate_sql_file)
+
 # ztsd
 set(ZSTD_BUILD_PROGRAMS OFF)
 set(ZSTD_BUILD_TESTS OFF)
@@ -228,7 +237,7 @@ else()
     ${pax_access_src} ${pax_comm_src} ${pax_catalog_src} ${pax_vec_src})
   set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
   set(pax_target_link_libs orc_protobuf zstd z postgres)
-  set(pax_target_dependencies generate_protobuf)
+  set(pax_target_dependencies generate_protobuf create_sql_script)
 
   # enable local index, not use uuid to generate file name
   if (NOT ENABLE_LOCAL_INDEX OR ENABLE_PLASMA)
