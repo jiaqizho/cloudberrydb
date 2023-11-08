@@ -131,6 +131,8 @@ class OrcReader : public MicroPartitionReader {
 
   bool ReadTuple(CTupleSlot *cslot) override;
 
+  bool GetTuple(CTupleSlot *slot, size_t row_index) override;
+
   size_t GetGroupNums() override;
 
   MicroPartitionReader::Group *ReadGroup(size_t group_index) override;
@@ -147,6 +149,9 @@ class OrcReader : public MicroPartitionReader {
 
  protected:
   MicroPartitionReader::Group *working_group_;
+
+  // used to cache the group in `GetTuple`
+  MicroPartitionReader::Group *cached_group_;
   size_t current_group_index_;
 
   bool *proj_map_;
