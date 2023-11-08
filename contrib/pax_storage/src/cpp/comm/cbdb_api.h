@@ -21,6 +21,7 @@ extern "C" {
 #include "access/tupdesc_details.h"
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
+#include "catalog/gp_indexing.h"
 #include "catalog/indexing.h"
 #include "catalog/objectaccess.h"
 #include "catalog/oid_dispatch.h"
@@ -95,5 +96,12 @@ extern Oid GetDefaultOpClass(Oid type_id, Oid am_id);
 #define PAX_AUX_STATS_OUT_OID 7602
 #define PAX_AUX_STATS_TYPE_OID 7603
 #define PAX_AUX_STATS_TYPE_NAME "paxauxstats"
+
+#define PAX_FASTSEQUENCE_OID 7604
+#define PAX_FASTSEQUENCE_INDEX_OID 7605
+
+#define PG_PAX_FASTSEQUENCE_NAMESPACE "pg_paxaux"
+#define PG_PAX_FASTSEQUENCE_TABLE "pg_pax_fastsequence"
+#define PG_PAX_FASTSEQUENCE_INDEX_NAME "pg_pax_fastsequence_objid_idx"
 
 #endif  // SRC_CPP_COMM_CBDB_API_H_
