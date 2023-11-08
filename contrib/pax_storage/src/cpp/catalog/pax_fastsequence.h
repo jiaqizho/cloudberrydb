@@ -2,8 +2,8 @@
 // Cloudberry Database
 // Copyright (c) 2023, HashData Technology Limited.
 // pax_fastsequence.h
-// provide a system table maintaining a light-weight fast sequence number for a unique
-// object.
+// provide a system table maintaining a light-weight fast sequence number for a
+// unique object.
 //
 // IDENTIFICATION
 //	    src/catalog/pax_fastsequence.h
@@ -17,19 +17,16 @@
 #define ANUM_PG_PAX_FAST_SEQUENCE_LASTSEQUENCE 2
 #define NATTS_PG_PAX_FAST_SEQUENCE_TABLES 2
 
-#define PG_PAX_FAST_SEQUENCE_NAMESPACE "pg_paxaux"
-#define PG_PAX_FAST_SEQUENCE_TABLE "pg_pax_fastsequence"
-#define PG_PAX_FAST_SEQUENCE_INDEX_NAME "pg_pax_fastsequence_objid_idx"
+// CREATE:  initialize seqno by INSERT, no tuple exists before
+// INPLACE: inplace update when grow the seqno or non-transactional truncate
+// UPDATE:  transactional truncate, needs to preserve the old seqno
+//          after rollback
+#define FASTSEQUENCE_INIT_TYPE_CREATE 'C'
+#define FASTSEQUENCE_INIT_TYPE_INPLACE 'I'
+#define FASTSEQUENCE_INIT_TYPE_UPDATE 'U'
 
 namespace paxc {
-  void CPaxInsertFastSequenceEntry(Oid objid, int64 last_sequence);
+void CPaxInitializeFastSequenceEntry(Oid objid, char init_type);
+int32 CPaxGetFastSequences(Oid objid);
 
-  void CPaxInsertInitialFastSequenceEntries(Oid objid);
-
-  int64 CPaxGetFastSequences(Oid objid);
-
-  int64 CPaxReadLastSequence(Oid objid);
-
-  void CPaxRemoveFastSequenceEntry(Oid objid);
-} // namespace
-
+}  // namespace paxc
