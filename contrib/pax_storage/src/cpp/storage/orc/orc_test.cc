@@ -567,6 +567,74 @@ TEST_F(OrcTest, ReadTuple) {
   delete reader;
 }
 
+TEST_F(OrcTest, GetTuple) {
+  char column_buff[COLUMN_SIZE];
+
+  GenFakeBuffer(column_buff, COLUMN_SIZE);
+
+  CTupleSlot *ctuple_slot = CreateFakeCTupleSlot();
+  auto tuple_slot = ctuple_slot->GetTupleTableSlot();
+  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto file_ptr = local_fs->Open(file_name_);
+  EXPECT_NE(nullptr, file_ptr);
+
+  std::vector<orc::proto::Type_Kind> types;
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_STRING);
+  types.emplace_back(orc::proto::Type_Kind::Type_Kind_INT);
+  MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.desc = ctuple_slot->GetTupleDesc();
+  writer_options.group_limit = 100;
+
+  auto writer = OrcWriter::CreateWriter(writer_options, types, file_ptr);
+  for (int i = 0; i < 1000; i++) {
+    if (i % 5 == 0) {
+      tuple_slot->tts_isnull[0] = true;
+      tuple_slot->tts_isnull[1] = true;
+    } else {
+      tuple_slot->tts_isnull[0] = false;
+      tuple_slot->tts_isnull[1] = false;
+    }
+    tuple_slot->tts_values[2] = Int32GetDatum(i);
+    writer->WriteTuple(ctuple_slot);
+  }
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name_);
+
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  CTupleSlot *ctuple_slot_empty = CreateEmptyCTupleSlot();
+  auto tuple_slot_empty = ctuple_slot_empty->GetTupleTableSlot();
+
+  reader->Open(reader_options);
+  EXPECT_EQ(10, reader->GetGroupNums());
+  ctuple_slot_empty->GetTupleDesc()->natts = COLUMN_NUMS;
+
+  for (int i = 0; i < 1000; i++) {
+    ASSERT_TRUE(reader->GetTuple(ctuple_slot_empty, i));
+    if (i % 5 == 0) {
+      EXPECT_TRUE(tuple_slot_empty->tts_isnull[0]);
+      EXPECT_TRUE(tuple_slot_empty->tts_isnull[1]);
+    } else {
+      EXPECT_FALSE(tuple_slot_empty->tts_isnull[0]);
+      EXPECT_FALSE(tuple_slot_empty->tts_isnull[1]);
+    }
+    EXPECT_EQ(DatumGetInt32(tuple_slot_empty->tts_values[2]), i);
+  }
+
+  ASSERT_FALSE(reader->GetTuple(ctuple_slot_empty, 1000));
+  ASSERT_FALSE(reader->GetTuple(ctuple_slot_empty, 10000));
+  reader->Close();
+
+  DeleteCTupleSlot(ctuple_slot_empty);
+  DeleteCTupleSlot(ctuple_slot);
+  delete writer;
+  delete reader;
+}
+
 class OrcEncodingTest : public ::testing::TestWithParam<ColumnEncoding_Kind> {
   void SetUp() override {
     Singleton<LocalFileSystem>::GetInstance();

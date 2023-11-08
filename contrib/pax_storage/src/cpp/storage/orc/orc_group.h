@@ -66,7 +66,7 @@ class OrcVecGroup final : public OrcGroup {
                                         uint32 *null_counts) override;
 
  private:
-  std::vector<text *> buffer_holder_;
+  std::vector<struct varlena *> buffer_holder_;
 };
 
 }  // namespace pax
