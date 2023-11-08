@@ -12,6 +12,10 @@
 #define ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS 4
 #define NATTS_PG_PAX_BLOCK_TABLES 4
 
+namespace paxc {
+void CPaxCreateMicroPartitionTable(Relation rel);
+}
+
 namespace pax {
 class CCPaxAuxTable final {
  public:

@@ -73,6 +73,7 @@ retry_next:
   row_index_++;
   if (ctx->estate_final && !TestRowScanInternal(slot, ctx->estate_final, 0)) goto retry_next;
 
+  cslot->SetOffset(g->GetRowOffset() + row_index_ - 1);
   return true;
 }
 

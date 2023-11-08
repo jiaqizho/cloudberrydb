@@ -1,26 +1,19 @@
+//
+// This program is used to generate sql script file for PAX.
+// Build and run of this program is automatically done in the
+// cmake script.
+//
+// The command to build this program alone is:
+// gcc -I`pg_config --includedir-server` -I<pax_dir>/src/cpp -o generate_sql gen_sql.c
+//
+//
+
 #include "postgres.h"  // NOLINT
 
 #include <stdio.h>
 
-#define USE_PAX_MACRO
-
-#if defined(USE_PAX_MACRO)
 /* define these values in pax header file */
 #include "comm/cbdb_api.h"
-#else
-// only for tests, you should use the macros in cbdb_api.h
-
-#define PAX_TABLE_AM_OID 7014
-#define PAX_AMNAME "pax"
-#define PAX_AM_HANDLER_OID 7600
-#define PAX_AM_HANDLER_NAME "pax_tableam_handler"
-
-#define PAX_AUX_STATS_IN_OID 7601
-#define PAX_AUX_STATS_OUT_OID 7602
-#define PAX_AUX_STATS_TYPE_OID 7603
-#define PAX_AUX_STATS_TYPE_NAME "paxauxstats"
-#endif
-
 #include "catalog/pg_am.h"
 #include "catalog/pg_authid.h"
 #include "catalog/pg_language.h"
@@ -194,19 +187,63 @@ int main() {
       InvalidOid               /* pg_type.typcollation */
   );
 
+#ifdef ENABLE_LOCAL_INDEX
+
+  printf("\n");
   /* create pax auxiliary fast sequence table. */
-  printf("create table %s.%s(objid oid not null, seq int not null);\n",
-           PG_PAX_FAST_SEQUENCE_NAMESPACE,
-           PG_PAX_FAST_SEQUENCE_TABLE
-           );
+  printf("CREATE TABLE %s.%s(objid oid NOT NULL, seq int NOT NULL);\n",
+         PG_PAX_FASTSEQUENCE_NAMESPACE, PG_PAX_FASTSEQUENCE_TABLE);
 
   /* create pax auxiliary fast sequence index. */
-  printf("create index %s.%s on %s.%s(objid);\n",
-            PG_PAX_FAST_SEQUENCE_NAMESPACE,
-            PG_PAX_FAST_SEQUENCE_INDEX_NAME,
-            PG_PAX_FAST_SEQUENCE_NAMESPACE,
-            PG_PAX_FAST_SEQUENCE_TABLE
-  );
+  printf("CREATE INDEX %s ON %s.%s(objid);\n", PG_PAX_FASTSEQUENCE_INDEX_NAME,
+         PG_PAX_FASTSEQUENCE_NAMESPACE, PG_PAX_FASTSEQUENCE_TABLE);
+
+  /* update oid of pg_pax_fastsequence and pg_pax_fastsequence_objid_idx */
+  printf("-- update oid of fastsequence: table %u index %u\n",
+         PAX_FASTSEQUENCE_OID, PAX_FASTSEQUENCE_INDEX_OID);
+  printf("-- pg_type\n");
+  printf("UPDATE pg_type SET typrelid = %u WHERE typname='%s';\n",
+         PAX_FASTSEQUENCE_OID, PG_PAX_FASTSEQUENCE_TABLE);
+  printf("-- pg_depend\n");
+  printf(
+      "UPDATE pg_depend SET refobjid = %u WHERE refobjid = (SELECT oid FROM "
+      "pg_class WHERE relname='%s');\n",
+      PAX_FASTSEQUENCE_OID, PG_PAX_FASTSEQUENCE_TABLE);
+  printf(
+      "UPDATE pg_depend SET objid = %u WHERE objid = (SELECT oid FROM pg_class "
+      "WHERE relname='%s');\n",
+      PAX_FASTSEQUENCE_OID, PG_PAX_FASTSEQUENCE_TABLE);
+  printf(
+      "UPDATE pg_depend SET objid = %u WHERE objid = (SELECT oid FROM pg_class "
+      "WHERE relname='%s');\n",
+      PAX_FASTSEQUENCE_INDEX_OID, PG_PAX_FASTSEQUENCE_INDEX_NAME);
+  printf("-- pg_attribute\n");
+  printf(
+      "UPDATE pg_attribute SET attrelid=%u WHERE attrelid = (SELECT oid FROM "
+      "pg_class WHERE relname='%s');\n",
+      PAX_FASTSEQUENCE_OID, PG_PAX_FASTSEQUENCE_TABLE);
+  printf("\n");
+
+  printf(
+      "UPDATE pg_attribute SET attrelid=%u WHERE attrelid = (SELECT oid FROM "
+      "pg_class WHERE relname='%s');\n",
+      PAX_FASTSEQUENCE_INDEX_OID, PG_PAX_FASTSEQUENCE_INDEX_NAME);
+  printf("\n");
+
+  printf("-- pg_index\n");
+  printf(
+      "UPDATE pg_index SET indexrelid = %u, indrelid = %u WHERE indexrelid = "
+      "(SELECT oid FROM pg_class WHERE relname='%s') AND indrelid = (SELECT "
+      "oid FROM pg_class WHERE relname='%s');\n",
+      PAX_FASTSEQUENCE_INDEX_OID, PAX_FASTSEQUENCE_OID,
+      PG_PAX_FASTSEQUENCE_INDEX_NAME, PG_PAX_FASTSEQUENCE_TABLE);
+
+  printf("-- pg_class\n");
+  printf("UPDATE pg_class SET oid=%u WHERE relname='%s';\n",
+         PAX_FASTSEQUENCE_OID, PG_PAX_FASTSEQUENCE_TABLE);
+  printf("UPDATE pg_class SET oid=%u WHERE relname='%s';\n",
+         PAX_FASTSEQUENCE_INDEX_OID, PG_PAX_FASTSEQUENCE_INDEX_NAME);
+#endif
 
   return 0;
 }

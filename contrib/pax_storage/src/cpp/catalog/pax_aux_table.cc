@@ -65,7 +65,7 @@ static void CPaxNontransactionalTruncateTable(Relation rel) {
   relation_close(aux_rel, NoLock);
 }
 
-static void CPaxCreateMicroPartitionTable(const Relation rel) {
+void CPaxCreateMicroPartitionTable(Relation rel) {
   Relation pg_class_desc;
   char aux_relname[32];
   Oid relid;
