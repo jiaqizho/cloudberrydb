@@ -82,8 +82,54 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
   return {true, current_row_index_ - 1};
 }
 
-bool OrcGroup::GetTuple(TupleTableSlot * /*slot*/, size_t /*row_index*/) {
-  return false;
+bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
+  size_t index = 0;
+  AttrMissing *attrmiss = nullptr;
+  size_t nattrs = 0;
+  size_t column_nums = 0;
+
+  Assert(pax_columns_);
+  Assert(slot);
+
+  if (row_index >= pax_columns_->GetRows()) {
+    return false;
+  }
+
+  nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
+  column_nums = pax_columns_->GetColumns();
+
+  if (slot->tts_tupleDescriptor->constr)
+    attrmiss = slot->tts_tupleDescriptor->constr->missing;
+
+  for (index = 0; index < nattrs; index++) {
+    // Same logic with `ReadTuple`
+    if (index < column_nums && !((*pax_columns_)[index])) {
+      continue;
+    }
+
+    if (index >= column_nums) {
+      slot->tts_isnull[index] = true;
+      if (attrmiss && (slot->tts_tupleDescriptor->attrs[index].atthasmissing &&
+                       attrmiss[index].am_present)) {
+        slot->tts_values[index] = attrmiss[index].am_value;
+        slot->tts_isnull[index] = false;
+      }
+      continue;
+    }
+
+    if (unlikely(slot->tts_tupleDescriptor->attrs[index].attisdropped)) {
+      slot->tts_isnull[index] = true;
+      continue;
+    }
+
+    auto column = ((*pax_columns_)[index]);
+
+    // different with `ReadTuple`
+    std::tie(slot->tts_values[index], slot->tts_isnull[index]) =
+        GetColumnValue(column, row_index);
+  }
+
+  return true;
 }
 
 // Used in `GetColumnValue`

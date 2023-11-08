@@ -204,11 +204,12 @@ class MicroPartitionReader {
   // ------------------------------------------
   // below interface different with `ReadTuple`
   //
-  // direct read with `Group` from current
-  // `MicroPartitionReader` with group index.
-  // The group index will not be changed, and
-  // won't have any middle state in this process.
+  // direct read with `Group` from current `MicroPartitionReader` with group
+  // index. The group index will not be changed, and won't have any middle state
+  // in this process.
   // ------------------------------------------
+  virtual bool GetTuple(CTupleSlot *slot, size_t row_index) = 0;
+
   virtual size_t GetGroupNums() = 0;
 
   virtual Group *ReadGroup(size_t group_index) = 0;
@@ -241,6 +242,8 @@ class MicroPartitionReaderProxy : public MicroPartitionReader {
   // is also created during this stage, no matter the map relation is needed or
   // not. We may optimize to avoid creating the map relation later.
   bool ReadTuple(CTupleSlot *slot) override;
+
+  bool GetTuple(CTupleSlot *slot, size_t row_index) override;
 
   size_t GetGroupNums() override;
 

@@ -71,6 +71,11 @@ bool MicroPartitionReaderProxy::ReadTuple(CTupleSlot *slot) {
   return reader_->ReadTuple(slot);
 }
 
+bool MicroPartitionReaderProxy::GetTuple(CTupleSlot *slot, size_t row_index) {
+  Assert(reader_);
+  return reader_->GetTuple(slot, row_index);
+}
+
 void MicroPartitionReaderProxy::SetReader(MicroPartitionReader *reader) {
   Assert(reader);
   Assert(!reader_);
