@@ -121,6 +121,7 @@ OrcWriter::OrcWriter(const MicroPartitionWriter::WriterOptions &writer_options,
       column_types_(column_types),
       file_(file),
       mp_stats_(nullptr),
+      row_index_(0),
       total_rows_(0),
       current_offset_(0) {
   pax_columns_ = BuildColumns(column_types_, writer_options.encoding_opts,
@@ -220,6 +221,8 @@ void OrcWriter::WriteTuple(CTupleSlot *slot) {
 
   table_slot = slot->GetTupleTableSlot();
   table_desc = slot->GetTupleDesc();
+  slot->SetOffset(row_index_);
+  ++row_index_;
   n = table_desc->natts;
 
   CBDB_CHECK(pax_columns_->GetColumns() == static_cast<size_t>(n),
