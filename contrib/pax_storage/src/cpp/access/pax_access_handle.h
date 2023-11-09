@@ -23,14 +23,6 @@ class PaxAccessMethod final {
   static void ParallelscanReinitialize(Relation rel,
                                        ParallelTableScanDesc pscan);
 
-  /* Index Scan Callbacks, unsupported yet */
-  static struct IndexFetchTableData *IndexFetchBegin(Relation rel);
-  static void IndexFetchEnd(struct IndexFetchTableData *data);
-  static void IndexFetchReset(struct IndexFetchTableData *data);
-  static bool IndexFetchTuple(struct IndexFetchTableData *scan, ItemPointer tid,
-                              Snapshot snapshot, TupleTableSlot *slot,
-                              bool *call_again, bool *all_dead);
-
   /* Callbacks for non-modifying operations on individual tuples */
   static bool TupleFetchRowVersion(Relation relation, ItemPointer tid,
                                    Snapshot snapshot, TupleTableSlot *slot);
@@ -102,6 +94,14 @@ class CCPaxAccessMethod final {
                                           int nkeys, struct ScanKeyData *key,
                                           ParallelTableScanDesc parallel_scan,
                                           struct PlanState *ps, uint32 flags);
+
+  /* Index Scan Callbacks */
+  static struct IndexFetchTableData *IndexFetchBegin(Relation rel);
+  static void IndexFetchEnd(struct IndexFetchTableData *scan);
+  static void IndexFetchReset(struct IndexFetchTableData *scan);
+  static bool IndexFetchTuple(struct IndexFetchTableData *scan, ItemPointer tid,
+                              Snapshot snapshot, TupleTableSlot *slot,
+                              bool *call_again, bool *all_dead);
 
   /* Manipulations of physical tuples. */
   static void TupleInsert(Relation relation, TupleTableSlot *slot,
