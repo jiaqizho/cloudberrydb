@@ -116,6 +116,9 @@ MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
 
   block_id = GenerateBlockID(relation_);
   file_path = GenFilePath(block_id);
+#ifdef ENABLE_LOCAL_INDEX
+  current_blockno_ = std::stol(block_id);
+#endif
 
   options.rel_oid = relation_->rd_id;
   options.desc = relation_->rd_att;
@@ -151,6 +154,10 @@ void TableWriter::WriteTuple(CTupleSlot *slot) {
   if (mp_stats_) mp_stats_->AddRow(slot->GetTupleTableSlot());
 
   writer_->WriteTuple(slot);
+#ifdef ENABLE_LOCAL_INDEX
+  slot->SetBlockNumber(current_blockno_);
+  slot->StoreVirtualTuple();
+#endif
   ++num_tuples_;
 }
 

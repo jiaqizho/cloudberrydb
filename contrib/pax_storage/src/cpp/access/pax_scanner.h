@@ -2,6 +2,8 @@
 
 #include "comm/cbdb_api.h"
 
+#include <unordered_set>
+
 #include "storage/pax.h"
 #include "storage/pax_filter.h"
 #ifdef VEC_BUILD
@@ -73,5 +75,25 @@ class PaxScanDesc {
   PaxCache *pax_cache_ = nullptr;
 #endif
 };  // class PaxScanDesc
+
+#ifdef ENABLE_LOCAL_INDEX
+class PaxIndexScanDesc final {
+ public:
+  explicit PaxIndexScanDesc(Relation rel);
+  ~PaxIndexScanDesc();
+  bool FetchTuple(ItemPointer tid, Snapshot snapshot, TupleTableSlot *slot, bool *call_again, bool *all_dead);
+  inline IndexFetchTableData *ToBase() { return &base_; }
+  static PaxIndexScanDesc *FromBase(IndexFetchTableData *base) { return reinterpret_cast<PaxIndexScanDesc *>(base); }
+
+ private:
+  bool OpenMicroPartition(BlockNumber block, Snapshot snapshot);
+
+  IndexFetchTableData base_;
+  BlockNumber current_block_ = InvalidBlockNumber;
+  MicroPartitionReader *reader_ = nullptr;
+  // opt: fast check for block numbers that doesn't exist in auxiliary table
+  std::unordered_set<BlockNumber> black_list_;
+};
+#endif
 
 }  // namespace pax
