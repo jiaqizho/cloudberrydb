@@ -106,6 +106,7 @@ class OrcWriter : public MicroPartitionWriter {
   MicroPartitionStats *mp_stats_;
   WriteSummary summary_;
 
+  int32 row_index_;
   uint64 total_rows_;
   uint64 current_offset_;
 

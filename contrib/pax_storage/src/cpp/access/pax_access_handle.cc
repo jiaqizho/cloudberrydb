@@ -134,6 +134,68 @@ TableScanDesc CCPaxAccessMethod::ScanExtractColumns(
   pg_unreachable();
 }
 
+#ifdef ENABLE_LOCAL_INDEX
+struct IndexFetchTableData *CCPaxAccessMethod::IndexFetchBegin(Relation rel) {
+  CBDB_TRY();
+  {
+    auto desc = new PaxIndexScanDesc(rel);
+    return desc->ToBase();
+  }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  return nullptr;  // keep compiler quiet
+}
+
+void CCPaxAccessMethod::IndexFetchEnd(IndexFetchTableData *scan) {
+  CBDB_TRY();
+  {
+    auto desc = PaxIndexScanDesc::FromBase(scan);
+    delete desc;
+  }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+}
+
+bool CCPaxAccessMethod::IndexFetchTuple(struct IndexFetchTableData *scan,
+                                        ItemPointer tid, Snapshot snapshot,
+                                        TupleTableSlot *slot, bool *call_again,
+                                        bool *all_dead) {
+  CBDB_TRY();
+  {
+    auto desc = PaxIndexScanDesc::FromBase(scan);
+    return desc->FetchTuple(tid, snapshot, slot, call_again, all_dead);
+  }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  return false;  // keep compiler quiet
+}
+#else
+struct IndexFetchTableData *CCPaxAccessMethod::IndexFetchBegin(
+    Relation /*rel*/) {
+  NOT_SUPPORTED_YET;
+  return nullptr;
+}
+
+void CCPaxAccessMethod::IndexFetchEnd(IndexFetchTableData * /*scan*/) {
+  NOT_SUPPORTED_YET;
+}
+
+bool CCPaxAccessMethod::IndexFetchTuple(struct IndexFetchTableData * /*scan*/,
+                                        ItemPointer /*tid*/,
+                                        Snapshot /*snapshot*/,
+                                        TupleTableSlot * /*slot*/,
+                                        bool * /*call_again*/,
+                                        bool * /*all_dead*/) {
+  NOT_SUPPORTED_YET;
+  return false;
+}
+#endif
+
+void CCPaxAccessMethod::IndexFetchReset(IndexFetchTableData * /*scan*/) {}
+
 void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
                                                const RelFileNode *newrnode,
                                                char persistence,
@@ -484,29 +546,6 @@ void PaxAccessMethod::ParallelscanReinitialize(
   NOT_IMPLEMENTED_YET;
 }
 
-struct IndexFetchTableData *PaxAccessMethod::IndexFetchBegin(Relation /*rel*/) {
-  NOT_SUPPORTED_YET;
-  return nullptr;
-}
-
-void PaxAccessMethod::IndexFetchEnd(IndexFetchTableData * /*data*/) {
-  NOT_SUPPORTED_YET;
-}
-
-void PaxAccessMethod::IndexFetchReset(IndexFetchTableData * /*data*/) {
-  NOT_SUPPORTED_YET;
-}
-
-bool PaxAccessMethod::IndexFetchTuple(struct IndexFetchTableData * /*scan*/,
-                                      ItemPointer /*tid*/,
-                                      Snapshot /*snapshot*/,
-                                      TupleTableSlot * /*slot*/,
-                                      bool * /*call_again*/,
-                                      bool * /*all_dead*/) {
-  NOT_SUPPORTED_YET;
-  return false;
-}
-
 void PaxAccessMethod::TupleInsertSpeculative(Relation /*relation*/,
                                              TupleTableSlot * /*slot*/,
                                              CommandId /*cid*/, int /*options*/,
@@ -672,6 +711,116 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
   *pages = RelationGuessNumberOfBlocksFromSize(pax_size);
 }
 
+#ifdef ENABLE_LOCAL_INDEX
+double PaxAccessMethod::IndexBuildRangeScan(
+    Relation heap_relation, Relation index_relation, IndexInfo *index_info,
+    bool /*allow_sync*/, bool anyvisible, bool progress,
+    BlockNumber start_blockno, BlockNumber numblocks,
+    IndexBuildCallback callback, void *callback_state, TableScanDesc scan) {
+  Datum values[INDEX_MAX_KEYS];
+  bool isnull[INDEX_MAX_KEYS];
+  double reltuples = 0;
+  ExprState *predicate;
+  TupleTableSlot *slot;
+  EState *estate;
+  ExprContext *econtext;
+  Snapshot snapshot;
+
+  bool checking_uniqueness;
+  bool need_unregister_snapshot;
+  BlockNumber previous_blkno = InvalidBlockNumber;
+
+  Assert(OidIsValid(index_relation->rd_rel->relam));
+  Assert(!IsSystemRelation(heap_relation));
+
+  checking_uniqueness =
+      (index_info->ii_Unique || index_info->ii_ExclusionOps != NULL);
+  // "Any visible" mode is not compatible with uniqueness checks; make sure
+  // only one of those is requested.
+  (void)anyvisible;  // keep compiler quiet for release version
+  Assert(!(anyvisible && checking_uniqueness));
+
+  slot = table_slot_create(heap_relation, NULL);
+  estate = CreateExecutorState();
+  econtext = GetPerTupleExprContext(estate);
+  econtext->ecxt_scantuple = slot;
+  predicate = ExecPrepareQual(index_info->ii_Predicate, estate);
+
+  if (!scan) {
+    snapshot = RegisterSnapshot(GetTransactionSnapshot());
+    scan = table_beginscan(heap_relation, snapshot, 0, NULL);
+    need_unregister_snapshot = true;
+  } else {
+    snapshot = scan->rs_snapshot;
+    need_unregister_snapshot = false;
+  }
+
+  // FIXME: Only brin index uses partial index now. setup start_blockno
+  // and numblocks is too late after beginscan is called now, because
+  // the current micro partition is opened. The workaround is ugly to
+  // check and close the current micro partition and open another one.
+  if (start_blockno != 0 || numblocks != InvalidBlockNumber)
+    elog(ERROR, "PAX doesn't support partial index scan now");
+
+  while (table_scan_getnextslot(scan, ForwardScanDirection, slot)) {
+    CHECK_FOR_INTERRUPTS();
+
+    if (progress) {
+      BlockNumber blkno = pax::GetBlockNumber(slot->tts_tid);
+      if (previous_blkno == InvalidBlockNumber)
+        previous_blkno = blkno;
+      else if (previous_blkno != blkno) {
+        pgstat_progress_update_param(PROGRESS_SCAN_BLOCKS_DONE,
+                                     blkno - start_blockno);
+        previous_blkno = blkno;
+      }
+    }
+    reltuples += 1;
+
+    MemoryContextReset(econtext->ecxt_per_tuple_memory);
+
+    /*
+     * In a partial index, discard tuples that don't satisfy the
+     * predicate.
+     */
+    if (predicate && !ExecQual(predicate, econtext)) continue;
+
+    /*
+     * For the current heap tuple, extract all the attributes we use in
+     * this index, and note which are null.  This also performs evaluation
+     * of any expressions needed.
+     */
+    FormIndexDatum(index_info, slot, estate, values, isnull);
+
+    /*
+     * You'd think we should go ahead and build the index tuple here, but
+     * some index AMs want to do further processing on the data first.  So
+     * pass the values[] and isnull[] arrays, instead.
+     */
+    callback(index_relation, &slot->tts_tid, values, isnull, true,
+             callback_state);
+  }
+
+  /* Report scan progress one last time. */
+  if (progress && previous_blkno != InvalidBlockNumber)
+    pgstat_progress_update_param(PROGRESS_SCAN_BLOCKS_DONE,
+                                 previous_blkno + 1 - start_blockno);
+
+  table_endscan(scan);
+  if (need_unregister_snapshot) UnregisterSnapshot(snapshot);
+
+  ExecDropSingleTupleTableSlot(slot);
+  FreeExecutorState(estate);
+
+  /* These may have been pointing to the now-gone estate */
+  index_info->ii_ExpressionsState = NIL;
+  index_info->ii_PredicateState = NULL;
+
+  return reltuples;
+}
+
+#else
+
 double PaxAccessMethod::IndexBuildRangeScan(
     Relation /*heap_relation*/, Relation /*index_relation*/,
     IndexInfo * /*index_info*/, bool /*allow_sync*/, bool /*anyvisible*/,
@@ -681,6 +830,7 @@ double PaxAccessMethod::IndexBuildRangeScan(
   NOT_SUPPORTED_YET;
   return 0.0;
 }
+#endif
 
 void PaxAccessMethod::IndexValidateScan(Relation /*heap_relation*/,
                                         Relation /*index_relation*/,
@@ -807,10 +957,10 @@ static const TableAmRoutine kPaxColumnMethods = {
     .parallelscan_reinitialize =
         paxc::PaxAccessMethod::ParallelscanReinitialize,
 
-    .index_fetch_begin = paxc::PaxAccessMethod::IndexFetchBegin,
-    .index_fetch_reset = paxc::PaxAccessMethod::IndexFetchReset,
-    .index_fetch_end = paxc::PaxAccessMethod::IndexFetchEnd,
-    .index_fetch_tuple = paxc::PaxAccessMethod::IndexFetchTuple,
+    .index_fetch_begin = pax::CCPaxAccessMethod::IndexFetchBegin,
+    .index_fetch_reset = pax::CCPaxAccessMethod::IndexFetchReset,
+    .index_fetch_end = pax::CCPaxAccessMethod::IndexFetchEnd,
+    .index_fetch_tuple = pax::CCPaxAccessMethod::IndexFetchTuple,
 
     .tuple_fetch_row_version = paxc::PaxAccessMethod::TupleFetchRowVersion,
     .tuple_tid_valid = paxc::PaxAccessMethod::TupleTidValid,
@@ -985,15 +1135,15 @@ struct PaxObjectProperty {
 };
 
 static const struct PaxObjectProperty kPaxObjectProperties[] = {
-  {"fast-sequence", PAX_FASTSEQUENCE_OID, PAX_FASTSEQUENCE_INDEX_OID, ANUM_PG_PAX_FAST_SEQUENCE_OBJID},
-  // add pg_pax_tables here
+    {"fast-sequence", PAX_FASTSEQUENCE_OID, PAX_FASTSEQUENCE_INDEX_OID,
+     ANUM_PG_PAX_FAST_SEQUENCE_OBJID},
+    // add pg_pax_tables here
 };
 
 static const struct PaxObjectProperty *FindPaxObjectProperty(Oid class_id) {
   for (const auto &property : kPaxObjectProperties) {
     const auto p = &property;
-    if (p->class_oid == class_id)
-      return p;
+    if (p->class_oid == class_id) return p;
   }
   return NULL;
 }
@@ -1010,12 +1160,11 @@ static void PaxDeleteObject(struct CustomObjectClass * /*self*/,
   Assert(object_property->class_oid == object->classId);
 
   rel = table_open(object->classId, RowExclusiveLock);
-  ScanKeyInit(&skey[0], object_property->attnum_oid,
-              BTEqualStrategyNumber, F_OIDEQ,
-              ObjectIdGetDatum(object->objectId));
+  ScanKeyInit(&skey[0], object_property->attnum_oid, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(object->objectId));
 
-  scan = systable_beginscan(rel, object_property->index_oid, true, NULL, 1,
-                            skey);
+  scan =
+      systable_beginscan(rel, object_property->index_oid, true, NULL, 1, skey);
 
   /* we expect exactly one match */
   tup = systable_getnext(scan);
