@@ -67,6 +67,7 @@ class TableWriter {
   const FileSystem *file_system_ = Singleton<LocalFileSystem>::GetInstance();
 
   size_t num_tuples_ = 0;
+  BlockNumber current_blockno_ = 0;
   bool already_get_format_ = false;
   PaxStorageFormat storage_format_ = PaxStorageFormat::kTypeStorageOrcNonVec;
 };

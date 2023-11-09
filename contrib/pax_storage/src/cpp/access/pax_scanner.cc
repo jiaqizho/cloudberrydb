@@ -302,4 +302,79 @@ bool PaxScanDesc::ScanSampleNextTuple(TableScanDesc scan,
   return ok;
 }
 
+#ifdef ENABLE_LOCAL_INDEX
+PaxIndexScanDesc::PaxIndexScanDesc(Relation rel) : base_{.rel=rel} {
+  Assert(rel);
+  Assert(&base_ == reinterpret_cast<IndexFetchTableData *>(this));
+}
+
+PaxIndexScanDesc::~PaxIndexScanDesc() {
+  if (reader_) {
+    reader_->Close();
+    delete reader_;
+  }
+}
+
+bool PaxIndexScanDesc::FetchTuple(ItemPointer tid, Snapshot snapshot, TupleTableSlot *slot, bool *call_again, bool *all_dead) {
+  BlockNumber block = pax::GetBlockNumber(*tid);
+  if (block != current_block_ || !reader_) {
+    if (!OpenMicroPartition(block, snapshot))
+      return false;
+  }
+
+  Assert(current_block_ == block && reader_);
+  if (call_again) *call_again = false;
+  if (all_dead) *all_dead = false;
+
+  CTupleSlot cslot(slot);
+  auto ok = reader_->GetTuple(&cslot, pax::GetTupleOffset(*tid));
+  if (ok) {
+    cslot.SetBlockNumber(block);
+    cslot.StoreVirtualTuple();
+  }
+
+  return ok;
+}
+
+bool PaxIndexScanDesc::OpenMicroPartition(BlockNumber block, Snapshot snapshot) {
+  MicroPartitionMetadata info;
+  bool ok = false;
+
+  Assert(block != current_block_);
+  // 1. check whether the current block exists in the aux table
+  if (black_list_.find(block) != black_list_.end())
+    return false;
+
+  // TODO: opt: use index to find the file name
+  auto iter = MicroPartitionInfoIterator::New(base_.rel, snapshot);
+  auto block_name = std::to_string(block);
+  while (iter->HasNext()) {
+    info = iter->Next();
+    if (info.GetMicroPartitionId() == block_name) {
+      ok = true;
+      break;
+    }
+  }
+
+  if (ok) {
+    MicroPartitionReader::ReaderOptions options;
+    options.block_id = block_name;
+    options.file_name = info.GetFileName();
+    auto file = Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name);
+    auto reader = new OrcReader(file);
+    reader->Open(options);
+    if (reader_) {
+      reader_->Close();
+      delete reader_;
+    }
+    reader_ = reader;
+    current_block_ = block;
+  } else {
+    black_list_.insert(block);
+  }
+
+  return ok;
+}
+
+#endif
 }  // namespace pax
