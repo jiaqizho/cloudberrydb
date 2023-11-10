@@ -12,6 +12,7 @@
 #include "catalog/pax_fastsequence.h"
 #include "comm/guc.h"
 #include "exceptions/CException.h"
+#include "storage/local_file_system.h"
 #include "storage/paxc_block_map_manager.h"
 
 #define NOT_IMPLEMENTED_YET                        \
@@ -1213,6 +1214,8 @@ void _PG_init(void) {  // NOLINT
   register_custom_object_class(&pax_fastsequence_coc);
 
   DefineGUCs();
+
+  RegisterResourceReleaseCallback(paxc::FdHandleAbortCallback, NULL);
 
   paxc::paxc_reg_rel_options();
 }
