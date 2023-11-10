@@ -158,7 +158,7 @@ finish_read:
 
   // Build stripe row offset array
   size_t cur_stripe_row_offset = 0;
-  for (int i = 0; i < num_of_stripes_; i++) {
+  for (size_t i = 0; i < num_of_stripes_; i++) {
     stripe_row_offsets_.emplace_back(cur_stripe_row_offset);
     cur_stripe_row_offset += file_footer_.stripes(i).numberofrows();
   }
@@ -398,9 +398,7 @@ static PaxColumn *BuildEncodingVecNonFixedColumn(
   column_offset_buffer->Brush((total_rows + 1) * sizeof(int32));
   // at lease 2
   Assert(column_offset_buffer->GetSize() >= 2);
-
   data_buffer->Brush(column_lens_len);
-
   column_data_buffer = new DataBuffer<char>(data_buffer->GetAvailableBuffer(),
                                             column_data_len, false, false);
 
@@ -410,7 +408,6 @@ static PaxColumn *BuildEncodingVecNonFixedColumn(
         (*column_offset_buffer)[column_offset_buffer->GetSize() - 1]);
     data_buffer->Brush(column_data_len);
 
-    Assert(column_data_len == column_data_buffer->GetSize());
     pax_column = traits::ColumnCreateTraits2<PaxVecNonFixedColumn>::create(0);
   } else {
     data_buffer->Brush(column_data_len);

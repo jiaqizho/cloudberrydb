@@ -142,33 +142,27 @@ void PaxVecNonFixedColumn::Set(DataBuffer<char> *data,
 }
 
 void PaxVecNonFixedColumn::Append(char *buffer, size_t size) {
-  Assert(likely(reinterpret_cast<char *> MAXALIGN(data_->Position()) ==
-                data_->Position()));
-
-  size_t origin_size;
-  origin_size = size;
-
-  size = MAXALIGN(size);
-  PaxColumn::Append(buffer, origin_size);
+  PaxColumn::Append(buffer, size);
+  // vec format will remove the val header
+  // so we don't need do align with the datum
 
   Assert(data_->Capacity() > 0);
-  while (data_->Available() < size) {
-    data_->ReSize(data_->Capacity() * 2);
+  if (data_->Available() < size) {
+    data_->ReSize(data_->Used() + size, 2);
   }
 
   estimated_size_ += size;
-  data_->Write(buffer, origin_size);
+  data_->Write(buffer, size);
   data_->Brush(size);
 
   Assert(offsets_->Capacity() >= sizeof(int32));
   if (offsets_->Available() == 0) {
-    offsets_->ReSize(offsets_->Capacity() * 2);
+    offsets_->ReSize(offsets_->Used() + sizeof(int32), 2);
   }
 
   Assert(next_offsets_ != -1);
   offsets_->Write(next_offsets_);
   offsets_->Brush(sizeof(next_offsets_));
-
   next_offsets_ += size;
 }
 
