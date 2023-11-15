@@ -326,7 +326,7 @@ void OrcWriter::MergeTo(MicroPartitionWriter *writer) {
   orc_writer->DeleteUnstateFile();
 
   // merge the memory
-  MergePaxColumns(orc_writer->pax_columns_);
+  MergePaxColumns(orc_writer);
 
   // Update summary
   summary_.num_tuples += orc_writer->summary_.num_tuples;
@@ -335,16 +335,17 @@ void OrcWriter::MergeTo(MicroPartitionWriter *writer) {
   }
 }
 
-void OrcWriter::MergePaxColumns(PaxColumns *columns) {
+void OrcWriter::MergePaxColumns(OrcWriter *writer) {
+  PaxColumns *columns = writer->pax_columns_;
   Assert(columns->GetColumns() == pax_columns_->GetColumns());
-
   Assert(columns->GetRows() < writer_options_.group_limit);
   if (columns->GetRows() == 0) {
     return;
   }
 
   BufferedOutputStream buffer_mem_stream(2048);
-  auto ok = WriteStripe(&buffer_mem_stream, columns);
+  auto ok =
+      WriteStripe(&buffer_mem_stream, columns, &(writer->stats_collector_));
 
   // must be ok
   Assert(ok);
@@ -418,11 +419,12 @@ void OrcWriter::DeleteUnstateFile() {
 }
 
 bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream) {
-  return WriteStripe(buffer_mem_stream, pax_columns_);
+  return WriteStripe(buffer_mem_stream, pax_columns_, &stats_collector_);
 }
 
 bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
-                            PaxColumns *pax_columns) {
+                            PaxColumns *pax_columns,
+                            MicroPartitionStats *stats_collector) {
   std::vector<orc::proto::Stream> streams;
   std::vector<ColumnEncoding> encoding_kinds;
   orc::proto::StripeFooter stripe_footer;
@@ -475,7 +477,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
 
   stripe_stats = meta_data_.add_stripestats();
   auto stats_data =
-      dynamic_cast<OrcColumnStatsData *>(stats_collector_.GetStatsData());
+      dynamic_cast<OrcColumnStatsData *>(stats_collector->GetStatsData());
   Assert(stats_data);
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
     auto pb_stats = stripe_stats->add_colstats();
@@ -494,7 +496,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
                pax_column->HasNull() ? "true" : "false", pax_column->GetRows());
   }
   stats_data->Reset();
-  stats_collector_.LightReset();
+  stats_collector->LightReset();
 
   stripe_footer.set_writertimezone("GMT");
   buffer_mem_stream->Set(data_buffer);

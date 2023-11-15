@@ -239,10 +239,13 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
     // 3. setup dependency
     paxc::CPaxCreateMicroPartitionTable(rel);
   }
+
+#ifdef ENABLE_LOCAL_INDEX
   // initialize or reset the fast sequence number
   paxc::CPaxInitializeFastSequenceEntry(
       pax_relid,
       exists ? FASTSEQUENCE_INIT_TYPE_UPDATE : FASTSEQUENCE_INIT_TYPE_CREATE);
+#endif
 
   systable_endscan(scan);
   table_close(pax_tables_rel, NoLock);
