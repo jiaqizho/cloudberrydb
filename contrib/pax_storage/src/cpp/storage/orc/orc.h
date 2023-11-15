@@ -86,13 +86,14 @@ class OrcWriter : public MicroPartitionWriter {
 
   void BuildFooterType();
   bool WriteStripe(BufferedOutputStream *buffer_mem_stream,
-                   PaxColumns *pax_columns);
+                   PaxColumns *pax_columns,
+                   MicroPartitionStats *stats_collector);
   bool WriteStripe(BufferedOutputStream *buffer_mem_stream);
   void WriteMetadata(BufferedOutputStream *buffer_mem_stream);
   void WriteFileFooter(BufferedOutputStream *buffer_mem_stream);
   void WritePostscript(BufferedOutputStream *buffer_mem_stream);
 
-  void MergePaxColumns(PaxColumns *columns);
+  void MergePaxColumns(OrcWriter *writer);
   void MergeGroups(OrcWriter *orc_writer);
   void MergeGroup(OrcWriter *orc_writer, int group_index,
                   DataBuffer<char> *merge_buffer);
