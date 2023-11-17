@@ -41,6 +41,7 @@
 //
 // CBDB_CATCH_MATCH() is optional and can have several match pattern.
 
+char *global_pg_error_message = nullptr;
 cbdb::CException global_exception(cbdb::CException::kExTypeInvalid);
 
 // being of a try block w/o explicit handler
@@ -63,6 +64,7 @@ cbdb::CException global_exception(cbdb::CException::kExTypeInvalid);
   catch (cbdb::CException & e) {                      \
     internal_cbdb_try_throw_error_ = true;            \
     internal_cbdb_try_throw_error_with_stack_ = true; \
+    global_pg_error_message = elog_message();         \
     elog(LOG, "\npax stack trace: \n%s", e.Stack());  \
     global_exception = e;                             \
   }                                                   \
@@ -79,18 +81,24 @@ cbdb::CException global_exception(cbdb::CException::kExTypeInvalid);
     } while (0);
 
 // end of a try-catch block
-#define CBDB_END_TRY()                                                \
-  }                                                                   \
-  if (internal_cbdb_try_throw_error_) {                               \
-    if (internal_cbdb_try_throw_error_with_stack_) {                  \
-      elog(LOG, "\npax stack trace: \n%s", global_exception.Stack()); \
-      ereport(ERROR, errmsg("%s", global_exception.What().c_str()));  \
-    }                                                                 \
-    if (error_message.Length() == 0)                                  \
-      error_message.Append("ERROR: %s", __func__);                    \
-    ereport(ERROR, errmsg("%s", error_message.Message()));            \
-  }                                                                   \
-  }                                                                   \
+#define CBDB_END_TRY()                                                      \
+  }                                                                         \
+  if (internal_cbdb_try_throw_error_) {                                     \
+    if (global_pg_error_message) {                                          \
+      elog(LOG, "\npg error message:%s", global_pg_error_message);          \
+    }                                                                       \
+    if (internal_cbdb_try_throw_error_with_stack_) {                        \
+      elog(LOG, "\npax stack trace: \n%s", global_exception.Stack());       \
+      ereport(                                                              \
+          ERROR,                                                            \
+          errmsg("%s (PG message: %s)", global_exception.What().c_str(),    \
+                 !global_pg_error_message ? "" : global_pg_error_message)); \
+    }                                                                       \
+    if (error_message.Length() == 0)                                        \
+      error_message.Append("ERROR: %s", __func__);                          \
+    ereport(ERROR, errmsg("%s", error_message.Message()));                  \
+  }                                                                         \
+  }                                                                         \
   while (0)
 
 // access methods that are implemented in C++
