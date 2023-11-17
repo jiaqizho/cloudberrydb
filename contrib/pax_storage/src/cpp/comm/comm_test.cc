@@ -32,4 +32,19 @@ TEST_F(CommTest, TestDeleteOperator) {
   delete[] array_obj;
 }
 
+
+TEST_F(CommTest, TestNewOperator) {
+  auto obj = new bool[0];
+  ASSERT_NE(obj, nullptr);
+  delete[] obj;
+
+  auto obj2 = cbdb::Palloc(0);
+  ASSERT_NE(obj2, nullptr);
+  cbdb::Pfree(obj2);
+
+  auto obj3 = cbdb::Palloc0(0);
+  ASSERT_NE(obj3, nullptr);
+  cbdb::Pfree(obj3);
+}
+
 }  // namespace pax::tests
