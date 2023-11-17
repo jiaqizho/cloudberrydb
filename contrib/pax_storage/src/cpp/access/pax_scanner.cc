@@ -161,6 +161,8 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
 
   filter = new PaxFilter();
 
+  Assert(natts >= 0);
+
   cols = new bool[natts];
   memset(cols, false, natts);
 
@@ -178,7 +180,7 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
   // In some cases (for example, count(*)), targetlist and qual may be null,
   // extractcolumns_walker will return immediately, so no columns are specified.
   // We always scan the first column.
-  if (!found && !build_bitmap) cols[0] = true;
+  if (!found && !build_bitmap && natts > 0) cols[0] = true;
 
   // The `cols` life cycle will be bound to `PaxFilter`
   filter->SetColumnProjection(cols, natts);
