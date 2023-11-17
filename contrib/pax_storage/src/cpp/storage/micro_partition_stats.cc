@@ -16,7 +16,7 @@ MicroPartitionStats *MicroPartitionStats::SetStatsMessage(
     MicroPartitionStatsData *stats, int natts) {
   FmgrInfo finfo;
 
-  Assert(natts > 0);
+  Assert(natts >= 0);
   Assert(stats);
   initial_check_ = false;
   delete stats_;

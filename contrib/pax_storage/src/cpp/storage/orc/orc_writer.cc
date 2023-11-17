@@ -625,7 +625,7 @@ void OrcWriter::WritePostscript(BufferedOutputStream *buffer_mem_stream) {
 }
 
 OrcColumnStatsData *OrcColumnStatsData::Initialize(int natts) {
-  Assert(natts > 0);
+  Assert(natts >= 0);
   col_data_stats_.resize(natts);
   col_basic_info_.resize(natts);
   Reset();
