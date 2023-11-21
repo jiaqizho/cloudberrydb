@@ -362,7 +362,7 @@ bool PaxIndexScanDesc::OpenMicroPartition(BlockNumber block, Snapshot snapshot) 
     MicroPartitionReader::ReaderOptions options;
     options.block_id = block_name;
     options.file_name = info.GetFileName();
-    auto file = Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name);
+    auto file = Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name, fs::kReadMode);
     auto reader = new OrcReader(file);
     reader->Open(options);
     if (reader_) {

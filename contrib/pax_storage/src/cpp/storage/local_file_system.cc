@@ -164,12 +164,17 @@ void LocalFile::Close() {
 
 std::string LocalFile::GetPath() const { return file_path_; }
 
-File *LocalFileSystem::Open(const std::string &file_path) {
+File *LocalFileSystem::Open(const std::string &file_path, int flags) {
   LocalFile *local_file;
   int fd;
   paxc::paxc_fd_handle_t *ht;
 
-  fd = open(file_path.c_str(), O_CREAT | O_RDWR, 0644);
+  if (flags & O_CREAT) {
+    fd = open(file_path.c_str(), flags, fs::kDefaultWritePerm);
+  } else {
+    fd = open(file_path.c_str(), flags);
+  }
+
   CBDB_CHECK(fd >= 0, cbdb::CException::ExType::kExTypeIOError);
 
   CBDB_WRAP_START;

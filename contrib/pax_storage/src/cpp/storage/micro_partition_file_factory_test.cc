@@ -170,7 +170,7 @@ TEST_F(MicroPartitionFileFactoryTest, CreateMicroPartitionWriter) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<std::tuple<ColumnEncoding_Kind, int>> types_encoding;
@@ -204,7 +204,7 @@ TEST_F(MicroPartitionFileFactoryTest, CreateMicroPartitionReader) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<std::tuple<ColumnEncoding_Kind, int>> types_encoding;
@@ -226,7 +226,7 @@ TEST_F(MicroPartitionFileFactoryTest, CreateMicroPartitionReader) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
 
