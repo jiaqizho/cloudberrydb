@@ -246,7 +246,7 @@ TEST_F(OrcTest, WriteTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -270,7 +270,7 @@ TEST_F(OrcTest, OpenOrc) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -285,7 +285,7 @@ TEST_F(OrcTest, OpenOrc) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -304,7 +304,7 @@ TEST_F(OrcTest, WriteReadStripes) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -321,7 +321,7 @@ TEST_F(OrcTest, WriteReadStripes) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   // file_ptr in orc reader will be freed when reader do destruct
   MicroPartitionReader::ReaderOptions reader_options;
@@ -346,7 +346,7 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -361,7 +361,7 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -402,7 +402,7 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -420,7 +420,7 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -448,7 +448,7 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -465,7 +465,7 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
   // close without any data
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -487,7 +487,7 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -503,7 +503,7 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   // direct close
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -524,7 +524,7 @@ TEST_F(OrcTest, ReadTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -540,7 +540,7 @@ TEST_F(OrcTest, ReadTuple) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -577,7 +577,7 @@ TEST_F(OrcTest, GetTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -602,7 +602,7 @@ TEST_F(OrcTest, GetTuple) {
   }
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -693,7 +693,7 @@ TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_,fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -716,7 +716,7 @@ TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
 
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -774,7 +774,7 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_,fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -802,7 +802,7 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
   }
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -846,7 +846,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto *file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -861,7 +861,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -906,7 +906,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto *file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -921,7 +921,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -950,7 +950,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumnWithProjection) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto *file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -964,7 +964,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumnWithProjection) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);;
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -1019,7 +1019,7 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_,fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -1038,7 +1038,7 @@ TEST_F(OrcTest, WriteReadBigTuple) {
 
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);;
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -1064,7 +1064,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_,fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -1088,7 +1088,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);;
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -1123,7 +1123,7 @@ TEST_F(OrcTest, WriteReadWithNullField) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto *file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   GenFakeBuffer(column_buff, COLUMN_SIZE);
@@ -1160,7 +1160,7 @@ TEST_F(OrcTest, WriteReadWithNullField) {
 
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);;
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -1220,7 +1220,7 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto *file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   GenFakeBuffer(column_buff, COLUMN_SIZE);
@@ -1254,7 +1254,7 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
 
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);;
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -1308,7 +1308,7 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto *file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -1328,7 +1328,7 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   }
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);;
 
   MicroPartitionReader::ReaderOptions reader_options;
   auto reader = new OrcReader(file_ptr);
@@ -1372,7 +1372,7 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
     proj_map[proj_index] = !proj_map[proj_index];
   }
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_,fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -1390,7 +1390,7 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
   writer->WriteTuple(tuple_slot);
   writer->Close();
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   auto pax_filter = new PaxFilter();
   pax_filter->SetColumnProjection(proj_map, COLUMN_NUMS);
@@ -1442,9 +1442,9 @@ TEST_P(OrcEncodingTest, WriterMerge) {
 
   ASSERT_NE(nullptr, local_fs);
 
-  auto file1_ptr = local_fs->Open(file1_name);
-  auto file2_ptr = local_fs->Open(file2_name);
-  auto file3_ptr = local_fs->Open(file3_name);
+  auto file1_ptr = local_fs->Open(file1_name, fs::kReadWriteMode);
+  auto file2_ptr = local_fs->Open(file2_name, fs::kReadWriteMode);
+  auto file3_ptr = local_fs->Open(file3_name, fs::kReadWriteMode);
   EXPECT_NE(nullptr, file1_ptr);
   EXPECT_NE(nullptr, file2_ptr);
   EXPECT_NE(nullptr, file3_ptr);
@@ -1499,7 +1499,7 @@ TEST_P(OrcEncodingTest, WriterMerge) {
   ASSERT_NE(0, access(file2_name.c_str(), 0));
 
   MicroPartitionReader::ReaderOptions reader_options;
-  file3_ptr = local_fs->Open(file3_name);
+  file3_ptr = local_fs->Open(file3_name, fs::kReadMode);
 
   auto reader = new OrcReader(file3_ptr);
   reader->Open(reader_options);
