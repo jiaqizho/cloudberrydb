@@ -1,9 +1,18 @@
 #pragma once
 
+#include <fcntl.h>
+
 #include <string>
 #include <vector>
 
 namespace pax {
+
+namespace fs {
+const int kWriteMode = O_CREAT | O_WRONLY | O_EXCL;
+const int kReadMode = O_RDONLY;
+const int kReadWriteMode = O_CREAT | O_RDWR | O_EXCL;
+const int kDefaultWritePerm = 0640;
+};  // namespace fs
 
 /*
  * The IO functions may have error that have two different ways
@@ -45,7 +54,7 @@ class File {
 class FileSystem {
  public:
   virtual ~FileSystem() = default;
-  virtual File *Open(const std::string &file_path) = 0;
+  virtual File *Open(const std::string &file_path, int flags) = 0;
   virtual std::string BuildPath(const File *file) const = 0;
   virtual void Delete(const std::string &file_path) const = 0;
   virtual std::vector<std::string> ListDirectory(

@@ -1,6 +1,5 @@
 #include "storage/pax.h"
 
-
 #include <map>
 #include <utility>
 
@@ -127,8 +126,8 @@ MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
   options.encoding_opts = std::move(GetRelEncodingOptions());
   options.storage_format = GetStorageFormat();
 
-  File *file =
-      Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name);
+  File *file = Singleton<LocalFileSystem>::GetInstance()->Open(
+      options.file_name, fs::kWriteMode);
 
   auto mp_writer = MicroPartitionFileFactory::CreateMicroPartitionWriter(
       MICRO_PARTITION_TYPE_PAX, file, std::move(options));
@@ -267,7 +266,7 @@ void TableReader::OpenFile() {
   }
 
   reader_ = new OrcReader(
-      Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name));
+      Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name, fs::kReadMode));
 
 #ifdef VEC_BUILD
   if (reader_options_.is_vec) {

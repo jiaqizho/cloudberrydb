@@ -42,7 +42,7 @@ class LocalFileSystem final : public FileSystem {
   friend class Singleton<LocalFileSystem>;
 
  public:
-  File *Open(const std::string &file_path) override;
+  File *Open(const std::string &file_path, int flags) override;
   std::string BuildPath(const File *file) const override;
   void Delete(const std::string &file_path) const override;
   std::vector<std::string> ListDirectory(
