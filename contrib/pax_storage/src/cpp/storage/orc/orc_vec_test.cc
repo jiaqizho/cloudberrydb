@@ -95,7 +95,7 @@ TEST_F(OrcVecTest, WriteReadGroup) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -141,7 +141,7 @@ TEST_F(OrcVecTest, WriteReadGroup) {
 
   MicroPartitionReader::ReaderOptions reader_options;
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);
@@ -239,7 +239,7 @@ TEST_F(OrcVecTest, WriteReadGroupWithEncoding) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<orc::proto::Type_Kind> types;
@@ -291,7 +291,7 @@ TEST_F(OrcVecTest, WriteReadGroupWithEncoding) {
 
   MicroPartitionReader::ReaderOptions reader_options;
 
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   auto reader = new OrcReader(file_ptr);
   reader->Open(reader_options);

@@ -30,7 +30,7 @@ TEST_F(LocalFileSystemTest, Open) {
   auto local_fs = pax::Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   file_ptr->Close();
@@ -41,7 +41,7 @@ TEST_F(LocalFileSystemTest, BuildPath) {
   auto local_fs = pax::Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   ASSERT_NE(nullptr, file_ptr);
 
   auto path = local_fs->BuildPath(file_ptr);
@@ -55,7 +55,7 @@ TEST_F(LocalFileSystemTest, WriteRead) {
   auto local_fs = pax::Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_);
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   ASSERT_NE(nullptr, file_ptr);
 
   auto write_size = file_ptr->Write("abc", 3);
@@ -63,7 +63,7 @@ TEST_F(LocalFileSystemTest, WriteRead) {
 
   file_ptr->Flush();
   file_ptr->Close();
-  file_ptr = local_fs->Open(file_name_);
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
   ASSERT_NE(nullptr, file_ptr);
 
   char buff[10] = {0};
@@ -87,7 +87,7 @@ TEST_F(LocalFileSystemTest, ListDirectory) {
     path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
-    File *f = fs->Open(path);
+    File *f = fs->Open(path, fs::kWriteMode);
     f->Close();
   }
 
@@ -97,7 +97,7 @@ TEST_F(LocalFileSystemTest, ListDirectory) {
 
 TEST_F(LocalFileSystemTest, CopyFile) {
   static const char *pax_copy_test_dir = "./copytest";
-  static const char *pax_copy_src_path = "./test_src";
+  static const char *pax_copy_src_path = file_name_.c_str();
   static const char *pax_copy_dst_path = "./copytest/test_dst";
 
   int result = 0;
@@ -106,7 +106,7 @@ TEST_F(LocalFileSystemTest, CopyFile) {
   fs->DeleteDirectory(pax_copy_test_dir, true);
   ASSERT_NE(access(pax_copy_test_dir, F_OK), 0);
 
-  File *f = fs->Open(pax_copy_src_path);
+  File *f = fs->Open(pax_copy_src_path, fs::kWriteMode);
   f->Close();
 
   cbdb::MakedirRecursive(pax_copy_test_dir);
@@ -147,7 +147,7 @@ TEST_F(LocalFileSystemTest, CreateDeleteDirectory) {
     path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
-    File *f = fs->Open(path);
+    File *f = fs->Open(path, fs::kWriteMode);
     f->Close();
   }
 
@@ -173,7 +173,7 @@ TEST_F(LocalFileSystemTest, DeleteDirectoryReserveToplevel) {
     path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
-    File *f = fs->Open(path);
+    File *f = fs->Open(path, fs::kWriteMode);
     f->Close();
   }
 
