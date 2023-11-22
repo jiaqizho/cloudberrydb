@@ -16,6 +16,85 @@
 #include "storage/vec/pax_vec_reader.h"
 #endif
 
+namespace paxc {
+class IndexUpdaterInternal {
+ public:
+  void Begin(Relation rel) {
+    Assert(rel);
+
+    rel_ = rel;
+    slot_ = MakeTupleTableSlot(rel->rd_att, &TTSOpsVirtual);
+
+    if (HasIndex()) {
+      estate_ = CreateExecutorState();
+
+      relinfo_ = makeNode(ResultRelInfo);
+      relinfo_->ri_RelationDesc = rel;
+      ExecOpenIndices(relinfo_, false);
+    }
+  }
+
+  void UpdateIndex(TupleTableSlot *slot) {
+    Assert(slot == slot_);
+    Assert(HasIndex());
+    auto recheck_index = ExecInsertIndexTuples(relinfo_, slot_, estate_, true, false, NULL, NIL);
+    list_free(recheck_index);
+  }
+
+  void End() {
+    if (HasIndex()) {
+      Assert(relinfo_ && estate_);
+
+      ExecCloseIndices(relinfo_);
+      pfree(relinfo_);
+      relinfo_ = nullptr;
+
+      FreeExecutorState(estate_);
+      estate_ = nullptr;
+    }
+    Assert(relinfo_ == nullptr && estate_ == nullptr);
+
+    ExecDropSingleTupleTableSlot(slot_);
+    slot_ = nullptr;
+
+    rel_ = nullptr;
+  }
+
+  inline TupleTableSlot *GetSlot() { return slot_; }
+  inline bool HasIndex() const { return rel_->rd_rel->relhasindex; }
+ private:
+  Relation rel_ = nullptr;
+  TupleTableSlot *slot_ = nullptr;
+  EState *estate_ = nullptr;
+  ResultRelInfo *relinfo_ = nullptr;
+};
+}
+
+namespace pax {
+class IndexUpdater final {
+ public:
+  void Begin(Relation rel) {
+    CBDB_WRAP_START;
+    { stub_.Begin(rel); }
+    CBDB_WRAP_END;
+  }
+  void UpdateIndex(TupleTableSlot *slot) {
+    CBDB_WRAP_START;
+    { stub_.UpdateIndex(slot); }
+    CBDB_WRAP_END;
+  }
+  void End() {
+    CBDB_WRAP_START;
+    { stub_.End(); }
+    CBDB_WRAP_END;
+  }
+  inline TupleTableSlot *GetSlot() { return stub_.GetSlot(); }
+  inline bool HasIndex() const { return stub_.HasIndex(); }
+ private:
+  paxc::IndexUpdaterInternal stub_;
+};
+}
+
 namespace pax {
 
 TableWriter::TableWriter(Relation relation)
@@ -137,7 +216,14 @@ MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
   return mp_writer;
 }
 
-void TableWriter::Open() { writer_ = CreateMicroPartitionWriter(mp_stats_); }
+void TableWriter::Open() {
+  writer_ = CreateMicroPartitionWriter(mp_stats_);
+  num_tuples_ = 0;
+#ifdef ENABLE_LOCAL_INDEX
+// insert tuple into the aux table before inserting any tuples.
+  cbdb::InsertMicroPartitionPlaceHolder(RelationGetRelid(relation_), std::to_string(current_blockno_));
+#endif
+}
 
 void TableWriter::WriteTuple(CTupleSlot *slot) {
   Assert(writer_);
@@ -147,8 +233,7 @@ void TableWriter::WriteTuple(CTupleSlot *slot) {
   if (strategy_->ShouldSplit(writer_->PhysicalSize(), num_tuples_)) {
     writer_->Close();
     delete writer_;
-    writer_ = CreateMicroPartitionWriter(mp_stats_);
-    num_tuples_ = 0;
+    Open();
   }
   if (mp_stats_) mp_stats_->AddRow(slot->GetTupleTableSlot());
 
@@ -224,7 +309,6 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
 #ifndef ENABLE_LOCAL_INDEX
   slot->SetTableNo(block_number_manager_.GetTableNo());
 #endif
-  slot->SetBlockNumber(current_block_number_);
   while (!reader_->ReadTuple(slot)) {
     reader_->Close();
     if (!iterator_->HasNext()) {
@@ -233,6 +317,7 @@ bool TableReader::ReadTuple(CTupleSlot *slot) {
     }
     OpenFile();
   }
+  slot->SetBlockNumber(current_block_number_);
   slot->StoreVirtualTuple();
   return true;
 }
@@ -293,8 +378,7 @@ TableDeleter::TableDeleter(
       delete_bitmap_(std::move(delete_bitmap)),
       snapshot_(snapshot),
       reader_(nullptr),
-      writer_(nullptr),
-      slot_(nullptr) {}
+      writer_(nullptr) {}
 
 TableDeleter::~TableDeleter() {
   if (reader_) {
@@ -308,51 +392,49 @@ TableDeleter::~TableDeleter() {
     delete writer_;
     writer_ = nullptr;
   }
-  if (slot_) {
-    ExecDropSingleTupleTableSlot(slot_);
-  }
 }
 
 void TableDeleter::Delete() {
   if (!iterator_->HasNext()) {
     return;
   }
-  slot_ = MakeTupleTableSlot(rel_->rd_att, &TTSOpsVirtual);
   OpenReader();
   OpenWriter();
+  pax::IndexUpdater index_updater;
 
-  CTupleSlot cslot(slot_);
+  index_updater.Begin(rel_);
+  Assert(rel_->rd_rel->relhasindex == index_updater.HasIndex());
+  auto slot = index_updater.GetSlot();
+
+  CTupleSlot cslot(slot);
+  slot->tts_tableOid = RelationGetRelid(rel_);
   // TODO(gongxun): because bulk insert as AO/HEAP does with tuples iteration
   // not implemented. we should implement bulk insert firstly. and then we can
   // use ReadTupleN and WriteTupleN to delete tuples in batch.
   while (reader_->ReadTuple(&cslot)) {
     auto block_id = reader_->GetCurrentMicroPartitionId();
     auto it = delete_bitmap_.find(block_id);
-    if (it == delete_bitmap_.end()) {
-      // should not be here
-      Assert(!"should not be here, block_id is marked as delete but not in "
-                "delete_bitmap_");
-      continue;
-    }
+    Assert(it != delete_bitmap_.end());
 
     auto bitmap = it->second.get();
     if (bitmap->Test(pax::GetTupleOffset(cslot.GetCtid()))) continue;
 
     writer_->WriteTuple(&cslot);
+#ifdef ENABLE_LOCAL_INDEX
+    if (index_updater.HasIndex()) {
+      // TableWriter has stored ctid in cslot, we need to store it in slot.tts_tid
+      // and set the valid number of columns.
+      cslot.StoreVirtualTuple();
+      index_updater.UpdateIndex(slot);
+    }
+#endif
   }
-
-  // loop delete_bitmap
-  for (const auto &it : delete_bitmap_) {
-    auto block_id = it.first;
-    cbdb::DeleteMicroPartitionEntry(rel_->rd_id, snapshot_, block_id);
-
-    // TODO(gongxun): delete the block file
-  }
+  index_updater.End();
 }
 
 void TableDeleter::OpenWriter() {
   writer_ = new TableWriter(rel_);
-  writer_->SetWriteSummaryCallback(&cbdb::AddMicroPartitionEntry)
+  writer_->SetWriteSummaryCallback(&cbdb::InsertOrUpdateMicroPartitionEntry)
       ->SetFileSplitStrategy(new PaxDefaultSplitStrategy())
       ->SetStatsCollector(new MicroPartitionStats())
       ->Open();

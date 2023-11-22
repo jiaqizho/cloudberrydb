@@ -27,7 +27,7 @@ CPaxInserter::CPaxInserter(Relation rel)
     part_obj_ = nullptr;
   }
 
-  writer_->SetWriteSummaryCallback(&cbdb::AddMicroPartitionEntry)
+  writer_->SetWriteSummaryCallback(&cbdb::InsertOrUpdateMicroPartitionEntry)
       ->SetFileSplitStrategy(new PaxDefaultSplitStrategy())
       ->SetStatsCollector(new MicroPartitionStats())
       ->Open();

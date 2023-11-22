@@ -121,11 +121,12 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
 
 void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
   CBDB_TRY();
-  { PaxScanDesc::EndScan(scan); }
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    desc->EndScan();
+  }
   CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({
-      // FIXME: destroy PaxScanDesc?
-  });
+  CBDB_FINALLY({});
   CBDB_END_TRY();
 }
 
@@ -181,6 +182,7 @@ bool CCPaxAccessMethod::IndexFetchTuple(struct IndexFetchTableData *scan,
   CBDB_END_TRY();
   return false;  // keep compiler quiet
 }
+
 #else
 struct IndexFetchTableData *CCPaxAccessMethod::IndexFetchBegin(
     Relation /*rel*/) {
@@ -232,13 +234,10 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
     // set new filenode, not create new table
     //
     // 1. truncate aux table by new relfilenode
-    Relation aux_rel;
     Oid aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tuple))->blocksrelid;
 
     Assert(OidIsValid(aux_relid));
-    aux_rel = relation_open(aux_relid, AccessExclusiveLock);
-    RelationSetNewRelfilenode(aux_rel, aux_rel->rd_rel->relpersistence);
-    relation_close(aux_rel, NoLock);
+    paxc::PaxAuxRelationSetNewFilenode(aux_relid);
   } else {
     // create new table
     //
@@ -333,12 +332,15 @@ void CCPaxAccessMethod::RelationFileUnlink(RelFileNodeBackend rnode) {
   CBDB_END_TRY();
 }
 
-void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey /*key*/,
-                                   bool /*set_params*/, bool /*allow_strat*/,
-                                   bool /*allow_sync*/,
-                                   bool /*allow_pagemode*/) {
+void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
+                                   bool set_params, bool allow_strat,
+                                   bool allow_sync,
+                                   bool allow_pagemode) {
   CBDB_TRY();
-  { pax::PaxScanDesc::ReScan(scan); }
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    desc->ReScan(key, set_params, allow_strat, allow_sync, allow_pagemode);
+  }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
@@ -348,11 +350,12 @@ bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
                                         ScanDirection /*direction*/,
                                         TupleTableSlot *slot) {
   CBDB_TRY();
-  { return PaxScanDesc::ScanGetNextSlot(scan, slot); }
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    return desc->GetNextSlot(slot);
+  }
   CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({
-      // FIXME: destroy PaxScanDesc?
-  });
+  CBDB_FINALLY({});
   CBDB_END_TRY();
 
   pg_unreachable();
@@ -417,9 +420,12 @@ TM_Result CCPaxAccessMethod::TupleUpdate(Relation relation, ItemPointer otid,
 
 bool CCPaxAccessMethod::ScanAnalyzeNextBlock(
     TableScanDesc scan, BlockNumber blockno,
-    BufferAccessStrategy /*bstrategy*/) {
+    BufferAccessStrategy bstrategy) {
   CBDB_TRY();
-  { return PaxScanDesc::ScanAnalyzeNextBlock(scan, blockno); }
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    return desc->ScanAnalyzeNextBlock(blockno, bstrategy);
+  }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
@@ -427,34 +433,54 @@ bool CCPaxAccessMethod::ScanAnalyzeNextBlock(
 }
 
 bool CCPaxAccessMethod::ScanAnalyzeNextTuple(TableScanDesc scan,
-                                             TransactionId /*oldest_xmin*/,
+                                             TransactionId oldest_xmin,
                                              double *liverows, double *deadrows,
                                              TupleTableSlot *slot) {
   CBDB_TRY();
-  { return PaxScanDesc::ScanAnalyzeNextTuple(scan, liverows, deadrows, slot); }
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    return desc->ScanAnalyzeNextTuple(oldest_xmin, liverows, deadrows, slot);
+  }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
   pg_unreachable();
 }
 
-bool CCPaxAccessMethod::ScanBitmapNextBlock(TableScanDesc /*scan*/,
-                                            TBMIterateResult * /*tbmres*/) {
-  NOT_IMPLEMENTED_YET;
-  return false;
+bool CCPaxAccessMethod::ScanBitmapNextBlock(TableScanDesc scan,
+                                            TBMIterateResult *tbmres) {
+  CBDB_TRY();
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    return desc->BitmapNextBlock(tbmres);
+  }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
-bool CCPaxAccessMethod::ScanBitmapNextTuple(TableScanDesc /*scan*/,
-                                            TBMIterateResult * /*tbmres*/,
-                                            TupleTableSlot * /*slot*/) {
-  NOT_IMPLEMENTED_YET;
-  return false;
+bool CCPaxAccessMethod::ScanBitmapNextTuple(TableScanDesc scan,
+                                            TBMIterateResult *tbmres,
+                                            TupleTableSlot *slot) {
+  CBDB_TRY();
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    return desc->BitmapNextTuple(tbmres, slot);
+  }
+  CBDB_CATCH_DEFAULT();
+  CBDB_FINALLY({});
+  CBDB_END_TRY();
+  pg_unreachable();
 }
 
 bool CCPaxAccessMethod::ScanSampleNextBlock(TableScanDesc scan,
                                             SampleScanState *scanstate) {
   CBDB_TRY();
-  { return PaxScanDesc::ScanSampleNextBlock(scan, scanstate); }
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    return desc->ScanSampleNextBlock(scanstate);
+  }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
@@ -462,10 +488,13 @@ bool CCPaxAccessMethod::ScanSampleNextBlock(TableScanDesc scan,
 }
 
 bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
-                                            SampleScanState * /*scanstate*/,
+                                            SampleScanState *scanstate,
                                             TupleTableSlot *slot) {
   CBDB_TRY();
-  { return PaxScanDesc::ScanSampleNextTuple(scan, slot); }
+  {
+    auto desc = PaxScanDesc::ToDesc(scan);
+    return desc->ScanSampleNextTuple(scanstate, slot);
+  }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();
@@ -509,9 +538,7 @@ void CCPaxAccessMethod::FinishBulkInsert(Relation relation, int options) {
 }
 
 void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
-  if (!RELATION_IS_PAX(rel)) {
-    return;
-  }
+  if (!RELATION_IS_PAX(rel)) return;
 
   CBDB_TRY();
   { pax::CPaxDmlStateLocal::Instance()->InitDmlState(rel, operation); }
@@ -521,9 +548,7 @@ void CCPaxAccessMethod::ExtDmlInit(Relation rel, CmdType operation) {
 }
 
 void CCPaxAccessMethod::ExtDmlFini(Relation rel, CmdType operation) {
-  if (!RELATION_IS_PAX(rel)) {
-    return;
-  }
+  if (!RELATION_IS_PAX(rel)) return;
 
   CBDB_TRY();
   { pax::CPaxDmlStateLocal::Instance()->FinishDmlState(rel, operation); }
@@ -636,7 +661,7 @@ uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {
   GetPaxTablesEntryAttributes(rel->rd_id, &pax_aux_oid, NULL, NULL, NULL);
 
   // Scan pg_pax_blocks_xxx to calculate size of micro partition
-  pax_aux_rel = heap_open(pax_aux_oid, AccessShareLock);
+  pax_aux_rel = table_open(pax_aux_oid, AccessShareLock);
   aux_tup_desc = RelationGetDescr(pax_aux_rel);
 
   aux_scan = systable_beginscan(pax_aux_rel, InvalidOid, false, NULL, 0, NULL);
@@ -653,7 +678,7 @@ uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {
   }
 
   systable_endscan(aux_scan);
-  heap_close(pax_aux_rel, AccessShareLock);
+  table_close(pax_aux_rel, AccessShareLock);
 
   return pax_size;
 }
@@ -676,7 +701,7 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
   TupleDesc aux_tup_desc;
   HeapTuple aux_tup;
   SysScanDesc aux_scan;
-  uint32 total_tuples = 0;
+  uint64 total_tuples = 0;
   uint64 pax_size = 0;
 
   // Even an empty table takes at least one page,
@@ -690,7 +715,7 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
   GetPaxTablesEntryAttributes(rel->rd_id, &pax_aux_oid, NULL, NULL, NULL);
 
   // Scan pg_pax_blocks_xxx to get attributes
-  pax_aux_rel = heap_open(pax_aux_oid, AccessShareLock);
+  pax_aux_rel = table_open(pax_aux_oid, AccessShareLock);
   aux_tup_desc = RelationGetDescr(pax_aux_rel);
 
   aux_scan = systable_beginscan(pax_aux_rel, InvalidOid, false, NULL, 0, NULL);
@@ -717,7 +742,7 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
   }
 
   systable_endscan(aux_scan);
-  heap_close(pax_aux_rel, AccessShareLock);
+  table_close(pax_aux_rel, AccessShareLock);
 
   *tuples = static_cast<double>(total_tuples);
   *pages = RelationGuessNumberOfBlocksFromSize(pax_size);
@@ -831,6 +856,10 @@ double PaxAccessMethod::IndexBuildRangeScan(
   return reltuples;
 }
 
+bool PaxAccessMethod::IndexUniqueCheck(Relation rel, ItemPointer tid, Snapshot snapshot, bool *all_dead) {
+  return paxc::IndexUniqueCheck(rel, tid, snapshot, all_dead);
+}
+
 #else
 
 double PaxAccessMethod::IndexBuildRangeScan(
@@ -841,6 +870,11 @@ double PaxAccessMethod::IndexBuildRangeScan(
     TableScanDesc /*scan*/) {
   NOT_SUPPORTED_YET;
   return 0.0;
+}
+
+bool PaxAccessMethod::IndexUniqueCheck(Relation /*rel*/, ItemPointer /*tid*/, Snapshot /*snapshot*/, bool * /*all_dead*/) {
+  NOT_SUPPORTED_YET;
+  return false;
 }
 #endif
 
@@ -973,6 +1007,7 @@ static const TableAmRoutine kPaxColumnMethods = {
     .index_fetch_reset = pax::CCPaxAccessMethod::IndexFetchReset,
     .index_fetch_end = pax::CCPaxAccessMethod::IndexFetchEnd,
     .index_fetch_tuple = pax::CCPaxAccessMethod::IndexFetchTuple,
+    .index_unique_check = paxc::PaxAccessMethod::IndexUniqueCheck,
 
     .tuple_fetch_row_version = paxc::PaxAccessMethod::TupleFetchRowVersion,
     .tuple_tid_valid = paxc::PaxAccessMethod::TupleTidValid,
