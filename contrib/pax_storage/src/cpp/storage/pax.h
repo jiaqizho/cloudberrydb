@@ -49,6 +49,10 @@ class TableWriter {
 
   TableWriter *SetStatsCollector(MicroPartitionStats *mp_stats);
 
+#ifdef ENABLE_LOCAL_INDEX
+  BlockNumber GetBlockNumber() const { return current_blockno_; }
+#endif
+
  protected:
   virtual std::string GenFilePath(const std::string &block_id);
 
@@ -151,7 +155,6 @@ class TableDeleter final {
   Snapshot snapshot_;
   TableReader *reader_;
   TableWriter *writer_;
-  TupleTableSlot *slot_;
 };
 
 }  // namespace pax

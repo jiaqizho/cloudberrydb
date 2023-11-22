@@ -419,6 +419,7 @@ TEST_F(PaxWriterTest, ParitionWriteReadTuple) {
   CTupleSlot *slot = CreateFakeCTupleSlot(true);
   std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
   auto relation = (Relation)cbdb::Palloc0(sizeof(RelationData));
+  relation->rd_rel = (Form_pg_class)cbdb::Palloc0(sizeof(*relation->rd_rel));
   relation->rd_att = slot->GetTupleTableSlot()->tts_tupleDescriptor;
   bool callback_called = false;
   Stub *stub;

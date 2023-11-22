@@ -19,6 +19,7 @@ class CPaxDeleter {
                                TM_FailureData *tmfd);
 
   TM_Result MarkDelete(ItemPointer tid);
+  void MarkDelete(BlockNumber pax_block_id);
   void ExecDelete();
 
  private:

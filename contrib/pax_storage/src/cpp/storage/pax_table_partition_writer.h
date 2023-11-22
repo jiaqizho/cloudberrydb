@@ -26,6 +26,7 @@ class TableParitionWriter : public TableWriter {
   MicroPartitionWriter **writers_;
   MicroPartitionStats **mp_stats_;
   size_t *num_tuples_;
+  BlockNumber *current_blocknos_;
 
   int writer_counts_;
 };
