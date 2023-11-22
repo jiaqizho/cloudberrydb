@@ -9,7 +9,31 @@
 #ifdef VEC_BUILD
 #include "storage/vec/pax_vec_adapter.h"
 #endif
+
+#ifdef ENABLE_LOCAL_INDEX
+namespace paxc {
+  bool IndexUniqueCheck(Relation rel, ItemPointer tid, Snapshot snapshot, bool *all_dead);
+}
+#endif
+
 namespace pax {
+#ifdef ENABLE_LOCAL_INDEX
+class PaxIndexScanDesc final {
+ public:
+  explicit PaxIndexScanDesc(Relation rel);
+  ~PaxIndexScanDesc();
+  bool FetchTuple(ItemPointer tid, Snapshot snapshot, TupleTableSlot *slot, bool *call_again, bool *all_dead);
+  inline IndexFetchTableData *ToBase() { return &base_; }
+  static inline PaxIndexScanDesc *FromBase(IndexFetchTableData *base) { return reinterpret_cast<PaxIndexScanDesc *>(base); }
+
+ private:
+  bool OpenMicroPartition(BlockNumber block, Snapshot snapshot);
+
+  IndexFetchTableData base_;
+  BlockNumber current_block_ = InvalidBlockNumber;
+  MicroPartitionReader *reader_ = nullptr;
+};
+#endif
 
 class PaxScanDesc {
  public:
@@ -18,38 +42,41 @@ class PaxScanDesc {
                                  ParallelTableScanDesc pscan, uint32 flags,
                                  PaxFilter *filter, bool build_bitmap);
 
-  static void ReScan(TableScanDesc scan);
-  static void EndScan(TableScanDesc scan);
 
   static TableScanDesc BeginScanExtractColumns(
       Relation rel, Snapshot snapshot, int nkeys, struct ScanKeyData *key,
       ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags);
 
-  static bool ScanGetNextSlot(TableScanDesc scan, TupleTableSlot *slot);
+  void EndScan();
+  void ReScan(ScanKey key, bool set_params, bool allow_strat, bool allow_sync, bool allow_pagemode);
 
-  static bool ScanAnalyzeNextBlock(TableScanDesc scan, BlockNumber blockno);
-  static bool ScanAnalyzeNextTuple(TableScanDesc scan, double *liverows,
+  bool GetNextSlot(TupleTableSlot *slot);
+
+  bool ScanAnalyzeNextBlock(BlockNumber blockno, BufferAccessStrategy bstrategy);
+  bool ScanAnalyzeNextTuple(TransactionId oldest_xmin, double *liverows,
                                    const double *deadrows,
                                    TupleTableSlot *slot);
 
-  static bool ScanSampleNextBlock(TableScanDesc scan,
-                                  SampleScanState *scanstate);
+  bool ScanSampleNextBlock(SampleScanState *scanstate);
 
-  static bool ScanSampleNextTuple(TableScanDesc scan, TupleTableSlot *slot);
+  bool ScanSampleNextTuple(SampleScanState *scanstate, TupleTableSlot *slot);
+
+  bool BitmapNextBlock(struct TBMIterateResult *tbmres);
+  bool BitmapNextTuple(struct TBMIterateResult *tbmres, TupleTableSlot *slot);
 
   ~PaxScanDesc() = default;
 
- private:
-  PaxScanDesc() = default;
-
-  static inline PaxScanDesc *ScanToDesc(TableScanDesc scan) {
+  static inline PaxScanDesc *ToDesc(TableScanDesc scan) {
     auto desc = reinterpret_cast<PaxScanDesc *>(scan);
     return desc;
   }
 
  private:
+  PaxScanDesc() = default;
+
+ private:
   TableScanDescData rs_base_{};
-  const ScanKeyData *key_ = nullptr;
+
   TableReader *reader_ = nullptr;
 
   DataBuffer<char> *reused_buffer_ = nullptr;
@@ -74,26 +101,12 @@ class PaxScanDesc {
   const std::string plasma_socket_path_prefix_ = "/tmp/.s.plasma.";
   PaxCache *pax_cache_ = nullptr;
 #endif
-};  // class PaxScanDesc
 
 #ifdef ENABLE_LOCAL_INDEX
-class PaxIndexScanDesc final {
- public:
-  explicit PaxIndexScanDesc(Relation rel);
-  ~PaxIndexScanDesc();
-  bool FetchTuple(ItemPointer tid, Snapshot snapshot, TupleTableSlot *slot, bool *call_again, bool *all_dead);
-  inline IndexFetchTableData *ToBase() { return &base_; }
-  static PaxIndexScanDesc *FromBase(IndexFetchTableData *base) { return reinterpret_cast<PaxIndexScanDesc *>(base); }
-
- private:
-  bool OpenMicroPartition(BlockNumber block, Snapshot snapshot);
-
-  IndexFetchTableData base_;
-  BlockNumber current_block_ = InvalidBlockNumber;
-  MicroPartitionReader *reader_ = nullptr;
-  // opt: fast check for block numbers that doesn't exist in auxiliary table
-  std::unordered_set<BlockNumber> black_list_;
-};
+  // used only by bitmap index scan
+  PaxIndexScanDesc *index_desc_ = nullptr;
+  int cindex_ = 0;
 #endif
+};  // class PaxScanDesc
 
 }  // namespace pax

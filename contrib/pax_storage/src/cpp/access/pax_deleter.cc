@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "access/pax_dml_state.h"
+#include "catalog/pax_aux_table.h"
 #include "comm/singleton.h"
 #include "storage/pax_itemptr.h"
 #include "storage/paxc_block_map_manager.h"
@@ -26,7 +27,7 @@ TM_Result CPaxDeleter::DeleteTuple(Relation relation, ItemPointer tid,
   }
   return result;
 }
-
+// used for delete tuples
 TM_Result CPaxDeleter::MarkDelete(ItemPointer tid) {
   uint32 tuple_offset = pax::GetTupleOffset(*tid);
 
@@ -35,6 +36,7 @@ TM_Result CPaxDeleter::MarkDelete(ItemPointer tid) {
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
     block_bitmap_map_[block_id] =
         std::unique_ptr<Bitmap64>(new Bitmap64());  // NOLINT
+    cbdb::DeleteMicroPartitionEntry(RelationGetRelid(rel_), snapshot_, block_id);
   }
   auto bitmap = block_bitmap_map_[block_id].get();
   if (bitmap->Test(tuple_offset)) {
@@ -44,10 +46,19 @@ TM_Result CPaxDeleter::MarkDelete(ItemPointer tid) {
   return TM_Ok;
 }
 
-void CPaxDeleter::ExecDelete() {
-  if (block_bitmap_map_.empty()) {
-    return;
+// used for merge remaining partition files, no tuple needs to delete
+void CPaxDeleter::MarkDelete(BlockNumber pax_block_id) {
+  std::string block_id = std::to_string(pax_block_id);
+
+  if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
+    block_bitmap_map_[block_id] =
+        std::unique_ptr<Bitmap64>(new Bitmap64());
+    cbdb::DeleteMicroPartitionEntry(RelationGetRelid(rel_), snapshot_, block_id);
   }
+}
+
+void CPaxDeleter::ExecDelete() {
+  if (block_bitmap_map_.empty()) return;
 
   TableDeleter table_deleter(rel_, BuildDeleteIterator(),
                              std::move(block_bitmap_map_), snapshot_);
@@ -59,7 +70,6 @@ CPaxDeleter::BuildDeleteIterator() {
   std::vector<pax::MicroPartitionMetadata> micro_partitions;
   for (auto &it : block_bitmap_map_) {
     std::string block_id = it.first;
-    Assert(!it.second->Empty());
     {
       pax::MicroPartitionMetadata meta_info;
 

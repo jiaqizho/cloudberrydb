@@ -2,7 +2,9 @@
 
 #include <cstring>
 
+#include "access/pax_deleter.h"
 #include "access/pax_partition.h"
+#include "catalog/pax_aux_table.h"
 #include "storage/micro_partition_stats.h"
 
 namespace pax {
@@ -13,6 +15,7 @@ TableParitionWriter::TableParitionWriter(Relation relation,
       writers_(nullptr),
       mp_stats_(nullptr),
       num_tuples_(nullptr),
+      current_blocknos_(nullptr),
       writer_counts_(0) {}
 
 TableParitionWriter::~TableParitionWriter() {
@@ -23,6 +26,7 @@ TableParitionWriter::~TableParitionWriter() {
   delete[] writers_;
   delete[] mp_stats_;
   delete[] num_tuples_;
+  delete[] current_blocknos_;
 }
 
 void TableParitionWriter::WriteTuple(CTupleSlot *slot) {
@@ -38,6 +42,11 @@ void TableParitionWriter::WriteTuple(CTupleSlot *slot) {
     Assert(!mp_stats_[part_index]);
     mp_stats_[part_index] = new MicroPartitionStats();
     writers_[part_index] = CreateMicroPartitionWriter(mp_stats_[part_index]);
+#ifdef ENABLE_LOCAL_INDEX
+// insert tuple into the aux table before inserting any tuples.
+    current_blocknos_[part_index] = current_blockno_;
+    cbdb::InsertMicroPartitionPlaceHolder(RelationGetRelid(relation_), std::to_string(current_blockno_));
+#endif
   }
 
   if (strategy_->ShouldSplit(writers_[part_index]->PhysicalSize(),
@@ -46,6 +55,11 @@ void TableParitionWriter::WriteTuple(CTupleSlot *slot) {
     delete writers_[part_index];
     writers_[part_index] = CreateMicroPartitionWriter(mp_stats_[part_index]);
     num_tuples_[part_index] = 0;
+#ifdef ENABLE_LOCAL_INDEX
+// insert tuple into the aux table before inserting any tuples.
+    current_blocknos_[part_index] = current_blockno_;
+    cbdb::InsertMicroPartitionPlaceHolder(RelationGetRelid(relation_), std::to_string(current_blockno_));
+#endif
   }
 
   if (TableWriter::mp_stats_) {
@@ -54,6 +68,10 @@ void TableParitionWriter::WriteTuple(CTupleSlot *slot) {
 
   writers_[part_index]->WriteTuple(slot);
   num_tuples_[part_index]++;
+#ifdef ENABLE_LOCAL_INDEX
+  slot->SetBlockNumber(current_blocknos_[part_index]);
+  slot->StoreVirtualTuple();
+#endif
 }
 
 void TableParitionWriter::Open() {
@@ -71,6 +89,8 @@ void TableParitionWriter::Open() {
 
   num_tuples_ = new size_t[writer_counts_];
   memset(num_tuples_, 0, sizeof(size_t) * writer_counts_);
+
+  current_blocknos_ = new BlockNumber[writer_counts_];
 }
 
 static inline bool PartIndexIsNear(const int *const inverted_indexes,
@@ -213,17 +233,41 @@ void TableParitionWriter::Close() {
 
   for (const auto &merge_indexes : merge_indexes_list) {
     Assert(!merge_indexes.empty());
-    auto first_write = writers_[merge_indexes[0]];
-    for (size_t i = 1; i < merge_indexes.size(); i++) {
-      Assert(writers_[merge_indexes[i]]);
-      first_write->MergeTo(writers_[merge_indexes[i]]);
-      writers_[merge_indexes[i]]->Close();
-      delete writers_[merge_indexes[i]];
-      writers_[merge_indexes[i]] = nullptr;
+
+#ifdef ENABLE_LOCAL_INDEX
+    {
+      Snapshot snapshot = nullptr;
+      pax::CPaxDeleter del(relation_, snapshot);
+      for (size_t i = 0; i < merge_indexes.size(); i++) {
+        auto w = writers_[merge_indexes[i]];
+        auto block = current_blocknos_[merge_indexes[i]];
+        w->Close();
+        delete w;
+        writers_[merge_indexes[i]] = nullptr;
+
+        del.MarkDelete(block);
+      }
+      CommandCounterIncrement();
+      del.ExecDelete();
     }
-    first_write->Close();
-    delete first_write;
-    writers_[merge_indexes[0]] = nullptr;
+#else
+    {
+      auto first_write = writers_[merge_indexes[0]];
+
+      for (size_t i = 1; i < merge_indexes.size(); i++) {
+        auto w = writers_[merge_indexes[i]];
+        Assert(w);
+        first_write->MergeTo(w);
+        w->Close();
+        delete w;
+        writers_[merge_indexes[i]] = nullptr;
+      }
+      CommandCounterIncrement();
+      first_write->Close();
+      delete first_write;
+      writers_[merge_indexes[0]] = nullptr;
+    }
+#endif
   }
 
   for (int i = 0; i < writer_counts_; i++) {
