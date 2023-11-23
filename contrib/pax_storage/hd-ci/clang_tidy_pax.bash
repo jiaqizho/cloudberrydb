@@ -16,7 +16,7 @@ function do_git_diff() {
         exit 0
     fi
 
-    modified_files=$(git diff --name-only $CBDB_PAX_DEV_BRANCH)
+    modified_files=$(git diff --name-only $CBDB_PAX_DEV_BRANCH -- ':!icw_test')
     for extension in "${CBDB_PAX_EXT[@]}"; do
         if echo "$modified_files" | grep -E -e "$extension" | grep -q -v "$CBDB_PAXC_GREP"; then
             files=$(echo "$modified_files" | grep -E -e "$extension" | grep -v "$CBDB_PAXC_GREP")
