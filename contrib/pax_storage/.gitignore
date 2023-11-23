@@ -20,5 +20,5 @@ clang-tidy.result
 **/*.pb.cc
 
 # Executables
-*.out
+/*.out
 !src/data/expected/*.out
