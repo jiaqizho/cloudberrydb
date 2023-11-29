@@ -113,6 +113,8 @@ static inline Datum Int64ToDatum(int64 d) noexcept { return Int64GetDatum(d); }
 
 void *PointerAndLenFromDatum(Datum d, int *len);
 
+void SlotGetMissingAttrs(TupleTableSlot *slot, int start_attno, int last_attno);
+
 #ifdef RUN_GTEST
 Datum DatumFromCString(const char *src, size_t length);
 
