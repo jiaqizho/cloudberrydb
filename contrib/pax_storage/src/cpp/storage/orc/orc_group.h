@@ -22,13 +22,17 @@ class OrcGroup : public MicroPartitionReader::Group {
 
   bool GetTuple(TupleTableSlot *slot, size_t row_index) override;
 
-  std::pair<Datum, bool> GetColumnValue(size_t column_index,
-                                        size_t row_index) override;
-
-  std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
+  std::pair<Datum, bool> GetColumnValue(TupleDesc desc, size_t column_index,
                                         size_t row_index) override;
 
  protected:
+  // Used to direct get datum from columns
+  virtual std::pair<Datum, bool> GetColumnValue(size_t column_index,
+                                                size_t row_index);
+
+  virtual std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
+                                                size_t row_index);
+
   // Used in `ReadTuple`
   // Different from the other `GetColumnValue` function, in this function, if a
   // null row is encountered, then we will perform an accumulation operation on
@@ -55,13 +59,13 @@ class OrcVecGroup final : public OrcGroup {
 
   ~OrcVecGroup() override;
 
+ private:
   std::pair<Datum, bool> GetColumnValue(size_t column_index,
                                         size_t row_index) override;
 
   std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
                                         size_t row_index) override;
 
- private:
   std::pair<Datum, bool> GetColumnValue(PaxColumn *column, size_t row_index,
                                         uint32 *null_counts) override;
 

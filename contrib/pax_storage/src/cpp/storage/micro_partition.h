@@ -151,9 +151,9 @@ class MicroPartitionReader {
     // ------------------------------------------
     virtual bool GetTuple(TupleTableSlot *slot, size_t row_index) = 0;
 
-    virtual std::pair<Datum, bool> GetColumnValue(size_t column_index,
-                                                  size_t row_index) = 0;
-    virtual std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
+    // Direct get datum from columns by column index + row index
+    virtual std::pair<Datum, bool> GetColumnValue(TupleDesc desc,
+                                                  size_t column_index,
                                                   size_t row_index) = 0;
 
     // Allow different MicroPartitionReader shared columns
