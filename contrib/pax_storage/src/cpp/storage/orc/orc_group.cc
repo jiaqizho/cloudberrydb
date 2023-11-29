@@ -23,7 +23,6 @@ PaxColumns *OrcGroup::GetAllColumns() const { return pax_columns_; }
 
 std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
   size_t index = 0;
-  AttrMissing *attrmiss = nullptr;
   size_t nattrs = 0;
   size_t column_nums = 0;
 
@@ -38,10 +37,6 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
   nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
   column_nums = pax_columns_->GetColumns();
 
-  //  first check if column has missing value
-  if (slot->tts_tupleDescriptor->constr)
-    attrmiss = slot->tts_tupleDescriptor->constr->missing;
-
   for (index = 0; index < nattrs; index++) {
     // filter with projection
     if (index < column_nums && !((*pax_columns_)[index])) {
@@ -51,19 +46,10 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
     // handle PAX columns number inconsistent with pg catalog nattrs in case
     // data not been inserted yet or read pax file conserved before last add
     // column DDL is done, for these cases it is normal that pg catalog schema
-    // is not match with that in PAX file:
-    // 1. if atthasmissing is set, then return default column value.
-    // 2. if atthasmissing is not set, then return null value.
+    // is not match with that in PAX file.
     if (index >= column_nums) {
-      slot->tts_isnull[index] = true;
-      //  The attrmiss default value memory is managed in CacheMemoryContext,
-      //  which was allocated in RelationBuildTupleDesc.
-      if (attrmiss && (slot->tts_tupleDescriptor->attrs[index].atthasmissing &&
-                       attrmiss[index].am_present)) {
-        slot->tts_values[index] = attrmiss[index].am_value;
-        slot->tts_isnull[index] = false;
-      }
-      continue;
+      cbdb::SlotGetMissingAttrs(slot, index, nattrs);
+      break;
     }
 
     // In case column is droped, then set its value as null without reading data
@@ -84,7 +70,6 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
 
 bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
   size_t index = 0;
-  AttrMissing *attrmiss = nullptr;
   size_t nattrs = 0;
   size_t column_nums = 0;
 
@@ -98,9 +83,6 @@ bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
   nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
   column_nums = pax_columns_->GetColumns();
 
-  if (slot->tts_tupleDescriptor->constr)
-    attrmiss = slot->tts_tupleDescriptor->constr->missing;
-
   for (index = 0; index < nattrs; index++) {
     // Same logic with `ReadTuple`
     if (index < column_nums && !((*pax_columns_)[index])) {
@@ -108,13 +90,8 @@ bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
     }
 
     if (index >= column_nums) {
-      slot->tts_isnull[index] = true;
-      if (attrmiss && (slot->tts_tupleDescriptor->attrs[index].atthasmissing &&
-                       attrmiss[index].am_present)) {
-        slot->tts_values[index] = attrmiss[index].am_value;
-        slot->tts_isnull[index] = false;
-      }
-      continue;
+      cbdb::SlotGetMissingAttrs(slot, index, nattrs);
+      break;
     }
 
     if (unlikely(slot->tts_tupleDescriptor->attrs[index].attisdropped)) {
@@ -171,6 +148,34 @@ static Datum GetDatumWithNonNull(PaxColumn *column, size_t non_null_offset) {
       break;
   }
   return datum;
+}
+
+std::pair<Datum, bool> OrcGroup::GetColumnValue(TupleDesc desc,
+                                                size_t column_index,
+                                                size_t row_index) {
+  Assert(row_index < pax_columns_->GetRows());
+  if (column_index < pax_columns_->GetColumns()) {
+    auto column = (*pax_columns_)[column_index];
+
+    // dropped column
+    if (!column) {
+      return {0, true};
+    }
+
+    return GetColumnValue(column, row_index);
+  }
+
+  AttrMissing *attrmiss = nullptr;
+  if (desc->constr) attrmiss = desc->constr->missing;
+
+  if (!attrmiss) {
+    // no missing values array at all, so just fill everything in as NULL
+    return {0, true};
+  } else {
+    // fill with default value
+    return {attrmiss[column_index].am_value,
+            !attrmiss[column_index].am_present};
+  }
 }
 
 std::pair<Datum, bool> OrcGroup::GetColumnValue(PaxColumn *column,  // NOLINT

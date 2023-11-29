@@ -196,6 +196,13 @@ void *cbdb::PointerAndLenFromDatum(Datum d, int *len) {
   CBDB_WRAP_END;
 }
 
+void cbdb::SlotGetMissingAttrs(TupleTableSlot *slot, int start_attno,
+                               int last_attno) {
+  CBDB_WRAP_START;
+  { slot_getmissingattrs(slot, start_attno, last_attno); }
+  CBDB_WRAP_END;
+}
+
 void cbdb::RelationCreateStorageDirectory(RelFileNode rnode,
                                           char relpersistence,
                                           SMgrImpl smgr_which, Relation rel) {
