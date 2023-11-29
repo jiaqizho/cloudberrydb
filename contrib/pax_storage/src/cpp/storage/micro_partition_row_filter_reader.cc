@@ -43,12 +43,14 @@ bool MicroPartitionRowFilterReader::ReadTuple(CTupleSlot *cslot) {
   auto ctx = filter_->GetExecutionFilterContext();
   const auto &remaining_columns = filter_->GetRemainingColumns();
   size_t nrows;
+  TupleDesc desc;
 
-  slot->tts_nvalid = slot->tts_tupleDescriptor->natts;
+  desc = cslot->GetTupleDesc();
+  slot->tts_nvalid = desc->natts;
 
 retry_next_group:
   if (group_ == nullptr) {
-    g = GetNextGroup(slot->tts_tupleDescriptor);
+    g = GetNextGroup(desc);
     if (!g) return false;
   }
   nrows = g->GetRows();
@@ -61,14 +63,16 @@ retry_next:
   for (int i = 0; i < ctx->size; i++) {
     auto attno = ctx->attnos[i];
     Assert(attno > 0);
-    std::tie(slot->tts_values[attno - 1], slot->tts_isnull[attno - 1]) = g->GetColumnValue(attno - 1, row_index_);
+    std::tie(slot->tts_values[attno - 1], slot->tts_isnull[attno - 1]) =
+      g->GetColumnValue(desc, attno - 1, row_index_);
     if (!TestRowScanInternal(slot, ctx->estates[i], attno)) {
       row_index_++;
       goto retry_next;
     }
   }
   for (auto attno : remaining_columns) {
-    std::tie(slot->tts_values[attno - 1], slot->tts_isnull[attno - 1]) = g->GetColumnValue(attno - 1, row_index_);
+    std::tie(slot->tts_values[attno - 1], slot->tts_isnull[attno - 1]) =
+      g->GetColumnValue(desc, attno - 1, row_index_);
   }
   row_index_++;
   if (ctx->estate_final && !TestRowScanInternal(slot, ctx->estate_final, 0)) goto retry_next;
