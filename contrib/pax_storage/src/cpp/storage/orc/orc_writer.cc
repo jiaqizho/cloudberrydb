@@ -384,6 +384,7 @@ void OrcWriter::MergeGroup(OrcWriter *orc_writer, int group_index,
     merge_buffer->Clear();
     merge_buffer->Set((char *)cbdb::Palloc(total_len), total_len);
   }
+  orc_writer->file_->Flush();
   orc_writer->file_->PReadN(merge_buffer->GetBuffer(), total_len,
                             stripe_info.offset());
 
