@@ -37,7 +37,8 @@ class IndexUpdaterInternal {
   void UpdateIndex(TupleTableSlot *slot) {
     Assert(slot == slot_);
     Assert(HasIndex());
-    auto recheck_index = ExecInsertIndexTuples(relinfo_, slot_, estate_, true, false, NULL, NIL);
+    auto recheck_index =
+        ExecInsertIndexTuples(relinfo_, slot_, estate_, true, false, NULL, NIL);
     list_free(recheck_index);
   }
 
@@ -62,13 +63,14 @@ class IndexUpdaterInternal {
 
   inline TupleTableSlot *GetSlot() { return slot_; }
   inline bool HasIndex() const { return rel_->rd_rel->relhasindex; }
+
  private:
   Relation rel_ = nullptr;
   TupleTableSlot *slot_ = nullptr;
   EState *estate_ = nullptr;
   ResultRelInfo *relinfo_ = nullptr;
 };
-}
+}  // namespace paxc
 
 namespace pax {
 class IndexUpdater final {
@@ -90,10 +92,11 @@ class IndexUpdater final {
   }
   inline TupleTableSlot *GetSlot() { return stub_.GetSlot(); }
   inline bool HasIndex() const { return stub_.HasIndex(); }
+
  private:
   paxc::IndexUpdaterInternal stub_;
 };
-}
+}  // namespace pax
 
 namespace pax {
 
@@ -206,7 +209,7 @@ MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
   options.storage_format = GetStorageFormat();
 
   File *file = Singleton<LocalFileSystem>::GetInstance()->Open(
-      options.file_name, fs::kWriteMode);
+      options.file_name, fs::kReadWriteMode);
 
   auto mp_writer = MicroPartitionFileFactory::CreateMicroPartitionWriter(
       MICRO_PARTITION_TYPE_PAX, file, std::move(options));
@@ -220,8 +223,9 @@ void TableWriter::Open() {
   writer_ = CreateMicroPartitionWriter(mp_stats_);
   num_tuples_ = 0;
 #ifdef ENABLE_LOCAL_INDEX
-// insert tuple into the aux table before inserting any tuples.
-  cbdb::InsertMicroPartitionPlaceHolder(RelationGetRelid(relation_), std::to_string(current_blockno_));
+  // insert tuple into the aux table before inserting any tuples.
+  cbdb::InsertMicroPartitionPlaceHolder(RelationGetRelid(relation_),
+                                        std::to_string(current_blockno_));
 #endif
 }
 
@@ -350,8 +354,8 @@ void TableReader::OpenFile() {
     delete reader_;
   }
 
-  reader_ = new OrcReader(
-      Singleton<LocalFileSystem>::GetInstance()->Open(options.file_name, fs::kReadMode));
+  reader_ = new OrcReader(Singleton<LocalFileSystem>::GetInstance()->Open(
+      options.file_name, fs::kReadMode));
 
 #ifdef VEC_BUILD
   if (reader_options_.is_vec) {
@@ -422,8 +426,8 @@ void TableDeleter::Delete() {
     writer_->WriteTuple(&cslot);
 #ifdef ENABLE_LOCAL_INDEX
     if (index_updater.HasIndex()) {
-      // TableWriter has stored ctid in cslot, we need to store it in slot.tts_tid
-      // and set the valid number of columns.
+      // TableWriter has stored ctid in cslot, we need to store it in
+      // slot.tts_tid and set the valid number of columns.
       cslot.StoreVirtualTuple();
       index_updater.UpdateIndex(slot);
     }
