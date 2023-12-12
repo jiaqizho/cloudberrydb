@@ -929,6 +929,23 @@ SELECT * FROM pt_bool_tab WHERE col2 IS NOT unknown;
 EXPLAIN SELECT * FROM pt_bool_tab WHERE col2 IS NOT NULL;
 SELECT * FROM pt_bool_tab WHERE col2 IS NOT NULL;
 
+EXPLAIN SELECT * FROM pt_bool_tab WHERE (not col2) IS true;
+SELECT * FROM pt_bool_tab WHERE (not col2) IS true;
+EXPLAIN SELECT * FROM pt_bool_tab WHERE (not col2) IS false;
+SELECT * FROM pt_bool_tab WHERE (not col2) IS false;
+EXPLAIN SELECT * FROM pt_bool_tab WHERE (not col2) IS NULL;
+SELECT * FROM pt_bool_tab WHERE (not col2) IS NULL;
+EXPLAIN SELECT * FROM pt_bool_tab WHERE (not col2) IS unknown;
+SELECT * FROM pt_bool_tab WHERE (not col2) IS unknown;
+EXPLAIN SELECT * FROM pt_bool_tab WHERE (not col2) IS NOT true;
+SELECT * FROM pt_bool_tab WHERE (not col2) IS NOT true;
+EXPLAIN SELECT * FROM pt_bool_tab WHERE (not col2) IS NOT false;
+SELECT * FROM pt_bool_tab WHERE (not col2) IS NOT false;
+EXPLAIN SELECT * FROM pt_bool_tab WHERE (not col2) IS NOT unknown;
+SELECT * FROM pt_bool_tab WHERE (not col2) IS NOT unknown;
+EXPLAIN SELECT * FROM pt_bool_tab WHERE (not col2) IS NOT NULL;
+SELECT * FROM pt_bool_tab WHERE (not col2) IS NOT NULL;
+
 CREATE TABLE pt_bool_tab_df
 (
   col1 int,
@@ -963,6 +980,23 @@ SELECT * FROM pt_bool_tab_df WHERE col2 IS NOT unknown;
 EXPLAIN SELECT * FROM pt_bool_tab_df WHERE col2 IS NOT NULL;
 SELECT * FROM pt_bool_tab_df WHERE col2 IS NOT NULL;
 
+EXPLAIN SELECT * FROM pt_bool_tab_df WHERE (not col2) IS true;
+SELECT * FROM pt_bool_tab_df WHERE (not col2) IS true;
+EXPLAIN SELECT * FROM pt_bool_tab_df WHERE (not col2) IS false;
+SELECT * FROM pt_bool_tab_df WHERE (not col2) IS false;
+EXPLAIN SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NULL;
+SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NULL;
+EXPLAIN SELECT * FROM pt_bool_tab_df WHERE (not col2) IS unknown;
+SELECT * FROM pt_bool_tab_df WHERE (not col2) IS unknown;
+EXPLAIN SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NOT true;
+SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NOT true;
+EXPLAIN SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NOT false;
+SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NOT false;
+EXPLAIN SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NOT unknown;
+SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NOT unknown;
+EXPLAIN SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NOT NULL;
+SELECT * FROM pt_bool_tab_df WHERE (not col2) IS NOT NULL;
+
 
 CREATE TABLE pt_bool_tab_null
 (
@@ -996,5 +1030,22 @@ EXPLAIN SELECT * FROM pt_bool_tab_null WHERE col2 IS NOT unknown;
 SELECT * FROM pt_bool_tab_null WHERE col2 IS NOT unknown;
 EXPLAIN SELECT * FROM pt_bool_tab_null WHERE col2 IS NOT NULL;
 SELECT * FROM pt_bool_tab_null WHERE col2 IS NOT NULL;
+
+EXPLAIN SELECT * FROM pt_bool_tab_null WHERE (not col2) IS true;
+SELECT * FROM pt_bool_tab_null WHERE (not col2) IS true;
+EXPLAIN SELECT * FROM pt_bool_tab_null WHERE (not col2) IS false;
+SELECT * FROM pt_bool_tab_null WHERE (not col2) IS false;
+EXPLAIN SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NULL;
+SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NULL;
+EXPLAIN SELECT * FROM pt_bool_tab_null WHERE (not col2) IS unknown;
+SELECT * FROM pt_bool_tab_null WHERE (not col2) IS unknown;
+EXPLAIN SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NOT true;
+SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NOT true;
+EXPLAIN SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NOT false;
+SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NOT false;
+EXPLAIN SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NOT unknown;
+SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NOT unknown;
+EXPLAIN SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NOT NULL;
+SELECT * FROM pt_bool_tab_null WHERE (not col2) IS NOT NULL;
 
 RESET ALL;
