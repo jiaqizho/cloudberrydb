@@ -266,6 +266,14 @@ else()
   set_target_properties(pax PROPERTIES OUTPUT_NAME pax)
   target_include_directories(pax PUBLIC ${pax_target_include})
   target_link_libraries(pax PUBLIC ${pax_target_link_libs})
+
+  set_target_properties(pax PROPERTIES
+    BUILD_RPATH_USE_ORIGIN ON
+    BUILD_WITH_INSTALL_RPATH ON
+    INSTALL_RPATH "$ORIGIN:$ORIGIN/.."
+    LINK_FLAGS "-Wl,--enable-new-dtags"
+  )
+
   add_dependencies(pax ${pax_target_dependencies})
   add_custom_command(TARGET pax POST_BUILD
                   COMMAND ${CMAKE_COMMAND} -E
