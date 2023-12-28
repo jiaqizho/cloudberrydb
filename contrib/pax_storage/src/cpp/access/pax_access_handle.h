@@ -69,7 +69,7 @@ class PaxAccessMethod final {
 
   static bytea *AmOptions(Datum reloptions, char relkind, bool validate);
   static void ValidateColumnEncodingClauses(List *encoding_opts);
-  static List *TransformColumnEncodingClauses(List *encoding_opts,
+  static List *TransformColumnEncodingClauses(Relation rel, List *encoding_opts,
                                               bool validate, bool from_type);
 };
 
