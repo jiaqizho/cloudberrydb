@@ -1022,7 +1022,8 @@ void PaxAccessMethod::ValidateColumnEncodingClauses(List *encoding_opts) {
   paxc_validate_column_encoding_clauses(encoding_opts);
 }
 
-List *PaxAccessMethod::TransformColumnEncodingClauses(List *encoding_opts,
+List *PaxAccessMethod::TransformColumnEncodingClauses(Relation /*rel*/,
+                                                      List *encoding_opts,
                                                       bool validate,
                                                       bool from_type) {
   return paxc_transform_column_encoding_clauses(encoding_opts, validate,
