@@ -14,6 +14,7 @@
 
 /* define these values in pax header file */
 #include "comm/cbdb_api.h"
+
 #include "catalog/pg_am.h"
 #include "catalog/pg_authid.h"
 #include "catalog/pg_language.h"
@@ -27,6 +28,78 @@
 #define PAX_COMMENT "column-optimized PAX table access method handler"
 int main() {
   printf("-- insert pax catalog values\n");
+
+  printf("-- create pg_ext_aux.pg_pax_tables\n");
+  printf(
+      "CREATE TABLE pg_ext_aux.pg_pax_tables(relid oid not null, auxrelid oid "
+      "not null, partitionspec pg_node_tree);\n");
+  printf(
+      "DELETE FROM gp_distribution_policy WHERE "
+      "localoid='pg_ext_aux.pg_pax_tables'::regclass;\n");
+
+  printf("\n-- update toast name to consistent with new relation oid\n");
+  printf(
+      "UPDATE pg_class SET relname = 'pg_toast_%u' WHERE oid = (SELECT "
+      "reltoastrelid FROM pg_class WHERE "
+      "oid='pg_ext_aux.pg_pax_tables'::regclass);\n",
+      PAX_TABLES_RELATION_ID);
+  printf(
+      "UPDATE pg_class SET relname = 'pg_toast_%u_index' WHERE oid = (SELECT "
+      "indexrelid FROM pg_index idx, pg_class c WHERE idx.indrelid = "
+      "c.reltoastrelid AND c.oid = 'pg_ext_aux.pg_pax_tables'::regclass);\n",
+      PAX_TABLES_RELATION_ID);
+
+  printf("\n-- update pg_depend\n");
+  printf(
+      "UPDATE pg_depend SET refobjid = %u WHERE refclassid = %u AND "
+      "refobjid='pg_ext_aux.pg_pax_tables'::regclass;\n",
+      PAX_TABLES_RELATION_ID, RelationRelationId);
+  printf(
+      "UPDATE pg_depend SET objid = %u WHERE classid = %u AND "
+      "objid='pg_ext_aux.pg_pax_tables'::regclass;\n",
+      PAX_TABLES_RELATION_ID, RelationRelationId);
+
+  printf("\n-- update pg_attribute\n");
+  printf(
+      "UPDATE pg_attribute SET attrelid = %u WHERE attrelid = "
+      "'pg_ext_aux.pg_pax_tables'::regclass;\n",
+      PAX_TABLES_RELATION_ID);
+  printf(
+      "UPDATE pg_class SET oid=%u WHERE "
+      "oid='pg_ext_aux.pg_pax_tables'::regclass;\n",
+      PAX_TABLES_RELATION_ID);
+
+  printf("\n-- add unique index\n");
+  printf(
+      "CREATE UNIQUE INDEX pg_pax_tables_relid_index on "
+      "pg_ext_aux.pg_pax_tables(relid);\n");
+
+  printf("\n-- update pg_attribute\n");
+  printf(
+      "UPDATE pg_attribute SET attrelid = %u WHERE attrelid = (SELECT "
+      "indexrelid FROM pg_index WHERE "
+      "indrelid='pg_ext_aux.pg_pax_tables'::regclass);\n",
+      PAX_TABLES_RELID_INDEX_ID);
+
+  printf("\n-- update pg_depend\n");
+  printf(
+      "UPDATE pg_depend SET objid = %u WHERE classid = %u AND refclassid = %u "
+      "AND refobjid='pg_ext_aux.pg_pax_tables'::regclass AND objid = (SELECT "
+      "indexrelid FROM pg_index WHERE "
+      "indrelid='pg_ext_aux.pg_pax_tables'::regclass);",
+      PAX_TABLES_RELID_INDEX_ID, PAX_TABLES_RELATION_ID, PAX_TABLES_RELATION_ID);
+
+  printf("\n-- update index oid\n");
+  printf(
+      "UPDATE pg_class SET oid = %u WHERE oid = (SELECT indexrelid FROM "
+      "pg_index WHERE indrelid='pg_ext_aux.pg_pax_tables'::regclass);\n",
+      PAX_TABLES_RELID_INDEX_ID);
+  printf(
+      "UPDATE pg_index SET indexrelid = %u WHERE "
+      "indrelid='pg_ext_aux.pg_pax_tables'::regclass;\n",
+      PAX_TABLES_RELID_INDEX_ID);
+
+  printf("\n-- insert proc and am entry\n");
   printf(
       "INSERT INTO pg_proc "
       "VALUES(%u,'%s',%u,%u,%u,%u,%u,%u,%u,'%c','%c','%c','%c','%c','%c','%c',"

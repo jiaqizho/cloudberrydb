@@ -51,7 +51,6 @@ extern "C" {
 #include "parser/parse_expr.h"
 #ifndef BUILD_PAX_FORMAT
 #include "access/reloptions.h"
-#include "catalog/pg_pax_tables.h"
 #endif
 #include "catalog/storage.h"
 #include "cdb/cdbvars.h"
@@ -94,7 +93,11 @@ extern Oid GetDefaultOpClass(Oid type_id, Oid am_id);
 }
 #endif
 
-#define PAX_TABLE_AM_OID 7014
+// Oid of pg_ext_aux.pg_pax_tables
+#define PAX_TABLES_RELATION_ID 7061
+#define PAX_TABLES_RELID_INDEX_ID  7047
+
+#define PAX_TABLE_AM_OID 7047
 #define PAX_AMNAME "pax"
 #define PAX_AM_HANDLER_OID 7600
 #define PAX_AM_HANDLER_NAME "pax_tableam_handler"
@@ -107,7 +110,7 @@ extern Oid GetDefaultOpClass(Oid type_id, Oid am_id);
 #define PAX_FASTSEQUENCE_OID 7604
 #define PAX_FASTSEQUENCE_INDEX_OID 7605
 
-#define PG_PAX_FASTSEQUENCE_NAMESPACE "pg_paxaux"
+#define PG_PAX_FASTSEQUENCE_NAMESPACE "pg_ext_aux"
 #define PG_PAX_FASTSEQUENCE_TABLE "pg_pax_fastsequence"
 #define PG_PAX_FASTSEQUENCE_INDEX_NAME "pg_pax_fastsequence_objid_idx"
 
