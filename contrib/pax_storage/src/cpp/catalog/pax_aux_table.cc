@@ -3,9 +3,9 @@
 #include "comm/cbdb_api.h"
 
 #include <uuid/uuid.h>
-
 #include <utility>
 
+#include "catalog/pg_pax_tables.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/file_system.h"
 #include "storage/local_file_system.h"
@@ -46,18 +46,10 @@ static void CPaxTransactionalTruncateTable(Oid aux_relid) {
 // 2.create table outside transactional block, insert data
 // and truncate table inside transactional block.
 static void CPaxNontransactionalTruncateTable(Relation rel) {
-  HeapTuple tuple;
   Relation aux_rel;
   Oid aux_relid;
 
-  tuple = SearchSysCache1(PAXTABLESID, RelationGetRelid(rel));
-  if (!HeapTupleIsValid(tuple))
-    ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                    errmsg("cache lookup failed with relid=%u for aux relation "
-                           "in pg_pax_tables.",
-                           RelationGetRelid(rel))));
-  aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tuple))->blocksrelid;
-  ReleaseSysCache(tuple);
+  aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(rel));
   Assert(OidIsValid(aux_relid));
 
   aux_rel = relation_open(aux_relid, AccessExclusiveLock);
@@ -79,7 +71,7 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
 
   // 1. create blocks table.
   snprintf(aux_relname, sizeof(aux_relname), "pg_pax_blocks_%u", pax_relid);
-  aux_namespace_id = PG_PAXAUX_NAMESPACE;
+  aux_namespace_id = PG_EXTAUX_NAMESPACE;
   aux_relid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId,
                                    Anum_pg_class_oid,  // new line
                                    aux_relname, aux_namespace_id);
@@ -111,7 +103,7 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
   table_close(pg_class_desc, NoLock);
 
   // 2. insert entry into pg_pax_tables.
-  InsertPaxTablesEntry(pax_relid, aux_relid, "", 0, NULL);
+  ::paxc::InsertPaxTablesEntry(pax_relid, aux_relid, NULL);
 
   // 3. record pg_depend, pg_pax_blocks_<xxx> depends relation.
   {
@@ -129,7 +121,7 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
     base.classId = RelationRelationId;
     base.objectId = pax_relid;
     base.objectSubId = 0;
-    aux.classId = PaxTablesRelationId;
+    aux.classId = PAX_TABLES_RELATION_ID;
     aux.objectId = pax_relid;
     aux.objectSubId = 0;
     recordDependencyOn(&aux, &base, DEPENDENCY_INTERNAL);
@@ -204,7 +196,7 @@ void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot,
   HeapTuple tuple;
   Oid aux_relid;
 
-  GetPaxTablesEntryAttributes(pax_relid, &aux_relid, nullptr, nullptr, nullptr);
+  aux_relid = ::paxc::GetPaxAuxRelid(pax_relid);
 
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, snapshot, RowExclusiveLock, blockname);
   tuple = context.SearchMicroPartitionEntry();
@@ -394,7 +386,7 @@ bool IsMicroPartitionVisible(Relation pax_rel, BlockNumber block, Snapshot snaps
   char block_name[NAMEDATALEN];
   bool ok;
 
-  GetPaxTablesEntryAttributes(RelationGetRelid(pax_rel), &aux_relid, NULL, NULL, NULL);
+  aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(pax_rel));
   snprintf(block_name, sizeof(block_name), "%u", block);
 
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, snapshot, AccessShareLock, block_name);
@@ -412,17 +404,8 @@ static void CPaxCopyPaxBlockEntry(Relation old_relation,
   Relation old_aux_rel, new_aux_rel;
   Oid old_aux_relid = 0, new_aux_relid = 0;
 
-  HeapTuple tupcache;
-  tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(old_relation));
-  Assert(HeapTupleIsValid(tupcache));
-  old_aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
-  ReleaseSysCache(tupcache);
-
-  tupcache = SearchSysCache1(PAXTABLESID, RelationGetRelid(new_relation));
-  Assert(HeapTupleIsValid(tupcache));
-  new_aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
-  ReleaseSysCache(tupcache);
-
+  old_aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(old_relation));
+  new_aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(new_relation));
   old_aux_rel = table_open(old_aux_relid, RowExclusiveLock);
   new_aux_rel = table_open(new_aux_relid, RowExclusiveLock);
 
@@ -439,12 +422,8 @@ static void CPaxCopyPaxBlockEntry(Relation old_relation,
 
 namespace cbdb {
 Oid GetPaxAuxRelid(Oid relid) {
-  Oid aux_relid = InvalidOid;
   CBDB_WRAP_START;
-  {
-    GetPaxTablesEntryAttributes(relid, &aux_relid, NULL, NULL, NULL);
-    return aux_relid;
-  }
+  { return ::paxc::GetPaxAuxRelid(relid); }
   CBDB_WRAP_END;
 }
 
@@ -460,7 +439,7 @@ void InsertMicroPartitionPlaceHolder(Oid pax_relid, const std::string &blockname
   {
     Oid aux_relid;
 
-    GetPaxTablesEntryAttributes(pax_relid, &aux_relid, nullptr, nullptr, nullptr);
+    aux_relid = ::paxc::GetPaxAuxRelid(pax_relid);
     paxc::InsertMicroPartitionPlaceHolder(aux_relid, blockname.c_str());
   }
   CBDB_WRAP_END;
@@ -470,7 +449,7 @@ void InsertOrUpdateMicroPartitionEntry(const pax::WriteSummary &summary) {
   {
     Oid aux_relid;
 
-    GetPaxTablesEntryAttributes(summary.rel_oid, &aux_relid, nullptr, nullptr, nullptr);
+    aux_relid = ::paxc::GetPaxAuxRelid(summary.rel_oid);
     paxc::InsertOrUpdateMicroPartitionPlaceHolder(aux_relid, summary.block_id.c_str(),
         summary.num_tuples, summary.file_size, summary.mp_stats);
   }
@@ -509,32 +488,6 @@ static void PaxCopyPaxBlockEntry(Relation old_relation, Relation new_relation) {
 }  // namespace cbdb
 
 namespace pax {
-void CCPaxAuxTable::PaxAuxRelationSetNewFilenode(Relation rel,
-                                                 const RelFileNode *newrnode,
-                                                 char persistence) {
-  HeapTuple tupcache;
-  std::string path;
-  FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
-
-  tupcache = cbdb::SearchSysCache(rel, PAXTABLESID);
-  if (cbdb::TupleIsValid(tupcache)) {
-    Oid aux_relid = ((Form_pg_pax_tables)GETSTRUCT(tupcache))->blocksrelid;
-    cbdb::PaxTransactionalTruncateTable(aux_relid);
-    cbdb::ReleaseTupleCache(tupcache);
-  } else {
-    // create pg_pax_blocks_<pax_table_oid>
-    cbdb::PaxCreateMicroPartitionTable(rel);
-  }
-
-  // Create pax table relfilenode file and database directory under path base/,
-  // The relfilenode created here is to be compatible with PG normal process
-  // logic instead of being used by pax storage.
-  cbdb::RelationCreateStorageDirectory(*newrnode, persistence, SMGR_MD, rel);
-  path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
-  Assert(!path.empty());
-  CBDB_CHECK((fs->CreateDirectory(path) == 0),
-             cbdb::CException::ExType::kExTypeIOError);
-}
 
 void CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(Relation rel) {
   cbdb::PaxNontransactionalTruncateTable(rel);
