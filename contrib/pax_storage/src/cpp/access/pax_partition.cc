@@ -3,6 +3,7 @@
 #include "comm/cbdb_api.h"
 
 #include "access/pax_access_handle.h"
+#include "catalog/pg_pax_tables.h"
 #include "comm/cbdb_wrappers.h"
 
 namespace paxc {
@@ -227,7 +228,7 @@ static bool PaxLoadPartitionSpec(Oid relid, List **partparams_list,
   Node *part;
   List *list;
 
-  GetPaxTablesEntryAttributes(relid, NULL, NULL, NULL, &part);
+  ::paxc::GetPaxTablesEntryAttributes(relid, NULL, &part);
   if (!part) return false;
 
   list = castNode(List, part);

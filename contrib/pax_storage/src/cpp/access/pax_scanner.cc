@@ -25,7 +25,7 @@ bool IndexUniqueCheck(Relation rel, ItemPointer tid, Snapshot snapshot, bool * /
   Oid aux_relid;
   bool exists;
 
-  GetPaxTablesEntryAttributes(RelationGetRelid(rel), &aux_relid, NULL, NULL, NULL);
+  aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(rel));
   snprintf(block_name, sizeof(block_name), "%u", pax::GetBlockNumber(*tid));
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, snapshot, AccessShareLock, block_name);
   tuple = context.SearchMicroPartitionEntry();
