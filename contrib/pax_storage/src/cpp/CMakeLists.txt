@@ -180,6 +180,7 @@ set(pax_access_src
 
 set(pax_catalog_src
     catalog/pax_aux_table.cc
+    catalog/pg_pax_tables.cc
     catalog/pax_fastsequence.cc
     )
 
