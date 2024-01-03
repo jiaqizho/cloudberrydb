@@ -25,12 +25,12 @@ class OrcGroupStatsProvider final : public ColumnStatsProvider {
     return static_cast<int>(format_reader_.file_footer_.colinfo_size());
   }
   bool AllNull(int column_index) const override {
-    return format_reader_.meta_data_.stripestats(group_index_)
+    return format_reader_.file_footer_.stripes(group_index_)
         .colstats(column_index)
         .allnull();
   }
   bool HasNull(int column_index) const override {
-    return format_reader_.meta_data_.stripestats(group_index_)
+    return format_reader_.file_footer_.stripes(group_index_)
         .colstats(column_index)
         .hasnull();
   }
@@ -40,7 +40,7 @@ class OrcGroupStatsProvider final : public ColumnStatsProvider {
   }
   const ::pax::stats::ColumnDataStats &DataStats(
       int column_index) const override {
-    return format_reader_.meta_data_.stripestats(group_index_)
+    return format_reader_.file_footer_.stripes(group_index_)
         .colstats(column_index)
         .coldatastats();
   }

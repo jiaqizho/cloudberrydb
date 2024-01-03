@@ -180,7 +180,7 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
     ASSERT_NE(arrow_array->children, nullptr);
     ASSERT_EQ(arrow_array->buffers[0], nullptr);
     ASSERT_EQ(arrow_array->dictionary, nullptr);
-    ASSERT_EQ(arrow_array->private_data, arrow_array->buffers);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
 
     ArrowArray *child_array = arrow_array->children[0];
     ASSERT_EQ(child_array->length, VEC_BATCH_LENGTH);
@@ -190,6 +190,7 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
     ASSERT_EQ(child_array->n_children, 0);
     ASSERT_EQ(child_array->children, nullptr);
     ASSERT_EQ(child_array->buffers[0], nullptr);  // null bitmap
+    ASSERT_EQ(child_array->private_data, child_array);
 
     if (is_fixed) {
       ASSERT_NE(child_array->buffers[1], nullptr);
@@ -215,7 +216,6 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
     }
 
     ASSERT_EQ(child_array->dictionary, nullptr);
-    ASSERT_EQ(child_array->private_data, child_array->buffers);
   }
 
   append_rc = adapter->AppendToVecBuffer();
@@ -241,7 +241,7 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
     ASSERT_NE(arrow_array->children, nullptr);
     ASSERT_EQ(arrow_array->buffers[0], nullptr);
     ASSERT_EQ(arrow_array->dictionary, nullptr);
-    ASSERT_EQ(arrow_array->private_data, arrow_array->buffers);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
 
     ArrowArray *child_array = arrow_array->children[0];
     ASSERT_EQ(child_array->length, 1000);
@@ -251,6 +251,7 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
     ASSERT_EQ(child_array->n_children, 0);
     ASSERT_EQ(child_array->children, nullptr);
     ASSERT_EQ(child_array->buffers[0], nullptr);  // null bitmap
+    ASSERT_EQ(child_array->private_data, child_array);
 
     if (is_fixed) {
       ASSERT_NE(child_array->buffers[1], nullptr);
@@ -278,7 +279,6 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
     }
 
     ASSERT_EQ(child_array->dictionary, nullptr);
-    ASSERT_EQ(child_array->private_data, child_array->buffers);
   }
 
   DeleteCTupleSlot(ctuple_slot);
@@ -351,7 +351,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
     ASSERT_NE(arrow_array->children, nullptr);
     ASSERT_EQ(arrow_array->buffers[0], nullptr);
     ASSERT_EQ(arrow_array->dictionary, nullptr);
-    ASSERT_EQ(arrow_array->private_data, arrow_array->buffers);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
 
     ArrowArray *child_array = arrow_array->children[0];
     ASSERT_EQ(child_array->length, VEC_BATCH_LENGTH);
@@ -362,6 +362,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
     ASSERT_EQ(child_array->n_buffers, is_fixed ? 2 : 3);
     ASSERT_EQ(child_array->n_children, 0);
     ASSERT_EQ(child_array->children, nullptr);
+    ASSERT_EQ(child_array->private_data, child_array);
 
     if (is_fixed) {
       ASSERT_NE(child_array->buffers[0], nullptr);
@@ -439,7 +440,6 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
     }
 
     ASSERT_EQ(child_array->dictionary, nullptr);
-    ASSERT_EQ(child_array->private_data, child_array->buffers);
   }
 
   append_rc = adapter->AppendToVecBuffer();
@@ -466,7 +466,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
     ASSERT_NE(arrow_array->children, nullptr);
     ASSERT_EQ(arrow_array->buffers[0], nullptr);
     ASSERT_EQ(arrow_array->dictionary, nullptr);
-    ASSERT_EQ(arrow_array->private_data, arrow_array->buffers);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
 
     ArrowArray *child_array = arrow_array->children[0];
     ASSERT_EQ(child_array->length, range_size);
@@ -477,6 +477,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
     ASSERT_EQ(child_array->n_buffers, is_fixed ? 2 : 3);
     ASSERT_EQ(child_array->n_children, 0);
     ASSERT_EQ(child_array->children, nullptr);
+    ASSERT_EQ(child_array->private_data, child_array);
 
     if (is_fixed) {
       ASSERT_NE(child_array->buffers[0], nullptr);
@@ -541,7 +542,6 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
     }
 
     ASSERT_EQ(child_array->dictionary, nullptr);
-    ASSERT_EQ(child_array->private_data, child_array->buffers);
   }
 
   DeleteCTupleSlot(ctuple_slot);
@@ -608,7 +608,7 @@ TEST_P(PaxVecTest, PaxColumnToVecNoFull) {
     ASSERT_NE(arrow_array->children, nullptr);
     ASSERT_EQ(arrow_array->buffers[0], nullptr);
     ASSERT_EQ(arrow_array->dictionary, nullptr);
-    ASSERT_EQ(arrow_array->private_data, arrow_array->buffers);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
 
     ArrowArray *child_array = arrow_array->children[0];
     ASSERT_EQ(child_array->length, 1000);
@@ -618,6 +618,7 @@ TEST_P(PaxVecTest, PaxColumnToVecNoFull) {
     ASSERT_EQ(child_array->n_children, 0);
     ASSERT_EQ(child_array->children, nullptr);
     ASSERT_EQ(child_array->buffers[0], nullptr);  // null bitmap
+    ASSERT_EQ(child_array->private_data, child_array);
 
     if (is_fixed) {
       ASSERT_NE(child_array->buffers[1], nullptr);
@@ -643,7 +644,6 @@ TEST_P(PaxVecTest, PaxColumnToVecNoFull) {
     }
 
     ASSERT_EQ(child_array->dictionary, nullptr);
-    ASSERT_EQ(child_array->private_data, child_array->buffers);
   }
 
   DeleteCTupleSlot(ctuple_slot);
@@ -718,7 +718,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVecNoFull) {
     ASSERT_NE(arrow_array->children, nullptr);
     ASSERT_EQ(arrow_array->buffers[0], nullptr);
     ASSERT_EQ(arrow_array->dictionary, nullptr);
-    ASSERT_EQ(arrow_array->private_data, arrow_array->buffers);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
 
     ArrowArray *child_array = arrow_array->children[0];
     ASSERT_EQ(child_array->length, 1000 + null_counts);
@@ -727,6 +727,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVecNoFull) {
     ASSERT_EQ(child_array->n_buffers, is_fixed ? 2 : 3);
     ASSERT_EQ(child_array->n_children, 0);
     ASSERT_EQ(child_array->children, nullptr);
+    ASSERT_EQ(child_array->private_data, child_array);
 
     if (is_fixed) {
       ASSERT_NE(child_array->buffers[0], nullptr);
@@ -795,7 +796,6 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVecNoFull) {
     }
 
     ASSERT_EQ(child_array->dictionary, nullptr);
-    ASSERT_EQ(child_array->private_data, child_array->buffers);
   }
 
   DeleteCTupleSlot(ctuple_slot);
@@ -853,7 +853,7 @@ TEST_P(PaxVecTest, PaxColumnAllNullToVec) {
     ASSERT_NE(arrow_array->children, nullptr);
     ASSERT_EQ(arrow_array->buffers[0], nullptr);
     ASSERT_EQ(arrow_array->dictionary, nullptr);
-    ASSERT_EQ(arrow_array->private_data, arrow_array->buffers);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
 
     ArrowArray *child_array = arrow_array->children[0];
     ASSERT_EQ(child_array->length, 1000);
@@ -862,6 +862,7 @@ TEST_P(PaxVecTest, PaxColumnAllNullToVec) {
     ASSERT_EQ(child_array->n_buffers, is_fixed ? 2 : 3);
     ASSERT_EQ(child_array->n_children, 0);
     ASSERT_EQ(child_array->children, nullptr);
+    ASSERT_EQ(child_array->private_data, child_array);
 
     if (is_fixed) {
       ASSERT_NE(child_array->buffers[0], nullptr);
@@ -895,7 +896,6 @@ TEST_P(PaxVecTest, PaxColumnAllNullToVec) {
     }
 
     ASSERT_EQ(child_array->dictionary, nullptr);
-    ASSERT_EQ(child_array->private_data, child_array->buffers);
   }
 
   DeleteCTupleSlot(ctuple_slot);

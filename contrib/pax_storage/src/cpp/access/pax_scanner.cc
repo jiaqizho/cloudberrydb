@@ -3,7 +3,6 @@
 #include "access/pax_access_handle.h"
 #include "catalog/pax_aux_table.h"
 #include "comm/guc.h"
-#include "comm/log.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/micro_partition_iterator.h"
@@ -11,6 +10,7 @@
 #include "storage/orc/orc.h"
 #include "storage/pax.h"
 #include "storage/pax_buffer.h"
+#include "storage/pax_defined.h"
 
 #ifdef ENABLE_PLASMA
 #include "storage/cache/pax_plasma_cache.h"
@@ -227,9 +227,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
     auto wrap = new FilterIterator<MicroPartitionMetadata>(
         std::move(iter), [filter, relation](const auto &x) {
           MicroPartitionStatsProvider provider(x.GetStats());
-          auto ok = filter->TestScan(provider, RelationGetDescr(relation));
-          PAX_LOG_IF(!ok && pax_enable_debug, "filter micro partition: \"%s\"",
-                     x.GetFileName().c_str());
+          auto ok = filter->TestScan(provider, RelationGetDescr(relation), PaxFilterStatisticsKind::kFile);
           return ok;
         });
     iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap);
@@ -242,6 +240,10 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
 }
 
 void PaxScanDesc::EndScan() {
+  if (filter_) {
+    filter_->LogStatistics();
+  }
+
   Assert(reader_);
   reader_->Close();
 
