@@ -998,9 +998,17 @@ void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2,
   {
     Relation aux_rel1;
     Relation aux_rel2;
+    ReindexParams reindex_params = {0};
+    Relation toast_rel1 = nullptr;
+    Relation toast_rel2 = nullptr;
 
     aux_rel1 = relation_open(aux_relid1, AccessExclusiveLock);
     aux_rel2 = relation_open(aux_relid2, AccessExclusiveLock);
+
+    if (OidIsValid(aux_rel1->rd_rel->reltoastrelid))
+      toast_rel1 = relation_open(aux_rel1->rd_rel->reltoastrelid, AccessExclusiveLock);
+    if (OidIsValid(aux_rel2->rd_rel->reltoastrelid))
+      toast_rel2 = relation_open(aux_rel2->rd_rel->reltoastrelid, AccessExclusiveLock);
 
     swap_relation_files(aux_relid1, aux_relid2, false, /* target_is_pg_class */
                         true,                      /* swap_toast_by_content */
@@ -1008,8 +1016,13 @@ void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2,
                         true,                      /* is_internal */
                         frozen_xid, cutoff_multi, NULL);
 
+    if (toast_rel1) relation_close(toast_rel1, NoLock);
+    if (toast_rel2) relation_close(toast_rel2, NoLock);
     relation_close(aux_rel1, NoLock);
     relation_close(aux_rel2, NoLock);
+
+    reindex_relation(aux_relid1, 0, &reindex_params);
+    reindex_relation(aux_relid2, 0, &reindex_params);
   }
 }
 

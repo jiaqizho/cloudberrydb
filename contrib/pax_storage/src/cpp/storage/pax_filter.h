@@ -1,9 +1,13 @@
 #pragma once
 #include "comm/cbdb_api.h"
 
+#include <map>
 #include <utility>
 #include <vector>
 
+#include "comm/guc.h"
+#include "comm/log.h"
+#include "storage/pax_defined.h"
 namespace pax {
 namespace stats {
 class MicroPartitionStatisticsInfo;
@@ -59,9 +63,31 @@ class PaxFilter final {
   // tuples false: if success to filter the micro-partition, the whole
   // micro-partition SHOULD be ignored.
   inline bool TestScan(const ColumnStatsProvider &provider,
-                       const TupleDesc desc) const {
-    if (num_scan_keys_ == 0) return true;
-    return TestScanInternal(provider, desc);
+                       const TupleDesc desc, int kind) {
+    bool filter_failed = true;
+    if (num_scan_keys_ == 0) goto finish;
+    filter_failed = TestScanInternal(provider, desc);
+
+  finish:
+    if (!filter_failed) {
+      hits_[kind] += 1;
+    }
+
+    totals_[kind] += 1;
+    return filter_failed;
+  }
+
+  inline void LogStatistics() {
+    if (pax_enable_debug) {
+      for (size_t i = 0; i < filter_kind_desc.size(); i++) {
+        if (this->totals_[i] == 0) {
+          PAX_LOG("kind %s, no filter. ", filter_kind_desc[i]);
+        } else {
+          PAX_LOG("kind %s, filter rate: %d / %d", filter_kind_desc[i],
+                  hits_[i], this->totals_[i]);
+        }
+      }
+    }
   }
 
   inline bool HasRowScanFilter() const { return efctx_.HasExecutionFilter(); }
@@ -94,6 +120,9 @@ class PaxFilter final {
   // before running final cross columns expression filtering, the remaining
   // columns should be filled.
   std::vector<AttrNumber> remaining_attnos_;
+
+  std::map<int, int> hits_;
+  std::map<int, int> totals_;
 };  // class PaxFilter
 
 }  // namespace pax

@@ -6,7 +6,6 @@
 #include <utility>
 #include <vector>
 
-#include "comm/pax_defer.h"
 #include "storage/columns/pax_column_traits.h"
 #include "storage/pax_defined.h"
 

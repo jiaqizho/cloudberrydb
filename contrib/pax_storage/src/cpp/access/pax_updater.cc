@@ -8,19 +8,29 @@ namespace pax {
 TM_Result CPaxUpdater::UpdateTuple(
     const Relation relation, const ItemPointer otid, TupleTableSlot *slot,
     const CommandId cid, const Snapshot snapshot, const Snapshot /*crosscheck*/,
-    const bool /*wait*/, TM_FailureData * /*tmfd*/,
-    LockTupleMode * /*lockmode*/, bool * /*update_indexes*/) {
+    const bool /*wait*/, TM_FailureData * tmfd,
+    LockTupleMode * lockmode, bool *update_indexes) {
   TM_Result result;
-  CPaxDeleter *deleter =
-      CPaxDmlStateLocal::Instance()->GetDeleter(relation, snapshot);
+
+  auto dml_state = CPaxDmlStateLocal::Instance();
+  auto deleter = dml_state->GetDeleter(relation, snapshot);
+  auto inserter = dml_state->GetInserter(relation);
+
   Assert(deleter != nullptr);
-  CPaxInserter *inserter = CPaxDmlStateLocal::Instance()->GetInserter(relation);
   Assert(inserter != nullptr);
 
+  *lockmode = LockTupleExclusive;
   result = deleter->MarkDelete(otid);
-  // FIXME(gongxun): check result and return TM_SelfModified if needed
 
-  inserter->InsertTuple(relation, slot, cid, 0, nullptr);
+  if (result == TM_Ok) {
+    inserter->InsertTuple(relation, slot, cid, 0, nullptr);
+    *update_indexes = true;
+  } else {
+    // FIXME: set tmfd correctly.
+    // FYI, ao ignores both tmfd and lockmode
+    tmfd->ctid = *otid;
+    *update_indexes = false;
+  }
   // TODO(gongxun): update pgstat info
   return result;
 }
