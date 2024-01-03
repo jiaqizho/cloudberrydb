@@ -34,6 +34,7 @@ extern "C" {
 #include "catalog/pg_collation.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_opclass.h"
+#include "catalog/toasting.h"
 #include "commands/progress.h"
 #include "commands/tablecmds.h"
 #include "nodes/execnodes.h"

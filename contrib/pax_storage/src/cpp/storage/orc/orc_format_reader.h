@@ -6,8 +6,6 @@
 #include "storage/proto/protobuf_stream.h"
 
 namespace pax {
-class StripeInformation;
-
 class OrcFormatReader final {
  public:
   explicit OrcFormatReader(File *file);
@@ -30,11 +28,14 @@ class OrcFormatReader final {
                          size_t proj_len = 0);
 
  private:
-  StripeInformation *GetStripeInfo(size_t index) const;
-
   orc::proto::StripeFooter ReadStripeWithProjection(
-      DataBuffer<char> *data_buffer, StripeInformation *stripe_info,
-      const bool *proj_map, size_t proj_len);
+      DataBuffer<char> *data_buffer,
+      const ::orc::proto::StripeInformation &stripe_info, const bool *proj_map,
+      size_t proj_len);
+
+  orc::proto::StripeFooter ReadStripeFooter(DataBuffer<char> *data_buffer,
+                                            size_t sf_length, size_t sf_offset,
+                                            size_t sf_data_len);
 
   void BuildProtoTypes();
 
@@ -50,7 +51,6 @@ class OrcFormatReader final {
 
   orc::proto::PostScript post_script_;
   orc::proto::Footer file_footer_;
-  orc::proto::Metadata meta_data_;
 };
 
 }  // namespace pax

@@ -1,7 +1,6 @@
 #include "storage/vec/pax_vec_reader.h"
 
 #include "comm/guc.h"
-#include "comm/log.h"
 #include "storage/vec/pax_vec_adapter.h"
 #ifdef VEC_BUILD
 
@@ -35,9 +34,8 @@ retry_read_group:
     }
     auto group_index = current_group_index_++;
     auto info = reader_->GetGroupStatsInfo(group_index);
-    if (filter_ && !filter_->TestScan(*info, desc)) {
-      PAX_LOG_IF(pax_enable_debug, "PAX: filter group[%lu]/%lu", group_index,
-                 reader_->GetGroupNums());
+    if (filter_ &&
+        !filter_->TestScan(*info, desc, PaxFilterStatisticsKind::kGroup)) {
       goto retry_read_group;
     }
 

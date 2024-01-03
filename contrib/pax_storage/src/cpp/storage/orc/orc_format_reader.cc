@@ -1,24 +1,10 @@
 #include "storage/orc/orc_format_reader.h"
 
 #include "comm/cbdb_wrappers.h"
-#include "comm/pax_defer.h"
 #include "storage/columns/pax_column_traits.h"
 #include "storage/orc/orc_defined.h"
 
 namespace pax {
-
-struct StripeInformation {
-  uint64 footer_length = 0;
-  uint64 data_length = 0;
-  uint64 numbers_of_row = 0;
-  uint64 offset = 0;
-
-  uint64 index_length = 0;
-  uint64 stripe_footer_start = 0;
-
-  // refine column statistics if we do need it
-  ::orc::proto::StripeStatistics stripe_statistics;
-};
 
 OrcFormatReader::OrcFormatReader(File *file)
     : file_(file),
@@ -116,22 +102,7 @@ void OrcFormatReader::Open() {
 
 finish_read:
   num_of_stripes_ = file_footer_.stripes_size();
-  is_vec_ = file_footer_.isvec();
-
-  if (post_script_.metadatalength() != 0) {
-    uint64 meta_len = post_script_.metadatalength();
-    uint64 footer_len = post_script_.footerlength();
-    off_t meta_start = file_length - meta_len - footer_len - post_script_len -
-                       ORC_POST_SCRIPT_SIZE;
-    char read_buffer[meta_len];
-    SeekableInputStream input_stream(read_buffer, meta_len);
-
-    Assert(meta_start >= 0);
-    file_->PReadN(read_buffer, meta_len, meta_start);
-
-    CBDB_CHECK(meta_data_.ParseFromZeroCopyStream(&input_stream),
-               cbdb::CException::ExType::kExTypeIOError);
-  }
+  is_vec_ = file_footer_.storageformat() == kTypeStorageOrcVec;
 
   // Build schema
   auto max_id = file_footer_.types_size();
@@ -178,30 +149,6 @@ size_t OrcFormatReader::GetStripeOffset(size_t stripe_index) {
   return stripe_row_offsets_[stripe_index];
 }
 
-StripeInformation *OrcFormatReader::GetStripeInfo(size_t index) const {
-  auto stripe_info_in_mem = new StripeInformation();
-  orc::proto::StripeInformation stripe_info;
-
-  CBDB_CHECK(index < num_of_stripes_,
-             cbdb::CException::ExType::kExTypeLogicError);
-
-  stripe_info = file_footer_.stripes(static_cast<int>(index));
-  stripe_info_in_mem->footer_length = stripe_info.footerlength();
-  stripe_info_in_mem->data_length = stripe_info.datalength();
-  stripe_info_in_mem->numbers_of_row = stripe_info.numberofrows();
-  stripe_info_in_mem->offset = stripe_info.offset();
-
-  stripe_info_in_mem->index_length = stripe_info.indexlength();
-  stripe_info_in_mem->stripe_footer_start = stripe_info.offset() +
-                                            stripe_info.indexlength() +
-                                            stripe_info.datalength();
-
-  stripe_info_in_mem->stripe_statistics =
-      meta_data_.stripestats(static_cast<int>(index));
-
-  return stripe_info_in_mem;
-}
-
 // FIXME(jiaqizho): move method to higher level
 static bool ProjShouldReadAll(const bool *const proj_map, size_t proj_len) {
   if (!proj_map) {
@@ -217,28 +164,52 @@ static bool ProjShouldReadAll(const bool *const proj_map, size_t proj_len) {
   return true;
 }
 
-orc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
-    DataBuffer<char> *data_buffer, StripeInformation *stripe_info,
-    const bool *const proj_map, size_t proj_len) {
-  size_t stripe_footer_offset = 0;
+orc::proto::StripeFooter OrcFormatReader::ReadStripeFooter(
+    DataBuffer<char> *data_buffer, size_t sf_length, size_t sf_offset,
+    size_t sf_data_len) {
   orc::proto::StripeFooter stripe_footer;
+
+  Assert(data_buffer->Capacity() >= (sf_length - sf_data_len));
+  file_->PReadN(data_buffer->GetBuffer(), sf_length - sf_data_len,
+                sf_offset + sf_data_len);
+  SeekableInputStream input_stream(data_buffer->GetBuffer(),
+                                   sf_length - sf_data_len);
+  if (!stripe_footer.ParseFromZeroCopyStream(&input_stream)) {
+    // fail to do memory io with protobuf
+    CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
+  }
+
+  return stripe_footer;
+}
+
+orc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
+    DataBuffer<char> *data_buffer,
+    const ::orc::proto::StripeInformation &stripe_info,
+    const bool *const proj_map, size_t proj_len) {
+  orc::proto::StripeFooter stripe_footer;
+  size_t stripe_footer_data_len;
+  size_t stripe_footer_offset;
+  size_t stripe_footer_length;
+
   size_t streams_index = 0;
   uint64_t batch_len = 0;
   uint64_t batch_offset = 0;
   size_t index = 0;
 
-  stripe_footer_offset = stripe_info->data_length + stripe_info->index_length;
+  stripe_footer_data_len = stripe_info.datalength();
+  stripe_footer_offset = stripe_info.offset();
+  stripe_footer_length = stripe_info.footerlength();
 
   /* Check all column projection is true.
    * If no need do column projection, read all
    * buffer(data + stripe footer) from stripe and decode stripe footer.
    */
   if (ProjShouldReadAll(proj_map, proj_len)) {
-    file_->PReadN(data_buffer->GetBuffer(), stripe_info->footer_length,
-                  stripe_info->offset);
+    file_->PReadN(data_buffer->GetBuffer(), stripe_footer_length,
+                  stripe_footer_offset);
     SeekableInputStream input_stream(
-        data_buffer->GetBuffer() + stripe_footer_offset,
-        stripe_info->footer_length - stripe_footer_offset);
+        data_buffer->GetBuffer() + stripe_footer_data_len,
+        stripe_footer_length - stripe_footer_data_len);
     if (!stripe_footer.ParseFromZeroCopyStream(&input_stream)) {
       // fail to do memory io with protobuf
       CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
@@ -247,26 +218,15 @@ orc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
     return stripe_footer;
   }
 
-  Assert(stripe_info->index_length == 0);
-
   /* If need do column projection here
    * Then read stripe footer and decode it before read data part
    */
-  file_->PReadN(data_buffer->GetBuffer(),
-                stripe_info->footer_length - stripe_footer_offset,
-                stripe_info->offset + stripe_footer_offset);
-
-  SeekableInputStream input_stream(
-      data_buffer->GetBuffer(),
-      stripe_info->footer_length - stripe_footer_offset);
-
-  if (!stripe_footer.ParseFromZeroCopyStream(&input_stream)) {
-    CBDB_RAISE(cbdb::CException::ExType::kExTypeIOError);
-  }
-
+  stripe_footer =
+      ReadStripeFooter(data_buffer, stripe_footer_length, stripe_footer_offset,
+                       stripe_footer_data_len);
   data_buffer->BrushBackAll();
 
-  batch_offset = stripe_info->offset;
+  batch_offset = stripe_footer_offset;
 
   while (index < column_types_.size()) {
     // Current column have been skipped
@@ -294,7 +254,7 @@ orc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
      * is calculated, until meet a column which needs to be skipped.
      */
     do {
-      bool has_null = stripe_info->stripe_statistics.colstats(index).hasnull();
+      bool has_null = stripe_info.colstats(index).hasnull();
       if (has_null) {
         const orc::proto::Stream &non_null_stream =
             stripe_footer.streams(streams_index++);
@@ -490,7 +450,7 @@ static PaxColumn *BuildEncodingNonFixedColumn(
 // which can read from a prev read buffer
 PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
                                         size_t proj_len) {
-  auto stripe_info = GetStripeInfo(group_index);
+  auto stripe_info = file_footer_.stripes(static_cast<int>(group_index));
   auto pax_columns = new PaxColumns();
   DataBuffer<char> *data_buffer = nullptr;
   orc::proto::StripeFooter stripe_footer;
@@ -498,26 +458,24 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
   size_t streams_size = 0;
   size_t encoding_kinds_size = 0;
 
-  Assert(stripe_info->index_length == 0);
-  pax_columns->AddRows(stripe_info->numbers_of_row);
+  pax_columns->AddRows(stripe_info.numberofrows());
 
-  DEFER({ delete stripe_info; });
-
-  if (unlikely(stripe_info->footer_length == 0)) {
+  if (unlikely(stripe_info.footerlength() == 0)) {
     return pax_columns;
   }
 
   if (reused_buffer_) {
     Assert(reused_buffer_->Capacity() >= 4);
-    if (reused_buffer_->Available() < stripe_info->footer_length) {
+    Assert(reused_buffer_->Used() == 0);
+    if (reused_buffer_->Available() < stripe_info.footerlength()) {
       reused_buffer_->ReSize(
-          reused_buffer_->Used() + stripe_info->footer_length, 1.5);
+          reused_buffer_->Used() + stripe_info.footerlength(), 1.5);
     }
     data_buffer = new DataBuffer<char>(
         reused_buffer_->GetBuffer(), reused_buffer_->Capacity(), false, false);
 
   } else {
-    data_buffer = new DataBuffer<char>(stripe_info->footer_length);
+    data_buffer = new DataBuffer<char>(stripe_info.footerlength());
   }
   pax_columns->Set(data_buffer);
   pax_columns->SetStorageFormat(is_vec_
@@ -563,7 +521,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
     }
 
     Bitmap8 *non_null_bitmap = nullptr;
-    bool has_null = stripe_info->stripe_statistics.colstats(index).hasnull();
+    bool has_null = stripe_info.colstats(index).hasnull();
     if (has_null) {
       const orc::proto::Stream &non_null_stream =
           stripe_footer.streams(streams_index++);
@@ -628,7 +586,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
     // fill nulls data buffer
     Assert(pax_columns->GetColumns() > 0);
     auto last_column = (*pax_columns)[pax_columns->GetColumns() - 1];
-    last_column->SetRows(stripe_info->numbers_of_row);
+    last_column->SetRows(stripe_info.numberofrows());
     if (has_null) {
       Assert(non_null_bitmap);
       last_column->SetBitmap(non_null_bitmap);
