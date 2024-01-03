@@ -89,7 +89,6 @@ class OrcWriter : public MicroPartitionWriter {
                    PaxColumns *pax_columns,
                    MicroPartitionStats *stats_collector);
   bool WriteStripe(BufferedOutputStream *buffer_mem_stream);
-  void WriteMetadata(BufferedOutputStream *buffer_mem_stream);
   void WriteFileFooter(BufferedOutputStream *buffer_mem_stream);
   void WritePostscript(BufferedOutputStream *buffer_mem_stream);
 
@@ -113,7 +112,6 @@ class OrcWriter : public MicroPartitionWriter {
 
   ::orc::proto::Footer file_footer_;
   ::orc::proto::PostScript post_script_;
-  ::orc::proto::Metadata meta_data_;
   ::pax::MicroPartitionStats stats_collector_;
 };
 

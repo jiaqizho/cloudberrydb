@@ -5,6 +5,7 @@
 #include <uuid/uuid.h>
 #include <utility>
 
+#include "catalog/pax_fastsequence.h"
 #include "catalog/pg_pax_tables.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/file_system.h"
@@ -55,6 +56,10 @@ static void CPaxNontransactionalTruncateTable(Relation rel) {
   aux_rel = relation_open(aux_relid, AccessExclusiveLock);
   heap_truncate_one_rel(aux_rel);
   relation_close(aux_rel, NoLock);
+
+#ifdef ENABLE_LOCAL_INDEX
+  paxc::CPaxInitializeFastSequenceEntry(RelationGetRelid(rel), FASTSEQUENCE_INIT_TYPE_INPLACE);
+#endif
 }
 
 void CPaxCreateMicroPartitionTable(Relation rel) {
@@ -94,13 +99,15 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
   relid = heap_create_with_catalog(
       aux_relname, aux_namespace_id, InvalidOid, aux_relid, InvalidOid,
       InvalidOid, rel->rd_rel->relowner, HEAP_TABLE_AM_OID, tupdesc, NIL,
-      RELKIND_RELATION, rel->rd_rel->relpersistence, rel->rd_rel->relisshared,
+      RELKIND_RELATION, RELPERSISTENCE_PERMANENT, rel->rd_rel->relisshared,
       RelationIsMapped(rel), ONCOMMIT_NOOP, NULL, /* GP Policy */
       (Datum)0, false,                            /* use _user_acl */
       true, true, InvalidOid, NULL,               /* typeaddress */
       false /* valid_opts */);
   Assert(relid == aux_relid);
   table_close(pg_class_desc, NoLock);
+
+  NewRelationCreateToastTable(relid, (Datum)0);
 
   // 2. insert entry into pg_pax_tables.
   ::paxc::InsertPaxTablesEntry(pax_relid, aux_relid, NULL);
