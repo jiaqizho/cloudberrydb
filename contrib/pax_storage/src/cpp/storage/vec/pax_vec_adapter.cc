@@ -43,6 +43,95 @@ Arrow<DataType> ArrowExportTraits<DataType>::export_func = ExportType;
 Arrow<Field> ArrowExportTraits<Field>::export_func = ExportField;
 Arrow<Schema> ArrowExportTraits<Schema>::export_func = ExportSchema;
 
+void ExportArrayRelease(ArrowArray *array) {
+  // The Exception throw from this call back won't be catch
+  // Because caller will call this callback in destructor
+  // just let long jump happen
+  if (array->children) {
+    for (int64_t i = 0; i < array->n_children; i++) {
+      if (array->children[i] && array->children[i]->release) {
+        array->children[i]->release(array->children[i]);
+      }
+    }
+
+    pfree(array->children);
+  }
+
+  if (array->buffers) {
+    for (int64_t i = 0; i < array->n_buffers; i++) {
+      if (array->buffers[i]) {
+        pfree((void *)array->buffers[i]);
+      }
+    }
+
+    pfree(array->buffers);
+  }
+
+  array->release = NULL;
+  if (array->private_data) {
+    pfree((ArrowArray *)array->private_data);
+  }
+};
+
+void ExportArrayNodeDetails(ArrowArray *export_array,
+                            const std::shared_ptr<ArrayData> &data,
+                            const std::vector<ArrowArray *> &child_array,
+                            bool is_child) {
+  export_array->length = data->length;
+  export_array->null_count = data->null_count;
+  export_array->offset = data->offset;
+
+  export_array->n_buffers = static_cast<int64_t>(data->buffers.size());
+  export_array->n_children = static_cast<int64_t>(child_array.size());
+  export_array->buffers = export_array->n_buffers
+                              ? (const void **)cbdb::Palloc0(
+                                    export_array->n_buffers * sizeof(void *))
+                              : nullptr;
+
+  for (int64_t i = 0; i < export_array->n_buffers; i++) {
+    auto buffer = data->buffers[i];
+    export_array->buffers[i] = buffer ? buffer->data() : nullptr;
+  }
+
+  export_array->children =
+      export_array->n_children
+          ? (ArrowArray **)cbdb::Palloc0(export_array->n_children *
+                                         sizeof(ArrowArray *))
+          : nullptr;
+  for (int64_t i = 0; i < export_array->n_children; i++) {
+    export_array->children[i] = child_array[i];
+  }
+
+  export_array->dictionary = nullptr;
+  export_array->private_data = is_child ? (void *)export_array : nullptr;
+  export_array->release = ExportArrayRelease;
+}
+
+static ArrowArray *ExportArrayNode(const std::shared_ptr<ArrayData> &data) {
+  ArrowArray *export_array;
+  std::vector<ArrowArray *> child_array;
+
+  for (size_t i = 0; i < data->child_data.size(); ++i) {
+    child_array.emplace_back(ExportArrayNode(data->child_data[i]));
+  }
+
+  export_array = (ArrowArray *)cbdb::Palloc0(sizeof(ArrowArray));
+  ExportArrayNodeDetails(export_array, data, child_array, true);
+  return export_array;
+}
+
+static void ExportArrayRoot(const std::shared_ptr<ArrayData> &data,
+                            ArrowArray *export_array) {
+  std::vector<ArrowArray *> child_array;
+
+  for (size_t i = 0; i < data->child_data.size(); ++i) {
+    child_array.emplace_back(ExportArrayNode(data->child_data[i]));
+  }
+  Assert(export_array);
+
+  ExportArrayNodeDetails(export_array, data, child_array, false);
+}
+
 }  // namespace arrow
 
 namespace pax {
@@ -695,8 +784,6 @@ bool VecAdapter::AppendVecFormat() {
 }
 
 size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
-  ArrowSchema *arrow_schema = nullptr;
-  ArrowArray *arrow_array = nullptr;
   std::vector<std::shared_ptr<arrow::Field>> schema_types;
   arrow::ArrayVector array_vector;
   std::vector<std::string> field_names;
@@ -822,49 +909,20 @@ size_t VecAdapter::FlushVecBuffer(CTupleSlot *cslot) {
   // Can not possible to hold the lifecycle of these three objects in pax.
   // It will be freed after memory context reset.
   auto arrow_rb = (ArrowRecordBatch *)cbdb::Palloc0(sizeof(ArrowRecordBatch));
-  arrow_schema = &arrow_rb->schema;
-  arrow_array = &arrow_rb->batch;
 
   auto export_status = arrow::ArrowExportTraits<arrow::DataType>::export_func(
-      *arrow::struct_(std::move(schema_types)), arrow_schema);
+      *arrow::struct_(std::move(schema_types)), &arrow_rb->schema);
 
   CBDB_CHECK(export_status.ok(),
              cbdb::CException::ExType::kExTypeArrowExportError);
 
-  export_status = arrow::ExportArray(
-      **arrow::StructArray::Make(std::move(array_vector), field_names),
-      arrow_array);
-
-  CBDB_CHECK(export_status.ok(),
-             cbdb::CException::ExType::kExTypeArrowExportError);
-
-  // FIXME(jiaqizho): use `arrow_array->private` to
-  // decide which part of memory should free
-  // and which part of memory should free with pax_columns
-  if (!COLUMN_STORAGE_FORMAT_IS_VEC(columns)) {
-    arrow_array->release = [](struct ArrowArray *array) {  //
-      for (int64 i = 0; i < array->n_children; i++) {
-        if (array->children && array->children[i] &&
-            array->children[i]->release) {
-          array->children[i]->release(array->children[i]);
-        }
-      }
-
-      for (int64 i = 0; i < array->n_buffers; i++) {
-        if (array->buffers[i]) {
-          // cbdb::Pfree CException will not be deal
-          // just let long jump happen
-          pfree((void *)array->buffers[i]);
-        }
-      }
-
-      // FIXME(jiaqizho): memory leak here
-      // Will consider not use `arrow::ExportArray`
-      // delete
-      // reinterpret_cast<ExportedArrayPrivateData*>(array->private_data);
-      array->release = NULL;
-    };
-  }
+  // Don't use the `arrow::ExportArray`
+  // Because it will cause memory leak when release call
+  // The defualt `release` method won't free the `buffers`,
+  // but can free the `private_data` (ExportedArrayPrivateData)
+  // After we replace the `release` function. the `private_data` won't be freed.
+  auto array = *arrow::StructArray::Make(std::move(array_vector), field_names);
+  arrow::ExportArrayRoot(array->data(), &arrow_rb->batch);
 
   vslot->tts_recordbatch = arrow_rb;
 

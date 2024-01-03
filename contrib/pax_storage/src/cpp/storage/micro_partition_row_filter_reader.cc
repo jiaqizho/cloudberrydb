@@ -3,6 +3,7 @@
 #include "comm/guc.h"
 #include "comm/log.h"
 #include "storage/pax_filter.h"
+#include "storage/pax_defined.h"
 
 namespace pax {
 static inline bool TestExecQual(ExprState *estate, ExprContext *econtext) {
@@ -29,8 +30,7 @@ retry_next_group:
   if (group_index_ >= ngroups) return nullptr;
   auto info = reader_->GetGroupStatsInfo(group_index_);
   ++group_index_;
-  if (filter_ && !filter_->TestScan(*info, desc)) {
-    PAX_LOG_IF(pax_enable_debug, "PAX: filter group[%lu]/%lu", group_index_ - 1, ngroups);
+  if (filter_ && !filter_->TestScan(*info, desc, PaxFilterStatisticsKind::kGroup)) {
     goto retry_next_group;
   }
   group_ = reader_->ReadGroup(group_index_ - 1);

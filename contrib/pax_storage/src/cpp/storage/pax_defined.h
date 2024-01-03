@@ -1,5 +1,5 @@
 #pragma once
-
+#include <vector>
 namespace pax {
 
 #define VEC_BATCH_LENGTH (16384)
@@ -14,10 +14,19 @@ namespace pax {
 enum PaxStorageFormat {
   // default non-vec store
   // which split null field and null bitmap
-  kTypeStorageOrcNonVec,
+  kTypeStorageOrcNonVec = 1,
   // vec storage format
   // spec the storage format
-  kTypeStorageOrcVec,
+  kTypeStorageOrcVec = 2,
 };
+
+// filter kind
+enum PaxFilterStatisticsKind {
+  // The value will be index at `filter_kind_desc`
+  kFile = 0,
+  kGroup = 1,
+};
+
+static std::vector<const char *> filter_kind_desc = {"file", "group"};
 
 }  // namespace pax

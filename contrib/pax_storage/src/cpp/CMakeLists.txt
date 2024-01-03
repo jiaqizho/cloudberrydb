@@ -102,7 +102,7 @@ add_custom_target(generate_protobuf DEPENDS ${orc_proto_src} ${pax_proto_src} ${
 add_executable(generate_sql_script_program "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/gen_sql.c")
 target_include_directories(generate_sql_script_program PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
 add_custom_command(OUTPUT generate_sql_file
-  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/generate_sql_script_program > "${CMAKE_CURRENT_SOURCE_DIR}/../data/pax-cdbinit--1.0.sql"
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/generate_sql_script_program > "${CMAKE_CURRENT_SOURCE_DIR}/../../pax-cdbinit--1.0.sql"
   DEPENDS generate_sql_script_program
   COMMENT "dynamically generate sql script file"
 )
@@ -267,6 +267,7 @@ else()
   add_library(pax SHARED ${pax_target_src})
   set_target_properties(pax PROPERTIES OUTPUT_NAME pax)
   target_include_directories(pax PUBLIC ${pax_target_include})
+  target_link_directories(pax PUBLIC ${PROJECT_SOURCE_DIR}/../../src/backend/)
   target_link_libraries(pax PUBLIC ${pax_target_link_libs})
 
   set_target_properties(pax PROPERTIES
@@ -279,7 +280,7 @@ else()
   add_dependencies(pax ${pax_target_dependencies})
   add_custom_command(TARGET pax POST_BUILD
                   COMMAND ${CMAKE_COMMAND} -E
-                  copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../data/pax.so)
+                  copy_if_different $<TARGET_FILE:pax> ${CMAKE_CURRENT_SOURCE_DIR}/../../pax.so)
   if (VEC_BUILD)
     target_link_libraries(pax PRIVATE arrow)
   endif()
@@ -292,7 +293,7 @@ else()
       ${CMAKE_CURRENT_SOURCE_DIR}/*/*_test.cc
       ${CMAKE_CURRENT_SOURCE_DIR}/*/*/*_test.cc)
 
-    link_directories($ENV{GPHOME}/lib)
+    link_directories(${PROJECT_SOURCE_DIR}/../../src/backend/)
     add_executable(test_main ${pax_target_src} ${test_case_sources})
     add_dependencies(test_main ${pax_target_dependencies} gtest gmock)
     target_include_directories(test_main PUBLIC ${pax_target_include} ${CMAKE_CURRENT_SOURCE_DIR} ${gtest_SOURCE_DIR}/include contrib/cpp-stub/src/ contrib/cpp-stub/src_linux/)
