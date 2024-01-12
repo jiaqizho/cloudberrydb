@@ -60,6 +60,7 @@ SUBDIRS += \
 		formatter \
 		formatter_fixedwidth \
 		extprotocol \
+		pax_storage \
 		indexscan
 
 ifeq ($(with_ssl),openssl)
