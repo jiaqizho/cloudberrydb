@@ -14952,3 +14952,70 @@ SELECT CAST(a AS TEXT[]) FROM array_coerceviaio;
 (1 row)
 
 ---------------------------------------------------------------------------------
+DROP TABLE IF EXISTS schema_test_table;
+CREATE TABLE schema_test_table(a numeric, b numeric(5,2), c char(10) NOT NULL) distributed by (a);
+-- In 7x, redundant Result nodes in planned_stmt are being removed by ORCA,
+-- which caused the loss of typmod info of column type in plan.
+-- Below query is used by external libraries to fetch schema of table.
+-- Test that the typmod of column type is correct in explain plan.
+EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM schema_test_table WHERE 1=0;
+                                                                      QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Result
+   Output: a, b, c
+   One-Time Filter: false
+ Optimizer: Postgres-based planner
+ Settings: optimizer = 'off', optimizer_enable_coordinator_only_queries = 'on', optimizer_enable_master_only_queries = 'on', optimizer_segments = '3'
+(5 rows)
+
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+-- Test ALL NULL scalar array compare 
+create table DatumSortedSet_core (a int, b character varying NOT NULL) distributed by (a);
+explain select * from DatumSortedSet_core where b in (NULL, NULL);
+                                  QUERY PLAN
+-------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..240.69 rows=1 width=36)
+   ->  Seq Scan on datumsortedset_core  (cost=0.00..240.67 rows=1 width=36)
+         Filter: ((b)::text = ANY ('{NULL,NULL}'::text[]))
+ Optimizer: Postgres-based planner
+(4 rows)
+
+---------------------------------------------------------------------------------
+-- Test fill argtypes of PopAggFunc
+-- start_ignore
+drop table if exists foo;
+drop table if exists bar;
+-- end_ignore
+set optimizer_enable_eageragg = on;
+create table foo (j1 int, g1 int, s1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'j1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+insert into foo select i%10, i %10, i from generate_series(1,100) i;
+create table bar (j2 int, g2 int, s2 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'j2' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+insert into bar select i%1, i %10, i from generate_series(1,10) i;
+analyze foo;
+analyze bar;
+explain (costs off) select max(s1) from foo inner join bar on j1 = j2 group by g1;
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Finalize HashAggregate
+         Group Key: foo.g1
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)
+               Hash Key: foo.g1
+               ->  Partial HashAggregate
+                     Group Key: foo.g1
+                     ->  Hash Join
+                           Hash Cond: (foo.j1 = bar.j2)
+                           ->  Seq Scan on foo
+                           ->  Hash
+                                 ->  Seq Scan on bar
+ Optimizer: Postgres-based planner
+(13 rows)
+
+drop table foo;
+drop table bar;
+reset optimizer_enable_eageragg;

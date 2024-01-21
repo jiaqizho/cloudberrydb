@@ -3714,6 +3714,29 @@ INSERT INTO array_coerceviaio values(ARRAY[1, 2, 3]);
 EXPLAIN SELECT CAST(a AS TEXT[]) FROM array_coerceviaio;
 SELECT CAST(a AS TEXT[]) FROM array_coerceviaio;
 ---------------------------------------------------------------------------------
+-- Test ALL NULL scalar array compare 
+create table DatumSortedSet_core (a int, b character varying NOT NULL) distributed by (a);
+explain select * from DatumSortedSet_core where b in (NULL, NULL);
+---------------------------------------------------------------------------------
+
+-- Test fill argtypes of PopAggFunc
+-- start_ignore
+drop table if exists foo;
+drop table if exists bar;
+-- end_ignore
+
+set optimizer_enable_eageragg = on;
+create table foo (j1 int, g1 int, s1 int);
+insert into foo select i%10, i %10, i from generate_series(1,100) i;
+create table bar (j2 int, g2 int, s2 int);
+insert into bar select i%1, i %10, i from generate_series(1,10) i;
+analyze foo;
+analyze bar;
+
+explain (costs off) select max(s1) from foo inner join bar on j1 = j2 group by g1;
+drop table foo;
+drop table bar;
+reset optimizer_enable_eageragg;
 
 -- start_ignore
 DROP SCHEMA orca CASCADE;
