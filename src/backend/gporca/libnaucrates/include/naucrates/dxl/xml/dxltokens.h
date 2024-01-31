@@ -367,6 +367,9 @@ enum Edxltoken
 	EdxltokenGpSegmentIdColName,
 	EdxltokenGpForeignServerColName,
 
+	// For Logical Select
+	EdxltokenSecurityQuals,
+
 	EdxltokenActionColId,
 	EdxltokenCtidColId,
 	EdxltokenGpSegmentIdColId,
