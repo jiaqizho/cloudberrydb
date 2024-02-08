@@ -18,6 +18,8 @@
 # test for builtin namespace pg_ext_aux
 test: pg_ext_aux
 
+test: planhints rowhints
+
 test: pg_dump_binary_upgrade
 
 test: gp_dispatch_keepalives
