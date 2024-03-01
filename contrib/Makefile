@@ -60,7 +60,6 @@ SUBDIRS += \
 		formatter \
 		formatter_fixedwidth \
 		extprotocol \
-		pax_storage \
 		indexscan
 
 ifeq ($(with_ssl),openssl)
@@ -97,6 +96,12 @@ ifeq ($(with_python),yes)
 SUBDIRS += hstore_plpython jsonb_plpython ltree_plpython
 else
 ALWAYS_SUBDIRS += hstore_plpython jsonb_plpython ltree_plpython
+endif
+
+ifeq ($(enable_pax),yes)
+SUBDIRS += pax_storage
+else
+ALWAYS_SUBDIRS += pax_storage
 endif
 
 # Missing:
