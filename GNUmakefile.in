@@ -29,9 +29,11 @@ all:
 	$(MAKE) -C contrib/tablefunc all
 	$(MAKE) -C contrib/passwordcheck all
 	$(MAKE) -C contrib/pg_buffercache all
-	$(MAKE) -C contrib/pax_storage all
 ifeq ($(with_openssl), yes)
 	$(MAKE) -C contrib/sslinfo all
+endif
+ifeq ($(enable_pax), yes)
+	$(MAKE) -C contrib/pax_storage all
 endif
 	$(MAKE) -C gpMgmt all
 	$(MAKE) -C gpcontrib all
@@ -74,7 +76,9 @@ install:
 	$(MAKE) -C contrib/tablefunc $@
 	$(MAKE) -C contrib/passwordcheck $@
 	$(MAKE) -C contrib/pg_buffercache $@
+ifeq ($(enable_pax), yes)
 	$(MAKE) -C contrib/pax_storage $@
+endif
 ifeq ($(with_openssl), yes)
 	$(MAKE) -C contrib/sslinfo $@
 endif
