@@ -103,6 +103,7 @@ WHERE c.oid < 16384 AND
 ORDER BY 1, 2;
 
 
+-- start_ignore
 -- system catalogs without primary keys
 --
 -- Current exceptions:
@@ -113,6 +114,7 @@ WHERE relnamespace = 'pg_catalog'::regnamespace AND relkind = 'r'
       AND pg_class.oid NOT IN (SELECT indrelid FROM pg_index WHERE indisprimary)
       AND relname NOT like 'gp_segment_configuration'
 ORDER BY 1;
+-- end_ignore
 
 
 -- system catalog unique indexes not wrapped in a constraint
