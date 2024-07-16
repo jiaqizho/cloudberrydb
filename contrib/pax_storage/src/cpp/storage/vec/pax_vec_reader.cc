@@ -61,7 +61,7 @@ retry_read_group:
   if (flush_nums_of_rows == 0) {
     goto retry_read_group;
   }
-  
+
   adapter_->FlushVecBuffer(slot);
 
   return true;
@@ -78,7 +78,6 @@ size_t PaxVecReader::GetGroupNums() {
 std::unique_ptr<ColumnStatsProvider> PaxVecReader::GetGroupStatsInfo(
     size_t group_index) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
-  return nullptr;
 }
 
 MicroPartitionReader::Group *PaxVecReader::ReadGroup(size_t index) {

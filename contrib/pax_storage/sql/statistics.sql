@@ -2,7 +2,8 @@ set default_table_access_method = pax;
 
 CREATE OR REPLACE FUNCTION "get_pax_aux_table"(table_name text)
   RETURNS TABLE("ptblockname" name,"pttupcount" integer, 
-    "ptblocksize" integer, "ptstatistics" pg_ext_aux.paxauxstats, "ptvisimapname" name) AS $BODY$
+    "ptstatistics" pg_ext_aux.paxauxstats, 
+    "ptexistvisimap" bool, "ptexistexttoast" bool) AS $BODY$
     DECLARE
     subquery  varchar;
     pre_sql   varchar;
@@ -10,7 +11,7 @@ CREATE OR REPLACE FUNCTION "get_pax_aux_table"(table_name text)
     begin
     pre_sql:='select oid from pg_class where relname='''||table_name||'''';
     EXECUTE pre_sql into table_oid;
-    subquery := 'select * from gp_dist_random(''pg_ext_aux.pg_pax_blocks_'||table_oid||''')';
+    subquery := 'select ptblockname, pttupcount, ptstatistics, ptvisimapname IS NOT NULL AS ptexistvisimap, ptexistexttoast from gp_dist_random(''pg_ext_aux.pg_pax_blocks_'||table_oid||''')';
     RETURN QUERY execute subquery;
     END
     $BODY$

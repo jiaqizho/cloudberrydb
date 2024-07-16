@@ -35,6 +35,7 @@ class ColumnStatsProvider {
   virtual int ColumnSize() const = 0;
   virtual bool AllNull(int column_index) const = 0;
   virtual bool HasNull(int column_index) const = 0;
+  virtual uint32 NonNullRows(int column_index) const = 0;
   virtual const ::pax::stats::ColumnBasicInfo &ColumnInfo(
       int column_index) const = 0;
   virtual const ::pax::stats::ColumnDataStats &DataStats(

@@ -38,7 +38,7 @@ build: $(SRC)
 	mkdir -p build
 	cd build && cmake .. -DCMAKE_INSTALL_PREFIX=$(DESTDIR)$(prefix) && make -j8 && cp src/cpp/libpax.so ../pax.so
 
-pax-unit-test: build
+pax-unit-test: 
 ifeq ($(enable_debug), yes)
 	cd build && ./src/cpp/test_main
 endif
@@ -53,13 +53,15 @@ install: install-data
 	make -C build install
 
 .PHONY: pax-test
-pax-test:
+pax-test: 
+	@echo "Begin running pax tests"
 	$(PG_REGRESS) \
 		--init-file=init_file --schedule=pax_schedule \
 		--load-extension=gp_inject_fault --dbname=pax_test
-	
+	$(bindir)/dropdb --if-exists pax_test
+
 .PHONY: icw_test
-icw_test:
+icw_test: pax-test
 	@echo "Begin running pax regression tests"
 	@echo "Current PGOPTIONS=$(PGOPTIONS)"
 	make -C $(PAX_REGRESS_DIR) icw_test

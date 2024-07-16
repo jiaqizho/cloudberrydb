@@ -195,6 +195,7 @@ select ctid, * from pt1;
 
 rollback;
 -- Test if visimap works well with btree index
+set optimizer to on;
 create unique index on pt1(a, i);
 begin;
 delete from pt1 where i >= 4 and i < 8;
@@ -233,6 +234,7 @@ select * from pt1 where a = 1 and i >= 2 and i < 10;
 (4 rows)
 
 rollback;
+reset optimizer;
 drop table pt1;
 reset pax_max_tuples_per_group;
 reset vector.enable_vectorization;
