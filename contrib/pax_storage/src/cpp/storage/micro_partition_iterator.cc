@@ -122,6 +122,14 @@ MicroPartitionMetadata MicroPartitionInfoIterator::ToValue(HeapTuple tuple) {
     }
   }
 
+  {
+    auto existexttoast = cbdb::HeapGetAttr(
+        tuple, ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST, tup_desc, &is_null);
+    Assert(!is_null);
+
+    v.SetExistToast(DatumGetBool(existexttoast));
+  }
+
   // deserialize protobuf message
   return v;
 }

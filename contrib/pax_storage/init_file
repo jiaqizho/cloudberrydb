@@ -154,7 +154,7 @@ s/.//gs
 
 -- pax ignore matchers
 
--- start_matchignore
+-- start_matchsubs
 m/\(pax_access_handle.cc:\d+\)/
 s/\(pax_access_handle.cc:\d+\)/\(pax_access_handle.cc:###\)/
--- end_matchignore
+-- end_matchsubs

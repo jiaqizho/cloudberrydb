@@ -728,14 +728,17 @@ TEST_F(PaxWriterTest, ParitionWriteReadTupleWithToast) {
   MicroPartitionMetadata meta_info;
   meta_info.SetFileName(file_names[0]);
   meta_info.SetMicroPartitionId(file_names[0]);
+  meta_info.SetExistToast(true);
   meta_info_list.push_back(meta_info);
 
   meta_info.SetFileName(file_names[3]);
   meta_info.SetMicroPartitionId(file_names[3]);
+  meta_info.SetExistToast(true);
   meta_info_list.push_back(meta_info);
 
   meta_info.SetFileName(file_names[5]);
   meta_info.SetMicroPartitionId(file_names[5]);
+  meta_info.SetExistToast(true);
   meta_info_list.push_back(meta_info);
 
   std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
