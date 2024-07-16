@@ -748,22 +748,26 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
 
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
     auto pb_stats = stripe_info->add_colstats();
+    auto col_stats = stats_info->columnstats(static_cast<int>(i));
     PaxColumn *pax_column = (*pax_columns)[i];
+
+    Assert(col_stats.hasnull() == pax_column->HasNull());
+    Assert(col_stats.allnull() == pax_column->AllNull());
 
     *stripe_footer.add_pax_col_encodings() = encoding_kinds[i];
 
     pb_stats->set_hastoast(pax_column->ToastCounts() > 0);
-    pb_stats->set_hasnull(pax_column->HasNull());
-    pb_stats->set_allnull(pax_column->AllNull());
-    *pb_stats->mutable_coldatastats() =
-        stats_info->columnstats(static_cast<int>(i)).datastats();
-    PAX_LOG_IF(
-        pax_enable_debug,
-        "write group[%lu](allnull=%s, hasnull=%s, hastoast=%s, nrows=%lu)", i,
-        pax_column->AllNull() ? "true" : "false",
-        pax_column->HasNull() ? "true" : "false",
-        pax_column->ToastCounts() > 0 ? "true" : "false",
-        pax_column->GetRows());
+    pb_stats->set_hasnull(col_stats.hasnull());
+    pb_stats->set_allnull(col_stats.allnull());
+    pb_stats->set_nonnullrows(col_stats.nonnullrows());
+    *pb_stats->mutable_coldatastats() = col_stats.datastats();
+    PAX_LOG_IF(pax_enable_debug,
+               "write group[%lu](allnull=%s, hasnull=%s, nonnullrows=%u, "
+               "hastoast=%s, nrows=%lu)",
+               i, col_stats.allnull() ? "true" : "false",
+               col_stats.hasnull() ? "true" : "false", col_stats.nonnullrows(),
+               pax_column->ToastCounts() > 0 ? "true" : "false",
+               pax_column->GetRows());
   }
 
   stripe_stats->Reset();
