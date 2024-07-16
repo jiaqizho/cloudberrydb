@@ -42,11 +42,12 @@ class MicroPartitionStatsData final {
     }
   }
 
-  inline void CopyFrom(MicroPartitionStatsData *stats) {
+  inline void CopyFrom(MicroPartitionStatsData *stats, int column_index) {
     Assert(stats);
     Assert(typeid(this) == typeid(stats));
 
-    info_.CopyFrom(stats->info_);
+    info_.mutable_columnstats(column_index)
+        ->CopyFrom(stats->info_.columnstats(column_index));
   }
 
   inline ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) {
@@ -497,7 +498,9 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
       UpdateMinMaxValue(column_index, stats->max_in_mem_[column_index],
                         collation, typlen, typbyval);
     } else if (status_[column_index] == STATUS_MISSING_INIT_VAL) {
-      stats_->CopyFrom(stats->stats_);
+      stats_->CopyFrom(
+          stats->stats_,
+          column_index);  // do the copy, no need call merge_const_stats
       CopyDatum(stats->min_in_mem_[column_index], &min_in_mem_[column_index],
                 typlen, typbyval);
       CopyDatum(stats->max_in_mem_[column_index], &max_in_mem_[column_index],
@@ -563,9 +566,9 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
           cbdb::DatumToPointer(newval) !=
               cbdb::DatumToPointer(left_sum_stat->result)) {
         cbdb::Pfree(cbdb::DatumToPointer(left_sum_stat->result));
-        left_sum_stat->result = cbdb::datumCopy(
-            newval, left_sum_stat->rettyplen, left_sum_stat->rettypbyval);
       }
+      left_sum_stat->result = cbdb::datumCopy(newval, left_sum_stat->rettyplen,
+                                              left_sum_stat->rettypbyval);
     } else if (left_sum_stat->status == STATUS_MISSING_INIT_VAL) {
       left_sum_stat->result =
           cbdb::datumCopy(right_sum_stat->result, left_sum_stat->rettypbyval,
@@ -933,6 +936,10 @@ bool MicroPartitionStatsProvider::AllNull(int column_index) const {
 
 bool MicroPartitionStatsProvider::HasNull(int column_index) const {
   return stats_.columnstats(column_index).hasnull();
+}
+
+uint32 MicroPartitionStatsProvider::NonNullRows(int column_index) const {
+  return stats_.columnstats(column_index).nonnullrows();
 }
 
 const ::pax::stats::ColumnBasicInfo &MicroPartitionStatsProvider::ColumnInfo(
