@@ -67,6 +67,7 @@ select ctid, * from pt1;
 rollback;
 
 -- Test if visimap works well with btree index
+set optimizer to on;
 create unique index on pt1(a, i);
 begin;
 delete from pt1 where i >= 4 and i < 8;
@@ -74,6 +75,7 @@ select ctid, * from pt1;
 explain (costs off) select * from pt1 where a = 1 and i >= 2 and i < 10;
 select * from pt1 where a = 1 and i >= 2 and i < 10;
 rollback;
+reset optimizer;
 
 drop table pt1;
 

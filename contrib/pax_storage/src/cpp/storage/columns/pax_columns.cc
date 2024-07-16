@@ -207,6 +207,9 @@ void PaxColumns::VerifyAllExternalToasts(
   DataBuffer<int32> *data_indexes;
   char *buffer;
   size_t buff_len;
+  if (COLUMN_STORAGE_FORMAT_IS_VEC(this)) {
+    return;
+  }
 
   Assert(ext_toast_lens.size() == columns_.size());
 
@@ -226,7 +229,8 @@ void PaxColumns::VerifyAllExternalToasts(
     uint64 len;
     bool init = false;
     for (size_t i = 0; i < data_indexes->GetSize(); i++) {
-      std::tie(buffer, buff_len) = column->GetBuffer((*data_indexes)[i]);
+      std::tie(buffer, buff_len) =
+          column->GetBuffer(column->GetRangeNonNullRows(0, (*data_indexes)[i]));
       Assert(VARATT_IS_PAX_SUPPORT_TOAST(buffer));
       if (!VARATT_IS_EXTERNAL(buffer)) {
         continue;
@@ -264,7 +268,8 @@ void PaxColumns::VerifyAllExternalToasts(
     uint64 first_offset;
     bool got_first_external_toast = false;
     for (size_t i = 0; i < data_indexes->GetSize(); i++) {
-      std::tie(buffer, buff_len) = column->GetBuffer((*data_indexes)[i]);
+      std::tie(buffer, buff_len) =
+          column->GetBuffer(column->GetRangeNonNullRows(0, (*data_indexes)[i]));
       if (VARATT_IS_EXTERNAL(buffer)) {
         auto ext_toast = PaxExtGetDatum(buffer);
         first_offset = ext_toast->va_extoffs;
@@ -278,7 +283,8 @@ void PaxColumns::VerifyAllExternalToasts(
       uint64 last_offset;
       uint64 last_size;
       for (int64 i = data_indexes->GetSize() - 1; i >= 0; i--) {
-        std::tie(buffer, buff_len) = column->GetBuffer((*data_indexes)[i]);
+        std::tie(buffer, buff_len) = column->GetBuffer(
+            column->GetRangeNonNullRows(0, (*data_indexes)[i]));
         if (VARATT_IS_EXTERNAL(buffer)) {
           auto ext_toast = PaxExtGetDatum(buffer);
           last_offset = ext_toast->va_extoffs;
