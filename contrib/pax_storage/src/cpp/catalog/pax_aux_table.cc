@@ -238,7 +238,8 @@ void UpdateVisimap(Oid aux_relid, const char *blockname,
   auto aux_rel = context.GetRelation();
   auto oldtuple = context.SearchMicroPartitionEntry();
   if (!HeapTupleIsValid(oldtuple))
-    elog(ERROR, "micro partition doesn't exist before inserting tuples");
+    elog(ERROR,
+         "The micro partition does not exist when we updating visible map.");
 
   memset(repls, false, sizeof(repls));
   repls[ANUM_PG_PAX_BLOCK_TABLES_PTVISIMAPNAME - 1] = true;
@@ -257,6 +258,48 @@ void UpdateVisimap(Oid aux_relid, const char *blockname,
   CommandCounterIncrement();
 
   context.EndSearchMicroPartition(NoLock);
+}
+
+void UpdateStatistics(Oid aux_relid, const char *blockname,
+                      pax::stats::MicroPartitionStatisticsInfo *mp_stats) {
+  // NameData pt_visimap_name;
+  Datum values[NATTS_PG_PAX_BLOCK_TABLES];
+  bool nulls[NATTS_PG_PAX_BLOCK_TABLES];
+  bool repls[NATTS_PG_PAX_BLOCK_TABLES];
+  ScanAuxContext context;
+  HeapTuple newtuple;
+  uint32 stats_len;
+  void *stats_out;
+
+  Assert(mp_stats);
+  stats_len = VARHDRSZ + mp_stats->ByteSizeLong();
+  stats_out = palloc(stats_len);
+  SET_VARSIZE(stats_out, stats_len);
+  mp_stats->SerializeToArray(VARDATA(stats_out), stats_len - VARHDRSZ);
+
+  context.BeginSearchMicroPartition(aux_relid, InvalidOid, NULL,
+                                    RowExclusiveLock, blockname);
+  auto aux_rel = context.GetRelation();
+  auto oldtuple = context.SearchMicroPartitionEntry();
+  if (!HeapTupleIsValid(oldtuple))
+    elog(ERROR,
+         "The micro partition does not exist when we updating statistics.");
+
+  memset(repls, false, sizeof(repls));
+  repls[ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS - 1] = true;
+  nulls[ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS - 1] = false;
+  values[ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS - 1] =
+      PointerGetDatum(stats_out);
+  newtuple = heap_modify_tuple(oldtuple, RelationGetDescr(aux_rel), values,
+                               nulls, repls);
+
+  CatalogTupleUpdate(aux_rel, &oldtuple->t_self, newtuple);
+  heap_freetuple(newtuple);
+  context.EndSearchMicroPartition(NoLock);
+
+  pfree(stats_out);
+
+  CommandCounterIncrement();
 }
 
 // We won't update the visimap in here
@@ -659,6 +702,13 @@ void UpdateVisimap(Oid aux_relid, const char *blockname,
                    const char *visimap_filename) {
   CBDB_WRAP_START;
   { paxc::UpdateVisimap(aux_relid, blockname, visimap_filename); }
+  CBDB_WRAP_END;
+}
+
+void UpdateStatistics(Oid aux_relid, const char *blockname,
+                      pax::stats::MicroPartitionStatisticsInfo *mp_stats) {
+  CBDB_WRAP_START;
+  { paxc::UpdateStatistics(aux_relid, blockname, mp_stats); }
   CBDB_WRAP_END;
 }
 

@@ -58,6 +58,8 @@ class PaxFilter final {
 
   void SetColumnProjection(bool *proj, size_t proj_len);
 
+  void SetColumnProjection(const std::vector<int> &cols, int natts);
+
   void SetScanKeys(ScanKey scan_keys, int num_scan_keys);
 
   ExecutionFilterContext *GetExecutionFilterContext() { return &efctx_; }

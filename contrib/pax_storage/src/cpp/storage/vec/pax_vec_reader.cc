@@ -75,6 +75,10 @@ size_t PaxVecReader::GetGroupNums() {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
+size_t PaxVecReader::GetTupleCountsInGroup(size_t group_index) {
+  CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
+}
+
 std::unique_ptr<ColumnStatsProvider> PaxVecReader::GetGroupStatsInfo(
     size_t group_index) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);

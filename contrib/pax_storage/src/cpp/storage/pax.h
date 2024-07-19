@@ -150,10 +150,15 @@ class TableDeleter final {
 
   void Delete();
 
-  // delete and mark in visibility map
   void DeleteWithVisibilityMap(TransactionId delete_xid);
 
  private:
+  void UpdateStatsInAuxTable(TransactionId delete_xid,
+                             const pax::MicroPartitionMetadata &meta,
+                             std::shared_ptr<Bitmap8> visi_bitmap,
+                             const std::vector<int> &min_max_col_idxs,
+                             PaxFilter *filter);
+
   void OpenWriter();
   void OpenReader();
 

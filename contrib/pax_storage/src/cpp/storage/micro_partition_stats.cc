@@ -50,6 +50,14 @@ class MicroPartitionStatsData final {
         ->CopyFrom(stats->info_.columnstats(column_index));
   }
 
+  inline void CopyFrom(::pax::stats::MicroPartitionStatisticsInfo *info,
+                       int column_index) {
+    Assert(info);
+
+    info_.mutable_columnstats(column_index)
+        ->CopyFrom(info->columnstats(column_index));
+  }
+
   inline ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) {
     return info_.mutable_columnstats(column_index)->mutable_info();
   }
@@ -422,12 +430,130 @@ void MicroPartitionStats::AddRow(TupleTableSlot *slot,
              cbdb::CException::ExType::kExTypeSchemaNotMatch,
              fmt("Current stats initialized [N=%lu], in tuple desc [natts=%d] ",
                  status_.size(), n));
+  AssertImply(!detoast_vals.empty(), detoast_vals.size() == (size_t)n);
   for (auto i = 0; i < n; i++) {
-    AssertImply(tuple_desc_->attrs[i].attisdropped, slot->tts_isnull[i]);
     if (slot->tts_isnull[i])
       AddNullColumn(i);
     else
-      AddNonNullColumn(i, slot->tts_values[i], detoast_vals[i]);
+      AddNonNullColumn(i, slot->tts_values[i],
+                       detoast_vals.empty() ? 0 : detoast_vals[i]);
+  }
+}
+
+void MicroPartitionStats::MergeRawInfo(
+    ::pax::stats::MicroPartitionStatisticsInfo *stats_info) {
+  auto merge_const_stats = [](MicroPartitionStatsData *origin,
+                              ::pax::stats::MicroPartitionStatisticsInfo *info,
+                              size_t column_index) {
+    if (origin->GetAllNull(column_index) &&
+        !info->columnstats(column_index).allnull()) {
+      origin->SetAllNull(column_index, false);
+    }
+
+    if (!origin->GetHasNull(column_index) &&
+        info->columnstats(column_index).hasnull()) {
+      origin->SetHasNull(column_index, true);
+    }
+
+    // won't be overflow
+    origin->SetNonNullRows(column_index,
+                           origin->GetNonNullRows(column_index) +
+                               info->columnstats(column_index).nonnullrows());
+  };
+
+  bool ok;
+  Datum minimal, maximum, sum_result;
+  for (size_t column_index = 0; column_index < status_.size(); column_index++) {
+    auto att = TupleDescAttr(tuple_desc_, column_index);
+    auto collation = att->attcollation;
+    auto typlen = att->attlen;
+    auto typbyval = att->attbyval;
+
+    if (status_[column_index] == STATUS_NOT_SUPPORT) {
+      // still need update hasnull/allnull
+      merge_const_stats(stats_, stats_info, column_index);
+      goto update_sum_stats;
+    } else if (status_[column_index] == STATUS_NEED_UPDATE) {
+      auto col_basic_stats_merge pg_attribute_unused() =
+          stats_info->mutable_columnstats(column_index)->mutable_info();
+
+      auto col_basic_stats pg_attribute_unused() =
+          stats_->GetColumnBasicInfo(column_index);
+
+      Assert(col_basic_stats->typid() == col_basic_stats_merge->typid());
+      Assert(col_basic_stats->opfamily() == col_basic_stats_merge->opfamily());
+      Assert(col_basic_stats->collation() ==
+             col_basic_stats_merge->collation());
+      Assert(col_basic_stats->collation() == collation);
+
+      merge_const_stats(stats_, stats_info, column_index);
+
+      minimal =
+          FromValue(stats_info->columnstats(column_index).datastats().minimal(),
+                    typlen, typbyval, &ok);
+      Assert(ok);
+      maximum =
+          FromValue(stats_info->columnstats(column_index).datastats().maximum(),
+                    typlen, typbyval, &ok);
+      Assert(ok);
+
+      UpdateMinMaxValue(column_index, minimal, collation, typlen, typbyval);
+      UpdateMinMaxValue(column_index, maximum, collation, typlen, typbyval);
+    } else if (status_[column_index] == STATUS_MISSING_INIT_VAL) {
+      stats_->CopyFrom(
+          stats_info,
+          column_index);  // do the copy, no need call merge_const_stats
+
+      minimal =
+          FromValue(stats_info->columnstats(column_index).datastats().minimal(),
+                    typlen, typbyval, &ok);
+      Assert(ok);
+      maximum =
+          FromValue(stats_info->columnstats(column_index).datastats().maximum(),
+                    typlen, typbyval, &ok);
+      Assert(ok);
+
+      CopyDatum(minimal, &min_in_mem_[column_index], typlen, typbyval);
+      CopyDatum(maximum, &max_in_mem_[column_index], typlen, typbyval);
+
+      status_[column_index] = STATUS_NEED_UPDATE;
+    } else {
+      Assert(false);
+    }
+  update_sum_stats:
+    // begin update sum
+    auto sum_stat = &sum_stats_[column_index];
+    Assert(sum_stat->status != STATUS_UNINITIALIZED);
+    Assert(sum_stat->rettype ==
+           stats_info->columnstats(column_index).info().prorettype());
+    sum_stat->final_func_called = true;  // no need call final function
+
+    if (sum_stat->status == STATUS_NOT_SUPPORT) {
+      // do nothing
+      continue;
+    } else if (sum_stat->status == STATUS_NEED_UPDATE) {
+      sum_result =
+          FromValue(stats_info->columnstats(column_index).datastats().sum(),
+                    typlen, typbyval, &ok);
+      Datum newval = cbdb::FunctionCall2Coll(&sum_stat->add_func, InvalidOid,
+                                             sum_stat->result, sum_result);
+      if (!sum_stat->rettypbyval &&
+          cbdb::DatumToPointer(newval) !=
+              cbdb::DatumToPointer(sum_stat->result)) {
+        cbdb::Pfree(cbdb::DatumToPointer(sum_stat->result));
+      }
+      sum_stat->result =
+          cbdb::datumCopy(newval, sum_stat->rettyplen, sum_stat->rettypbyval);
+    } else if (sum_stat->status == STATUS_MISSING_INIT_VAL) {
+      sum_result =
+          FromValue(stats_info->columnstats(column_index).datastats().sum(),
+                    typlen, typbyval, &ok);
+      sum_stat->result = cbdb::datumCopy(sum_result, sum_stat->rettypbyval,
+                                         sum_stat->rettyplen);
+      sum_stat->status = STATUS_NEED_UPDATE;
+    } else {
+      Assert(false);
+    }
   }
 }
 
