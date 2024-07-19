@@ -38,6 +38,7 @@ set(pax_storage_src
     storage/micro_partition_metadata.cc
     storage/micro_partition_row_filter_reader.cc
     storage/micro_partition_stats.cc
+    storage/micro_partition_stats_updater.cc
     storage/orc/orc_format_reader.cc
     storage/orc/orc_group.cc
     storage/orc/orc_vec_group.cc

@@ -28,6 +28,8 @@ class PaxVecReader : public MicroPartitionReader {
 
   size_t GetGroupNums() override;
 
+  size_t GetTupleCountsInGroup(size_t group_index) override;
+
   std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
       size_t group_index) override;
 

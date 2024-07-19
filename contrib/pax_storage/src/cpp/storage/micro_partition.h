@@ -195,6 +195,8 @@ class MicroPartitionReader {
   // ------------------------------------------
   virtual bool GetTuple(TupleTableSlot *slot, size_t row_index) = 0;
 
+  virtual size_t GetTupleCountsInGroup(size_t group_index) = 0;
+
   virtual size_t GetGroupNums() = 0;
 
   virtual Group *ReadGroup(size_t group_index) = 0;
@@ -232,14 +234,12 @@ class MicroPartitionReaderProxy : public MicroPartitionReader {
 
   size_t GetGroupNums() override;
 
+  size_t GetTupleCountsInGroup(size_t group_index) override;
+
   std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
       size_t group_index) override;
 
   Group *ReadGroup(size_t index) override;
-
-  void SetReader(MicroPartitionReader *reader);
-  MicroPartitionReader *GetReader() { return reader_; }
-  const MicroPartitionReader *GetReader() const { return reader_; }
 
  protected:
   // Allow different MicroPartitionReader shared columns

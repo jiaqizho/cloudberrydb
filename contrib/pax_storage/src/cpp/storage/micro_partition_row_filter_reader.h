@@ -14,10 +14,6 @@ class MicroPartitionRowFilterReader : public MicroPartitionReaderProxy {
   MicroPartitionReader::Group *GetNextGroup(TupleDesc desc);
 
  private:
-  inline void SetVisibilityBitmap(std::shared_ptr<Bitmap8> visibility_bitmap) {
-    micro_partition_visibility_bitmap_ = visibility_bitmap;
-  }
-
   bool TestRowScanInternal(TupleTableSlot *slot, ExprState *estate,
                            AttrNumber attno);
 
