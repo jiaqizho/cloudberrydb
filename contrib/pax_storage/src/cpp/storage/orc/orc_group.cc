@@ -47,7 +47,7 @@ PaxColumns *OrcGroup::GetAllColumns() const { return pax_columns_; }
 
 std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
   int index = 0;
-  int nattrs = 0;
+  int natts = 0;
   int column_nums = 0;
 
   Assert(pax_columns_);
@@ -58,7 +58,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
     return {false, current_row_index_};
   }
 
-  nattrs = slot->tts_tupleDescriptor->natts;
+  natts = slot->tts_tupleDescriptor->natts;
   column_nums = pax_columns_->GetColumns();
 
   if (micro_partition_visibility_bitmap_) {
@@ -94,7 +94,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
       // filter with projection
       index = (*proj_col_index_)[i];
 
-      // handle PAX columns number inconsistent with pg catalog nattrs in case
+      // handle PAX columns number inconsistent with pg catalog natts in case
       // data not been inserted yet or read pax file conserved before last add
       // column DDL is done, for these cases it is normal that pg catalog schema
       // is not match with that in PAX file.
@@ -117,7 +117,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
           GetColumnValue(column, current_row_index_, &(current_nulls_[index]));
     }
   } else {
-    for (index = 0; index < nattrs; index++) {
+    for (index = 0; index < natts; index++) {
       // Still need filter with old projection
       // If current proj_col_index_ no build or empty
       // It means current tuple only need return CTID
@@ -125,12 +125,12 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
         continue;
       }
 
-      // handle PAX columns number inconsistent with pg catalog nattrs in case
+      // handle PAX columns number inconsistent with pg catalog natts in case
       // data not been inserted yet or read pax file conserved before last add
       // column DDL is done, for these cases it is normal that pg catalog schema
       // is not match with that in PAX file.
       if (index >= column_nums) {
-        cbdb::SlotGetMissingAttrs(slot, index, nattrs);
+        cbdb::SlotGetMissingAttrs(slot, index, natts);
         break;
       }
 
@@ -153,7 +153,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
 
 bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
   size_t index = 0;
-  size_t nattrs = 0;
+  size_t natts = 0;
   size_t column_nums = 0;
 
   Assert(pax_columns_);
@@ -169,13 +169,13 @@ bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
     return false;
   }
 
-  nattrs = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
+  natts = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
   column_nums = pax_columns_->GetColumns();
 
-  for (index = 0; index < nattrs; index++) {
+  for (index = 0; index < natts; index++) {
     // Same logic with `ReadTuple`
     if (index >= column_nums) {
-      cbdb::SlotGetMissingAttrs(slot, index, nattrs);
+      cbdb::SlotGetMissingAttrs(slot, index, natts);
       break;
     }
 
