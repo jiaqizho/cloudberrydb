@@ -21,8 +21,8 @@ MicroPartitionRowFilterReader *MicroPartitionRowFilterReader::New(
   Assert(filter && filter->HasRowScanFilter());
 
   auto r = PAX_NEW<MicroPartitionRowFilterReader>();
-  r->SetReader(reader);
-  r->SetVisibilityBitmap(visibility_bitmap);
+  r->reader_ = reader;
+  r->micro_partition_visibility_bitmap_ = visibility_bitmap;
   r->filter_ = filter;
   return r;
 }

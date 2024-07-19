@@ -27,6 +27,7 @@ class MicroPartitionStats final {
   MicroPartitionStats *Reset();
   ::pax::stats::MicroPartitionStatisticsInfo *Serialize();
 
+  void MergeRawInfo(::pax::stats::MicroPartitionStatisticsInfo *stats_info);
   void MergeTo(MicroPartitionStats *stats);
   ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) const;
 

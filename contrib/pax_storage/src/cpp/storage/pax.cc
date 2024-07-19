@@ -13,6 +13,7 @@
 #include "storage/micro_partition_file_factory.h"
 #include "storage/micro_partition_metadata.h"
 #include "storage/micro_partition_stats.h"
+#include "storage/micro_partition_stats_updater.h"
 #include "storage/remote_file_system.h"
 
 #ifdef VEC_BUILD
@@ -179,7 +180,7 @@ std::vector<int> TableWriter::GetMinMaxColumnIndexes() {
 
 std::vector<std::tuple<ColumnEncoding_Kind, int>>
 TableWriter::GetRelEncodingOptions() {
-  size_t nattrs = 0;
+  size_t natts = 0;
   paxc::PaxOptions **pax_options = nullptr;
   std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
 
@@ -188,9 +189,9 @@ TableWriter::GetRelEncodingOptions() {
   CBDB_WRAP_END;
   Assert(pax_options);
 
-  nattrs = relation_->rd_att->natts;
+  natts = relation_->rd_att->natts;
 
-  for (size_t index = 0; index < nattrs; index++) {
+  for (size_t index = 0; index < natts; index++) {
     if (pax_options[index]) {
       encoding_opts.emplace_back(std::make_tuple(
           CompressKeyToColumnEncodingKind(pax_options[index]->compress_type),
@@ -567,6 +568,50 @@ TableDeleter::~TableDeleter() {
   PAX_DELETE(file_system_options_);
 }
 
+void TableDeleter::UpdateStatsInAuxTable(
+    Oid aux_oid, const pax::MicroPartitionMetadata &meta,
+    std::shared_ptr<Bitmap8> visi_bitmap,
+    const std::vector<int> &min_max_col_idxs, PaxFilter *filter) {
+  MicroPartitionReader::ReaderOptions options;
+  MicroPartitionReader *mp_reader;
+  File *toast_file = nullptr;
+  int32 reader_flags = FLAGS_EMPTY;
+  MicroPartitionStats *updated_stats;
+  TupleTableSlot *slot;
+
+  options.block_id = meta.GetMicroPartitionId();
+  options.filter = filter;
+  options.reused_buffer =
+      nullptr;  // TODO(jiaqizho): let us reuse the read buffer
+  options.visibility_bitmap = visi_bitmap;
+
+  if (meta.GetExistToast()) {
+    // must exist the file in disk
+    toast_file = file_system_->Open(meta.GetFileName() + TOAST_FILE_SUFFIX,
+                                    fs::kReadMode, file_system_options_);
+  }
+
+  mp_reader = MicroPartitionFileFactory::CreateMicroPartitionReader(
+      std::move(options), reader_flags,
+      file_system_->Open(meta.GetFileName(), fs::kReadMode,
+                         file_system_options_),
+      toast_file);
+
+  slot = MakeTupleTableSlot(rel_->rd_att, &TTSOpsVirtual);
+  updated_stats = MicroPartitionStatsUpdater(mp_reader, visi_bitmap)
+                      .Update(slot, min_max_col_idxs);
+
+  // update the statistics in aux table
+  cbdb::UpdateStatistics(aux_oid, meta.GetMicroPartitionId().c_str(),
+                         updated_stats->Serialize());
+
+  mp_reader->Close();
+  PAX_DELETE(mp_reader);
+
+  ExecDropSingleTupleTableSlot(slot);
+  PAX_DELETE(updated_stats);
+}
+
 // The pattern of file name of the visimap file is:
 // <blocknum>_<generation>_<tag>.visimap
 // blocknum: the corresponding micro partition that the visimap is for
@@ -580,13 +625,17 @@ void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
   if (!iterator_->HasNext()) {
     return;
   }
-
+  std::vector<int> min_max_col_idxs;
+  PaxFilter stats_updater_projection;
   Bitmap8 *visi_bitmap = nullptr;
   auto aux_oid = cbdb::GetPaxAuxRelid(RelationGetRelid(rel_));
   auto rel_path = cbdb::BuildPaxDirectoryPath(
       rel_->rd_node, rel_->rd_backend,
       cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace));
 
+  min_max_col_idxs = cbdb::GetMinMaxColumnsIndex(rel_);
+  stats_updater_projection.SetColumnProjection(min_max_col_idxs,
+                                               rel_->rd_att->natts);
   do {
     auto it = iterator_->Next();
 
@@ -648,6 +697,14 @@ void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
       visimap_file->WriteN(raw.bitmap, raw.size);
       visimap_file->Close();
     }
+
+    // Update the stats in pax aux table
+    // Notice that: PAX won't update the stats in group
+    UpdateStatsInAuxTable(aux_oid, micro_partition_metadata,
+                          std::make_shared<Bitmap8>(visi_bitmap->Raw(),
+                                                    Bitmap8::ReadOnlyOwnBitmap),
+                          min_max_col_idxs, &stats_updater_projection);
+
     // Replace PAX_DELETE by smart pointer
     PAX_DELETE<Bitmap8>(visi_bitmap);
     visi_bitmap = nullptr;

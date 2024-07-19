@@ -362,11 +362,39 @@ void PaxFilter::SetColumnProjection(bool *proj, size_t proj_len) {
     proj_len_ = 0;
     proj_column_index_.clear();
   } else {
+    Assert(!proj_);
     proj_ = proj;
     proj_len_ = proj_len;
     proj_column_index_.clear();
     for (size_t i = 0; i < proj_len_; i++) {
       if (proj_[i]) proj_column_index_.emplace_back(i);
+    }
+  }
+}
+
+void PaxFilter::SetColumnProjection(const std::vector<int> &cols, int natts) {
+  bool all_proj = (cols.size() == (size_t)natts);
+
+#ifdef ENABLE_DEBUG
+  Assert(cols.size() <= (size_t)natts);
+  for (int i = 0; (size_t)i < cols.size(); i++) {
+    Assert(cols[i] >= i);
+    Assert(cols[i] < natts);
+    AssertImply(i > 0, cols[i] > cols[i - 1]);
+  }
+#endif
+
+  if (all_proj) {
+    proj_ = nullptr;
+    proj_len_ = 0;
+    proj_column_index_.clear();
+  } else {
+    proj_ = PAX_NEW_ARRAY<bool>(natts);
+    proj_len_ = natts;
+    memset(proj_, false, natts);
+    for (int i = 0; (size_t)i < cols.size(); i++) {
+      proj_[cols[i]] = true;
+      proj_column_index_.emplace_back(cols[i]);
     }
   }
 }
