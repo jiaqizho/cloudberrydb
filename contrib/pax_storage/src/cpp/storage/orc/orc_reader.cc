@@ -106,6 +106,10 @@ MicroPartitionReader::Group *OrcReader::ReadGroup(size_t group_index) {
 
 size_t OrcReader::GetGroupNums() { return format_reader_.GetStripeNums(); }
 
+size_t OrcReader::GetTupleCountsInGroup(size_t group_index) {
+  return format_reader_.GetStripeNumberOfRows(group_index);
+}
+
 void OrcReader::Open(const ReaderOptions &options) {
   // Must not open twice.
   Assert(is_closed_);

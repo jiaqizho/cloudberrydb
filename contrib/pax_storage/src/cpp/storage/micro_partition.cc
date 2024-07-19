@@ -47,14 +47,12 @@ bool MicroPartitionReaderProxy::GetTuple(TupleTableSlot *slot,
   return reader_->GetTuple(slot, row_index);
 }
 
-void MicroPartitionReaderProxy::SetReader(MicroPartitionReader *reader) {
-  Assert(reader);
-  Assert(!reader_);
-  reader_ = reader;
-}
-
 size_t MicroPartitionReaderProxy::GetGroupNums() {
   return reader_->GetGroupNums();
+}
+
+size_t MicroPartitionReaderProxy::GetTupleCountsInGroup(size_t group_index) {
+  return reader_->GetTupleCountsInGroup(group_index);
 }
 
 std::unique_ptr<ColumnStatsProvider>

@@ -22,6 +22,8 @@ Oid FindAuxIndexOid(Oid aux_relid, Snapshot snapshot);
 void InsertMicroPartitionPlaceHolder(Oid aux_relid, const char *blockname);
 void UpdateVisimap(Oid aux_relid, const char *blockname,
                    const char *visimap_filename);
+void UpdateStatistics(Oid aux_relid, const char *blockname,
+                      pax::stats::MicroPartitionStatisticsInfo *mp_stats);
 void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot,
                                const char *blockname);
 // Scan aux table
@@ -89,6 +91,9 @@ void InsertOrUpdateMicroPartitionEntry(const pax::WriteSummary &summary);
 
 void UpdateVisimap(Oid aux_relid, const char *blockname,
                    const char *visimap_filename);
+
+void UpdateStatistics(Oid aux_relid, const char *blockname,
+                      pax::stats::MicroPartitionStatisticsInfo *mp_stats);
 
 void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot,
                                const std::string &blockname);
