@@ -242,32 +242,30 @@ void CCPaxAccessMethod::RelationCopyData(Relation rel,
   CBDB_END_TRY();
 }
 
-/*
- * Copy data from `OldTable` into `NewTable`, as part of a CLUSTER or VACUUM
- * FULL.
- *
- * PAX does not have dead tuples, but the core framework requires
- * to implement this callback to do CLUSTER/VACUUM FULL/etc.
- * PAX may have re-organize semantics for this function.
- *
- *
- * Additional Input parameters:
- * - use_sort - if true, the table contents are sorted appropriate for
- *   `OldIndex`; if false and OldIndex is not InvalidOid, the data is copied
- *   in that index's order; if false and OldIndex is InvalidOid, no sorting is
- *   performed
- * - OldIndex - see use_sort
- * - OldestXmin - computed by vacuum_set_xid_limits(), even when
- *   not needed for the relation's AM
- * - *xid_cutoff - ditto
- * - *multi_cutoff - ditto
- *
- * Output parameters:
- * - *xid_cutoff - rel's new relfrozenxid value, may be invalid
- * - *multi_cutoff - rel's new relminmxid value, may be invalid
- * - *tups_vacuumed - stats, for logging, if appropriate for AM
- * - *tups_recently_dead - stats, for logging, if appropriate for AM
- */
+//  Copy data from `OldTable` into `NewTable`, as part of a CLUSTER or VACUUM
+//  FULL.
+
+//  PAX does not have dead tuples, but the core framework requires
+//  to implement this callback to do CLUSTER/VACUUM FULL/etc.
+//  PAX may have re-organize semantics for this function.
+
+//  Additional Input parameters:
+//  - use_sort - if true, the table contents are sorted appropriate for
+//    `OldIndex`; if false and OldIndex is not InvalidOid, the data is copied
+//    in that index's order; if false and OldIndex is InvalidOid, no sorting is
+//    performed
+//  - OldIndex - see use_sort
+//  - OldestXmin - computed by vacuum_set_xid_limits(), even when
+//    not needed for the relation's AM
+//  - *xid_cutoff - ditto
+//  - *multi_cutoff - ditto
+
+//  Output parameters:
+//  - *xid_cutoff - rel's new relfrozenxid value, may be invalid
+//  - *multi_cutoff - rel's new relminmxid value, may be invalid
+//  - *tups_vacuumed - stats, for logging, if appropriate for AM
+//  - *tups_recently_dead - stats, for logging, if appropriate for AM
+
 void CCPaxAccessMethod::RelationCopyForCluster(
     Relation old_rel, Relation new_rel, Relation old_index, bool use_sort,
     TransactionId /*oldest_xmin*/, TransactionId * /*xid_cutoff*/,
@@ -1040,6 +1038,10 @@ List *PaxAccessMethod::TransformColumnEncodingClauses(Relation /*rel*/,
 }  // namespace paxc
 // END of C implementation
 
+#define SET_LOCKTAG_INT64(tag, key64)                              \
+  SET_LOCKTAG_ADVISORY(tag, MyDatabaseId, (uint32)((key64) >> 32), \
+                       (uint32)(key64), 1)
+
 extern "C" {
 
 static const TableAmRoutine kPaxColumnMethods = {
@@ -1116,10 +1118,176 @@ Datum pax_tableam_handler(PG_FUNCTION_ARGS) {  // NOLINT
 
 static object_access_hook_type prev_object_access_hook = NULL;
 
+static ProcessUtility_hook_type prev_ProcessUtilit_hook = NULL;
+
+static bool relation_has_zorder_clustered_options(Relation rel) {
+  Bitmapset *bms = paxc::paxc_get_cluster_columns_index(rel, false);
+  if (bms) {
+    bms_free(bms);
+  }
+  return bms != nullptr;
+}
+
+static bool relation_has_clustered_index(Relation rel) {
+  // We need to find the index that has indisclustered set.
+  Oid indexOid = InvalidOid;
+  ListCell *index;
+  foreach (index, RelationGetIndexList(rel)) {
+    indexOid = lfirst_oid(index);
+    if (get_index_isclustered(indexOid)) break;
+    indexOid = InvalidOid;
+  }
+  return OidIsValid(indexOid);
+}
+
+static bool table_can_be_clustered(Relation rel) {
+  return relation_has_zorder_clustered_options(rel) ||
+         relation_has_clustered_index(rel);
+}
+
+static void zorder_cluster_pax_rel(ClusterStmt *stmt, Relation rel,
+                                   Snapshot snapshot) {
+  // TODO(gongxun): is_incremental_cluster should get from stmt
+  CBDB_TRY();
+  { pax::ZOrderCluster(rel, snapshot, true); }
+  CBDB_CATCH_DEFAULT();
+  CBDB_END_TRY();
+}
+
+static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
+                              bool readOnlyTree, ProcessUtilityContext context,
+                              ParamListInfo params, QueryEnvironment *queryEnv,
+                              DestReceiver *dest,
+                              QueryCompletion *completionTag) {
+  bool isTopLevel = (context == PROCESS_UTILITY_TOPLEVEL);
+  // if is pax table, do something
+  switch (nodeTag(pstmt->utilityStmt)) {
+    case T_ClusterStmt: {
+      ClusterStmt *stmt = (ClusterStmt *)pstmt->utilityStmt;
+      if (stmt->relation) {
+        Relation rel = table_openrv(stmt->relation, AccessShareLock);
+        if (RelationIsPAX(rel)) {
+          bool is_zorder_cluster;
+          if (stmt->indexname == NULL && !table_can_be_clustered(rel)) {
+            ereport(ERROR,
+                    (errcode(ERRCODE_UNDEFINED_OBJECT),
+                     errmsg("there is no previously clustered index or "
+                            "cluster_columns reloptions for table \"%s\"",
+                            stmt->relation->relname)));
+          }
+
+          is_zorder_cluster = relation_has_zorder_clustered_options(rel);
+
+          // cluster table using indexname,we should check if
+          // relation_has_zorder_clusted
+          if (stmt->indexname && is_zorder_cluster) {
+            elog(ERROR,
+                 "cannot using index to cluster table which has "
+                 "cluster-columns ");
+          }
+
+          if (is_zorder_cluster) {
+            if (Gp_role == GP_ROLE_DISPATCH) {
+              CdbDispatchUtilityStatement(
+                  (Node *)stmt,
+                  DF_CANCEL_ON_ERROR | DF_WITH_SNAPSHOT | DF_NEED_TWO_PHASE,
+                  GetAssignedOidsForDispatch(), NULL);
+            } else if (Gp_role == GP_ROLE_EXECUTE) {
+              zorder_cluster_pax_rel(stmt, rel, GetActiveSnapshot());
+            }
+
+            table_close(rel, NoLock);
+            return;
+          }
+        }
+
+        table_close(rel, NoLock);
+      } else {
+        if (Gp_role == GP_ROLE_DISPATCH) {
+          // only cluster pax zorder clustered table
+          List *relids = NULL;
+          Relation pax_aux_rel;
+          SysScanDesc scan;
+          HeapTuple tuple;
+
+          // We cannot run this form of CLUSTER inside a user transaction block;
+          // we'd be holding locks way too long.
+          PreventInTransactionBlock(isTopLevel, "CLUSTER");
+
+          pax_aux_rel = table_open(PAX_TABLES_RELATION_ID, AccessShareLock);
+          scan = systable_beginscan(pax_aux_rel, InvalidOid, false,
+                                    GetActiveSnapshot(), 0, NULL);
+
+          while ((tuple = systable_getnext(scan)) != NULL) {
+            Datum datum;
+            bool isnull;
+            datum = heap_getattr(tuple, ANUM_PG_PAX_TABLES_RELID,
+                                 pax_aux_rel->rd_att, &isnull);
+            Assert(!isnull);
+            Oid relid = DatumGetObjectId(datum);
+            relids = lappend_oid(relids, relid);
+          }
+          systable_endscan(scan);
+          table_close(pax_aux_rel, AccessShareLock);
+
+          ListCell *lc = NULL;
+          foreach (lc, relids) {
+            Oid pax_rel_id = Oid(lfirst_oid(lc));
+
+            Relation rel = table_open(pax_rel_id, RowExclusiveLock);
+            if (relation_has_zorder_clustered_options(rel)) {
+              stmt->relation = makeNode(RangeVar);
+              stmt->relation->schemaname =
+                  get_namespace_name(rel->rd_rel->relnamespace);
+              stmt->relation->relname = pstrdup(rel->rd_rel->relname.data);
+              CdbDispatchUtilityStatement((Node *)stmt,
+                                          DF_CANCEL_ON_ERROR | DF_WITH_SNAPSHOT,
+                                          GetAssignedOidsForDispatch(), NULL);
+              pfree(stmt->relation);
+              stmt->relation = NULL;
+            }
+            table_close(rel, RowExclusiveLock);
+          }
+
+          list_free(relids);
+        }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  if (prev_ProcessUtilit_hook)
+    prev_ProcessUtilit_hook(pstmt, queryString, readOnlyTree, context, params,
+                            queryEnv, dest, completionTag);
+  else
+    standard_ProcessUtility(pstmt, queryString, readOnlyTree, context, params,
+                            queryEnv, dest, completionTag);
+}
+
 static void PaxCheckMinMaxColumns(Relation rel, const char *minmax_columns) {
   if (!minmax_columns) return;
 
   auto bms = paxc::paxc_get_minmax_columns_index(rel, true);
+  bms_free(bms);
+}
+
+static void PaxCheckClusterColumns(Relation rel, const char *cluster_columns) {
+  if (!cluster_columns || strlen(cluster_columns) == 0) return;
+
+  Oid indexOid = InvalidOid;
+  ListCell *index;
+  foreach (index, RelationGetIndexList(rel)) {
+    indexOid = lfirst_oid(index);
+    if (get_index_isclustered(indexOid)) {
+      elog(ERROR,
+           "pax table has previously clustered index, can't set zorder "
+           "cluster reloptions");
+    }
+  }
+
+  auto bms = paxc::paxc_get_cluster_columns_index(rel, true);
   bms_free(bms);
 }
 
@@ -1201,8 +1369,16 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id,
 
   // if not (OAT_POST_CREATE or OAT_TRUNCATE or OAT_DROP)
   if (!(access == OAT_POST_CREATE || access == OAT_TRUNCATE ||
-        access == OAT_DROP))
+        access == OAT_POST_ALTER || access == OAT_DROP))
     return;
+
+  if (access == OAT_POST_ALTER) {
+    ObjectAccessPostAlter *pa_arg = (ObjectAccessPostAlter *)arg;
+    bool is_internal = pa_arg->is_internal;
+    if (is_internal) {
+      return;
+    }
+  }
 
   CommandCounterIncrement();
   rel = relation_open(object_id, RowExclusiveLock);
@@ -1212,13 +1388,15 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id,
   if (!ok) goto out;
 
   switch (access) {
-    case OAT_POST_CREATE: {
+    case OAT_POST_CREATE:
+    case OAT_POST_ALTER: {
       options = reinterpret_cast<paxc::PaxOptions *>(rel->rd_options);
       if (options == NULL) goto out;
 
       PaxCheckParitionOptions(rel, options->partition_by(),
                               options->partition_ranges());
       PaxCheckMinMaxColumns(rel, options->minmax_columns());
+      PaxCheckClusterColumns(rel, options->cluster_columns());
       PaxCheckNumericOption(rel, options->storage_format);
     } break;
 
@@ -1386,6 +1564,9 @@ void _PG_init(void) {  // NOLINT
 
   ext_dml_init_hook = pax::CCPaxAccessMethod::ExtDmlInit;
   ext_dml_finish_hook = pax::CCPaxAccessMethod::ExtDmlFini;
+
+  prev_ProcessUtilit_hook = ProcessUtility_hook;
+  ProcessUtility_hook = paxProcessUtility;
 
   register_custom_object_class(&pax_fastsequence_coc);
   register_custom_object_class(&pax_tables_coc);

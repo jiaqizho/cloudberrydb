@@ -116,6 +116,22 @@ static inline bool DatumToBool(Datum d) noexcept { return DatumGetBool(d); }
 
 static inline Datum BoolToDatum(bool d) noexcept { return BoolGetDatum(d); }
 
+static inline Datum Float4ToDutum(float4 d) noexcept {
+  return Float4GetDatum(d);
+}
+
+static inline float4 DatumToFloat4(Datum d) noexcept {
+  return DatumGetFloat4(d);
+}
+
+static inline Datum Float8ToDutum(float8 d) noexcept {
+  return Float8GetDatum(d);
+}
+
+static inline float8 DatumToFloat8(Datum d) noexcept {
+  return DatumGetFloat8(d);
+}
+
 Numeric DatumToNumeric(Datum d);
 
 void *PointerAndLenFromDatum(Datum d, int *len);
@@ -235,6 +251,16 @@ bool UFileExists(Oid spcId, const char *fileName);
 const char *UFileGetLastError(UFile *file);
 
 void PaxAddPendingDelete(Relation rel, RelFileNode rn_node, bool atCommit);
+
+void ExecDropSingleTupleTableSlot(TupleTableSlot *slot);
+TupleTableSlot *MakeSingleTupleTableSlot(TupleDesc tupdesc,
+                                         const TupleTableSlotOps *tts_ops);
+
+void SlotGetAllAttrs(TupleTableSlot *slot);
+
+void ExecClearTuple(TupleTableSlot *slot);
+
+void ExecStoreVirtualTuple(TupleTableSlot *slot);
 
 }  // namespace cbdb
 

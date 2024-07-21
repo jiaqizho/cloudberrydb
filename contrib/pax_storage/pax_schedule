@@ -8,4 +8,6 @@ test: statistics
 test: visimap_vec_compact
 test: visimap_vec_storage
 
+test: zorder_cluster
+
 test: teardown
