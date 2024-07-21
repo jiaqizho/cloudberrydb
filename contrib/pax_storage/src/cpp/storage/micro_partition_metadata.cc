@@ -11,6 +11,7 @@ MicroPartitionMetadata::MicroPartitionMetadata(MicroPartitionMetadata &&other) {
   stats_ = std::move(other.stats_);
   visibility_bitmap_file_ = std::move(other.visibility_bitmap_file_);
   exist_ext_toast_ = other.exist_ext_toast_;
+  is_clustered_ = other.is_clustered_;
 }
 
 MicroPartitionMetadata &MicroPartitionMetadata::operator=(
@@ -21,6 +22,7 @@ MicroPartitionMetadata &MicroPartitionMetadata::operator=(
   stats_ = std::move(other.stats_);
   visibility_bitmap_file_ = std::move(other.visibility_bitmap_file_);
   exist_ext_toast_ = other.exist_ext_toast_;
+  is_clustered_ = other.is_clustered_;
   return *this;
 }
 

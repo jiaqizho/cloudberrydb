@@ -26,7 +26,7 @@ PaxClusteringReader::PaxClusteringReader(
 PaxClusteringReader::~PaxClusteringReader() {}
 
 bool PaxClusteringReader::GetNextTuple(TupleTableSlot *slot) {
-  ExecClearTuple(slot);
+  cbdb::ExecClearTuple(slot);
   while (reader_ == nullptr || !reader_->ReadTuple(slot)) {
     if (iter_->HasNext()) {
       if (reader_ != nullptr) {
@@ -48,12 +48,12 @@ bool PaxClusteringReader::GetNextTuple(TupleTableSlot *slot) {
         file->Close();
       }
 
-      File *file = Singleton<LocalFileSystem>::GetInstance()->Open(
-          meta_info.GetFileName(), pax::fs::kReadMode);
+      File *file =
+          file_system_->Open(meta_info.GetFileName(), pax::fs::kReadMode);
 
       File *toast_file = nullptr;
       if (meta_info.GetExistToast()) {
-        toast_file = Singleton<LocalFileSystem>::GetInstance()->Open(
+        toast_file = file_system_->Open(
             meta_info.GetFileName() + TOAST_FILE_SUFFIX, pax::fs::kReadMode);
         ;
       }
@@ -64,7 +64,7 @@ bool PaxClusteringReader::GetNextTuple(TupleTableSlot *slot) {
       return false;
     }
   }
-  ExecStoreVirtualTuple(slot);
+  cbdb::ExecStoreVirtualTuple(slot);
   return true;
 }
 

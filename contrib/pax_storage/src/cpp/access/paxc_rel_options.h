@@ -29,6 +29,7 @@ namespace paxc {
 #define PAX_SOPT_PARTITION_BY "partition_by"
 #define PAX_SOPT_PARTITION_RANGES "partition_ranges"
 #define PAX_SOPT_MINMAX_COLUMNS "minmax_columns"
+#define PAX_SOPT_CLUSTER_COLUMNS "cluster_columns"
 
 // plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
@@ -42,6 +43,7 @@ struct PaxOptions {
   int partition_by_offset = 0;
   int partition_ranges_offset = 0;
   int minmax_columns_offset = 0;
+  int cluster_columns_offset = 0;
 
   char *partition_by() {
     return partition_by_offset == 0
@@ -57,6 +59,11 @@ struct PaxOptions {
     return minmax_columns_offset == 0
                ? NULL
                : reinterpret_cast<char *>(this) + minmax_columns_offset;
+  }
+  char *cluster_columns() {
+    return cluster_columns_offset == 0
+               ? NULL
+               : reinterpret_cast<char *>(this) + cluster_columns_offset;
   }
 };
 
@@ -105,6 +112,8 @@ List *paxc_transform_column_encoding_clauses(List *encoding_opts, bool validate,
 
 Bitmapset *paxc_get_minmax_columns_index(Relation rel, bool validate);
 
+Bitmapset *paxc_get_cluster_columns_index(Relation rel, bool validate);
+
 }  // namespace paxc
 
 namespace pax {
@@ -120,4 +129,5 @@ extern PaxStorageFormat StorageFormatKeyToPaxStorageFormat(
 
 namespace cbdb {
 std::vector<int> GetMinMaxColumnsIndex(Relation rel);
-}
+std::vector<int> GetClusterColumnsIndex(Relation rel);
+}  // namespace cbdb
