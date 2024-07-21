@@ -112,6 +112,10 @@ static inline Datum Int32ToDatum(int32 d) noexcept { return Int32GetDatum(d); }
 
 static inline Datum Int64ToDatum(int64 d) noexcept { return Int64GetDatum(d); }
 
+static inline bool DatumToBool(Datum d) noexcept { return DatumGetBool(d); }
+
+static inline Datum BoolToDatum(bool d) noexcept { return BoolGetDatum(d); }
+
 Numeric DatumToNumeric(Datum d);
 
 void *PointerAndLenFromDatum(Datum d, int *len);

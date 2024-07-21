@@ -72,6 +72,14 @@ set(pax_storage_src
     storage/remote_file_system.cc
   )
 
+set(pax_clustering_src
+  clustering/clustering.cc
+  clustering/sorter_index.cc
+  clustering/index_clustering.cc
+  clustering/pax_clustering_reader.cc
+  clustering/pax_clustering_writer.cc
+)
+
 
 set(pax_access_src
     ${BISON_paxc_gram_OUTPUTS} # BISON output file
@@ -82,6 +90,7 @@ set(pax_access_src
     access/pax_dml_state.cc
     access/pax_inserter.cc
     access/pax_partition.cc
+    access/pax_table_cluster.cc
     access/pax_updater.cc
     access/pax_visimap.cc
     access/pax_scanner.cc)
@@ -104,7 +113,7 @@ set(pax_vec_src
 add_subdirectory(contrib/tabulate)
 
 #### pax.so
-set(pax_target_src  ${PROTO_SRCS} ${pax_storage_src} ${pax_exceptions_src}
+set(pax_target_src  ${PROTO_SRCS} ${pax_storage_src} ${pax_clustering_src} ${pax_exceptions_src}
   ${pax_access_src} ${pax_comm_src} ${pax_catalog_src} ${pax_vec_src})
 set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR} contrib/tabulate/include)
 set(pax_target_link_libs protobuf zstd z postgres)
