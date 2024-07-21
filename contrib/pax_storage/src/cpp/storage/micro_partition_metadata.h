@@ -15,6 +15,7 @@ struct WriteSummary {
   size_t file_size;
   size_t num_tuples;
   unsigned int rel_oid;
+  bool is_clustered = false;
   pax::stats::MicroPartitionStatisticsInfo *mp_stats = nullptr;
   bool exist_ext_toast;
   WriteSummary();
@@ -70,6 +71,9 @@ struct MicroPartitionMetadata {
   inline bool GetExistToast() const { return exist_ext_toast_; }
 
   inline void SetExistToast(bool exist) { exist_ext_toast_ = exist; }
+  inline void SetClustered(bool clustered) { is_clustered_ = clustered; }
+
+  inline bool IsClustered() const { return is_clustered_; }
 
  private:
   std::string micro_partition_id_;
@@ -82,6 +86,7 @@ struct MicroPartitionMetadata {
   uint32 tuple_count_ = 0;
 
   bool exist_ext_toast_ = false;
+  bool is_clustered_ = false;
 
   ::pax::stats::MicroPartitionStatisticsInfo stats_;
 };  // class MicroPartitionMetadata

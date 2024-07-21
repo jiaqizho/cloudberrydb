@@ -322,7 +322,7 @@ INSERT INTO clstr_3 VALUES (2);
 INSERT INTO clstr_3 VALUES (1);
 -- "CLUSTER <tablename>" on a table that hasn't been clustered
 CLUSTER clstr_2;
-ERROR:  there is no previously clustered index for table "clstr_2"
+ERROR:  there is no previously clustered index or cluster_columns reloptions for table "clstr_2"
 CLUSTER clstr_1_pkey ON clstr_1;
 CLUSTER clstr_2 USING clstr_2_pkey;
 SELECT * FROM clstr_1 UNION ALL

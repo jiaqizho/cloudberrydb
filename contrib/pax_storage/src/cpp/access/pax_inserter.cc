@@ -39,7 +39,7 @@ void CPaxInserter::InsertTuple(Relation relation, TupleTableSlot *slot,
   slot->tts_tableOid = cbdb::RelationGetRelationId(relation);
 
   if (!TTS_IS_VIRTUAL(slot)) {
-    slot_getallattrs(slot);
+    cbdb::SlotGetAllAttrs(slot);
   }
 
   writer_->WriteTuple(slot);
