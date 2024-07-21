@@ -614,3 +614,34 @@ void cbdb::PaxAddPendingDelete(Relation rel, RelFileNode rn_node,
   { paxc::PaxAddPendingDelete(rel, rn_node, atCommit); }
   CBDB_WRAP_END;
 }
+
+void cbdb::ExecDropSingleTupleTableSlot(TupleTableSlot *slot) {
+  CBDB_WRAP_START;
+  { ::ExecDropSingleTupleTableSlot(slot); }
+  CBDB_WRAP_END;
+}
+
+TupleTableSlot *cbdb::MakeSingleTupleTableSlot(
+    TupleDesc tupdesc, const TupleTableSlotOps *tts_ops) {
+  CBDB_WRAP_START;
+  { return ::MakeSingleTupleTableSlot(tupdesc, tts_ops); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::SlotGetAllAttrs(TupleTableSlot *slot) {
+  CBDB_WRAP_START;
+  { ::slot_getallattrs(slot); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::ExecClearTuple(TupleTableSlot *slot) {
+  CBDB_WRAP_START;
+  { ::ExecClearTuple(slot); }
+  CBDB_WRAP_END;
+}
+
+void cbdb::ExecStoreVirtualTuple(TupleTableSlot *slot) {
+  CBDB_WRAP_START;
+  { ::ExecStoreVirtualTuple(slot); }
+  CBDB_WRAP_END;
+}

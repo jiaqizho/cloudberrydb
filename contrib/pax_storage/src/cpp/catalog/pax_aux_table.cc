@@ -86,7 +86,9 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
   TupleDescInitEntry(tupdesc,
                      (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST,
                      "ptexistexttoast", BOOLOID, -1, 0);
-
+  TupleDescInitEntry(tupdesc,
+                     (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED,
+                     "ptisclustered", BOOLOID, -1, 0);
   {
     // Add constraints for the aux table
     auto attr =
@@ -309,7 +311,7 @@ void InsertOrUpdateMicroPartitionPlaceHolder(
     Oid aux_relid, const char *blockname, int num_tuples, int file_size,
     const ::pax::stats::MicroPartitionStatisticsInfo &mp_stats,
     /* const char *visimap_filename, */
-    bool exist_ext_toast) {
+    bool exist_ext_toast, bool is_clustered) {
   int stats_length = mp_stats.ByteSizeLong();
   uint32 len = VARHDRSZ + stats_length;
   void *output;
@@ -344,6 +346,10 @@ void InsertOrUpdateMicroPartitionPlaceHolder(
   values[ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST - 1] =
       BoolGetDatum(exist_ext_toast);
   nulls[ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST - 1] = false;
+
+  nulls[ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED - 1] = false;
+  values[ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED - 1] =
+      BoolGetDatum(is_clustered);
 
   ScanAuxContext context;
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, NULL,
@@ -644,6 +650,9 @@ static void FetchMicroPartitionAuxRowCallback(Datum *values, bool *isnull,
     auto datum = values[ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST - 1];
     ctx->info.SetExistToast(DatumGetBool(datum));
   }
+  Assert(!isnull[ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED - 1]);
+  ctx->info.SetClustered(
+      cbdb::DatumToBool(values[ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED - 1]));
 }
 
 static void FetchMicroPartitionAuxRowCallbackWrapper(Datum *values,
@@ -693,7 +702,7 @@ void InsertOrUpdateMicroPartitionEntry(const pax::WriteSummary &summary) {
         summary.file_size,
         summary.mp_stats ? *summary.mp_stats
                          : ::pax::stats::MicroPartitionStatisticsInfo(),
-        summary.exist_ext_toast);
+        summary.exist_ext_toast, summary.is_clustered);
   }
   CBDB_WRAP_END;
 }

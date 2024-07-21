@@ -128,6 +128,11 @@ MicroPartitionMetadata MicroPartitionInfoIterator::ToValue(HeapTuple tuple) {
     Assert(!is_null);
 
     v.SetExistToast(DatumGetBool(existexttoast));
+    
+    auto is_cluster = cbdb::DatumToBool(cbdb::HeapGetAttr(
+        tuple, ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED, tup_desc, &is_null));
+    CBDB_CHECK(!is_null, cbdb::CException::kExTypeLogicError);
+    v.SetClustered(is_cluster);
   }
 
   // deserialize protobuf message
