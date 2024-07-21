@@ -54,6 +54,12 @@ set(pax_storage_src
     storage/toast/pax_toast.cc
    )
 
+   set(pax_clustering_src
+   clustering/clustering.cc
+   clustering/sorter_index.cc
+   clustering/index_clustering.cc
+ )
+ 
 set(pax_vec_src
   storage/vec/arrow_wrapper.cc
   storage/vec/pax_porc_adpater.cc
@@ -88,7 +94,7 @@ if (VEC_BUILD)
       arrow)
 endif(VEC_BUILD)
 
-add_library(paxformat SHARED ${PROTO_SRCS} ${pax_storage_src} ${pax_exceptions_src} ${pax_comm_src} ${pax_vec_src})
+add_library(paxformat SHARED ${PROTO_SRCS} ${pax_storage_src} ${pax_clustering_src} ${pax_exceptions_src} ${pax_comm_src} ${pax_vec_src})
 target_include_directories(paxformat PUBLIC ${pax_target_include})
 target_link_directories(paxformat PUBLIC ${pax_target_link_directories})
 target_link_libraries(paxformat PUBLIC ${pax_target_link_libs})  
@@ -112,6 +118,12 @@ set(PAX_EXCEPTION_HEADERS
   exceptions/CException.h
 )
 
+set(PAX_CLUSTERING_HEADERS
+  clustering/clustering.h
+  clustering/clustering_reader.h
+  clustering/clustering_writer.h
+)
+
 # TODO(gongxun):
 # We should explicitly specify the headers
 # that need to be exported, and use the syntax of
@@ -128,6 +140,10 @@ install(FILES ${PAX_COMM_HEADERS}
 
 install(FILES ${PAX_EXCEPTION_HEADERS}
   DESTINATION ${CMAKE_INSTALL_PREFIX}/include/pax/exceptions
+)
+
+install(FILES ${PAX_CLUSTERING_HEADERS}
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/pax/clustering
 )
 
 ## install dynamic libraray

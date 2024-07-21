@@ -10,6 +10,7 @@ namespace pax {
 
 namespace fs {
 const int kWriteMode = O_CREAT | O_WRONLY | O_EXCL;
+const int kWriteWithTruncMode = O_CREAT | O_WRONLY | O_TRUNC;
 const int kReadMode = O_RDONLY;
 const int kReadWriteMode = O_CREAT | O_RDWR | O_EXCL;
 const int kDefaultWritePerm = 0640;

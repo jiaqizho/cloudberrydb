@@ -5,6 +5,7 @@
 #include "access/pax_dml_state.h"
 #include "access/pax_partition.h"
 #include "access/pax_scanner.h"
+#include "access/pax_table_cluster.h"
 #include "access/pax_updater.h"
 #include "access/paxc_rel_options.h"
 #include "access/paxc_scanner.h"
@@ -242,24 +243,55 @@ void CCPaxAccessMethod::RelationCopyData(Relation rel,
 }
 
 /*
- * Used by rebuild_relation, like CLUSTER, VACUUM FULL, etc.
+ * Copy data from `OldTable` into `NewTable`, as part of a CLUSTER or VACUUM
+ * FULL.
  *
  * PAX does not have dead tuples, but the core framework requires
  * to implement this callback to do CLUSTER/VACUUM FULL/etc.
  * PAX may have re-organize semantics for this function.
  *
- * TODO: how to split the set of micro-partitions to several QE handlers.
+ *
+ * Additional Input parameters:
+ * - use_sort - if true, the table contents are sorted appropriate for
+ *   `OldIndex`; if false and OldIndex is not InvalidOid, the data is copied
+ *   in that index's order; if false and OldIndex is InvalidOid, no sorting is
+ *   performed
+ * - OldIndex - see use_sort
+ * - OldestXmin - computed by vacuum_set_xid_limits(), even when
+ *   not needed for the relation's AM
+ * - *xid_cutoff - ditto
+ * - *multi_cutoff - ditto
+ *
+ * Output parameters:
+ * - *xid_cutoff - rel's new relfrozenxid value, may be invalid
+ * - *multi_cutoff - rel's new relminmxid value, may be invalid
+ * - *tups_vacuumed - stats, for logging, if appropriate for AM
+ * - *tups_recently_dead - stats, for logging, if appropriate for AM
  */
 void CCPaxAccessMethod::RelationCopyForCluster(
-    Relation old_heap, Relation new_heap, Relation /*old_index*/,
-    bool /*use_sort*/, TransactionId /*oldest_xmin*/,
-    TransactionId * /*xid_cutoff*/, MultiXactId * /*multi_cutoff*/,
-    double * /*num_tuples*/, double * /*tups_vacuumed*/,
-    double * /*tups_recently_dead*/) {
-  Assert(RELATION_IS_PAX(old_heap));
-  Assert(RELATION_IS_PAX(new_heap));
+    Relation old_rel, Relation new_rel, Relation old_index, bool use_sort,
+    TransactionId /*oldest_xmin*/, TransactionId * /*xid_cutoff*/,
+    MultiXactId * /*multi_cutoff*/, double * /*num_tuples*/,
+    double * /*tups_vacuumed*/, double * /* tups_recently_dead*/) {
+  Assert(RELATION_IS_PAX(old_rel));
+  Assert(RELATION_IS_PAX(new_rel));
   CBDB_TRY();
-  { pax::CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(old_heap, new_heap); }
+  {
+    //  if false and OldIndex is InvalidOid, no sorting is performed, just copy
+    if (!use_sort && old_index == NULL) {
+      pax::CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(old_rel, new_rel);
+      return;
+    }
+
+    // TODO(gongxun): should we support index's order to cluster table? ao/aocs
+    // does not support.
+
+    // like aocs, pax tables can only be clustered against a btree index
+    CBDB_CHECK(old_index && (old_index->rd_rel->relam == BTREE_AM_OID),
+               cbdb::CException::kExTypeInvalidIndexType,
+               "PAX tables can only be clustered against a btree index");
+    pax::IndexCluster(old_rel, new_rel, old_index, GetActiveSnapshot());
+  }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
   CBDB_END_TRY();

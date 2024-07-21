@@ -184,9 +184,10 @@ test: publication subscription
 test: select_views portals_p2  dependency guc bitmapops tsearch tsdicts foreign_data window xmlmap functional_deps advisory_lock indirect_toast equivclass
 
 # ignore reason:
-#   1. pax do cluster without changing anything
-#   2. virtual tuple table slot does not have system attributes
-# test: cluster combocid
+#   1. virtual tuple table slot does not have system attributes
+# test: combocid
+
+test: cluster
 
 # 'foreign_key' test is disabled, because it contains several tables with
 # multiple UNIQUE constraints, which is not supported in GPDB.
