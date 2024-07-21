@@ -259,13 +259,13 @@ SELECT relname, relkind,
 FROM pg_class c WHERE relname LIKE 'clstr_tst%' ORDER BY relname;
        relname        | relkind | hastoast 
 ----------------------+---------+----------
- clstr_tst            | r       | t
+ clstr_tst            | r       | f
  clstr_tst_a_seq      | S       | f
  clstr_tst_b          | i       | f
  clstr_tst_b_c        | i       | f
  clstr_tst_c          | i       | f
  clstr_tst_c_b        | i       | f
- clstr_tst_inh        | r       | t
+ clstr_tst_inh        | r       | f
  clstr_tst_pkey       | i       | f
  clstr_tst_s          | r       | f
  clstr_tst_s_pkey     | i       | f
