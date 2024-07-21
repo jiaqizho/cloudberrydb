@@ -147,7 +147,7 @@ void RemoteFileSystem::Delete(const std::string &file_path,
   cbdb::UFileUnlink(remote_options->tablespace_id_, file_path.c_str());
 }
 
-// TODO:(gongxun): use a copy method that is more suitable for object storage
+// TODO(gongxun): use a copy method that is more suitable for object storage
 int RemoteFileSystem::CopyFile(const File *src_file, File *dst_file) {
   const size_t kBufSize = 32 * 1024;
   char buf[kBufSize];

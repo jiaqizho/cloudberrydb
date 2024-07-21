@@ -14,11 +14,13 @@ Thumbs.db
 # Temp files dir
 .tmp/**
 build*/**
+results/**
 clang-tidy.result
 # pb
 **/*.pb.h
 **/*.pb.cc
-
+tools/**/*.data
+tools/**/*.txt
 # Executables
 /*.out
 !src/data/expected/*.out
