@@ -11,6 +11,7 @@ namespace clustering {
 class DataClustering {
  public:
   enum ClusterType {
+    kClusterTypeZOrder,
     kClusterTypeIndex,
   };
 

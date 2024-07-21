@@ -74,10 +74,13 @@ set(pax_storage_src
 
 set(pax_clustering_src
   clustering/clustering.cc
+  clustering/sorter_tuple.cc
   clustering/sorter_index.cc
+  clustering/zorder_clustering.cc
   clustering/index_clustering.cc
   clustering/pax_clustering_reader.cc
   clustering/pax_clustering_writer.cc
+  clustering/zorder_utils.cc
 )
 
 

@@ -1,5 +1,6 @@
 #include "access/paxc_rel_options.h"
 
+#include "clustering/zorder_utils.h"
 #include "comm/cbdb_wrappers.h"
 
 namespace paxc {
@@ -64,6 +65,8 @@ static const relopt_parse_elt kSelfReloptTab[] = {
      offsetof(PaxOptions, partition_ranges_offset)},
     {PAX_SOPT_MINMAX_COLUMNS, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, minmax_columns_offset)},
+    {PAX_SOPT_CLUSTER_COLUMNS, RELOPT_TYPE_STRING,
+     offsetof(PaxOptions, cluster_columns_offset)},
 };
 
 static void paxc_validate_rel_options_storage_format(const char *value) {
@@ -271,6 +274,60 @@ Bitmapset *paxc_get_minmax_columns_index(Relation rel, bool validate) {
   return bms;
 }
 
+Bitmapset *paxc_get_cluster_columns_index(Relation rel, bool validate) {
+  Assert(rel->rd_rel->relam == PAX_AM_OID);
+
+  List *list = NIL;
+  ListCell *lc;
+  auto tupdesc = RelationGetDescr(rel);
+  auto natts = RelationGetNumberOfAttributes(rel);
+  Bitmapset *bms = nullptr;
+
+  auto options = reinterpret_cast<paxc::PaxOptions *>(rel->rd_options);
+  if (!options || !options->cluster_columns()) return nullptr;
+
+  auto value = pstrdup(options->cluster_columns());
+  if (!SplitDirectoriesString(value, ',', &list))
+    elog(ERROR, "invalid cluster_columns: '%s' '%s'", value,
+         options->cluster_columns());
+
+  pfree(value);
+  foreach (lc, list) {
+    auto s = (char *)lfirst(lc);
+    int i;
+    bool dropped_column = false;
+    bool valid_column;
+
+    for (i = 0; i < natts; i++) {
+      auto attr = TupleDescAttr(tupdesc, i);
+      if (strcmp(s, NameStr(attr->attname)) == 0) {
+        if (!attr->attisdropped) {
+          // check if the column support zorder-clustering
+          if (!support_zorder_type(attr->atttypid)) {
+            elog(ERROR, "the type of column %s does not support zorder cluster",
+                 attr->attname.data);
+          }
+          break;
+        }
+
+        if (validate) elog(ERROR, "pax: can't use dropped column");
+        dropped_column = true;
+        break;
+      }
+    }
+    valid_column = !dropped_column && i < natts;
+    if (validate) {
+      if (i == natts) elog(ERROR, "invalid column name '%s'", s);
+
+      if (bms_is_member(i, bms)) elog(ERROR, "duplicated column name '%s'", s);
+    }
+
+    if (valid_column) bms = bms_add_member(bms, i);
+  }
+  list_free_deep(list);
+  return bms;
+}
+
 void paxc_reg_rel_options() {
   self_relopt_kind = add_reloption_kind();
   add_string_reloption(self_relopt_kind, PAX_SOPT_STORAGE_FORMAT,
@@ -290,6 +347,8 @@ void paxc_reg_rel_options() {
                        "partition ranges", NULL, NULL, AccessExclusiveLock);
   add_string_reloption(self_relopt_kind, PAX_SOPT_MINMAX_COLUMNS,
                        "minmax columns", NULL, NULL, AccessExclusiveLock);
+  add_string_reloption(self_relopt_kind, PAX_SOPT_CLUSTER_COLUMNS,
+                       "cluster columns", NULL, NULL, AccessExclusiveLock);
 }
 
 }  // namespace paxc
@@ -331,6 +390,31 @@ std::vector<int> cbdb::GetMinMaxColumnsIndex(Relation rel) {
   {
     CBDB_WRAP_START;
     { bms = paxc::paxc_get_minmax_columns_index(rel, false); }
+    CBDB_WRAP_END;
+  }
+
+  idx = -1;
+  while ((idx = bms_next_member(bms, idx)) >= 0) {
+    indexes.push_back(idx);
+  }
+
+  {
+    CBDB_WRAP_START;
+    { bms_free(bms); }
+    CBDB_WRAP_END;
+  }
+
+  return indexes;
+}
+
+std::vector<int> cbdb::GetClusterColumnsIndex(Relation rel) {
+  std::vector<int> indexes;
+  Bitmapset *bms;
+  int idx;
+
+  {
+    CBDB_WRAP_START;
+    { bms = paxc::paxc_get_cluster_columns_index(rel, false); }
     CBDB_WRAP_END;
   }
 

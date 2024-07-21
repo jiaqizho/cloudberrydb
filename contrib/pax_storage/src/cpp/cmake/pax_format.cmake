@@ -56,8 +56,11 @@ set(pax_storage_src
 
    set(pax_clustering_src
    clustering/clustering.cc
+   clustering/sorter_tuple.cc
    clustering/sorter_index.cc
+   clustering/zorder_clustering.cc
    clustering/index_clustering.cc
+   clustering/zorder_utils.cc
  )
  
 set(pax_vec_src
@@ -122,6 +125,7 @@ set(PAX_CLUSTERING_HEADERS
   clustering/clustering.h
   clustering/clustering_reader.h
   clustering/clustering_writer.h
+  clustering/zorder_utils.h
 )
 
 # TODO(gongxun):
