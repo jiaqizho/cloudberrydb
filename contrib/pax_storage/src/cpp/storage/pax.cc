@@ -79,7 +79,6 @@ class IndexUpdaterInternal {
 }  // namespace paxc
 
 namespace pax {
-#define TOAST_FILE_SUFFIX ".toast"
 class IndexUpdater final {
  public:
   void Begin(Relation rel) {
