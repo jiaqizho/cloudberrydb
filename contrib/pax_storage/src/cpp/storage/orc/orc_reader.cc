@@ -34,7 +34,7 @@ class OrcGroupStatsProvider final : public ColumnStatsProvider {
         .colstats(column_index)
         .hasnull();
   }
-  uint32 NonNullRows(int column_index) const override {
+  uint64 NonNullRows(int column_index) const override {
     return format_reader_.file_footer_.stripes(group_index_)
         .colstats(column_index)
         .nonnullrows();
