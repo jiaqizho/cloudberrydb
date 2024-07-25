@@ -6,6 +6,7 @@
 #include "access/pax_visimap.h"
 #include "access/paxc_rel_options.h"
 #include "catalog/pax_aux_table.h"
+#include "catalog/pg_pax_tables.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_memory.h"
 #include "storage/columns/pax_encoding.h"
@@ -764,3 +765,75 @@ void TableDeleter::OpenReader() {
 }
 
 }  // namespace pax
+
+extern "C" {
+extern Datum MicroPartitionStatsCombineResult(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(MicroPartitionStatsCombineResult);
+}
+
+// CREATE OR REPLACE FUNCTION MicroPartitionStatsCombineResult(relid Oid)
+// RETURNS text
+//      AS '$libdir/pax', 'MicroPartitionStatsCombineResult' LANGUAGE C
+//      IMMUTABLE;
+Datum MicroPartitionStatsCombineResult(PG_FUNCTION_ARGS) {
+  Oid relid, auxrelid;
+  Relation auxrel, rel;
+  TupleDesc rel_desc;
+
+  HeapTuple tup;
+  SysScanDesc auxscan;
+  bool pg_attribute_unused() isnull;
+  bool pg_attribute_unused() ok;
+  bool got_first = false;
+
+  pax::stats::MicroPartitionStatisticsInfo result, temp;
+  StringInfoData str;
+
+  relid = PG_GETARG_OID(0);
+
+  // get the tuple desc
+  rel = table_open(relid, AccessShareLock);
+  rel_desc = CreateTupleDescCopy(RelationGetDescr(rel));
+  table_close(rel, AccessShareLock);
+
+  auxrelid = ::paxc::GetPaxAuxRelid(relid);
+  auxrel = table_open(auxrelid, AccessShareLock);
+  auxscan = systable_beginscan(auxrel, InvalidOid, false, NULL, 0, NULL);
+  while (HeapTupleIsValid(tup = systable_getnext(auxscan))) {
+    Datum tup_datum = heap_getattr(tup, ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS,
+                                   RelationGetDescr(auxrel), &isnull);
+    Assert(!isnull);
+    auto stats_vl =
+        pg_detoast_datum_packed((struct varlena *)(DatumGetPointer(tup_datum)));
+
+    if (!got_first) {
+      ok = result.ParseFromArray(VARDATA_ANY(stats_vl),
+                                 VARSIZE_ANY_EXHDR(stats_vl));
+      Assert(ok);
+      got_first = true;
+    } else {
+      ok = temp.ParseFromArray(VARDATA_ANY(stats_vl),
+                               VARSIZE_ANY_EXHDR(stats_vl));
+      Assert(ok);
+
+      CBDB_TRY();
+      {
+        ok = pax::MicroPartitionStats::MicroPartitionStatisticsInfoCombine(
+            &result, &temp, rel_desc, false);
+        Assert(ok);
+      }
+      CBDB_CATCH_DEFAULT();
+      CBDB_END_TRY();
+    }
+  }
+
+  systable_endscan(auxscan);
+  table_close(auxrel, AccessShareLock);
+
+  if (!got_first) {
+    PG_RETURN_TEXT_P(cstring_to_text("EMPTY"));
+  }
+
+  paxc::MicroPartitionStatsToString(&result, &str);
+  PG_RETURN_TEXT_P(cstring_to_text(str.data));
+}

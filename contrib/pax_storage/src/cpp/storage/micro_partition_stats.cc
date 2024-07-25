@@ -98,6 +98,290 @@ class MicroPartitionStatsData final {
   ::pax::stats::MicroPartitionStatisticsInfo info_;
 };
 
+static bool PrepareStatisticsInfoCombine(
+    stats::MicroPartitionStatisticsInfo *left,
+    stats::MicroPartitionStatisticsInfo *right, TupleDesc desc,
+    bool allow_fallback_to_pg,
+    std::vector<std::pair<OperMinMaxFunc, OperMinMaxFunc>> &funcs,
+    std::vector<std::pair<FmgrInfo, FmgrInfo>> &finfos,
+    std::vector<FmgrInfo> &sum_finfos, FmgrInfo &empty_func) {
+  Assert(left->columnstats_size() <= desc->natts);
+  if (left->columnstats_size() != right->columnstats_size()) {
+    // exist drop/add column, schema not match
+    return false;
+  }
+
+  Assert(funcs.empty());
+  Assert(finfos.empty());
+  Assert(sum_finfos.empty());
+
+  funcs.reserve(desc->natts);
+  finfos.reserve(desc->natts);
+  sum_finfos.reserve(desc->natts);
+
+  for (int i = 0; i < left->columnstats_size(); i++) {
+    auto left_column_stats = left->columnstats(i);
+    auto right_column_stats = right->columnstats(i);
+    auto left_column_data_stats = left_column_stats.datastats();
+    auto right_column_data_stats = right_column_stats.datastats();
+
+    auto attr = TupleDescAttr(desc, i);
+    auto collation = attr->attcollation;
+    Oid op_family;
+    FmgrInfo finfo;
+    bool get_pg_oper_succ = false;
+
+    funcs.emplace_back(std::make_pair(nullptr, nullptr));
+    finfos.emplace_back(std::make_pair(empty_func, empty_func));
+    sum_finfos.emplace_back(empty_func);
+
+    // allnull/hasnull/nonnullrows must be exist.
+    // And we must not check has_allnull/has_hasnull, cause it may return false
+    // if we have not update allnull/hasnull it in `AddRows`.
+    // The current stats may not have been serialized in disk.
+
+    // if current column stats do have collation but
+    // not same, then we can't combine two of stats
+    if (left_column_stats.info().collation() !=
+        right_column_stats.info().collation()) {
+      return false;
+    }
+
+    // Current relation collation changed, the min/max may not work
+    if (collation != left_column_stats.info().collation() &&
+        left_column_stats.info().collation() != 0) {
+      return false;
+    }
+
+    // the column_stats.info() can be null, if current column is allnull
+    // So don't assert typeoid/opfamily/collation here
+    if (right_column_data_stats.has_minimal() &&
+        left_column_data_stats.has_minimal()) {
+      Assert(right_column_data_stats.has_maximum() &&
+             left_column_data_stats.has_maximum());
+
+      GetStrategyProcinfo(attr->atttypid, attr->atttypid, funcs[i]);
+      if (allow_fallback_to_pg) {
+        finfos[i] = {finfo, finfo};
+        get_pg_oper_succ = GetStrategyProcinfo(attr->atttypid, attr->atttypid,
+                                               &op_family, finfos[i]);
+      }
+
+      // if current min/max from pg_oper, but now allow_fallback_to_pg is false
+      if (!(funcs[i].first && CollateIsSupport(collation)) &&
+          !get_pg_oper_succ) {
+        return false;
+      }
+    }
+
+    // Check `SUM` can combine or not
+    if (left_column_data_stats.has_sum() && right_column_data_stats.has_sum()) {
+      Assert(left_column_stats.info().prorettype() ==
+             right_column_stats.info().prorettype());
+      Oid addrettype;
+
+      if (!cbdb::AddGetProcinfo(left_column_stats.info().prorettype(),
+                                right_column_stats.info().prorettype(),
+                                PG_CATALOG_NAMESPACE, &addrettype,
+                                &sum_finfos[i])) {
+        return false;
+      }
+
+      // Will not generate the `SUM` if addrettype not same with aggfinaltype
+      Assert(addrettype == left_column_stats.info().prorettype());
+    }
+  }
+
+  Assert(funcs.size() == (size_t)desc->natts);
+  Assert(finfos.size() == (size_t)desc->natts);
+  Assert(sum_finfos.size() == (size_t)desc->natts);
+
+  return true;
+}
+
+static void CommStatisticsInfoCombine(
+    ::pax::stats::ColumnStats *left_column_stats,
+    ::pax::stats::ColumnStats *right_column_stats) {
+  if (left_column_stats->allnull() && !right_column_stats->allnull()) {
+    left_column_stats->set_allnull(false);
+  }
+
+  if (!left_column_stats->hasnull() && right_column_stats->hasnull()) {
+    left_column_stats->set_hasnull(true);
+  }
+
+  left_column_stats->set_nonnullrows(left_column_stats->nonnullrows() +
+                                     right_column_stats->nonnullrows());
+}
+
+static void MinMaxStatisticsInfoCombine(
+    int column_index, TupleDesc desc,
+    std::pair<OperMinMaxFunc, OperMinMaxFunc> &funcs_pair,
+    std::pair<FmgrInfo, FmgrInfo> &finfo_pair,
+    ::pax::stats::ColumnStats *left_column_stats,
+    ::pax::stats::ColumnStats *right_column_stats,
+    ::pax::stats::ColumnDataStats *left_column_data_stats,
+    ::pax::stats::ColumnDataStats *right_column_data_stats) {
+  auto attr = TupleDescAttr(desc, column_index);
+
+  auto typlen = attr->attlen;
+  auto typbyval = attr->attbyval;
+  bool ok = false;
+  auto collation = right_column_stats->info().collation();
+
+  if (right_column_data_stats->has_minimal()) {
+    if (left_column_data_stats->has_minimal()) {
+      auto left_min_datum = MicroPartitionStats::FromValue(
+          left_column_data_stats->minimal(), typlen, typbyval, &ok);
+      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
+                 fmt("Fail to parse the MIN datum in LEFT pb [typbyval=%d, "
+                     "typlen=%d, column_index=%d]",
+                     typbyval, typlen, column_index));
+
+      auto right_min_datum = MicroPartitionStats::FromValue(
+          right_column_data_stats->minimal(), typlen, typbyval, &ok);
+      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
+                 fmt("Fail to parse the MIN datum in RIGHT pb [typbyval=%d, "
+                     "typlen=%d, column_index=%d]",
+                     typbyval, typlen, column_index));
+      bool min_rc = false;
+
+      // can direct call the oper, no need check exist again
+      if (funcs_pair.first) {
+        min_rc = funcs_pair.first(&right_min_datum, &left_min_datum, collation);
+      } else {
+        min_rc = DatumGetBool(cbdb::FunctionCall2Coll(
+            &finfo_pair.first, collation, right_min_datum, left_min_datum));
+      }
+
+      if (min_rc) {
+        left_column_data_stats->set_minimal(
+            MicroPartitionStats::ToValue(right_min_datum, typlen, typbyval));
+      }
+    } else {
+      left_column_data_stats->set_minimal(right_column_data_stats->minimal());
+    }
+  }
+
+  if (right_column_data_stats->has_maximum()) {
+    if (left_column_data_stats->has_maximum()) {
+      auto left_max_datum = MicroPartitionStats::FromValue(
+          left_column_data_stats->maximum(), typlen, typbyval, &ok);
+      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
+                 fmt("Fail to parse the MAX datum in LEFT pb [typbyval=%d, "
+                     "typlen=%d, column_index=%d]",
+                     typbyval, typlen, column_index));
+
+      auto right_max_datum = MicroPartitionStats::FromValue(
+          right_column_data_stats->maximum(), typlen, typbyval, &ok);
+      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
+                 fmt("Fail to parse the MAX datum in RIGHT pb [typbyval=%d, "
+                     "typlen=%d, column_index=%d]",
+                     typbyval, typlen, column_index));
+      bool max_rc = false;
+
+      if (funcs_pair.second != nullptr) {
+        max_rc =
+            funcs_pair.second(&right_max_datum, &left_max_datum, collation);
+      } else {  // no need check again
+        max_rc = DatumGetBool(cbdb::FunctionCall2Coll(
+            &finfo_pair.second, collation, right_max_datum, left_max_datum));
+      }
+
+      if (max_rc) {
+        left_column_data_stats->set_maximum(
+            MicroPartitionStats::ToValue(right_max_datum, typlen, typbyval));
+      }
+
+    } else {
+      left_column_data_stats->set_maximum(right_column_data_stats->maximum());
+    }
+  }
+}
+
+static void SumStatisticsInfoCombine(
+    int column_index, FmgrInfo &sum_finfo,
+    ::pax::stats::ColumnStats *left_column_stats,
+    ::pax::stats::ColumnStats *right_column_stats,
+    ::pax::stats::ColumnDataStats *left_column_data_stats,
+    ::pax::stats::ColumnDataStats *right_column_data_stats) {
+  bool ok = false;
+
+  if (right_column_data_stats->has_sum()) {
+    if (left_column_data_stats->has_sum()) {
+      auto sumtyplen = cbdb::GetTyplen(left_column_stats->info().prorettype());
+      auto sumtypbyval =
+          cbdb::GetTypbyval(left_column_stats->info().prorettype());
+
+      Datum left_sum = MicroPartitionStats::FromValue(
+          left_column_data_stats->sum(), sumtyplen, sumtypbyval, &ok);
+      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
+                 fmt("Fail to parse the SUM datum in LEFT pb [typbyval=%d, "
+                     "typlen=%d, column_index=%d]",
+                     sumtypbyval, sumtyplen, column_index));
+
+      Datum right_sum = MicroPartitionStats::FromValue(
+          right_column_data_stats->sum(), sumtyplen, sumtypbyval, &ok);
+      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
+                 fmt("Fail to parse the SUM datum in RIGHT pb [typbyval=%d, "
+                     "typlen=%d, column_index=%d]",
+                     sumtypbyval, sumtyplen, column_index));
+
+      Datum newval =
+          cbdb::FunctionCall2Coll(&sum_finfo, InvalidOid, left_sum, right_sum);
+
+      left_column_data_stats->set_sum(
+          MicroPartitionStats::ToValue(newval, sumtyplen, sumtypbyval));
+
+      if (!sumtypbyval &&
+          cbdb::DatumToPointer(newval) != cbdb::DatumToPointer(left_sum)) {
+        cbdb::Pfree(cbdb::DatumToPointer(newval));
+      }
+
+    } else {
+      left_column_data_stats->set_sum(right_column_data_stats->sum());
+    }
+  }
+}
+
+bool MicroPartitionStats::MicroPartitionStatisticsInfoCombine(
+    stats::MicroPartitionStatisticsInfo *left,
+    stats::MicroPartitionStatisticsInfo *right, TupleDesc desc,
+    bool allow_fallback_to_pg) {
+  std::vector<std::pair<OperMinMaxFunc, OperMinMaxFunc>> funcs;
+  std::vector<std::pair<FmgrInfo, FmgrInfo>> finfos;
+  std::vector<FmgrInfo> sum_finfos;
+  FmgrInfo empty_info;
+
+  memset(&empty_info, 0, sizeof(empty_info));
+  Assert(left);
+  Assert(right);
+
+  // check before update left stats
+  // also get the min/max operators
+  if (!PrepareStatisticsInfoCombine(left, right, desc, allow_fallback_to_pg,
+                                    funcs, finfos, sum_finfos, empty_info)) {
+    return false;
+  }
+
+  for (int i = 0; i < left->columnstats_size(); i++) {
+    auto left_column_stats = left->mutable_columnstats(i);
+    auto right_column_stats = right->mutable_columnstats(i);
+
+    auto left_column_data_stats = left_column_stats->mutable_datastats();
+    auto right_column_data_stats = right_column_stats->mutable_datastats();
+
+    CommStatisticsInfoCombine(left_column_stats, right_column_stats);
+    MinMaxStatisticsInfoCombine(i, desc, funcs[i], finfos[i], left_column_stats,
+                                right_column_stats, left_column_data_stats,
+                                right_column_data_stats);
+    SumStatisticsInfoCombine(i, sum_finfos[i], left_column_stats,
+                             right_column_stats, left_column_data_stats,
+                             right_column_data_stats);
+  }
+  return true;
+}
+
 struct SumStatsInMem {
   FmgrInfo trans_func;
   FmgrInfo final_func;
@@ -126,175 +410,6 @@ struct SumStatsInMem {
     }
   }
 };
-
-bool MicroPartitionStats::MicroPartitionStatisticsInfoCombine(
-    stats::MicroPartitionStatisticsInfo *left,
-    stats::MicroPartitionStatisticsInfo *right, TupleDesc desc,
-    bool allow_fallback_to_pg) {
-  std::vector<std::pair<OperMinMaxFunc, OperMinMaxFunc>> funcs;
-  std::vector<std::pair<FmgrInfo, FmgrInfo>> finfos;
-
-  Assert(left);
-  Assert(right);
-  Assert(left->columnstats_size() <= desc->natts);
-  if (left->columnstats_size() != right->columnstats_size()) {
-    // exist drop/add column, schema not match
-    return false;
-  }
-
-  funcs.reserve(desc->natts);
-  finfos.reserve(desc->natts);
-
-  // check before update left stats
-  for (int i = 0; i < left->columnstats_size(); i++) {
-    auto left_column_stats = left->columnstats(i);
-    auto right_column_stats = right->columnstats(i);
-    auto left_column_data_stats = left_column_stats.datastats();
-    auto right_column_data_stats = right_column_stats.datastats();
-
-    auto attr = TupleDescAttr(desc, i);
-    auto collation = attr->attcollation;
-    Oid op_family;
-    FmgrInfo finfo;
-    bool get_pg_oper_succ = false;
-
-    // all null && has null must be exist.
-    // And we must not check has_allnull/has_hasnull, cause it may return false
-    // if we have not update allnull/hasnull it in `AddRows`.
-    // The current stats may not have been serialized in disk.
-
-    // if current column stats do have collation but
-    // not same, then we can't combine two of stats
-    if (left_column_stats.info().collation() !=
-        right_column_stats.info().collation()) {
-      return false;
-    }
-
-    // Current relation collation changed, the min/max may not work
-    if (collation != left_column_stats.info().collation() &&
-        left_column_stats.info().collation() != 0) {
-      return false;
-    }
-
-    // the column_stats.info() can be null, if current column is allnull
-    // So don't assert typeoid/opfamily/collation here
-
-    funcs.emplace_back(
-        std::pair<OperMinMaxFunc, OperMinMaxFunc>({nullptr, nullptr}));
-    GetStrategyProcinfo(attr->atttypid, attr->atttypid, funcs[i]);
-    if (allow_fallback_to_pg) {
-      finfos[i] = {finfo, finfo};
-      get_pg_oper_succ = GetStrategyProcinfo(attr->atttypid, attr->atttypid,
-                                             &op_family, finfos[i]);
-    }
-
-    // if current min/max from pg_oper, but now allow_fallback_to_pg is false
-    if (right_column_data_stats.has_minimal() &&
-        left_column_data_stats.has_minimal() &&
-        !(funcs[i].first && CollateIsSupport(collation)) && !get_pg_oper_succ) {
-      return false;
-    }
-
-    if (right_column_data_stats.has_maximum() &&
-        left_column_data_stats.has_maximum() &&
-        !(funcs[i].second && CollateIsSupport(collation)) &&
-        !get_pg_oper_succ) {
-      return false;
-    }
-  }
-
-  for (int i = 0; i < left->columnstats_size(); i++) {
-    auto left_column_stats = left->mutable_columnstats(i);
-    auto right_column_stats = right->mutable_columnstats(i);
-
-    auto left_column_data_stats = left_column_stats->mutable_datastats();
-    auto right_column_data_stats = right_column_stats->mutable_datastats();
-    auto attr = TupleDescAttr(desc, i);
-
-    auto typlen = attr->attlen;
-    auto typbyval = attr->attbyval;
-    bool ok = false;
-    auto collation = right_column_stats->info().collation();
-
-    if (left_column_stats->allnull() && !right_column_stats->allnull()) {
-      left_column_stats->set_allnull(false);
-    }
-
-    if (!left_column_stats->hasnull() && right_column_stats->hasnull()) {
-      left_column_stats->set_hasnull(true);
-    }
-
-    if (right_column_data_stats->has_minimal()) {
-      if (left_column_data_stats->has_minimal()) {
-        auto left_min_datum = MicroPartitionStats::FromValue(
-            left_column_data_stats->minimal(), typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MIN datum in LEFT pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, i));
-
-        auto right_min_datum = MicroPartitionStats::FromValue(
-            right_column_data_stats->minimal(), typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MIN datum in RIGHT pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, i));
-        bool min_rc = false;
-
-        // can direct call the oper, no need check exist again
-        if (funcs[i].first) {
-          min_rc = funcs[i].first(&right_min_datum, &left_min_datum, collation);
-        } else {
-          min_rc = DatumGetBool(cbdb::FunctionCall2Coll(
-              &finfos[i].first, collation, right_min_datum, left_min_datum));
-        }
-
-        if (min_rc) {
-          left_column_data_stats->set_minimal(
-              ToValue(right_min_datum, typlen, typbyval));
-        }
-      } else {
-        left_column_data_stats->set_minimal(right_column_data_stats->minimal());
-      }
-    }
-
-    if (right_column_data_stats->has_maximum()) {
-      if (left_column_data_stats->has_maximum()) {
-        auto left_max_datum = MicroPartitionStats::FromValue(
-            left_column_data_stats->maximum(), typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MAX datum in LEFT pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, i));
-
-        auto right_max_datum = MicroPartitionStats::FromValue(
-            right_column_data_stats->maximum(), typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MAX datum in RIGHT pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, i));
-        bool max_rc = false;
-
-        if (funcs[i].second) {
-          max_rc =
-              funcs[i].second(&right_max_datum, &left_max_datum, collation);
-        } else {  // no need check again
-          max_rc = DatumGetBool(cbdb::FunctionCall2Coll(
-              &finfos[i].second, collation, right_max_datum, left_max_datum));
-        }
-
-        if (max_rc) {
-          left_column_data_stats->set_maximum(
-              MicroPartitionStats::ToValue(right_max_datum, typlen, typbyval));
-        }
-
-      } else {
-        left_column_data_stats->set_maximum(right_column_data_stats->maximum());
-      }
-    }
-  }
-  return true;
-}
 
 MicroPartitionStats::MicroPartitionStats(TupleDesc desc,
                                          bool allow_fallback_to_pg)
@@ -1064,7 +1179,7 @@ bool MicroPartitionStatsProvider::HasNull(int column_index) const {
   return stats_.columnstats(column_index).hasnull();
 }
 
-uint32 MicroPartitionStatsProvider::NonNullRows(int column_index) const {
+uint64 MicroPartitionStatsProvider::NonNullRows(int column_index) const {
   return stats_.columnstats(column_index).nonnullrows();
 }
 
@@ -1122,47 +1237,41 @@ Datum MicroPartitionStatsInput(PG_FUNCTION_ARGS) {
   PG_RETURN_POINTER(NULL);
 }
 
-Datum MicroPartitionStatsOutput(PG_FUNCTION_ARGS) {
-  struct varlena *v = PG_GETARG_VARLENA_PP(0);
-  pax::stats::MicroPartitionStatisticsInfo stats;
-  StringInfoData str;
-
-  bool ok = stats.ParseFromArray(VARDATA_ANY(v), VARSIZE_ANY_EXHDR(v));
-  if (!ok) ereport(ERROR, (errmsg("micropartition stats is corrupt")));
-
-  initStringInfo(&str);
-  for (int i = 0, n = stats.columnstats_size(); i < n; i++) {
-    const auto &column = stats.columnstats(i);
+void paxc::MicroPartitionStatsToString(
+    pax::stats::MicroPartitionStatisticsInfo *stats, StringInfoData *str) {
+  initStringInfo(str);
+  for (int i = 0, n = stats->columnstats_size(); i < n; i++) {
+    const auto &column = stats->columnstats(i);
     const auto &info = column.info();
     const auto &data_stats = column.datastats();
 
     // header
     if (i > 0) {
-      appendStringInfoString(&str, ",[");
+      appendStringInfoString(str, ",[");
     } else {
-      appendStringInfoChar(&str, '[');
+      appendStringInfoChar(str, '[');
     }
 
     // hasnull/allnull information
-    appendStringInfo(&str, "(%s,%s),", BoolToString(column.allnull()),
+    appendStringInfo(str, "(%s,%s),", BoolToString(column.allnull()),
                      BoolToString(column.hasnull()));
 
     // count(column) information
-    appendStringInfo(&str, "(%d),", column.nonnullrows());
+    appendStringInfo(str, "(%ld),", column.nonnullrows());
 
     // min/max information
     if (!column.has_datastats()) {
-      appendStringInfoString(&str, "None,None");
+      appendStringInfoString(str, "None,None");
       goto tail;
     }
 
     Assert(data_stats.has_minimal() == data_stats.has_maximum());
     if (!data_stats.has_minimal()) {
-      appendStringInfoString(&str, "None,");
+      appendStringInfoString(str, "None,");
       goto sum_info;
     }
 
-    appendStringInfo(&str, "(%s,%s),",
+    appendStringInfo(str, "(%s,%s),",
                      TypeValueToCString(info.typid(), info.collation(),
                                         data_stats.minimal()),
                      TypeValueToCString(info.typid(), info.collation(),
@@ -1171,18 +1280,28 @@ Datum MicroPartitionStatsOutput(PG_FUNCTION_ARGS) {
   sum_info:
     // sum(column) information
     if (!data_stats.has_sum()) {
-      appendStringInfoString(&str, "None");
+      appendStringInfoString(str, "None");
       goto tail;
     }
 
     appendStringInfo(
-        &str, "(%s)",
+        str, "(%s)",
         TypeValueToCString(info.prorettype(), InvalidOid, data_stats.sum()));
 
   tail:
     // tail
-    appendStringInfoChar(&str, ']');
+    appendStringInfoChar(str, ']');
   }
+}
 
+Datum MicroPartitionStatsOutput(PG_FUNCTION_ARGS) {
+  struct varlena *v = PG_GETARG_VARLENA_PP(0);
+  pax::stats::MicroPartitionStatisticsInfo stats;
+  StringInfoData str;
+
+  bool ok = stats.ParseFromArray(VARDATA_ANY(v), VARSIZE_ANY_EXHDR(v));
+  if (!ok) ereport(ERROR, (errmsg("micropartition stats is corrupt")));
+
+  paxc::MicroPartitionStatsToString(&stats, &str);
   PG_RETURN_CSTRING(str.data);
 }

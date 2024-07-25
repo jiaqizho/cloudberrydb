@@ -80,7 +80,7 @@ class MicroPartitionStatsProvider final : public ColumnStatsProvider {
   int ColumnSize() const override;
   bool AllNull(int column_index) const override;
   bool HasNull(int column_index) const override;
-  uint32 NonNullRows(int column_index) const override;
+  uint64 NonNullRows(int column_index) const override;
   const ::pax::stats::ColumnBasicInfo &ColumnInfo(
       int column_index) const override;
   const ::pax::stats::ColumnDataStats &DataStats(
@@ -91,3 +91,8 @@ class MicroPartitionStatsProvider final : public ColumnStatsProvider {
 };
 
 }  // namespace pax
+
+namespace paxc {
+void MicroPartitionStatsToString(
+    pax::stats::MicroPartitionStatisticsInfo *stats, StringInfoData *str);
+}

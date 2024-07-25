@@ -68,27 +68,35 @@ TEST_F(MicroPartitionStatsTest, MicroPartitionStatsInfoCombine) {
   // filling allnull and hasnull
   col_stats1_1->set_allnull(true);
   col_stats1_1->set_hasnull(true);
+  col_stats1_1->set_nonnullrows(10);
 
   col_stats1_2->set_allnull(false);
   col_stats1_2->set_hasnull(true);
+  col_stats1_2->set_nonnullrows(11);
 
   col_stats1_3->set_allnull(false);
   col_stats1_3->set_hasnull(true);
+  col_stats1_3->set_nonnullrows(12);
 
   col_stats1_4->set_allnull(false);
   col_stats1_4->set_hasnull(false);
+  col_stats1_4->set_nonnullrows(13);
 
   col_stats2_1->set_allnull(false);
   col_stats2_1->set_hasnull(false);
+  col_stats2_1->set_nonnullrows(14);
 
   col_stats2_2->set_allnull(false);
   col_stats2_2->set_hasnull(true);
+  col_stats2_2->set_nonnullrows(15);
 
   col_stats2_3->set_allnull(false);
   col_stats2_3->set_hasnull(true);
+  col_stats2_3->set_nonnullrows(16);
 
   col_stats2_4->set_allnull(true);
   col_stats2_4->set_hasnull(true);
+  col_stats2_4->set_nonnullrows(17);
 
   // fill ColumnBasicInfo
   col_stats1_1->mutable_info()->set_typid(tuple_desc->attrs[0].atttypid);
