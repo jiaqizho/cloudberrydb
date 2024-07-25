@@ -762,7 +762,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
     pb_stats->set_nonnullrows(col_stats.nonnullrows());
     *pb_stats->mutable_coldatastats() = col_stats.datastats();
     PAX_LOG_IF(pax_enable_debug,
-               "write group[%lu](allnull=%s, hasnull=%s, nonnullrows=%u, "
+               "write group[%lu](allnull=%s, hasnull=%s, nonnullrows=%lu, "
                "hastoast=%s, nrows=%lu)",
                i, col_stats.allnull() ? "true" : "false",
                col_stats.hasnull() ? "true" : "false", col_stats.nonnullrows(),
