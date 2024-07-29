@@ -7,7 +7,7 @@
 namespace pax {
 
 namespace tools {
-class PaxDumpReader;
+class OrcDumpReader;
 }
 
 class OrcGroup : public MicroPartitionReader::Group {
@@ -61,7 +61,7 @@ class OrcGroup : public MicroPartitionReader::Group {
   std::vector<Datum> buffer_holder_;
 
  private:
-  friend class tools::PaxDumpReader;
+  friend class tools::OrcDumpReader;
   uint32 *current_nulls_ = nullptr;
   uint32 **nulls_shuffle_ = nullptr;
   // only a reference, owner by pax_filter
