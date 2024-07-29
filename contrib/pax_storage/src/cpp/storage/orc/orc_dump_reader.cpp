@@ -1,5 +1,6 @@
-#include "storage/tools/pax_dump_reader.h"
+#include "storage/orc/orc_dump_reader.h"
 
+#include <sstream>
 #include <tabulate/table.hpp>
 
 #include "comm/fmt.h"
@@ -57,33 +58,37 @@ static inline std::tuple<int64, int64, bool> ParseRange(
   return {range_start, range_end, true};
 }
 
-PaxDumpReader::PaxDumpReader(DumpConfig *config)
+OrcDumpReader::OrcDumpReader(DumpConfig *config)
     : config_(config), format_reader_(nullptr) {}
 
-bool PaxDumpReader::Initialize() {
+bool OrcDumpReader::Open() {
+  FileSystem *fs = nullptr;
+  File *open_file = nullptr, *open_toast_file = nullptr;
   assert(config_);
   assert(config_->file_name);
 
-  try {
-    FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
-    auto open_file = fs->Open(config_->file_name, fs::kReadMode);
-    if (open_file->FileLength() == 0) {
-      return false;
-    }
-
-    format_reader_ = new OrcFormatReader(open_file);
-    format_reader_->Open();
-  } catch (cbdb::CException &e) {
-    std::cout << e.What() << std::endl;
-    std::cout << "Stack Info: \n" << e.Stack() << std::endl;
-    Release();
+  fs = pax::Singleton<LocalFileSystem>::GetInstance();
+  open_file = fs->Open(config_->file_name, fs::kReadMode);
+  if (open_file->FileLength() == 0) {
+    open_file->Close();
     return false;
   }
 
+  if (config_->toast_file_name) {
+    open_toast_file = fs->Open(config_->toast_file_name, fs::kReadMode);
+    if (open_toast_file->FileLength() == 0) {
+      open_file->Close();
+      open_toast_file->Close();
+      return false;
+    }
+  }
+
+  format_reader_ = new OrcFormatReader(open_file, open_toast_file);
+  format_reader_->Open();
   return true;
 }
 
-void PaxDumpReader::Release() {
+void OrcDumpReader::Close() {
   if (format_reader_) {
     format_reader_->Close();
     delete format_reader_;
@@ -91,68 +96,63 @@ void PaxDumpReader::Release() {
   }
 }
 
-void PaxDumpReader::Dump() {
-  bool no_print = true;
+std::string OrcDumpReader::Dump() {
   if (config_->print_all) {
-    DumpAllInfo();
-    no_print = false;
+    return DumpAllInfo();
   }
 
   if (config_->print_all_desc) {
-    DumpAllDesc();
-    no_print = false;
+    return DumpAllDesc();
   }
 
   if (config_->print_post_script) {
-    DumpPostScript();
-    no_print = false;
+    return DumpPostScript();
   }
 
   if (config_->print_footer) {
-    DumpFooter();
-    no_print = false;
+    return DumpFooter();
   }
 
   if (config_->print_schema) {
-    DumpSchema();
-    no_print = false;
+    return DumpSchema();
   }
 
   if (config_->print_group_info) {
-    DumpGroupInfo();
-    no_print = false;
+    return DumpGroupInfo();
   }
 
   if (config_->print_group_footer) {
-    DumpGroupFooter();
-    no_print = false;
+    return DumpGroupFooter();
   }
 
   if (config_->print_all_data) {
-    DumpAllData();
-    no_print = false;
+    return DumpAllData();
   }
 
   // defualt dump all of desc
-  if (no_print) {
-    DumpAllDesc();
-  }
+  return DumpAllDesc();
 }
 
-void PaxDumpReader::DumpAllInfo() {
-  DumpAllDesc();
-  DumpAllData();
+std::string OrcDumpReader::DumpAllInfo() {
+  std::stringstream all_info;
+  all_info << DumpAllDesc() << "\n" << DumpAllData();
+  all_info.flush();
+  return all_info.str();
 }
 
-void PaxDumpReader::DumpAllDesc() {
-  DumpPostScript();
-  DumpFooter();
-  DumpSchema();
-  DumpGroupInfo();
-  DumpGroupFooter();
+std::string OrcDumpReader::DumpAllDesc() {
+  std::stringstream all_desc;
+  all_desc << DumpPostScript() << "\n"
+           << DumpFooter() << "\n"
+           << DumpSchema() << "\n"
+           << DumpGroupInfo() << "\n"
+           << DumpGroupFooter();
+  all_desc.flush();
+
+  return all_desc.str();
 }
 
-void PaxDumpReader::DumpPostScript() {
+std::string OrcDumpReader::DumpPostScript() {
   tabulate::Table post_srcipt_table;
   tabulate::Table desc_table;
   auto postsrcipt = &(format_reader_->post_script_);
@@ -173,10 +173,10 @@ void PaxDumpReader::DumpPostScript() {
   post_srcipt_table.add_row(tabulate::Table::Row_t{desc_table});
   post_srcipt_table[1].format().hide_border_top();
 
-  std::cout << post_srcipt_table << std::endl;
+  return post_srcipt_table.str();
 }
 
-void PaxDumpReader::DumpSchema() {
+std::string OrcDumpReader::DumpSchema() {
   tabulate::Table schema_table;
   tabulate::Table desc_table;
 
@@ -206,10 +206,10 @@ void PaxDumpReader::DumpSchema() {
 
   // create desc header, types and basic info
   tabulate::Table::Row_t desc_table_header{""};
-  tabulate::Table::Row_t desc_table_types{"Type"};
-  tabulate::Table::Row_t desc_table_typeids{"Type id"};
-  tabulate::Table::Row_t desc_table_collation{"Collation"};
-  tabulate::Table::Row_t desc_table_opfamilys{"Operator family"};
+  tabulate::Table::Row_t desc_table_types{"Type kind"};
+  tabulate::Table::Row_t desc_table_typeids{"PG typeid"};
+  tabulate::Table::Row_t desc_table_collation{"PG collation"};
+  tabulate::Table::Row_t desc_table_opfamilys{"PG opfamily"};
 
   int64 column_start, column_end;
   bool succ;
@@ -226,7 +226,8 @@ void PaxDumpReader::DumpSchema() {
     auto sub_type = &(footer->types(sub_type_id));
 
     desc_table_header.emplace_back(std::string("column" + std::to_string(j)));
-    desc_table_types.emplace_back(sub_type->DebugString());
+    // desc_table_types.emplace_back(sub_type->DebugString());
+    desc_table_types.emplace_back(std::to_string(sub_type->kind()));
     desc_table_typeids.emplace_back(std::to_string((*col_infos)[j].typid()));
     desc_table_collation.emplace_back(
         std::to_string((*col_infos)[j].collation()));
@@ -247,10 +248,10 @@ void PaxDumpReader::DumpSchema() {
   schema_table.add_row(tabulate::Table::Row_t{desc_table});
   schema_table[1].format().hide_border_top();
 
-  std::cout << schema_table << std::endl;
+  return schema_table.str();
 }
 
-void PaxDumpReader::DumpFooter() {
+std::string OrcDumpReader::DumpFooter() {
   tabulate::Table footer_table;
   tabulate::Table desc_table;
 
@@ -274,10 +275,11 @@ void PaxDumpReader::DumpFooter() {
   footer_table.add_row(tabulate::Table::Row_t{desc_table});
   footer_table[1].format().hide_border_top();
 
-  std::cout << footer_table << std::endl;
+  return footer_table.str();
 }
 
-void PaxDumpReader::DumpGroupInfo() {
+std::string OrcDumpReader::DumpGroupInfo() {
+  std::string group_infos;
   auto footer = &(format_reader_->file_footer_);
   auto stripes = &(footer->stripes());
   auto number_of_column = footer->colinfo_size();
@@ -308,6 +310,7 @@ void PaxDumpReader::DumpGroupInfo() {
     tabulate::Table::Row_t col_desc_table_header{""};
     tabulate::Table::Row_t col_desc_table_allnulls{"All null"};
     tabulate::Table::Row_t col_desc_table_hasnulls{"Has null"};
+    tabulate::Table::Row_t col_desc_table_hastoast{"Has Toast"};
     tabulate::Table::Row_t col_desc_table_mins{"Minimal"};
     tabulate::Table::Row_t col_desc_table_maxs{"Maximum"};
 
@@ -325,6 +328,14 @@ void PaxDumpReader::DumpGroupInfo() {
         {"Stripe footer length", std::to_string(stripe.footerlength())});
     group_desc_table.add_row(
         {"Number of rows", std::to_string(stripe.numberofrows())});
+    group_desc_table.add_row(
+        {"Toast offset", std::to_string(stripe.toastoffset())});
+    group_desc_table.add_row(
+        {"Toast length", std::to_string(stripe.toastlength())});
+    group_desc_table.add_row(
+        {"Number of toast", std::to_string(stripe.numberoftoast())});
+    group_desc_table.add_row({"Number of external toast",
+                              std::to_string(stripe.exttoastlength_size())});
 
     // full group col statistics desc
     for (int j = column_start; j < column_end; j++) {
@@ -334,6 +345,7 @@ void PaxDumpReader::DumpGroupInfo() {
           std::string("column" + std::to_string(j)));
       col_desc_table_allnulls.emplace_back(BoolCast(col_stats.allnull()));
       col_desc_table_hasnulls.emplace_back(BoolCast(col_stats.hasnull()));
+      col_desc_table_hastoast.emplace_back(BoolCast(col_stats.hastoast()));
 
       int64 minimal_val;
       int64 maximum_val;
@@ -386,6 +398,7 @@ void PaxDumpReader::DumpGroupInfo() {
     group_col_desc_table.add_row(col_desc_table_header);
     group_col_desc_table.add_row(col_desc_table_allnulls);
     group_col_desc_table.add_row(col_desc_table_hasnulls);
+    group_col_desc_table.add_row(col_desc_table_hastoast);
     group_col_desc_table.add_row(col_desc_table_mins);
     group_col_desc_table.add_row(col_desc_table_maxs);
 
@@ -400,11 +413,14 @@ void PaxDumpReader::DumpGroupInfo() {
     group_table.add_row(tabulate::Table::Row_t{group_col_desc_table});
     group_table[2].format().hide_border_top();
 
-    std::cout << group_table << std::endl;
+    group_infos += group_table.str() + "\n";
   }
+
+  return group_infos;
 }
 
-void PaxDumpReader::DumpGroupFooter() {
+std::string OrcDumpReader::DumpGroupFooter() {
+  std::string group_footers;
   DataBuffer<char> *data_buffer = nullptr;
   auto footer = &(format_reader_->file_footer_);
   auto stripes = &(footer->stripes());
@@ -495,13 +511,14 @@ void PaxDumpReader::DumpGroupFooter() {
         tabulate::Table::Row_t{group_footer_desc_tables});
     group_footer_table[1].format().hide_border_top();
 
-    std::cout << group_footer_table << std::endl;
+    group_footers += group_footer_table.str() + "\n";
   }
 
   delete data_buffer;
+  return group_footers;
 }
 
-void PaxDumpReader::DumpAllData() {
+std::string OrcDumpReader::DumpAllData() {
   auto footer = &(format_reader_->file_footer_);
   auto stripes = &(footer->stripes());
   auto number_of_columns = footer->colinfo_size();
@@ -516,7 +533,8 @@ void PaxDumpReader::DumpAllData() {
       config_->group_id_start, config_->group_id_len, stripes->size());
   CBDB_CHECK(succ && config_->group_id_len == 1,
              cbdb::CException::ExType::kExTypeInvalid,
-             fmt("Invalid group range, with option -d/--print-data the range "
+             fmt("Invalid group range, with option -d/--print-data(or "
+                 "-a/--print-all) the range "
                  "length should be 1"
                  "[file=%s] group range shoule in [0, %u)",
                  config_->file_name, stripes->size()));
@@ -552,6 +570,12 @@ void PaxDumpReader::DumpAllData() {
   for (int column_index = column_start; column_index < column_end;
        column_index++) {
     proj_map[column_index] = true;
+  }
+
+  if (stripe_info.toastlength() != 0 && config_->toast_file_name == nullptr) {
+    CBDB_RAISE(cbdb::CException::ExType::kExTypeInvalid,
+               fmt("Current file %s exist toast, must specify the toast file",
+                   config_->file_name));
   }
 
   columns =
@@ -642,9 +666,9 @@ void PaxDumpReader::DumpAllData() {
   data_table.add_row(tabulate::Table::Row_t{data_datum_table});
   data_table[1].format().hide_border_top();
 
-  std::cout << data_table << std::endl;
   delete data_buffer;
   delete group;
+  return data_table.str();
 }
 
 }  // namespace pax::tools
