@@ -7,7 +7,7 @@
 
 namespace pax {
 namespace tools {
-class PaxDumpReader;
+class OrcDumpReader;
 }
 class OrcFormatReader final {
  public:
@@ -48,7 +48,7 @@ class OrcFormatReader final {
   void BuildProtoTypes();
 
  private:
-  friend class tools::PaxDumpReader;
+  friend class tools::OrcDumpReader;
   friend class OrcGroupStatsProvider;
   std::vector<pax::porc::proto::Type_Kind> column_types_;
   std::vector<std::map<std::string, std::string>> column_attrs_;

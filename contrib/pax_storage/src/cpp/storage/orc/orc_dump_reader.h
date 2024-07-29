@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdlib>
-
+#include <string>
 namespace pax {
 class OrcFormatReader;
 namespace tools {
@@ -9,13 +9,8 @@ namespace tools {
 #define NO_SPEC_LEN 0
 
 struct DumpConfig {
-  ~DumpConfig() {
-    if (file_name) {
-      free(file_name); // NOLINT
-    }
-  }
-
   char *file_name = nullptr;
+  char *toast_file_name = nullptr;
   bool print_all = false;
   bool print_all_desc = false;
   bool print_post_script = false;
@@ -35,24 +30,23 @@ struct DumpConfig {
   int64_t row_id_len = NO_SPEC_LEN;
 };
 
-class PaxDumpReader final {
+class OrcDumpReader final {
  public:
-  explicit PaxDumpReader(DumpConfig *config);
+  explicit OrcDumpReader(DumpConfig *config);
 
-  bool Initialize();
-  void Release();
-
-  void Dump();
+  bool Open();
+  std::string Dump();
+  void Close();
 
  private:
-  void DumpAllInfo();
-  void DumpAllDesc();
-  void DumpPostScript();
-  void DumpFooter();
-  void DumpSchema();
-  void DumpGroupInfo();
-  void DumpGroupFooter();
-  void DumpAllData();
+  std::string DumpAllInfo();
+  std::string DumpAllDesc();
+  std::string DumpPostScript();
+  std::string DumpFooter();
+  std::string DumpSchema();
+  std::string DumpGroupInfo();
+  std::string DumpGroupFooter();
+  std::string DumpAllData();
 
  private:
   DumpConfig *config_;

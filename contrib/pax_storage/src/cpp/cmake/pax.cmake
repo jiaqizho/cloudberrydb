@@ -52,6 +52,7 @@ set(pax_storage_src
     storage/micro_partition_row_filter_reader.cc
     storage/micro_partition_stats.cc
     storage/micro_partition_stats_updater.cc
+    storage/orc/orc_dump_reader.cpp
     storage/orc/orc_format_reader.cc
     storage/orc/orc_group.cc
     storage/orc/orc_vec_group.cc
@@ -98,22 +99,19 @@ set(pax_vec_src
   storage/vec/pax_vec_comm.cc
   storage/vec/pax_vec_reader.cc)
 
+# add tabulate which used in the UDF
+add_subdirectory(contrib/tabulate)
 
 #### pax.so
 set(pax_target_src  ${PROTO_SRCS} ${pax_storage_src} ${pax_exceptions_src}
   ${pax_access_src} ${pax_comm_src} ${pax_catalog_src} ${pax_vec_src})
-set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
+set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR} contrib/tabulate/include)
 set(pax_target_link_libs protobuf zstd z postgres)
 if (PAX_USE_LZ4)
   list(APPEND pax_target_link_libs lz4)
 endif()
 set(pax_target_link_directories ${PROJECT_SOURCE_DIR}/../../src/backend/)
 set(pax_target_dependencies generate_protobuf create_sql_script)
-
-# enable plasma
-if (ENABLE_PLASMA)
-  set(pax_target_link_libs ${pax_target_link_libs} uuid plasma)
-endif()
 
 add_library(pax SHARED ${pax_target_src})
 set_target_properties(pax PROPERTIES OUTPUT_NAME pax)
@@ -187,11 +185,10 @@ if(BUILD_GBENCH)
 endif(BUILD_GBENCH)
 
 if (BUILD_TOOLS) 
-  add_subdirectory(contrib/tabulate)
   link_directories($ENV{GPHOME}/lib)
 
-  add_executable(pax_dump storage/tools/pax_dump.cpp storage/tools/pax_dump_reader.cpp)
-  target_include_directories(pax_dump PUBLIC ${pax_target_include} ${CMAKE_CURRENT_SOURCE_DIR} contrib/tabulate/include)
+  add_executable(pax_dump storage/tools/pax_dump.cpp storage/orc/orc_dump_reader.cpp)
+  target_include_directories(pax_dump PUBLIC ${pax_target_include} ${CMAKE_CURRENT_SOURCE_DIR})
   add_dependencies(pax_dump ${pax_target_dependencies})
   target_link_libraries(pax_dump PUBLIC pax protobuf)
 endif(BUILD_TOOLS)
