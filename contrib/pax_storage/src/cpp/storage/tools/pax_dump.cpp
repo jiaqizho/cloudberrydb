@@ -4,8 +4,8 @@
 #include <unistd.h>
 
 #include "exceptions/CException.h"
+#include "storage/orc/orc_dump_reader.h"
 #include "storage/proto/proto_wrappers.h"
-#include "storage/tools/pax_dump_reader.h"
 
 const char *progname = NULL;
 
@@ -22,6 +22,7 @@ static void Usage() {
 
       << "  -f, --file [file]                 Specify the file name to be "
          "dumped\n"
+      << "  -t, --toast-file [file]           Specify the toast file name\n"
       << "  -g, --group-range [start, len]    Specify print with range of "
          "group ids\n"
       << "  -c, --column-range [start, len]   Specify print with range of "
@@ -35,7 +36,7 @@ static void Usage() {
          "information, which contains version, post script, footer\n"
       << "  -p, --print-post-script-info      Print the postscript "
          "information\n"
-      << "  -t, --print-footer-info           Print the footer information\n"
+      << "  -e, --print-footer-info           Print the footer information\n"
       << "  -s, --print-schema-info           Print the schema information\n"
       << "  -b, --print-group-info            Print the group information\n"
       << "  -o, --print-group-footer          Print the group footer "
@@ -51,13 +52,14 @@ static struct option long_options[] = {
     {"help", no_argument, NULL, '?'},
     {"version", no_argument, NULL, 'v'},
     {"file", required_argument, NULL, 'f'},
+    {"toast-file", required_argument, NULL, 't'},
     {"group-range", optional_argument, NULL, 'g'},
     {"column-range", optional_argument, NULL, 'c'},
     {"row-range", optional_argument, NULL, 'r'},
     {"print-all", optional_argument, NULL, 'a'},
     {"print-all-desc", optional_argument, NULL, 'm'},
     {"print-post-script-info", optional_argument, NULL, 'p'},
-    {"print-footer-info", optional_argument, NULL, 't'},
+    {"print-footer-info", optional_argument, NULL, 'e'},
     {"print-schema-info", optional_argument, NULL, 's'},
     {"print-group-info", optional_argument, NULL, 'b'},
     {"print-all-data", optional_argument, NULL, 'd'},
@@ -133,7 +135,7 @@ static void InitConfig(struct pax::tools::DumpConfig *config, int argc,
 
   optind = 1;
   while (optind < argc) {
-    while ((c = getopt_long(argc, argv, "vf:g:c:r:amptsbod", long_options,
+    while ((c = getopt_long(argc, argv, "vf:g:c:r:t:ampesbod", long_options,
                             NULL)) != -1) {
       switch (c) {
         case 'f': {
@@ -167,6 +169,13 @@ static void InitConfig(struct pax::tools::DumpConfig *config, int argc,
               ParseRangeConfig(optarg);
           break;
         }
+        case 't': {
+          if (!optarg) {
+            goto invalid_args;
+          }
+          config->toast_file_name = strdup(optarg);
+          break;
+        }
         case 'a': {
           config->print_all = true;
           break;
@@ -179,7 +188,7 @@ static void InitConfig(struct pax::tools::DumpConfig *config, int argc,
           config->print_post_script = true;
           break;
         }
-        case 't': {
+        case 'e': {
           config->print_footer = true;
           break;
         }
@@ -220,32 +229,36 @@ invalid_args:
 }
 
 int main(int argc, char **argv) {
-  pax::tools::PaxDumpReader *reader = nullptr;
+  pax::tools::OrcDumpReader *reader = nullptr;
   pax::tools::DumpConfig config;
+  int rc = 0;
 
   progname = argv[0];
   InitConfig(&config, argc, argv);
 
-  reader = new pax::tools::PaxDumpReader(&config);
-  bool ok = reader->Initialize();
-  if (!ok) {
-    std::cout << "Failed to dump current file: " << config.file_name
-              << std::endl;
-    reader->Release();
-    delete reader;
-    exit(-1);
-  }
-
+  reader = new pax::tools::OrcDumpReader(&config);
   try {
-    reader->Dump();
+    bool ok = reader->Open();
+    if (!ok) {
+      std::cout << "Failed to dump current file: " << config.file_name
+                << ", Toast file: " << config.toast_file_name  // safe
+                << std::endl;
+      rc = -1;
+      goto finish;
+    }
+
+    std::cout << reader->Dump() << std::endl;
   } catch (cbdb::CException &e) {
     std::cout << "error happend while dumping.\n  " << e.What() << std::endl;
     std::cout << "Stack: \n" << e.Stack() << std::endl;
-    reader->Release();
-    delete reader;
-    exit(-1);
+    rc = -1;
+    goto finish;
   }
 
-  reader->Release();
+finish:
+  free(config.file_name);
+  free(config.toast_file_name);
+  reader->Close();
   delete reader;
+  return rc;
 }
