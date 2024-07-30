@@ -58,7 +58,7 @@ class TableWriter {
   std::vector<int> GetMinMaxColumnIndexes();
 
   MicroPartitionWriter *CreateMicroPartitionWriter(
-      MicroPartitionStats *mp_stats);
+      MicroPartitionStats *mp_stats, bool write_only = true);
 
  protected:
   std::string rel_path_;
