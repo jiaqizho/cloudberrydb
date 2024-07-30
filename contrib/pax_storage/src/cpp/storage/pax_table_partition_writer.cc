@@ -45,7 +45,7 @@ void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
     stats->Initialize(GetMinMaxColumnIndexes());
     mp_stats_array_[part_index] = stats;
     writers_[part_index] =
-        CreateMicroPartitionWriter(mp_stats_array_[part_index]);
+        CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
 
     // insert tuple into the aux table before inserting any tuples.
     current_blocknos_[part_index] = current_blockno_;
@@ -56,7 +56,7 @@ void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
     writers_[part_index]->Close();
     PAX_DELETE(writers_[part_index]);
     writers_[part_index] =
-        CreateMicroPartitionWriter(mp_stats_array_[part_index]);
+        CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
     num_tuples_[part_index] = 0;
 
     // insert tuple into the aux table before inserting any tuples.
