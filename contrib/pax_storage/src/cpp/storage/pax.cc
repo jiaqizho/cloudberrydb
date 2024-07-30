@@ -211,7 +211,7 @@ TableWriter::GetRelEncodingOptions() {
 }
 
 MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
-    MicroPartitionStats *mp_stats) {
+    MicroPartitionStats *mp_stats, bool write_only) {
   MicroPartitionWriter::WriterOptions options;
   std::string file_path;
   std::string toast_file_path;
@@ -219,6 +219,7 @@ MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
   File *file;
   File *toast_file = nullptr;
   MicroPartitionWriter *mp_writer;
+  int open_flags;
 
   Assert(relation_);
   Assert(strategy_);
@@ -239,15 +240,25 @@ MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
       PAX_LENGTHS_DEFAULT_COMPRESSTYPE, PAX_LENGTHS_DEFAULT_COMPRESSLEVEL);
   options.enable_min_max_col_idxs = GetMinMaxColumnIndexes();
 
+  // FIXME(gongxun): Non-partition writers do not need to read and merge, so we
+  // open them in write-only mode. Write-only writer can work on object storage.
+  // For partitioned writes, we need to reconstruct this part of the logic to
+  // support partitioned writers on object storage.
+  if (write_only) {
+    open_flags = fs::kWriteMode;
+  } else {
+    open_flags = fs::kReadWriteMode;
+  }
+
   // should be kReadWriteMode here
   // cause PAX may do read after write in partition logic
-  file = file_system_->Open(options.file_name, fs::kReadWriteMode,
-                            file_system_options_);
+  file =
+      file_system_->Open(options.file_name, open_flags, file_system_options_);
   Assert(file);
 
   if (pax_enable_toast) {
-    toast_file = file_system_->Open(toast_file_path, fs::kReadWriteMode,
-                                    file_system_options_);
+    toast_file =
+        file_system_->Open(toast_file_path, open_flags, file_system_options_);
   }
 
   mp_writer = MicroPartitionFileFactory::CreateMicroPartitionWriter(
