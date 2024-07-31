@@ -52,6 +52,7 @@ set(pax_storage_src
     storage/micro_partition_row_filter_reader.cc
     storage/micro_partition_stats.cc
     storage/micro_partition_stats_updater.cc
+    storage/micro_partition_udf.cc
     storage/orc/orc_dump_reader.cpp
     storage/orc/orc_format_reader.cc
     storage/orc/orc_group.cc
