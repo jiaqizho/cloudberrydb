@@ -12,6 +12,7 @@
 #include "storage/orc/orc_defined.h"
 #include "storage/orc/orc_format_reader.h"
 #include "storage/orc/orc_group.h"
+#include "storage/remote_file_system.h"
 
 namespace pax::tools {
 
@@ -63,29 +64,42 @@ OrcDumpReader::OrcDumpReader(DumpConfig *config)
 
 bool OrcDumpReader::Open() {
   FileSystem *fs = nullptr;
+  FileSystemOptions *fs_opt = nullptr;
   File *open_file = nullptr, *open_toast_file = nullptr;
+  bool rc = true;
   assert(config_);
   assert(config_->file_name);
 
-  fs = pax::Singleton<LocalFileSystem>::GetInstance();
-  open_file = fs->Open(config_->file_name, fs::kReadMode);
+  if (config_->dfs_tblspcid != InvalidOid) {
+    fs_opt = new RemoteFileSystemOptions(config_->dfs_tblspcid);
+    fs = pax::Singleton<RemoteFileSystem>::GetInstance();
+  } else {
+    fs = pax::Singleton<LocalFileSystem>::GetInstance();
+  }
+
+  open_file = fs->Open(config_->file_name, fs::kReadMode, fs_opt);
   if (open_file->FileLength() == 0) {
     open_file->Close();
-    return false;
+    rc = false;
+    goto finish;
   }
 
   if (config_->toast_file_name) {
-    open_toast_file = fs->Open(config_->toast_file_name, fs::kReadMode);
+    open_toast_file = fs->Open(config_->toast_file_name, fs::kReadMode, fs_opt);
     if (open_toast_file->FileLength() == 0) {
       open_file->Close();
       open_toast_file->Close();
-      return false;
+      rc = false;
+      goto finish;
     }
   }
 
   format_reader_ = new OrcFormatReader(open_file, open_toast_file);
   format_reader_->Open();
-  return true;
+
+finish:
+  if (fs_opt) delete fs_opt;
+  return rc;
 }
 
 void OrcDumpReader::Close() {
@@ -226,7 +240,6 @@ std::string OrcDumpReader::DumpSchema() {
     auto sub_type = &(footer->types(sub_type_id));
 
     desc_table_header.emplace_back(std::string("column" + std::to_string(j)));
-    // desc_table_types.emplace_back(sub_type->DebugString());
     desc_table_types.emplace_back(std::to_string(sub_type->kind()));
     desc_table_typeids.emplace_back(std::to_string((*col_infos)[j].typid()));
     desc_table_collation.emplace_back(
