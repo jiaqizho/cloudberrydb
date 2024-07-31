@@ -39,6 +39,8 @@ set(pax_storage_src
     storage/micro_partition_row_filter_reader.cc
     storage/micro_partition_stats.cc
     storage/micro_partition_stats_updater.cc
+    storage/micro_partition_udf.cc
+    storage/orc/orc_dump_reader.cpp
     storage/orc/orc_format_reader.cc
     storage/orc/orc_group.cc
     storage/orc/orc_vec_group.cc
@@ -61,13 +63,12 @@ set(pax_vec_src
   storage/vec/pax_vec_reader.cc
 )
 
-set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR})
+set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR} contrib/tabulate/include)
 set(pax_target_link_libs uuid protobuf zstd z)
 if (PAX_USE_LZ4)
   list(APPEND pax_target_link_libs lz4)
 endif()
 set(pax_target_link_directories ${PROJECT_SOURCE_DIR}/../../src/backend/)
-
 
 # vec build
 if (VEC_BUILD)
