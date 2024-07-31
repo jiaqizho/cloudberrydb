@@ -9,14 +9,15 @@
 #include "catalog/pg_pax_tables.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_memory.h"
+#include "comm/paxc_wrappers.h"
 #include "storage/columns/pax_encoding.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition_file_factory.h"
 #include "storage/micro_partition_metadata.h"
 #include "storage/micro_partition_stats.h"
 #include "storage/micro_partition_stats_updater.h"
+#include "storage/orc/orc_dump_reader.h"
 #include "storage/remote_file_system.h"
-
 #ifdef VEC_BUILD
 #include "storage/vec/pax_vec_reader.h"
 #endif

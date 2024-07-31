@@ -19,6 +19,7 @@ struct DumpConfig {
   bool print_group_info = false;
   bool print_group_footer = false;
   bool print_all_data = false;
+  unsigned int dfs_tblspcid = 0;
 
   int64_t group_id_start = NO_SPEC_ID;
   int64_t group_id_len = NO_SPEC_LEN;
