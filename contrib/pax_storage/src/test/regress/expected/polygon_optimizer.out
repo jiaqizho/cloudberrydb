@@ -63,7 +63,9 @@ INSERT INTO quad_poly_tbl
 		(11002, NULL),
 		(11003, NULL);
 ANALYZE quad_poly_tbl;
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX quad_poly_tbl_idx ON quad_poly_tbl USING spgist(p);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 -- get reference results for ORDER BY distance from seq scan
 SET enable_seqscan = ON;
 SET enable_indexscan = OFF;

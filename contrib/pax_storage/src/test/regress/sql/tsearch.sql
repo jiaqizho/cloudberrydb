@@ -66,7 +66,7 @@ SELECT count(*) FROM test_tsvector WHERE a @@ 'wd:A';
 SELECT count(*) FROM test_tsvector WHERE a @@ 'wd:D';
 SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:A';
 SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:D';
-
+-- PAX not support gist/spgist/brin indexes
 create index wowidx on test_tsvector using gist (a);
 
 SET enable_seqscan=OFF;
@@ -131,6 +131,7 @@ SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:A';
 SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:D';
 
 -- Test siglen parameter of GiST tsvector_ops
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX wowidx1 ON test_tsvector USING gist (a tsvector_ops(foo=1));
 CREATE INDEX wowidx1 ON test_tsvector USING gist (a tsvector_ops(siglen=0));
 CREATE INDEX wowidx1 ON test_tsvector USING gist (a tsvector_ops(siglen=8192));

@@ -201,18 +201,20 @@ SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:D';
    450
 (1 row)
 
+-- PAX not support gist/spgist/brin indexes
 create index wowidx on test_tsvector using gist (a);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 SET enable_seqscan=OFF;
 SET enable_indexscan=ON;
 SET enable_bitmapscan=OFF;
 explain (costs off) SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
-               ->  Index Scan using wowidx on test_tsvector
-                     Index Cond: (a @@ '''wr'' | ''qh'''::tsquery)
+               ->  Seq Scan on test_tsvector
+                     Filter: (a @@ '''wr'' | ''qh'''::tsquery)
  Optimizer: Postgres query optimizer
 (6 rows)
 
@@ -363,17 +365,15 @@ SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:D';
 SET enable_indexscan=OFF;
 SET enable_bitmapscan=ON;
 explain (costs off) SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
-               ->  Bitmap Heap Scan on test_tsvector
-                     Recheck Cond: (a @@ '''wr'' | ''qh'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx
-                           Index Cond: (a @@ '''wr'' | ''qh'''::tsquery)
+               ->  Seq Scan on test_tsvector
+                     Filter: (a @@ '''wr'' | ''qh'''::tsquery)
  Optimizer: Postgres query optimizer
-(8 rows)
+(6 rows)
 
 SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
  count 
@@ -520,6 +520,7 @@ SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:D';
 (1 row)
 
 -- Test siglen parameter of GiST tsvector_ops
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX wowidx1 ON test_tsvector USING gist (a tsvector_ops(foo=1));
 ERROR:  unrecognized parameter "foo"
 CREATE INDEX wowidx1 ON test_tsvector USING gist (a tsvector_ops(siglen=0));
@@ -533,29 +534,26 @@ ERROR:  unrecognized parameter "foo"
 CREATE INDEX wowidx1 ON test_tsvector USING gist (a tsvector_ops(siglen=100, siglen = 200));
 ERROR:  parameter "siglen" specified more than once
 CREATE INDEX wowidx2 ON test_tsvector USING gist (a tsvector_ops(siglen=1));
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 \d test_tsvector
             Table "public.test_tsvector"
  Column |   Type   | Collation | Nullable | Default 
 --------+----------+-----------+----------+---------
  t      | text     |           |          | 
  a      | tsvector |           |          | 
-Indexes:
-    "wowidx" gist (a)
-    "wowidx2" gist (a tsvector_ops (siglen='1'))
 
 DROP INDEX wowidx;
+ERROR:  index "wowidx" does not exist
 EXPLAIN (costs off) SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
-               ->  Bitmap Heap Scan on test_tsvector
-                     Recheck Cond: (a @@ '''wr'' | ''qh'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx2
-                           Index Cond: (a @@ '''wr'' | ''qh'''::tsquery)
+               ->  Seq Scan on test_tsvector
+                     Filter: (a @@ '''wr'' | ''qh'''::tsquery)
  Optimizer: Postgres query optimizer
-(8 rows)
+(6 rows)
 
 SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
  count 
@@ -702,28 +700,27 @@ SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:D';
 (1 row)
 
 DROP INDEX wowidx2;
+ERROR:  index "wowidx2" does not exist
 CREATE INDEX wowidx ON test_tsvector USING gist (a tsvector_ops(siglen=484));
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:735)
 \d test_tsvector
             Table "public.test_tsvector"
  Column |   Type   | Collation | Nullable | Default 
 --------+----------+-----------+----------+---------
  t      | text     |           |          | 
  a      | tsvector |           |          | 
-Indexes:
-    "wowidx" gist (a tsvector_ops (siglen='484'))
+Distributed by: (t)
 
 EXPLAIN (costs off) SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
-               ->  Bitmap Heap Scan on test_tsvector
-                     Recheck Cond: (a @@ '''wr'' | ''qh'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx
-                           Index Cond: (a @@ '''wr'' | ''qh'''::tsquery)
+               ->  Seq Scan on test_tsvector
+                     Filter: (a @@ '''wr'' | ''qh'''::tsquery)
  Optimizer: Postgres query optimizer
-(8 rows)
+(6 rows)
 
 SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
  count 
@@ -873,6 +870,7 @@ RESET enable_seqscan;
 RESET enable_indexscan;
 RESET enable_bitmapscan;
 DROP INDEX wowidx;
+ERROR:  index "wowidx" does not exist
 CREATE INDEX wowidx ON test_tsvector USING gin (a);
 SET enable_seqscan=OFF;
 -- GIN only supports bitmapscan, so no need to test plain indexscan
@@ -2230,6 +2228,7 @@ SELECT ts_rewrite( query, 'SELECT keyword, sample FROM test_tsquery' ) FROM to_t
 (1 row)
 
 CREATE INDEX qq ON test_tsquery USING gist (keyword tsquery_ops);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 SET enable_seqscan=OFF;
 SELECT keyword FROM test_tsquery WHERE keyword @> 'new';
      keyword      

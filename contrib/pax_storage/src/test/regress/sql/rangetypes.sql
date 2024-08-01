@@ -211,6 +211,7 @@ select daterange('2000-01-01'::date, 'infinity'::date, '[]');
 
 -- test GiST index that's been built incrementally
 create table test_range_gist(ir int4range);
+-- PAX not support gist/spgist/brin indexes
 create index test_range_gist_idx on test_range_gist using gist (ir);
 
 insert into test_range_gist select int4range(g, g+10) from generate_series(1,2000) g;
@@ -281,6 +282,7 @@ select count(*) from test_range_gist where ir -|- int4multirange(int4range(100,2
 
 -- now check same queries using a bulk-loaded index
 drop index test_range_gist_idx;
+-- PAX not support gist/spgist/brin indexes
 create index test_range_gist_idx on test_range_gist using gist (ir);
 
 select count(*) from test_range_gist where ir @> 'empty'::int4range;
