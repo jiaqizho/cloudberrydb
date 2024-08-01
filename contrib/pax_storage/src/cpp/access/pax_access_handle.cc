@@ -729,12 +729,11 @@ double PaxAccessMethod::IndexBuildRangeScan(
   Assert(OidIsValid(index_relation->rd_rel->relam));
   Assert(!IsSystemRelation(heap_relation));
 
-  // TODO(jiaqizho): Temporarily disable this logic and reopen it later.
-  // In the regression test, there are  many cases which will
-  // create PAX unsupported indexes, but only used to explain operation.
-  //
-  // if (index_relation->rd_rel->relam != BTREE_AM_OID)
-  //   elog(ERROR, "pax only support btree index");
+  if (index_relation->rd_rel->relam != BTREE_AM_OID &&
+      index_relation->rd_rel->relam != HASH_AM_OID &&
+      index_relation->rd_rel->relam != GIN_AM_OID &&
+      index_relation->rd_rel->relam != BITMAP_AM_OID)
+    elog(ERROR, "pax only support btree/hash/gin/bitmap indexes");
 
   checking_uniqueness =
       (index_info->ii_Unique || index_info->ii_ExclusionOps != NULL);
