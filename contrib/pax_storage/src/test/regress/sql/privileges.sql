@@ -946,9 +946,10 @@ CREATE INDEX sro_cluster_idx ON sro_tab ((sro_ifun(a) + sro_ifun(0)));
 CLUSTER sro_tab USING sro_cluster_idx;
 DROP INDEX sro_cluster_idx;
 -- BRIN index
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX sro_brin ON sro_tab USING brin ((sro_ifun(a) + sro_ifun(0)));
-SELECT brin_desummarize_range('sro_brin', 0);
-SELECT brin_summarize_range('sro_brin', 0);
+-- SELECT brin_desummarize_range('sro_brin', 0);
+-- SELECT brin_summarize_range('sro_brin', 0);
 DROP TABLE sro_tab;
 -- Check with a partitioned table
 CREATE TABLE sro_ptab (a int) PARTITION BY RANGE (a);

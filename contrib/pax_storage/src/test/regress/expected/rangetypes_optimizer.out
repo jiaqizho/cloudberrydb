@@ -784,7 +784,9 @@ select daterange('2000-01-01'::date, 'infinity'::date, '[]');
 
 -- test GiST index that's been built incrementally
 create table test_range_gist(ir int4range);
+-- PAX not support gist/spgist/brin indexes
 create index test_range_gist_idx on test_range_gist using gist (ir);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 insert into test_range_gist select int4range(g, g+10) from generate_series(1,2000) g;
 insert into test_range_gist select 'empty'::int4range from generate_series(1,500) g;
 insert into test_range_gist select int4range(g, g+10000) from generate_series(1,1000) g;
@@ -1047,7 +1049,10 @@ select count(*) from test_range_gist where ir -|- int4multirange(int4range(100,2
 
 -- now check same queries using a bulk-loaded index
 drop index test_range_gist_idx;
+ERROR:  index "test_range_gist_idx" does not exist
+-- PAX not support gist/spgist/brin indexes
 create index test_range_gist_idx on test_range_gist using gist (ir);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 select count(*) from test_range_gist where ir @> 'empty'::int4range;
  count 
 -------
@@ -1171,6 +1176,7 @@ select count(*) from test_range_gist where ir -|- int4multirange(int4range(100,2
 -- test SP-GiST index that's been built incrementally
 create table test_range_spgist(ir int4range);
 create index test_range_spgist_idx on test_range_spgist using spgist (ir);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 insert into test_range_spgist select int4range(g, g+10) from generate_series(1,2000) g;
 insert into test_range_spgist select 'empty'::int4range from generate_series(1,500) g;
 insert into test_range_spgist select int4range(g, g+10000) from generate_series(1,1000) g;
@@ -1320,7 +1326,9 @@ select count(*) from test_range_spgist where ir -|- int4range(100,500);
 
 -- now check same queries using a bulk-loaded index
 drop index test_range_spgist_idx;
+ERROR:  index "test_range_spgist_idx" does not exist
 create index test_range_spgist_idx on test_range_spgist using spgist (ir);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 select count(*) from test_range_spgist where ir @> 'empty'::int4range;
  count 
 -------
@@ -1425,6 +1433,7 @@ select count(*) from test_range_elem where i <@ int4range(10,50);
 
 -- also test spgist index on anyrange expression
 create index on test_range_elem using spgist(int4range(i,i+10));
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 explain (costs off)
 select count(*) from test_range_elem where int4range(i,i+10) <@ int4range(10,30);
                                QUERY PLAN
