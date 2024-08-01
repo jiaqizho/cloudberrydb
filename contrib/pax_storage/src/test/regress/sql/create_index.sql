@@ -74,6 +74,7 @@ CREATE INDEX onek2_stu1_prtl ON onek2 USING btree(stringu1 name_ops)
 --
 -- GiST (rtree-equivalent opclasses only)
 --
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX grect2ind ON fast_emp4000 USING gist (home_base);
 
 CREATE INDEX gpolygonind ON polygon_tbl USING gist (f1);
@@ -944,6 +945,7 @@ SELECT indexrelid::regclass, indisreplident FROM pg_index
 DROP TABLE concur_replident;
 -- Check that opclass parameters are preserved
 CREATE TABLE concur_appclass_tab(i tsvector, j tsvector, k tsvector);
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX concur_appclass_ind on concur_appclass_tab
   USING gist (i tsvector_ops (siglen='1000'), j tsvector_ops (siglen='500'));
 CREATE INDEX concur_appclass_ind_2 on concur_appclass_tab

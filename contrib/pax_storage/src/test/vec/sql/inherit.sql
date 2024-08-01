@@ -385,19 +385,20 @@ CREATE TABLE test_constraints_inh () INHERITS (test_constraints);
 DROP TABLE test_constraints_inh;
 DROP TABLE test_constraints;
 
-CREATE TABLE test_ex_constraints (
-    c circle,
-    dkey inet,
-    EXCLUDE USING gist (dkey inet_ops WITH =, c WITH &&)
-);
+-- PAX not support gist/spgist/brin indexes
+-- CREATE TABLE test_ex_constraints (
+--     c circle,
+--     dkey inet,
+--     EXCLUDE USING gist (dkey inet_ops WITH =, c WITH &&)
+-- );
 
-CREATE TABLE test_ex_constraints_inh () INHERITS (test_ex_constraints);
-\d+ test_ex_constraints
-ALTER TABLE test_ex_constraints DROP CONSTRAINT test_ex_constraints_dkey_c_excl;
-\d+ test_ex_constraints
-\d+ test_ex_constraints_inh
-DROP TABLE test_ex_constraints_inh;
-DROP TABLE test_ex_constraints;
+-- CREATE TABLE test_ex_constraints_inh () INHERITS (test_ex_constraints);
+-- \d+ test_ex_constraints
+-- ALTER TABLE test_ex_constraints DROP CONSTRAINT test_ex_constraints_dkey_c_excl;
+-- \d+ test_ex_constraints
+-- \d+ test_ex_constraints_inh
+-- DROP TABLE test_ex_constraints_inh;
+-- DROP TABLE test_ex_constraints;
 
 -- Test that parent and child CHECK constraints can be created in either order
 create table p1(f1 int);

@@ -17,7 +17,7 @@ select gin_clean_pending_list('gin_test_idx')>10 as many; -- flush the fastupdat
 insert into gin_test_tbl select array[3, 1, g] from generate_series(1, 1000) g;
 
 vacuum gin_test_tbl; -- flush the fastupdate buffers
-
+-- PAX have not impl vacuum yet
 select gin_clean_pending_list('gin_test_idx'); -- nothing to flush
 
 -- Test vacuuming
