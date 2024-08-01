@@ -136,7 +136,7 @@ CREATE TEMPORARY TABLE box_temp (f1 box);
 INSERT INTO box_temp
 	SELECT box(point(i, i), point(i * 2, i * 2))
 	FROM generate_series(1, 50) AS i;
-
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX box_spgist ON box_temp USING spgist (f1);
 
 INSERT INTO box_temp
@@ -212,7 +212,7 @@ VALUES
   (11003, '((-infinity,-infinity),(infinity,infinity))'),
   (11004, '((-infinity,100),(-infinity,500))'),
   (11005, '((-infinity,-infinity),(700,infinity))');
-
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX quad_box_tbl_idx ON quad_box_tbl USING spgist(b);
 ANALYZE quad_box_tbl;
 

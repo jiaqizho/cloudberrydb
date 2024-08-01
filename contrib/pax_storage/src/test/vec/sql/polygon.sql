@@ -57,6 +57,7 @@ INSERT INTO quad_poly_tbl
 		(11003, NULL);
 ANALYZE quad_poly_tbl;
 
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX quad_poly_tbl_idx ON quad_poly_tbl USING spgist(p);
 
 -- get reference results for ORDER BY distance from seq scan

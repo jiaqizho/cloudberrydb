@@ -244,7 +244,9 @@ CREATE TEMPORARY TABLE box_temp (f1 box);
 INSERT INTO box_temp
 	SELECT box(point(i, i), point(i * 2, i * 2))
 	FROM generate_series(1, 50) AS i;
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX box_spgist ON box_temp USING spgist (f1);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 INSERT INTO box_temp
 	VALUES (NULL),
 		   ('(0,0)(0,100)'),
@@ -490,6 +492,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM box_temp WHERE f1 ~= '(20,20),(40,40)';
 
 RESET enable_seqscan;
 DROP INDEX box_spgist;
+ERROR:  index "box_spgist" does not exist
 --
 -- Test the SP-GiST index on the larger volume of data
 --
@@ -510,7 +513,9 @@ VALUES
   (11003, '((-infinity,-infinity),(infinity,infinity))'),
   (11004, '((-infinity,100),(-infinity,500))'),
   (11005, '((-infinity,-infinity),(700,infinity))');
+-- PAX not support gist/spgist/brin indexes
 CREATE INDEX quad_box_tbl_idx ON quad_box_tbl USING spgist(b);
+ERROR:  pax only support btree/hash/gin/bitmap indexes (pax_access_handle.cc:736)
 ANALYZE quad_box_tbl;
 -- get reference results for ORDER BY distance from seq scan
 SET enable_seqscan = ON;

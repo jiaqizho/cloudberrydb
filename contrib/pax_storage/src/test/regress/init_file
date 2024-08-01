@@ -153,13 +153,13 @@ s/.//gs
 -- end_matchsubs
 
 -- pax ignore matchers
--- start_matchignore
+-- start_matchsubs
 m/\(pax_access_handle.cc:\d+\)/
 s/\(pax_access_handle.cc:\d+\)/\(pax_access_handle.cc:###\)/
 
 m/\/.*\/micro_partition_row_filter_reader.cc/
 s/\/.*\/micro_partition_row_filter_reader.cc/micro_partition_row_filter_reader.cc/
 
--- end_matchignore
+-- end_matchsubs
 
 
