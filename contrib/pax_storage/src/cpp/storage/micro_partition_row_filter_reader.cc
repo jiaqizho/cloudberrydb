@@ -113,6 +113,7 @@ bool MicroPartitionRowFilterReader::TestRowScanInternal(TupleTableSlot *slot,
   auto econtext = ctx->econtext;
   econtext->ecxt_scantuple = slot;
 
+  ResetExprContext(econtext);
   return TestExecQual(estate, econtext);
 }
 }  // namespace pax
