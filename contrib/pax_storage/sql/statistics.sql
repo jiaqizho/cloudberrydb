@@ -6,11 +6,16 @@ set default_table_access_method = pax;
 -- 
 set pax_max_tuples_per_group = 10;
 
--- overview
+-- test min/max type support
 create table t1(v1 int, v2 text, v3 float8, v4 bool) with (minmax_columns='v1,v2,v3,v4');
 insert into t1 select i,i::text,i::float8, i % 2 > 0 from generate_series(1, 1000)i;
 select * from get_pax_aux_table('t1');
 drop table t1;
+
+create table t2(v1 bpchar, v2 bpchar(20), v3 varchar(20), v4 varchar(20)) with (minmax_columns='v1,v2,v3,v4');
+insert into t2 select i::bpchar,i::bpchar,i::varchar, i::varchar from generate_series(1, 1000)i;
+select * from get_pax_aux_table('t2');
+drop table t2;
 
 -- test `hasnull/allnull`/`count`, not need setting the minmax_columns
 create table t1(v1 int, v2 float8);
