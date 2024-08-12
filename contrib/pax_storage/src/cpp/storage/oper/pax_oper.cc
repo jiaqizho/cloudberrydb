@@ -814,6 +814,18 @@ std::map<OperMinMaxKey, OperMinMaxFunc> min_max_opers = {
     INIT_MIN_MAX_OPER(BPCHAROID, BPCHAROID, BTGreaterStrategyNumber,
                       textop::BpCharGT),
 
+    // oper(varchar, varchar)
+    INIT_MIN_MAX_OPER(VARCHAROID, VARCHAROID, BTLessStrategyNumber,
+                      textop::TextLT),
+    INIT_MIN_MAX_OPER(VARCHAROID, VARCHAROID, BTLessEqualStrategyNumber,
+                      textop::TextLE),
+    INIT_MIN_MAX_OPER(VARCHAROID, VARCHAROID, BTEqualStrategyNumber,
+                      textop::TextEQ),
+    INIT_MIN_MAX_OPER(VARCHAROID, VARCHAROID, BTGreaterEqualStrategyNumber,
+                      textop::TextGE),
+    INIT_MIN_MAX_OPER(VARCHAROID, VARCHAROID, BTGreaterStrategyNumber,
+                      textop::TextGT),
+
     // oper(numeric, numeric)
     INIT_MIN_MAX_OPER(NUMERICOID, NUMERICOID, BTLessStrategyNumber,
                       numericop::NumericLT),
@@ -827,8 +839,6 @@ std::map<OperMinMaxKey, OperMinMaxFunc> min_max_opers = {
                       numericop::NumericGT),
 
     // FIXME(jiaqizho): support below oper in the feature
-    // BPCHAROID
-    // VARCHAROID
     // TIMESTAMPTZOID
     // TIMEOID
     // TIMESTAMPOID
