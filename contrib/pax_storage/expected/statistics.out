@@ -3,7 +3,7 @@ set default_table_access_method = pax;
 -- Test with small group
 -- 
 set pax_max_tuples_per_group = 10;
--- overview
+-- test min/max type support
 create table t1(v1 int, v2 text, v3 float8, v4 bool) with (minmax_columns='v1,v2,v3,v4');
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'v1' as the Cloudberry Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
@@ -17,6 +17,19 @@ select * from get_pax_aux_table('t1');
 (3 rows)
 
 drop table t1;
+create table t2(v1 bpchar, v2 bpchar(20), v3 varchar(20), v4 varchar(20)) with (minmax_columns='v1,v2,v3,v4');
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'v1' as the Cloudberry Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+insert into t2 select i::bpchar,i::bpchar,i::varchar, i::varchar from generate_series(1, 1000)i;
+select * from get_pax_aux_table('t2');
+ ptblockname | pttupcount |                                                                                       ptstatistics                                                                                       | ptexistvisimap | ptexistexttoast | ptisclustered 
+-------------+------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------+-----------------+---------------
+ 0           |        322 | [(false,false),(322),(1,998),None],[(false,false),(322),(1                   ,998                 ),None],[(false,false),(322),(1,998),None],[(false,false),(322),(1,998),None]          | f              | f               | f
+ 0           |        340 | [(false,false),(340),(1000,999),None],[(false,false),(340),(1000                ,999                 ),None],[(false,false),(340),(1000,999),None],[(false,false),(340),(1000,999),None] | f              | f               | f
+ 0           |        338 | [(false,false),(338),(101,997),None],[(false,false),(338),(101                 ,997                 ),None],[(false,false),(338),(101,997),None],[(false,false),(338),(101,997),None]    | f              | f               | f
+(3 rows)
+
+drop table t2;
 -- test `hasnull/allnull`/`count`, not need setting the minmax_columns
 create table t1(v1 int, v2 float8);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'v1' as the Cloudberry Database data distribution key for this table.
