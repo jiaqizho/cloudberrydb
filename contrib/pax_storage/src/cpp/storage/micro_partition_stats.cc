@@ -335,7 +335,8 @@ static void SumStatisticsInfoCombine(
 
       if (!sumtypbyval &&
           cbdb::DatumToPointer(newval) != cbdb::DatumToPointer(left_sum)) {
-        cbdb::Pfree(cbdb::DatumToPointer(newval));
+        if (newval)
+          cbdb::Pfree(cbdb::DatumToPointer(newval));
       }
 
     } else {
@@ -496,7 +497,8 @@ MicroPartitionStats::~MicroPartitionStats() {
           // 1. newval won't be a toast
           // 2. the `newval` alloc in `final_func` which not used the
           // PAX_NEW to alloc, can't use the PAX_DELETE to delete it
-          cbdb::Pfree(cbdb::DatumToPointer(sum_stats_[column_index].result));
+          if (sum_stats_[column_index].result)
+            cbdb::Pfree(cbdb::DatumToPointer(sum_stats_[column_index].result));
           sum_stats_[column_index].result =
               cbdb::datumCopy(newval, sum_stats_[column_index].rettypbyval,
                               sum_stats_[column_index].rettyplen);
@@ -655,7 +657,8 @@ void MicroPartitionStats::MergeRawInfo(
       if (!sum_stat->rettypbyval &&
           cbdb::DatumToPointer(newval) !=
               cbdb::DatumToPointer(sum_stat->result)) {
-        cbdb::Pfree(cbdb::DatumToPointer(sum_stat->result));
+        if (sum_stat->result)
+          cbdb::Pfree(cbdb::DatumToPointer(sum_stat->result));
       }
       sum_stat->result =
           cbdb::datumCopy(newval, sum_stat->rettyplen, sum_stat->rettypbyval);
@@ -786,7 +789,8 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
       if (!left_sum_stat->transtypbyval &&
           cbdb::DatumToPointer(newval) !=
               cbdb::DatumToPointer(right_sum_stat->result)) {
-        cbdb::Pfree(cbdb::DatumToPointer(right_sum_stat->result));
+        if (right_sum_stat->result)
+          cbdb::Pfree(cbdb::DatumToPointer(right_sum_stat->result));
         right_sum_stat->result = cbdb::datumCopy(
             newval, right_sum_stat->rettypbyval, right_sum_stat->rettyplen);
       } else {
@@ -806,7 +810,8 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
       if (!left_sum_stat->rettypbyval &&
           cbdb::DatumToPointer(newval) !=
               cbdb::DatumToPointer(left_sum_stat->result)) {
-        cbdb::Pfree(cbdb::DatumToPointer(left_sum_stat->result));
+        if (left_sum_stat->result)
+          cbdb::Pfree(cbdb::DatumToPointer(left_sum_stat->result));
       }
       left_sum_stat->result = cbdb::datumCopy(newval, left_sum_stat->rettyplen,
                                               left_sum_stat->rettypbyval);
@@ -910,7 +915,8 @@ void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value,
       if (!sum_stats_[column_index].transtypbyval &&
           cbdb::DatumToPointer(newval) !=
               cbdb::DatumToPointer(sum_stats_[column_index].result)) {
-        cbdb::Pfree(cbdb::DatumToPointer(sum_stats_[column_index].result));
+        if (sum_stats_[column_index].result)
+          cbdb::Pfree(cbdb::DatumToPointer(sum_stats_[column_index].result));
         sum_stats_[column_index].result = newval;
       } else {
         sum_stats_[column_index].result = newval;
