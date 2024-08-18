@@ -157,4 +157,7 @@ s/.//gs
 -- start_matchsubs
 m/\(pax_access_handle.cc:\d+\)/
 s/\(pax_access_handle.cc:\d+\)/\(pax_access_handle.cc:###\)/
+
+m/\(paxc_rel_options.cc:\d+\)/
+s/\(paxc_rel_options.cc:\d+\)/\(paxc_rel_options.cc:###\)/
 -- end_matchsubs

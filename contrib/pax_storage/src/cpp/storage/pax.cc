@@ -286,7 +286,7 @@ void TableWriter::Open() {
   num_tuples_ = 0;
   // insert tuple into the aux table before inserting any tuples.
   cbdb::InsertMicroPartitionPlaceHolder(RelationGetRelid(relation_),
-                                        std::to_string(current_blockno_));
+                                        current_blockno_);
 }
 
 void TableWriter::WriteTuple(TupleTableSlot *slot) {
@@ -410,7 +410,7 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
   if ((max_row_index - row_index) >= remaining_offset) {
     current_block_row_index_ = row_index + remaining_offset;
     SetBlockNumber(&slot->tts_tid,
-                   std::stol(current_block_metadata_.GetMicroPartitionId()));
+                   current_block_metadata_.GetMicroPartitionId());
     ok = reader_->GetTuple(slot, current_block_row_index_);
     return ok;
   }
@@ -444,10 +444,10 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
              cbdb::CException::kExTypeLogicError,
              fmt("Invalid tuple counts in current block [block tuple counts= "
                  "%ul, remain offsets=%lu]\n"
-                 "Meta data [name=%s, id=%s]. ",
+                 "Meta data [name=%s, id=%d]. ",
                  current_block_metadata_.GetTupleCount(), remaining_offset,
                  current_block_metadata_.GetFileName().c_str(),
-                 current_block_metadata_.GetMicroPartitionId().c_str()));
+                 current_block_metadata_.GetMicroPartitionId()));
 
   // close old reader
   if (reader_) {
@@ -455,7 +455,6 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
     PAX_DELETE(reader_);
   }
 
-  options.block_id = current_block_metadata_.GetMicroPartitionId();
   options.filter = reader_options_.filter;
   options.reused_buffer = reader_options_.reused_buffer;
 
@@ -487,8 +486,7 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
 
   // row_index start from 0, so row_index = offset -1
   current_block_row_index_ = remaining_offset - 1;
-  SetBlockNumber(&slot->tts_tid,
-                 std::stol(current_block_metadata_.GetMicroPartitionId()));
+  SetBlockNumber(&slot->tts_tid, current_block_metadata_.GetMicroPartitionId());
 
   ok = reader_->GetTuple(slot, current_block_row_index_);
   return ok;
@@ -502,8 +500,8 @@ void TableReader::OpenFile() {
   File *toast_file = nullptr;
   int32 reader_flags = FLAGS_EMPTY;
 
-  micro_partition_id_ = options.block_id = it.GetMicroPartitionId();
-  current_block_number_ = std::stol(options.block_id);
+  micro_partition_id_ = it.GetMicroPartitionId();
+  current_block_number_ = micro_partition_id_; 
 
   options.filter = reader_options_.filter;
   options.reused_buffer = reader_options_.reused_buffer;
@@ -547,8 +545,7 @@ void TableReader::OpenFile() {
 TableDeleter::TableDeleter(
     Relation rel,
     std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
-    std::map<std::string, std::shared_ptr<Bitmap8>> delete_bitmap,
-    Snapshot snapshot)
+    std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap, Snapshot snapshot)
     : rel_(rel),
       iterator_(std::move(iterator)),
       delete_bitmap_(delete_bitmap),
@@ -591,7 +588,6 @@ void TableDeleter::UpdateStatsInAuxTable(
   MicroPartitionStats *updated_stats;
   TupleTableSlot *slot;
 
-  options.block_id = meta.GetMicroPartitionId();
   options.filter = filter;
   options.reused_buffer =
       nullptr;  // TODO(jiaqizho): let us reuse the read buffer
@@ -614,7 +610,7 @@ void TableDeleter::UpdateStatsInAuxTable(
                       .Update(slot, min_max_col_idxs);
 
   // update the statistics in aux table
-  cbdb::UpdateStatistics(aux_oid, meta.GetMicroPartitionId().c_str(),
+  cbdb::UpdateStatistics(aux_oid, meta.GetMicroPartitionId(),
                          updated_stats->Serialize());
 
   mp_reader->Close();
@@ -683,7 +679,7 @@ void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
 
         rc = sscanf(visibility_map_filename.c_str(), "%d_%x_%x.visimap",
                     &blocknum, &generate, &xid);
-        Assert(blocknum >= 0 && block_id == std::to_string(blocknum));
+        Assert(blocknum >= 0 && block_id == blocknum);
         (void)xid;
         CBDB_CHECK(rc == 3, cbdb::CException::kExTypeLogicError,
                    fmt("Fail to sscanf [rc=%d, filename=%s, rel_path=%s]", rc,
@@ -694,8 +690,7 @@ void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
 
       // generate new file name for visimap
       rc = snprintf(visimap_file_name, sizeof(visimap_file_name),
-                    "%s_%x_%x.visimap", block_id.c_str(), generate + 1,
-                    delete_xid);
+                    "%d_%x_%x.visimap", block_id, generate + 1, delete_xid);
       Assert(rc <= NAMEDATALEN);
     }
 
@@ -722,7 +717,7 @@ void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
     visi_bitmap = nullptr;
 
     // write pg_pax_blocks_oid
-    cbdb::UpdateVisimap(aux_oid, block_id.c_str(), visimap_file_name);
+    cbdb::UpdateVisimap(aux_oid, block_id, visimap_file_name);
   } while (iterator_->HasNext());
 }
 
