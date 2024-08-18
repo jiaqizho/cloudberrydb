@@ -8,7 +8,7 @@
 namespace pax {
 #define PAX_BLOCK_BIT_SIZE 24
 #define PAX_TUPLE_BIT_SIZE (48 - (PAX_BLOCK_BIT_SIZE + 1))
-#define PAX_MAX_NUM_TUPLES_PER_FILE	(1UL << PAX_TUPLE_BIT_SIZE)
+#define PAX_MAX_NUM_TUPLES_PER_FILE (1UL << PAX_TUPLE_BIT_SIZE)
 
 static inline ItemPointerData MakeCTID(uint32 block_number,
                                        uint32 tuple_offset) {
@@ -45,10 +45,8 @@ static inline void SetBlockNumber(ItemPointer ctid, uint32 block_number) {
                          (block_number << (32 - PAX_BLOCK_BIT_SIZE));
 }
 
-static inline std::string MapToBlockNumber(Relation /* rel */,
-                                           ItemPointerData ctid) {
-  auto block_number = pax::GetBlockNumber(ctid);
-  return std::to_string(block_number);
+static inline int MapToBlockNumber(Relation /* rel */, ItemPointerData ctid) {
+  return pax::GetBlockNumber(ctid);
 }
 
 static inline uint32 GetTupleOffsetInternal(ItemPointerData ctid) {

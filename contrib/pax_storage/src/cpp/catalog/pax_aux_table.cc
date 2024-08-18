@@ -71,7 +71,7 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
                                    aux_relname, aux_namespace_id);
   tupdesc = CreateTemplateTupleDesc(NATTS_PG_PAX_BLOCK_TABLES);
   TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME,
-                     "ptblockname", NAMEOID, -1, 0);
+                     "ptblockname", INT4OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT,
                      "pttupcount", INT4OID, -1, 0);
   // TODO(chenhongjie): uncompressed and compressed ptblocksize are needed.
@@ -161,8 +161,8 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
     indexInfo->ii_Am = BTREE_AM_OID;
     indexInfo->ii_Context = CurrentMemoryContext;
 
-    collationObjectId[0] = C_COLLATION_OID;
-    classObjectId[0] = GetDefaultOpClass(NAMEOID, BTREE_AM_OID);
+    collationObjectId[0] = 0;
+    classObjectId[0] = GetDefaultOpClass(INT4OID, BTREE_AM_OID);
     coloptions[0] = 0;
 
     auto attr =
@@ -189,8 +189,7 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
   }
 }
 
-void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot,
-                               const char *blockname) {
+void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot, int block_id) {
   ScanAuxContext context;
   HeapTuple tuple;
   Oid aux_relid;
@@ -198,11 +197,11 @@ void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot,
   aux_relid = ::paxc::GetPaxAuxRelid(pax_relid);
 
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, snapshot,
-                                    RowExclusiveLock, blockname);
+                                    RowExclusiveLock, block_id);
   tuple = context.SearchMicroPartitionEntry();
   if (!HeapTupleIsValid(tuple))
-    elog(ERROR, "delete micro partition \"%s\" failed for relation(%u)",
-         blockname, pax_relid);
+    elog(ERROR, "delete micro partition \"%d\" failed for relation(%u)",
+         block_id, pax_relid);
 
   Assert(context.GetRelation());
   CatalogTupleDelete(context.GetRelation(), &tuple->t_self);
@@ -210,24 +209,20 @@ void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot,
   context.EndSearchMicroPartition(NoLock);
 }
 
-void InsertMicroPartitionPlaceHolder(Oid aux_relid, const char *blockname) {
-  NameData ptblockname;
+void InsertMicroPartitionPlaceHolder(Oid aux_relid, int block_id) {
   Datum values[NATTS_PG_PAX_BLOCK_TABLES];
   bool nulls[NATTS_PG_PAX_BLOCK_TABLES];
 
   memset(nulls, true, sizeof(nulls));
-  Assert(blockname && strlen(blockname) < NAMEDATALEN);
-  namestrcpy(&ptblockname, blockname);
 
-  values[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1] = NameGetDatum(&ptblockname);
+  values[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1] = Int32GetDatum(block_id);
   nulls[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1] = false;
 
   InsertTuple(aux_relid, values, nulls);
   CommandCounterIncrement();
 }
 
-void UpdateVisimap(Oid aux_relid, const char *blockname,
-                   const char *visimap_filename) {
+void UpdateVisimap(Oid aux_relid, int block_id, const char *visimap_filename) {
   NameData pt_visimap_name;
   Datum values[NATTS_PG_PAX_BLOCK_TABLES];
   bool nulls[NATTS_PG_PAX_BLOCK_TABLES];
@@ -236,7 +231,7 @@ void UpdateVisimap(Oid aux_relid, const char *blockname,
   HeapTuple newtuple;
 
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, NULL,
-                                    RowExclusiveLock, blockname);
+                                    RowExclusiveLock, block_id);
   auto aux_rel = context.GetRelation();
   auto oldtuple = context.SearchMicroPartitionEntry();
   if (!HeapTupleIsValid(oldtuple))
@@ -262,7 +257,7 @@ void UpdateVisimap(Oid aux_relid, const char *blockname,
   context.EndSearchMicroPartition(NoLock);
 }
 
-void UpdateStatistics(Oid aux_relid, const char *blockname,
+void UpdateStatistics(Oid aux_relid, int block_id,
                       pax::stats::MicroPartitionStatisticsInfo *mp_stats) {
   // NameData pt_visimap_name;
   Datum values[NATTS_PG_PAX_BLOCK_TABLES];
@@ -280,7 +275,7 @@ void UpdateStatistics(Oid aux_relid, const char *blockname,
   mp_stats->SerializeToArray(VARDATA(stats_out), stats_len - VARHDRSZ);
 
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, NULL,
-                                    RowExclusiveLock, blockname);
+                                    RowExclusiveLock, block_id);
   auto aux_rel = context.GetRelation();
   auto oldtuple = context.SearchMicroPartitionEntry();
   if (!HeapTupleIsValid(oldtuple))
@@ -308,7 +303,7 @@ void UpdateStatistics(Oid aux_relid, const char *blockname,
 // but will update visimap info in the `UpdateVisimap`
 // so we can no pass the `visimap_filename`
 void InsertOrUpdateMicroPartitionPlaceHolder(
-    Oid aux_relid, const char *blockname, int num_tuples, int file_size,
+    Oid aux_relid, int block_id, int num_tuples, int file_size,
     const ::pax::stats::MicroPartitionStatisticsInfo &mp_stats,
     /* const char *visimap_filename, */
     bool exist_ext_toast, bool is_clustered) {
@@ -316,7 +311,6 @@ void InsertOrUpdateMicroPartitionPlaceHolder(
   uint32 len = VARHDRSZ + stats_length;
   void *output;
 
-  NameData ptblockname;
   Datum values[NATTS_PG_PAX_BLOCK_TABLES];
   bool nulls[NATTS_PG_PAX_BLOCK_TABLES];
 
@@ -324,10 +318,7 @@ void InsertOrUpdateMicroPartitionPlaceHolder(
   SET_VARSIZE(output, len);
   mp_stats.SerializeToArray(VARDATA(output), stats_length);
 
-  Assert(blockname);
-  namestrcpy(&ptblockname, blockname);
-
-  values[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1] = NameGetDatum(&ptblockname);
+  values[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1] = Int32GetDatum(block_id);
   nulls[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1] = false;
 
   values[ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT - 1] = Int32GetDatum(num_tuples);
@@ -353,7 +344,7 @@ void InsertOrUpdateMicroPartitionPlaceHolder(
 
   ScanAuxContext context;
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, NULL,
-                                    RowExclusiveLock, blockname);
+                                    RowExclusiveLock, block_id);
   auto aux_rel = context.GetRelation();
   auto oldtuple = context.SearchMicroPartitionEntry();
   if (!HeapTupleIsValid(oldtuple))
@@ -423,24 +414,27 @@ void ScanAuxContext::BeginSearchMicroPartition(Oid aux_relid,
                                                Oid aux_index_relid,
                                                Snapshot snapshot,
                                                LOCKMODE lockmode,
-                                               const char *blockname) {
+                                               int block_id) {
   Assert(aux_relid);
-  AssertImply(blockname, *blockname != '\0');
+  Assert(block_id >= 0 || block_id == PAX_SCAN_ALL_BLOCKS);
 
-  if (!OidIsValid(aux_index_relid) && blockname)
+  if (!OidIsValid(aux_index_relid))
     aux_index_relid = FindAuxIndexOid(aux_relid, snapshot);
 
   aux_rel_ = table_open(aux_relid, lockmode);
-  if (blockname) {
+  if (block_id >= 0) {
     ScanKeyData scankey[1];
 
     ScanKeyInit(&scankey[0], ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME,
-                BTEqualStrategyNumber, F_NAMEEQ, CStringGetDatum(blockname));
+                BTEqualStrategyNumber, F_INT42EQ, block_id);
     scan_ = systable_beginscan(aux_rel_, aux_index_relid, true, snapshot, 1,
                                scankey);
-  } else {
+  } else if (block_id == PAX_SCAN_ALL_BLOCKS) {
     scan_ = systable_beginscan(aux_rel_, aux_index_relid, false, snapshot, 0,
                                nullptr);
+  } else {
+    CBDB_RAISE(cbdb::CException::kExTypeInvalid,
+               "Invalid block id for micro partition scan");
   }
 }
 
@@ -486,14 +480,12 @@ bool IsMicroPartitionVisible(Relation pax_rel, BlockNumber block,
   struct ScanAuxContext context;
   HeapTuple tuple;
   Oid aux_relid;
-  char block_name[NAMEDATALEN];
   bool ok;
 
   aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(pax_rel));
-  snprintf(block_name, sizeof(block_name), "%u", block);
 
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, snapshot,
-                                    AccessShareLock, block_name);
+                                    AccessShareLock, DatumGetInt32(block));
   tuple = context.SearchMicroPartitionEntry();
   ok = HeapTupleIsValid(tuple);
   context.EndSearchMicroPartition(NoLock);
@@ -536,9 +528,10 @@ static void CPaxCopyPaxBlockEntry(Relation old_relation,
   }
 }
 
-void FetchMicroPartitionAuxRow(
-    Relation rel, Snapshot snapshot, const char *blockname,
-    void (*callback)(Datum *values, bool *isnull, void *arg), void *arg) {
+void FetchMicroPartitionAuxRow(Relation rel, Snapshot snapshot, int block_id,
+                               void (*callback)(Datum *values, bool *isnull,
+                                                void *arg),
+                               void *arg) {
   ::paxc::ScanAuxContext context;
   HeapTuple tuple;
   Oid aux_relid;
@@ -548,10 +541,10 @@ void FetchMicroPartitionAuxRow(
   aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(rel));
 
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, snapshot,
-                                    AccessShareLock, blockname);
+                                    AccessShareLock, block_id);
   tuple = context.SearchMicroPartitionEntry();
   if (!HeapTupleIsValid(tuple))
-    elog(ERROR, "get micro partition \"%s\" failed for relation(%u)", blockname,
+    elog(ERROR, "get micro partition \"%d\" failed for relation(%u)", block_id,
          RelationGetRelid(rel));
 
   bool should_free_stats = false;
@@ -587,10 +580,15 @@ Oid GetPaxAuxRelid(Oid relid) {
   CBDB_WRAP_END;
 }
 
-void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot,
-                               const std::string &blockname) {
+Oid FindAuxIndexOid(Oid aux_relid, Snapshot snapshot) {
   CBDB_WRAP_START;
-  { paxc::DeleteMicroPartitionEntry(pax_relid, snapshot, blockname.c_str()); }
+  { return ::paxc::FindAuxIndexOid(aux_relid, snapshot); }
+  CBDB_WRAP_END;
+}
+
+void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot, int block_id) {
+  CBDB_WRAP_START;
+  { paxc::DeleteMicroPartitionEntry(pax_relid, snapshot, block_id); }
   CBDB_WRAP_END;
 }
 
@@ -610,9 +608,9 @@ static void FetchMicroPartitionAuxRowCallback(Datum *values, bool *isnull,
   Assert(!isnull[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME]);
   {
     auto datum = values[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1];
-    auto name = NameStr(*DatumGetName(datum));
-    auto file_name = cbdb::BuildPaxFilePath(rel_path, name);
-    ctx->info.SetMicroPartitionId(std::string(name));
+    std::string block_name = std::to_string(DatumGetInt32(datum));
+    auto file_name = cbdb::BuildPaxFilePath(rel_path, block_name);
+    ctx->info.SetMicroPartitionId(DatumGetInt32(datum));
     ctx->info.SetFileName(std::move(file_name));
   }
 
@@ -664,13 +662,14 @@ static void FetchMicroPartitionAuxRowCallbackWrapper(Datum *values,
   CBDB_END_TRY();
 }
 
-pax::MicroPartitionMetadata GetMicroPartitionMetadata(
-    Relation rel, Snapshot snapshot, const std::string &blockname) {
+pax::MicroPartitionMetadata GetMicroPartitionMetadata(Relation rel,
+                                                      Snapshot snapshot,
+                                                      int block_id) {
   CBDB_WRAP_START;
   {
     FetchMicroPartitionAuxRowContext ctx;
     ctx.rel = rel;
-    paxc::FetchMicroPartitionAuxRow(rel, snapshot, blockname.c_str(),
+    paxc::FetchMicroPartitionAuxRow(rel, snapshot, block_id,
                                     FetchMicroPartitionAuxRowCallbackWrapper,
                                     &ctx);
     return std::move(ctx.info);
@@ -678,14 +677,13 @@ pax::MicroPartitionMetadata GetMicroPartitionMetadata(
   CBDB_WRAP_END;
 }
 
-void InsertMicroPartitionPlaceHolder(Oid pax_relid,
-                                     const std::string &blockname) {
+void InsertMicroPartitionPlaceHolder(Oid pax_relid, int block_id) {
   CBDB_WRAP_START;
   {
     Oid aux_relid;
 
     aux_relid = ::paxc::GetPaxAuxRelid(pax_relid);
-    paxc::InsertMicroPartitionPlaceHolder(aux_relid, blockname.c_str());
+    paxc::InsertMicroPartitionPlaceHolder(aux_relid, block_id);
   }
   CBDB_WRAP_END;
 }
@@ -698,7 +696,7 @@ void InsertOrUpdateMicroPartitionEntry(const pax::WriteSummary &summary) {
     aux_relid = ::paxc::GetPaxAuxRelid(summary.rel_oid);
 
     paxc::InsertOrUpdateMicroPartitionPlaceHolder(
-        aux_relid, summary.block_id.c_str(), summary.num_tuples,
+        aux_relid, std::stol(summary.block_id), summary.num_tuples,
         summary.file_size,
         summary.mp_stats ? *summary.mp_stats
                          : ::pax::stats::MicroPartitionStatisticsInfo(),
@@ -707,17 +705,16 @@ void InsertOrUpdateMicroPartitionEntry(const pax::WriteSummary &summary) {
   CBDB_WRAP_END;
 }
 
-void UpdateVisimap(Oid aux_relid, const char *blockname,
-                   const char *visimap_filename) {
+void UpdateVisimap(Oid aux_relid, int block_id, const char *visimap_filename) {
   CBDB_WRAP_START;
-  { paxc::UpdateVisimap(aux_relid, blockname, visimap_filename); }
+  { paxc::UpdateVisimap(aux_relid, block_id, visimap_filename); }
   CBDB_WRAP_END;
 }
 
-void UpdateStatistics(Oid aux_relid, const char *blockname,
+void UpdateStatistics(Oid aux_relid, int block_id,
                       pax::stats::MicroPartitionStatisticsInfo *mp_stats) {
   CBDB_WRAP_START;
-  { paxc::UpdateStatistics(aux_relid, blockname, mp_stats); }
+  { paxc::UpdateStatistics(aux_relid, block_id, mp_stats); }
   CBDB_WRAP_END;
 }
 

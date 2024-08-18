@@ -50,7 +50,7 @@ void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
     // insert tuple into the aux table before inserting any tuples.
     current_blocknos_[part_index] = current_blockno_;
     cbdb::InsertMicroPartitionPlaceHolder(RelationGetRelid(relation_),
-                                          std::to_string(current_blockno_));
+                                          current_blockno_);
   } else if (strategy_->ShouldSplit(writers_[part_index]->PhysicalSize(),
                                     num_tuples_[part_index])) {
     writers_[part_index]->Close();
@@ -62,7 +62,7 @@ void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
     // insert tuple into the aux table before inserting any tuples.
     current_blocknos_[part_index] = current_blockno_;
     cbdb::InsertMicroPartitionPlaceHolder(RelationGetRelid(relation_),
-                                          std::to_string(current_blockno_));
+                                          current_blockno_);
   }
 
   writers_[part_index]->WriteTuple(slot);
@@ -276,9 +276,8 @@ void TableParitionWriter::Close() {
         // FIXME(jiaqizho): no need open-close per loop. we can open the
         // auxiliary table, delete one tuple per loop, and then close the
         // auxiliary table.
-        cbdb::DeleteMicroPartitionEntry(
-            RelationGetRelid(relation_), nullptr,
-            std::to_string(current_blocknos_[merge_indexes[i]]));
+        cbdb::DeleteMicroPartitionEntry(RelationGetRelid(relation_), nullptr,
+                                        current_blocknos_[merge_indexes[i]]);
       }
       CommandCounterIncrement();
       first_write->Close();
