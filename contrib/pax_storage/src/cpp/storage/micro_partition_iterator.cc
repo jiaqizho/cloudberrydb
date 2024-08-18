@@ -84,10 +84,9 @@ MicroPartitionMetadata MicroPartitionInfoIterator::ToValue(HeapTuple tuple) {
         tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME, tup_desc, &is_null);
     CBDB_CHECK(!is_null, cbdb::CException::kExTypeLogicError);
 
-    auto name = NameStr(*DatumGetName(blockid));
-    auto file_name = cbdb::BuildPaxFilePath(rel_path_, name);
+    auto file_name = cbdb::BuildPaxFilePath(rel_path_, std::to_string(blockid));
     v.SetFileName(std::move(file_name));
-    v.SetMicroPartitionId(name);
+    v.SetMicroPartitionId(DatumGetInt32(blockid));
   }
 
   auto tup_count = cbdb::HeapGetAttr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT,
@@ -128,7 +127,7 @@ MicroPartitionMetadata MicroPartitionInfoIterator::ToValue(HeapTuple tuple) {
     Assert(!is_null);
 
     v.SetExistToast(DatumGetBool(existexttoast));
-    
+
     auto is_cluster = cbdb::DatumToBool(cbdb::HeapGetAttr(
         tuple, ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED, tup_desc, &is_null));
     CBDB_CHECK(!is_null, cbdb::CException::kExTypeLogicError);

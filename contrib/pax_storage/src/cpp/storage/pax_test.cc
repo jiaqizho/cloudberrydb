@@ -145,7 +145,7 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   MicroPartitionMetadata meta_info;
 
   meta_info.SetFileName(pax_file_name);
-  meta_info.SetMicroPartitionId(pax_file_name);
+  meta_info.SetMicroPartitionId(std::stoi(pax_file_name));
 
   meta_info_list.push_back(std::move(meta_info));
 
@@ -349,11 +349,11 @@ TEST_F(PaxWriterTest, WriteReadTupleSplitFile) {
 
   std::vector<MicroPartitionMetadata> meta_info_list;
   MicroPartitionMetadata meta_info1;
-  meta_info1.SetMicroPartitionId(std::string(pax_file_name));
+  meta_info1.SetMicroPartitionId(std::stoi(pax_file_name));
   meta_info1.SetFileName(pax_file_name + std::to_string(0));
 
   MicroPartitionMetadata meta_info2;
-  meta_info2.SetMicroPartitionId(std::string(pax_file_name));
+  meta_info2.SetMicroPartitionId(std::stoi(pax_file_name));
   meta_info2.SetFileName(pax_file_name + std::to_string(1));
 
   meta_info_list.push_back(std::move(meta_info1));
@@ -557,15 +557,15 @@ TEST_F(PaxWriterTest, ParitionWriteReadTuple) {
   std::vector<MicroPartitionMetadata> meta_info_list;
   MicroPartitionMetadata meta_info;
   meta_info.SetFileName(file_names[0]);
-  meta_info.SetMicroPartitionId(file_names[0]);
+  meta_info.SetMicroPartitionId(std::stoi(file_names[0]));
   meta_info_list.push_back(meta_info);
 
   meta_info.SetFileName(file_names[3]);
-  meta_info.SetMicroPartitionId(file_names[3]);
+  meta_info.SetMicroPartitionId(std::stoi(file_names[3]));
   meta_info_list.push_back(meta_info);
 
   meta_info.SetFileName(file_names[5]);
-  meta_info.SetMicroPartitionId(file_names[5]);
+  meta_info.SetMicroPartitionId(std::stoi(file_names[5]));
   meta_info_list.push_back(meta_info);
 
   std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
@@ -727,17 +727,17 @@ TEST_F(PaxWriterTest, ParitionWriteReadTupleWithToast) {
   std::vector<MicroPartitionMetadata> meta_info_list;
   MicroPartitionMetadata meta_info;
   meta_info.SetFileName(file_names[0]);
-  meta_info.SetMicroPartitionId(file_names[0]);
+  meta_info.SetMicroPartitionId(std::stoi(file_names[0]));
   meta_info.SetExistToast(true);
   meta_info_list.push_back(meta_info);
 
   meta_info.SetFileName(file_names[3]);
-  meta_info.SetMicroPartitionId(file_names[3]);
+  meta_info.SetMicroPartitionId(std::stoi(file_names[3]));
   meta_info.SetExistToast(true);
   meta_info_list.push_back(meta_info);
 
   meta_info.SetFileName(file_names[5]);
-  meta_info.SetMicroPartitionId(file_names[5]);
+  meta_info.SetMicroPartitionId(std::stoi(file_names[5]));
   meta_info.SetExistToast(true);
   meta_info_list.push_back(meta_info);
 
@@ -827,7 +827,7 @@ TEST_F(PaxWriterTest, WriteReadException) {
   MicroPartitionMetadata meta_info;
 
   meta_info.SetFileName(pax_file_name);
-  meta_info.SetMicroPartitionId(pax_file_name);
+  meta_info.SetMicroPartitionId(std::stoi(pax_file_name));
   meta_info.SetTupleCount(1);
 
   meta_info_list.push_back(std::move(meta_info));
