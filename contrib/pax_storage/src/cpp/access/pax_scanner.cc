@@ -4,6 +4,7 @@
 #include "access/pax_dml_state.h"
 #include "access/pax_visimap.h"
 #include "catalog/pax_aux_table.h"
+#include "catalog/pax_fastsequence.h"
 #include "catalog/pg_pax_tables.h"
 #include "comm/guc.h"
 #include "comm/pax_memory.h"
@@ -36,14 +37,14 @@ bool IndexUniqueCheck(Relation rel, ItemPointer tid, Snapshot snapshot,
                       bool * /*all_dead*/) {
   paxc::ScanAuxContext context;
   HeapTuple tuple;
-  char block_name[NAMEDATALEN];
   Oid aux_relid;
   bool exists;
+  int block_id;
 
   aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(rel));
-  snprintf(block_name, sizeof(block_name), "%u", pax::GetBlockNumber(*tid));
+  block_id = pax::GetBlockNumber(*tid);
   context.BeginSearchMicroPartition(aux_relid, InvalidOid, snapshot,
-                                    AccessShareLock, block_name);
+                                    AccessShareLock, block_id);
   tuple = context.SearchMicroPartitionEntry();
   exists = HeapTupleIsValid(tuple);
   if (exists) {
@@ -132,7 +133,6 @@ bool PaxIndexScanDesc::OpenMicroPartition(BlockNumber block,
 
     auto block_name = std::to_string(block);
     auto file_name = cbdb::BuildPaxFilePath(rel_path_, block_name);
-    options.block_id = block_name;
     auto file = Singleton<LocalFileSystem>::GetInstance()->Open(file_name,
                                                                 fs::kReadMode);
     auto reader = PAX_NEW<OrcReader>(file);

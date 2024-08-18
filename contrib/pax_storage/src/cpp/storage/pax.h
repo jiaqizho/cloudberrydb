@@ -114,9 +114,7 @@ class TableReader final {
 
   // deprecate:
   // DON'T USE, this function will be removed
-  const std::string &GetCurrentMicroPartitionId() const {
-    return micro_partition_id_;
-  }
+  int GetCurrentMicroPartitionId() const { return micro_partition_id_; }
 
  private:
   void OpenFile();
@@ -128,7 +126,7 @@ class TableReader final {
   const ReaderOptions reader_options_;
   uint32 current_block_number_ = 0;
 
-  std::string micro_partition_id_;
+  int micro_partition_id_;
 
   // only for analyze scan
   MicroPartitionMetadata current_block_metadata_;
@@ -143,7 +141,7 @@ class TableDeleter final {
  public:
   TableDeleter(Relation rel,
                std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
-               std::map<std::string, std::shared_ptr<Bitmap8>> delete_bitmap,
+               std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap,
                Snapshot snapshot);
 
   ~TableDeleter();
@@ -165,7 +163,7 @@ class TableDeleter final {
  private:
   Relation rel_;
   std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
-  std::map<std::string, std::shared_ptr<Bitmap8>> delete_bitmap_;
+  std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap_;
   Snapshot snapshot_;
   TableReader *reader_;
   TableWriter *writer_;

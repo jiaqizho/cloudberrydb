@@ -1434,7 +1434,7 @@ TEST_P(PaxVecTest, PaxVecReaderTest) {
   MicroPartitionMetadata meta_info;
 
   meta_info.SetFileName(file_name_);
-  meta_info.SetMicroPartitionId(file_name_);
+  meta_info.SetMicroPartitionId(std::stoi(file_name_));
   meta_info_list.push_back(std::move(meta_info));
 
   std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =

@@ -36,9 +36,7 @@ struct MicroPartitionMetadata {
 
   MicroPartitionMetadata &operator=(MicroPartitionMetadata &&other);
 
-  inline const std::string &GetMicroPartitionId() const {
-    return micro_partition_id_;
-  }
+  inline int GetMicroPartitionId() const { return micro_partition_id_; }
 
   inline const std::string &GetFileName() const { return file_name_; }
 
@@ -48,9 +46,7 @@ struct MicroPartitionMetadata {
     return stats_;
   }
 
-  inline void SetMicroPartitionId(std::string &&id) {
-    micro_partition_id_ = std::move(id);
-  }
+  inline void SetMicroPartitionId(int id) { micro_partition_id_ = id; }
 
   inline void SetFileName(std::string &&name) { file_name_ = std::move(name); }
 
@@ -76,7 +72,7 @@ struct MicroPartitionMetadata {
   inline bool IsClustered() const { return is_clustered_; }
 
  private:
-  std::string micro_partition_id_;
+  int micro_partition_id_;
 
   std::string file_name_;
 

@@ -4,7 +4,7 @@ CREATE EXTENSION gp_inject_fault;
 -- end_ignore
 
 CREATE OR REPLACE FUNCTION "get_pax_aux_table"(table_name text)
-  RETURNS TABLE("ptblockname" name,"pttupcount" integer, 
+  RETURNS TABLE("ptblockname" integer,"pttupcount" integer, 
     "ptstatistics" pg_ext_aux.paxauxstats, 
     "ptexistvisimap" bool, "ptexistexttoast" bool, "ptisclustered" bool) AS $BODY$
     DECLARE
