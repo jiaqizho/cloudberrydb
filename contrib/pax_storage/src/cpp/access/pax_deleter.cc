@@ -36,7 +36,7 @@ TM_Result CPaxDeleter::DeleteTuple(Relation relation, ItemPointer tid,
 TM_Result CPaxDeleter::MarkDelete(ItemPointer tid) {
   uint32 tuple_offset = pax::GetTupleOffset(*tid);
 
-  std::string block_id = MapToBlockNumber(rel_, *tid);
+  int block_id = MapToBlockNumber(rel_, *tid);
 
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
     block_bitmap_map_[block_id] =
@@ -55,7 +55,7 @@ TM_Result CPaxDeleter::MarkDelete(ItemPointer tid) {
 }
 
 bool CPaxDeleter::IsMarked(ItemPointerData tid) const {
-  std::string block_id = MapToBlockNumber(rel_, tid);
+  int block_id = MapToBlockNumber(rel_, tid);
   auto it = block_bitmap_map_.find(block_id);
 
   if (it == block_bitmap_map_.end()) return false;
@@ -67,7 +67,7 @@ bool CPaxDeleter::IsMarked(ItemPointerData tid) const {
 
 // used for merge remaining partition files, no tuple needs to delete
 void CPaxDeleter::MarkDelete(BlockNumber pax_block_id) {
-  std::string block_id = std::to_string(pax_block_id);
+  int block_id = int(pax_block_id);
 
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
     block_bitmap_map_[block_id] = pax_shared_ptr<Bitmap8>(PAX_NEW<Bitmap8>());
@@ -95,12 +95,12 @@ CPaxDeleter::BuildDeleteIterator() {
       rel_->rd_node, rel_->rd_backend,
       cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace));
   for (auto &it : block_bitmap_map_) {
-    std::string block_id = it.first;
+    std::string block_id = std::to_string(it.first);
     {
       pax::MicroPartitionMetadata meta_info;
 
       meta_info.SetFileName(cbdb::BuildPaxFilePath(rel_path, block_id));
-      meta_info.SetMicroPartitionId(std::move(block_id));
+      meta_info.SetMicroPartitionId(it.first);
       micro_partitions.push_back(std::move(meta_info));
     }
   }

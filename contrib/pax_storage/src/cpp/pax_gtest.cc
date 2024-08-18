@@ -16,11 +16,11 @@ int32 MockGetFastSequences(Oid) {
   return mock_id++;
 }
 
-void MockInsertMicroPartitionPlaceHolder(Oid, const std::string &) {
+void MockInsertMicroPartitionPlaceHolder(Oid, int) {
   // do nothing
 }
 
-void MockDeleteMicroPartitionEntry(Oid, Snapshot, const char *) {
+void MockDeleteMicroPartitionEntry(Oid, Snapshot, int) {
   // do nothing
 }
 

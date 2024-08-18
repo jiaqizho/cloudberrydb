@@ -153,7 +153,6 @@ class MicroPartitionReader {
 
   struct ReaderOptions {
     // additioinal info to initialize a reader.
-    std::string block_id;
 
     // Optional, when reused buffer is not set, new memory will be generated for
     // ReadTuple
