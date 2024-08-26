@@ -34,9 +34,9 @@ class VecAdapter final {
 
   // return -1,0 or batch_cache_lens
   // return -1: no tuples left in the current working group
-  // return 0: no tuples left in the current batch, should process remaining tuples in the current group
-  // return > 0: this batch of data has N tuples that need to be
-  // converted into vec record batch
+  // return 0: no tuples left in the current batch, should process remaining
+  // tuples in the current group return > 0: this batch of data has N tuples
+  // that need to be converted into vec record batch
   int AppendToVecBuffer();
 
   size_t FlushVecBuffer(TupleTableSlot *slot);

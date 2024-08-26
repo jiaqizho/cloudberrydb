@@ -17,6 +17,8 @@ static const relopt_compress_type_mapping kSelfRelCompressMap[] = {
      pax::ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2},
     {ColumnEncoding_Kind_DIRECT_DELTA_STR,
      pax::ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA},
+    {ColumnEncoding_Kind_DICTIONARY_STR,
+     pax::ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY},
     {ColumnEncoding_Kind_COMPRESS_ZSTD_STR,
      pax::ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZSTD},
     {ColumnEncoding_Kind_COMPRESS_ZLIB_STR,
@@ -92,7 +94,8 @@ static void paxc_validate_rel_option(PaxOptions *options) {
   if (strcmp(ColumnEncoding_Kind_NO_ENCODED_STR, options->compress_type) == 0 ||
       strcmp(ColumnEncoding_Kind_RLE_V2_STR, options->compress_type) == 0 ||
       strcmp(ColumnEncoding_Kind_DIRECT_DELTA_STR, options->compress_type) ==
-          0) {
+          0 ||
+      strcmp(ColumnEncoding_Kind_DICTIONARY_STR, options->compress_type) == 0) {
     if (options->compress_level != 0) {
       ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                       errmsg("compresslevel=%d should setting is not work for "

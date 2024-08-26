@@ -38,7 +38,9 @@ class PaxEncoder {
 
   virtual ~PaxEncoder() = default;
 
-  virtual void Append(int64 data) = 0;
+  virtual void Append(char *data, size_t size) = 0;
+
+  virtual bool SupportAppendNull() const = 0;
 
   virtual void Flush() = 0;
 
@@ -56,7 +58,7 @@ class PaxEncoder {
    * compared with the block method, streaming can reduce one memory copy
    */
   static PaxEncoder *CreateStreamingEncoder(
-      const EncodingOption &encoder_options);
+      const EncodingOption &encoder_options, bool non_fixed = false);
 
  protected:
   const EncodingOption &encoder_options_;
