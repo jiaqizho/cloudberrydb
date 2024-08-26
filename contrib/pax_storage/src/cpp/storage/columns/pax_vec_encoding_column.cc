@@ -91,7 +91,7 @@ void PaxVecEncodingColumn<T>::Set(DataBuffer<T> *data, size_t non_null_rows) {
     if (data->Used() != 0) {
       Assert(shared_data_);
       decoder_->SetSrcBuffer(data->Start(), data->Used());
-      decoder_->Decoding(nullptr, 0);
+      decoder_->Decoding();
       PaxVecCommColumn<T>::data_->Brush(shared_data_->Used());
     }
 
@@ -141,7 +141,8 @@ std::pair<char *, size_t> PaxVecEncodingColumn<T>::GetBuffer() {
       shared_data_ = PAX_NEW<DataBuffer<char>>(origin_data_buffer->Used());
       encoder_->SetDataBuffer(shared_data_);
       for (size_t i = 0; i < origin_data_buffer->GetSize(); i++) {
-        encoder_->Append((*origin_data_buffer)[i]);
+        encoder_->Append((char *)(origin_data_buffer->GetBuffer() + i),
+                         sizeof(T));
       }
       encoder_->Flush();
       return std::make_pair(shared_data_->Start(), shared_data_->Used());

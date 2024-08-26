@@ -14,6 +14,8 @@ message ColumnEncoding {
 
     COMPRESS_ZSTD = 3;        // use ZTSD to compress 
     COMPRESS_ZLIB = 4;        // use ZLIB to compress 
+
+    DICTIONARY = 5;           // use dict-endoing 
   }
 
   optional Kind kind = 1;

@@ -11,6 +11,7 @@ namespace paxc {
 #define ColumnEncoding_Kind_NO_ENCODED_STR "none"
 #define ColumnEncoding_Kind_RLE_V2_STR "rle"
 #define ColumnEncoding_Kind_DIRECT_DELTA_STR "delta"
+#define ColumnEncoding_Kind_DICTIONARY_STR "dict"
 #define ColumnEncoding_Kind_COMPRESS_ZSTD_STR "zstd"
 #define ColumnEncoding_Kind_COMPRESS_ZLIB_STR "zlib"
 

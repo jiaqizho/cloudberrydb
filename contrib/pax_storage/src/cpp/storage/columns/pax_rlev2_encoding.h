@@ -16,7 +16,9 @@ class PaxOrcEncoder final : public PaxEncoder {
 
   ~PaxOrcEncoder() override;
 
-  void Append(int64 data) override;
+  void Append(char *data, size_t size) override;
+
+  bool SupportAppendNull() const override;
 
   void Flush() override;
 

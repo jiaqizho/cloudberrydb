@@ -32,8 +32,17 @@ class PaxNonFixedEncodingColumn : public PaxNonFixedColumn {
   // `shared_data_` will own the same buffer with `PaxNonFixedColumn::data_`.
 
  protected:
+  void InitEncoder();
+  void InitLengthStreamCompressor();
+  void InitDecoder();
+  void InitLengthStreamDecompressor();
+
+ protected:
   PaxEncoder::EncodingOption encoder_options_;
   PaxDecoder::DecodingOption decoder_options_;
+
+  PaxEncoder *encoder_;
+  PaxDecoder *decoder_;
 
   PaxCompressor *compressor_;
   bool compress_route_;
