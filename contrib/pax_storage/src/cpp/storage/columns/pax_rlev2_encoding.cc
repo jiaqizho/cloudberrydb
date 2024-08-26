@@ -209,7 +209,27 @@ PaxOrcEncoder::~PaxOrcEncoder() {
   PAX_DELETE(zigzag_buffer_);
 }
 
-void PaxOrcEncoder::Append(const int64 data) { AppendInternal(data, false); }
+void PaxOrcEncoder::Append(char *data, size_t len) {
+  Assert(len <= 8);
+  switch (len) {
+    case 1:
+      AppendInternal(*((int8 *)data), false);
+      break;
+    case 2:
+      AppendInternal(*((int16 *)data), false);
+      break;
+    case 4:
+      AppendInternal(*((int32 *)data), false);
+      break;
+    case 8:
+      AppendInternal(*((int64 *)data), false);
+      break;
+    default:
+      Assert(false);
+  }
+}
+
+bool PaxOrcEncoder::SupportAppendNull() const { return false; }
 
 void PaxOrcEncoder::Flush() { AppendInternal(0, true); }
 
