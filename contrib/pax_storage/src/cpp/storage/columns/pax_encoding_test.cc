@@ -199,7 +199,7 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
   data = reinterpret_cast<int64 *>(cbdb::Palloc(sizeof(int64)));
   *data = sign ? -2 : 2;
   for (size_t i = 0; i < sr_len; i++) {
-    encoder->Append(*data);
+    encoder->Append((char *)data, sizeof(int64));
   }
   encoder->Flush();
 
@@ -212,7 +212,8 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
   // len(3 bytes)
   EXPECT_EQ(static_cast<EncodingType>((encoding_buff[0] >> 6) & 0x03),
             EncodingType::kShortRepeat);
-  EXPECT_EQ(static_cast<size_t>(encoding_buff[0] & 0x07), sr_len - ORC_MIN_REPEAT);
+  EXPECT_EQ(static_cast<size_t>(encoding_buff[0] & 0x07),
+            sr_len - ORC_MIN_REPEAT);
   EXPECT_EQ(((encoding_buff[0] >> 3) & 0x07) + 1, 1);
 
   PaxDecoder::DecodingOption decoder_options;
@@ -286,11 +287,11 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
 }
 
 INSTANTIATE_TEST_SUITE_P(PaxEncodingRangeTestCombine,
-                        PaxEncodingShortRepeatRangeTest,
-                        testing::Combine(testing::Values(3, 4, 5, 6, 7, 8, 9,
-                                                         10),
-                                         testing::Values(true, false),
-                                         testing::Values(8, 16, 32, 64)));
+                         PaxEncodingShortRepeatRangeTest,
+                         testing::Combine(testing::Values(3, 4, 5, 6, 7, 8, 9,
+                                                          10),
+                                          testing::Values(true, false),
+                                          testing::Values(8, 16, 32, 64)));
 
 TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
   PaxEncoder *encoder;
@@ -315,7 +316,7 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
   data = reinterpret_cast<int64 *>(cbdb::Palloc(sizeof(int64)));
   *data = sign ? -10 : 1;
   for (size_t i = 0; i < delta_len; i++) {
-    encoder->Append(*data);
+    encoder->Append((char *)data, sizeof(int64));
   }
   encoder->Flush();
 
@@ -403,10 +404,10 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
 }
 
 INSTANTIATE_TEST_SUITE_P(PaxEncodingRangeTestCombine, PaxEncodingDeltaRangeTest,
-                        testing::Combine(testing::Values(11, 100, 256, 345, 511,
-                                                         512),
-                                         testing::Values(true, false),
-                                         testing::Values(16, 32, 64)));
+                         testing::Combine(testing::Values(11, 100, 256, 345,
+                                                          511, 512),
+                                          testing::Values(true, false),
+                                          testing::Values(16, 32, 64)));
 
 TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
   PaxEncoder *encoder;
@@ -436,7 +437,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
     if (sign) {
       data[i] = -data[i];
     }
-    encoder->Append(data[i]);
+    encoder->Append((char *)&(data[i]), sizeof(int64));
   }
 
   encoder->Flush();
@@ -512,7 +513,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
     if (sign) {
       data[i] = -data[i];
     }
-    encoder->Append(data[i]);
+    encoder->Append((char *)&(data[i]), sizeof(int64));
   }
   encoder->Flush();
 
@@ -584,7 +585,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
     if (sign) {
       data[i] = -data[i];
     }
-    encoder->Append(data[i]);
+    encoder->Append((char *)&(data[i]), sizeof(int64));
   }
 
   encoder->Flush();
@@ -662,7 +663,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
     if (sign) {
       data[i] = -data[i];
     }
-    encoder->Append(data[i]);
+    encoder->Append((char *)&(data[i]), sizeof(int64));
   }
 
   encoder->Flush();
@@ -704,12 +705,12 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
 }
 
 INSTANTIATE_TEST_SUITE_P(PaxEncodingRangeTestCombine,
-                        PaxEncodingDeltaIncDecRangeTest,
-                        testing::Combine(testing::Values(11, 100, 256, 345, 511,
-                                                         512),
-                                         testing::Values(1, 7, 99, 4294967295,
-                                                         18014398509481984ULL),
-                                         testing::Values(true, false)));
+                         PaxEncodingDeltaIncDecRangeTest,
+                         testing::Combine(testing::Values(11, 100, 256, 345,
+                                                          511, 512),
+                                          testing::Values(1, 7, 99, 4294967295,
+                                                          18014398509481984ULL),
+                                          testing::Values(true, false)));
 
 TEST_P(PaxEncodingWriteReadLongsRangeTest, TestOrcDirectWriteReadLong) {
   auto write_max = ::testing::get<0>(GetParam());
@@ -809,7 +810,7 @@ TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
       data[i] = -data[i];
     }
 
-    encoder->Append(data[i]);
+    encoder->Append((char *)&(data[i]), sizeof(int64));
   }
   encoder->Flush();
 
@@ -877,7 +878,7 @@ TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
   encoder->SetDataBuffer(shared_data);
 
   for (size_t i = 0; i < data_lens; i++) {
-    encoder->Append(data_vec[i]);
+    encoder->Append((char *)&(data_vec[i]), sizeof(int64));
   }
   encoder->Flush();
 
@@ -968,7 +969,7 @@ TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
   encoder->SetDataBuffer(shared_data);
 
   for (size_t i = 0; i < data_lens; i++) {
-    encoder->Append(data_vec[i]);
+    encoder->Append((char *)&(data_vec[i]), sizeof(int64));
   }
   encoder->Flush();
   // should allow call flush multi times
@@ -1093,7 +1094,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
   data = reinterpret_cast<int64 *>(cbdb::Palloc(sizeof(int64)));
   *data = 2;
   for (size_t i = 0; i < sr_len; i++) {
-    encoder->Append(*data);
+    encoder->Append((char *)data, sizeof(int64));
   }
   encoder->Flush();
 
@@ -1257,7 +1258,7 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
   data = reinterpret_cast<int64 *>(cbdb::Palloc(sizeof(int64)));
   *data = 2;
   for (size_t i = 0; i < delta_len; i++) {
-    encoder->Append(*data);
+    encoder->Append((char *)data, sizeof(int64));
   }
   encoder->Flush();
 

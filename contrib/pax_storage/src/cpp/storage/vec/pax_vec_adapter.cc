@@ -199,7 +199,7 @@ static void ConvSchemaAndDataToVec(
           vec_batch_buffer->null_counts);
 
       array_vector.emplace_back(array);
-      field_names.emplace_back(std::string(std::string(attname)));
+      field_names.emplace_back(std::string(attname));
       break;
     }
     case FLOAT4OID: {

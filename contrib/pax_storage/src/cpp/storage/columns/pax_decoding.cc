@@ -2,6 +2,7 @@
 
 #include "comm/fmt.h"
 #include "comm/pax_memory.h"
+#include "storage/columns/pax_dict_encoding.h"
 #include "storage/columns/pax_rlev2_decoding.h"
 
 namespace pax {
@@ -20,6 +21,10 @@ PaxDecoder *PaxDecoder::CreateDecoder(const DecodingOption &decoder_options) {
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA: {
       /// TODO(jiaqizho) support it
+      break;
+    }
+    case ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY: {
+      decoder = PAX_NEW<PaxDictDecoder>(decoder_options);
       break;
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED: {
