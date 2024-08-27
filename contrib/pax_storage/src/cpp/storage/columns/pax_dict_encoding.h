@@ -74,6 +74,43 @@ class PaxDictDecoder final : public PaxDecoder {
 
   size_t Decoding(const char *not_null, size_t not_null_len) override;
 
+#ifdef BUILD_RB_RET_DICT
+  static std::tuple<DataBuffer<int32> *, DataBuffer<char> *,
+                    DataBuffer<int32> *>
+  GetRawDictionary(DataBuffer<char> *src_buff) {
+    DataBuffer<int32> *index_buffer;
+    DataBuffer<char> *entry_buffer;
+    DataBuffer<int32> *desc_buffer;
+    PaxDictHead head;
+    std::vector<int32> offsets;
+    char *buffer;
+
+    Assert(src_buff->Capacity() >= sizeof(struct PaxDictHead));
+
+    memcpy(
+        &head,
+        src_buff->GetBuffer() + src_buff->Used() - sizeof(struct PaxDictHead),
+        sizeof(struct PaxDictHead));
+
+    buffer = src_buff->GetBuffer();
+
+    index_buffer =
+        PAX_NEW<DataBuffer<int32>>((int32 *)buffer, head.indexsz, false, false);
+    index_buffer->BrushAll();
+
+    desc_buffer = PAX_NEW<DataBuffer<int32>>(
+        (int32 *)(buffer + head.indexsz + head.dictsz), head.dict_descsz, false,
+        false);
+    desc_buffer->BrushAll();
+
+    entry_buffer = PAX_NEW<DataBuffer<char>>(buffer + head.indexsz, head.dictsz,
+                                             false, false);
+    entry_buffer->BrushAll();
+
+    return std::make_tuple(index_buffer, entry_buffer, desc_buffer);
+  }
+#endif
+
  private:
   std::tuple<uint64, uint64, uint64> DecodeLens();
 

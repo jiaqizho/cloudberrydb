@@ -26,6 +26,10 @@ class PaxNonFixedEncodingColumn : public PaxNonFixedColumn {
 
   size_t GetAlignSize() const override;
 
+#ifdef BUILD_RB_RET_DICT
+  inline DataBuffer<char> *GetUndecodedBuffer() { return shared_data_; }
+#endif
+
   // The reason why `PaxNonFixedEncodingColumn` not override the
   // method `GetRangeBuffer` and `GetNonNullRows` is that
   // `PaxNonFixedEncodingColumn` don't have any streaming encoding, also
