@@ -1,6 +1,7 @@
 #include "comm/gtest_wrappers.h"
 #include "comm/singleton.h"
 #include "pax_gtest_helper.h"
+#include "storage/columns/pax_encoding_non_fixed_column.h"
 #include "storage/columns/pax_vec_numeric_column.h"
 #include "storage/local_file_system.h"
 #include "storage/pax.h"
@@ -374,6 +375,271 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
   PAX_DELETE(columns);
   PAX_DELETE(adapter);
 }
+
+#ifdef BUILD_RB_RET_DICT
+
+TEST_P(PaxVecTest, PaxColumnWithDictToVec) {
+  VecAdapter *adapter;
+  PaxColumns *columns;
+  PaxColumn *column;
+
+  [[maybe_unused]] auto is_fixed = ::testing::get<0>(GetParam());
+  [[maybe_unused]] auto with_visimap = ::testing::get<1>(GetParam());
+  auto tuple_slot = CreateTupleSlot(false, false, false);
+
+  adapter =
+      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  columns = PAX_NEW<PaxColumns>();
+
+  PaxEncoder::EncodingOption encoding_option;
+  encoding_option.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY;
+
+  column = PAX_NEW<PaxNonFixedEncodingColumn>(
+      VEC_BATCH_LENGTH, VEC_BATCH_LENGTH, std::move(encoding_option));
+
+  for (size_t i = 0; i < VEC_BATCH_LENGTH; i++) {
+    auto value = (i % 10);
+    auto data = cbdb::DatumFromCString((char *)&value, sizeof(int32));
+    int len = -1;
+    auto vl = cbdb::PointerAndLenFromDatum(data, &len);
+
+    column->Append(reinterpret_cast<char *>(vl), len);
+  }
+
+  column->GetBuffer();
+
+  columns->AddRows(column->GetRows());
+  columns->Append(column);
+  adapter->SetDataSource(columns, 0);
+
+  auto append_rc = adapter->AppendToVecBuffer();
+
+  ASSERT_EQ(static_cast<size_t>(append_rc), VEC_BATCH_LENGTH);
+
+  // already full
+  append_rc = adapter->AppendToVecBuffer();
+  ASSERT_EQ(append_rc, -1);
+
+  size_t flush_counts = adapter->FlushVecBuffer(tuple_slot);
+  ASSERT_EQ(VEC_BATCH_LENGTH, flush_counts);
+
+  {
+    VecTupleTableSlot *vslot = nullptr;
+    vslot = (VecTupleTableSlot *)tuple_slot;
+
+    auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
+    ArrowArray *arrow_array = &rb->batch;
+
+    ASSERT_EQ(static_cast<size_t>(arrow_array->length), VEC_BATCH_LENGTH);
+    ASSERT_EQ(arrow_array->null_count, 0);
+    ASSERT_EQ(arrow_array->offset, 0);
+    ASSERT_EQ(arrow_array->n_buffers, 1);
+    ASSERT_EQ(arrow_array->n_children, 1);
+    ASSERT_NE(arrow_array->children, nullptr);
+    ASSERT_EQ(arrow_array->buffers[0], nullptr);
+    ASSERT_EQ(arrow_array->dictionary, nullptr);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
+
+    ArrowArray *child_array = arrow_array->children[0];
+    ASSERT_EQ(static_cast<size_t>(child_array->length), VEC_BATCH_LENGTH);
+    ASSERT_EQ(child_array->null_count, 0);
+    ASSERT_EQ(child_array->offset, 0);
+    ASSERT_EQ(child_array->n_buffers, 2);
+    ASSERT_EQ(child_array->n_children, 0);
+    ASSERT_EQ(child_array->children, nullptr);
+    ASSERT_EQ(child_array->buffers[0], nullptr);  // null bitmap
+    ASSERT_EQ(child_array->private_data, child_array);
+
+    ASSERT_EQ(child_array->buffers[0], nullptr);
+    ASSERT_NE(child_array->buffers[1], nullptr);
+    ASSERT_NE(child_array->dictionary, nullptr);
+
+    char *buffer = (char *)child_array->buffers[1];
+    for (size_t i = 0; i < VEC_BATCH_LENGTH; i++) {
+      ASSERT_EQ(*((int32 *)(buffer + i * sizeof(int32))),
+                static_cast<int32>(i % 10));
+    }
+
+    ArrowArray *child_dict_array = child_array->dictionary;
+    ASSERT_EQ(child_dict_array->n_buffers, 3);
+    ASSERT_EQ(child_dict_array->buffers[0], nullptr);
+    ASSERT_NE(child_dict_array->buffers[1], nullptr);
+    ASSERT_NE(child_dict_array->buffers[2], nullptr);
+
+    char *dict_offset_buffer = (char *)child_dict_array->buffers[1];
+    char *dict_buffer = (char *)child_dict_array->buffers[2];
+
+    for (size_t i = 0; i < 10; i++) {
+      ASSERT_EQ(*((int32 *)(dict_offset_buffer + i * sizeof(int32))),
+                static_cast<int32>(i * (sizeof(int32) + VARHDRSZ)));
+
+      auto datum = dict_buffer + i * (sizeof(int32) + VARHDRSZ);
+      ASSERT_EQ(*(int32 *)VARDATA(datum), static_cast<int32>(i));
+    }
+
+    ArrowSchema *arrow_schema = &rb->schema;
+    ASSERT_NE(arrow_schema, nullptr);
+    ASSERT_EQ(arrow_schema->n_children, 1);
+
+    ArrowSchema *child_schema = arrow_schema->children[0];
+    ASSERT_NE(child_schema->dictionary, nullptr);
+  }
+
+  DeleteTupleSlot(tuple_slot);
+
+  PAX_DELETE(columns);
+  PAX_DELETE(adapter);
+}
+
+TEST_P(PaxVecTest, PaxColumnWithNullAndDictToVec) {
+  VecAdapter *adapter;
+  PaxColumns *columns;
+  PaxColumn *column;
+  size_t null_counts = 0;
+
+  [[maybe_unused]] auto is_fixed = ::testing::get<0>(GetParam());
+  [[maybe_unused]] auto with_visimap = ::testing::get<1>(GetParam());
+  auto tuple_slot = CreateTupleSlot(false, false, false);
+
+  adapter = PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor,
+                                VEC_BATCH_LENGTH * 10);
+  columns = PAX_NEW<PaxColumns>();
+
+  PaxEncoder::EncodingOption encoding_option;
+  encoding_option.column_encode_type =
+      ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY;
+
+  column = PAX_NEW<PaxNonFixedEncodingColumn>(
+      VEC_BATCH_LENGTH, VEC_BATCH_LENGTH, std::move(encoding_option));
+
+  for (size_t i = 0; i < VEC_BATCH_LENGTH; i++) {
+    if (i % 5 == 0) {
+      null_counts++;
+      column->AppendNull();
+    }
+    auto value = (i % 10);
+    auto data = cbdb::DatumFromCString((char *)&value, sizeof(int32));
+    int len = -1;
+    auto vl = cbdb::PointerAndLenFromDatum(data, &len);
+
+    column->Append(reinterpret_cast<char *>(vl), len);
+  }
+
+  column->GetBuffer();
+  columns->AddRows(column->GetRows());
+  columns->Append(column);
+  adapter->SetDataSource(columns, 0);
+
+  auto append_rc = adapter->AppendToVecBuffer();
+  ASSERT_EQ(static_cast<size_t>(append_rc), VEC_BATCH_LENGTH + null_counts);
+
+  // already full
+  append_rc = adapter->AppendToVecBuffer();
+  ASSERT_EQ(append_rc, -1);
+
+  size_t flush_counts = adapter->FlushVecBuffer(tuple_slot);
+  ASSERT_EQ(VEC_BATCH_LENGTH + null_counts, flush_counts);
+
+  {
+    VecTupleTableSlot *vslot = nullptr;
+    vslot = (VecTupleTableSlot *)tuple_slot;
+
+    auto rb = (ArrowRecordBatch *)vslot->tts_recordbatch;
+    ArrowArray *arrow_array = &rb->batch;
+
+    ASSERT_EQ(static_cast<size_t>(arrow_array->length),
+              VEC_BATCH_LENGTH + null_counts);
+    ASSERT_EQ(arrow_array->null_count, 0);
+    ASSERT_EQ(arrow_array->offset, 0);
+    ASSERT_EQ(arrow_array->n_buffers, 1);
+    ASSERT_EQ(arrow_array->n_children, 1);
+    ASSERT_NE(arrow_array->children, nullptr);
+    ASSERT_EQ(arrow_array->buffers[0], nullptr);
+    ASSERT_EQ(arrow_array->dictionary, nullptr);
+    ASSERT_EQ(arrow_array->private_data, nullptr);
+
+    ArrowArray *child_array = arrow_array->children[0];
+    ASSERT_EQ(static_cast<size_t>(child_array->length),
+              VEC_BATCH_LENGTH + null_counts);
+    ASSERT_EQ(child_array->null_count, null_counts);
+    ASSERT_EQ(child_array->offset, 0);
+    ASSERT_EQ(child_array->n_buffers, 2);
+    ASSERT_EQ(child_array->n_children, 0);
+    ASSERT_EQ(child_array->children, nullptr);
+    ASSERT_EQ(child_array->private_data, child_array);
+
+    ASSERT_NE(child_array->buffers[0], nullptr);
+    ASSERT_NE(child_array->buffers[1], nullptr);
+    ASSERT_NE(child_array->dictionary, nullptr);
+
+    // Verify the data part
+    {
+      auto null_bits_array = (uint8 *)child_array->buffers[0];
+
+      // verify null bitmap
+      for (size_t i = 0; i < VEC_BATCH_LENGTH; i++) {
+        // N 0 1 2 3 4 N 5 6 7 8 9 N 1 2 ...
+        // should % 6 rather then 5
+        if (i % 6 == 0) {
+          ASSERT_FALSE(arrow::bit_util::GetBit(null_bits_array, i));
+        } else {
+          ASSERT_TRUE(arrow::bit_util::GetBit(null_bits_array, i));
+        }
+      }
+
+      // verify data
+      char *buffer = (char *)child_array->buffers[1];
+      size_t verify_null_counts = 0;
+      for (size_t i = 0; i < VEC_BATCH_LENGTH + null_counts; i++) {
+        if (i % 6 == 0) {
+          verify_null_counts++;
+          continue;
+        }
+
+        ASSERT_EQ(*((int32 *)(buffer + (i) * sizeof(int32))),
+                  static_cast<int32>((i - verify_null_counts) % 10));
+      }
+
+      ASSERT_EQ(verify_null_counts,
+                static_cast<size_t>(child_array->null_count));
+    }
+
+    // Verify the dictionary part
+    {
+      ArrowArray *child_dict_array = child_array->dictionary;
+      ASSERT_EQ(child_dict_array->n_buffers, 3);
+      ASSERT_EQ(child_dict_array->buffers[0], nullptr);
+      ASSERT_NE(child_dict_array->buffers[1], nullptr);
+      ASSERT_NE(child_dict_array->buffers[2], nullptr);
+
+      char *dict_offset_buffer = (char *)child_dict_array->buffers[1];
+      char *dict_buffer = (char *)child_dict_array->buffers[2];
+
+      for (size_t i = 0; i < 10; i++) {
+        ASSERT_EQ(*((int32 *)(dict_offset_buffer + i * sizeof(int32))),
+                  static_cast<int32>(i * (sizeof(int32) + VARHDRSZ)));
+
+        auto datum = dict_buffer + i * (sizeof(int32) + VARHDRSZ);
+        ASSERT_EQ(*(int32 *)VARDATA(datum), static_cast<int32>(i));
+      }
+    }
+
+    ArrowSchema *arrow_schema = &rb->schema;
+    ASSERT_NE(arrow_schema, nullptr);
+    ASSERT_EQ(arrow_schema->n_children, 1);
+
+    ArrowSchema *child_schema = arrow_schema->children[0];
+    ASSERT_NE(child_schema->dictionary, nullptr);
+  }
+
+  DeleteTupleSlot(tuple_slot);
+
+  PAX_DELETE(columns);
+  PAX_DELETE(adapter);
+}
+
+#endif  // BUILD_RB_RET_DICT
 
 TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
   VecAdapter *adapter;

@@ -14,6 +14,9 @@ option(BUILD_GBENCH "Build with google benchmark" OFF)
 # Build pax tools
 option(BUILD_TOOLS "Build with pax tools" ON)
 
+# Build with return dictionary in record batch
+option(BUILD_RB_RET_DICT "Build with pax direct return dictionary in record batch." OFF)
+
 include(CheckSymbolExists)
 SET(PG_CONFIG_HEADER_FILE "${CBDB_INCLUDE_DIR}/pg_config.h")
 message(STATUS "pg_config.h => ${PG_CONFIG_HEADER_FILE}")
@@ -47,8 +50,13 @@ CHECK_SYMBOL_EXISTS(USE_VECTORIZATION "${PG_CONFIG_HEADER_FILE}" VEC_BUILD)
 if (VEC_BUILD)
   set(VEC_HOME "${PROJECT_SOURCE_DIR}/../vectorization")
   set(INSTALL_HOME "${CMAKE_INSTALL_PREFIX}")
+
+  if (BUILD_RB_RET_DICT)
+    ADD_DEFINITIONS(-DBUILD_RB_RET_DICT)
+  endif(BUILD_RB_RET_DICT)
+
   ADD_DEFINITIONS(-DVEC_BUILD)
-  message(STATUS "Build pax with vectorization support, VEC_HOME=${VEC_HOME} INSTALL_HOME=${INSTALL_HOME}")
+  message(STATUS "Build pax with vectorization support, VEC_HOME=${VEC_HOME} INSTALL_HOME=${INSTALL_HOME}, BUILD_RB_RET_DICT=${BUILD_RB_RET_DICT}")
 else()
   message(STATUS "Build pax without vectorization support")
 endif(VEC_BUILD)

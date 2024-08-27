@@ -6,7 +6,9 @@
 #include "storage/columns/pax_column_traits.h"
 #include "storage/toast/pax_toast.h"
 #include "storage/vec/pax_vec_comm.h"
-
+#ifdef BUILD_RB_RET_DICT
+#include "storage/columns/pax_dict_encoding.h"  // GetRawDictionary
+#endif
 namespace pax {
 
 void CopyFixedRawBufferWithNull(PaxColumn *column,
@@ -363,6 +365,124 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(PaxColumns *columns,
     std::tie(raw_buffer, buffer_len) =
         column->GetRangeBuffer(data_index_begin, num_of_not_nulls);
     column_type = column->GetPaxColumnTypeInMem();
+
+#ifdef BUILD_RB_RET_DICT
+    if (column->GetEncodingType() ==
+        ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY) {
+      CBDB_CHECK(micro_partition_visibility_bitmap_ == nullptr,
+                 cbdb::CException::ExType::kExTypeInvalid,
+                 fmt("Invalid column [index=%lu], Can't enable RB_RET_DICT "
+                     "with visibility bitmap update",
+                     index));
+
+      CBDB_CHECK(range_lens == columns->GetRows(),
+                 cbdb::CException::ExType::kExTypeInvalid,
+                 fmt("Invalid column [index=%lu], When enable RB_RET_DICT "
+                     "should make vector.max_batch_size LE [group size=%lu]",
+                     index, columns->GetRows()));
+
+      DataBuffer<int32> *index_buffer;
+      DataBuffer<char> *entry_buffer;
+      DataBuffer<int32> *desc_buffer;
+      bool expect_hdr = false;
+
+      char *undecoded_buffer;
+      size_t undecoded_buffer_len;
+      auto undecoded_data_buffer =
+          ((PaxNonFixedEncodingColumn *)column)->GetUndecodedBuffer();
+      auto out_data_buffer_len =
+          TYPEALIGN(MEMORY_ALIGN_SIZE, (range_lens * sizeof(int32)));
+      std::tie(index_buffer, entry_buffer, desc_buffer) =
+          PaxDictDecoder::GetRawDictionary(undecoded_data_buffer);
+      undecoded_buffer = (char *)index_buffer->GetBuffer();
+      undecoded_buffer_len = index_buffer->Used();
+      vec_buffer->Set(BlockBuffer::Alloc<char *>(out_data_buffer_len),
+                      out_data_buffer_len);
+
+      vec_cache_buffer_[index].is_dict = true;
+      if (column->HasNull()) {
+        auto null_bitmap = column->GetBitmap();
+        size_t non_null_offset = 0;
+
+        for (size_t i = 0; i < range_lens; i++) {
+          if (null_bitmap->Test(i)) {
+            vec_buffer->Write(undecoded_buffer + non_null_offset,
+                              sizeof(int32));
+            non_null_offset += sizeof(int32);
+          }
+          vec_buffer->Brush(sizeof(int32));
+        }
+      } else {
+        CopyFixedRawBuffer(undecoded_buffer, undecoded_buffer_len, vec_buffer);
+      }
+
+      expect_hdr = rel_tuple_desc_->attrs[index].attlen == -1 &&
+                   rel_tuple_desc_->attrs[index].attbyval == false;
+
+#ifdef RUN_GTEST
+      expect_hdr = false;
+#endif
+
+      // the dict part
+      auto desc_offset_buffer = &(vec_cache_buffer_[index].dict_offset_buffer);
+      auto desc_entry_buffer = &(vec_cache_buffer_[index].dict_entry_buffer);
+      {
+        auto desc_offset_buffer_len =
+            TYPEALIGN(MEMORY_ALIGN_SIZE, desc_buffer->Used() + sizeof(int32));
+        desc_offset_buffer->Set(
+            BlockBuffer::Alloc<char *>(desc_offset_buffer_len),
+            desc_offset_buffer_len);
+
+        if (!expect_hdr) {
+          size_t dst_offset = 0;
+          desc_offset_buffer->Write(dst_offset);
+          desc_offset_buffer->Brush(sizeof(int32));
+
+          for (size_t l = 0; l < desc_buffer->GetSize(); l++) {
+            dst_offset += (*desc_buffer)[l];
+            desc_offset_buffer->Write(dst_offset);
+            desc_offset_buffer->Brush(sizeof(int32));
+          }
+
+          auto entry_buffer_len =
+              TYPEALIGN(MEMORY_ALIGN_SIZE, entry_buffer->Used());
+          desc_entry_buffer->Set(BlockBuffer::Alloc<char *>(entry_buffer_len),
+                                 entry_buffer_len);
+
+          desc_entry_buffer->Write(entry_buffer->GetBuffer(),
+                                   entry_buffer->Used());
+          desc_entry_buffer->Brush(entry_buffer->Used());
+        } else {
+          auto entry_buffer_len =
+              TYPEALIGN(MEMORY_ALIGN_SIZE, entry_buffer->Used());
+          desc_entry_buffer->Set(BlockBuffer::Alloc<char *>(entry_buffer_len),
+                                 entry_buffer_len);
+
+          size_t dst_offset = 0;
+          size_t raw_dst_offset = 0;
+          for (size_t l = 0; l < desc_buffer->GetSize(); l++) {
+            char *raw_buffer = NULL;
+            size_t raw_buffer_len = 0;
+
+            VarlenaToRawBuffer(entry_buffer->GetBuffer() + dst_offset,
+                               (*desc_buffer)[l], &raw_buffer, &raw_buffer_len);
+            desc_entry_buffer->Write(raw_buffer, raw_buffer_len);
+            desc_entry_buffer->Brush(raw_buffer_len);
+            desc_offset_buffer->Write(raw_dst_offset);
+            desc_offset_buffer->Brush(sizeof(int32));
+
+            dst_offset += (*desc_buffer)[l];
+            raw_dst_offset += raw_buffer_len;
+          }
+
+          desc_offset_buffer->Write(raw_dst_offset);
+          desc_offset_buffer->Brush(sizeof(int32));
+        }
+      }
+
+      continue;
+    }
+#endif
 
     switch (column_type) {
       case PaxColumnTypeInMem::kTypeDecimal: {
