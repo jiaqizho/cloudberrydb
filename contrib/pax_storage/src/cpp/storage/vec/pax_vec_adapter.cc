@@ -12,6 +12,9 @@ extern "C" {
 #pragma GCC diagnostic pop
 
 #include "comm/vec_numeric.h"
+#ifdef BUILD_RB_RET_DICT
+#include "storage/columns/pax_dict_encoding.h"  // GetRawDictionary
+#endif
 #include "storage/orc/orc_type.h"
 #include "storage/pax_buffer.h"
 #include "storage/pax_itemptr.h"
@@ -35,7 +38,17 @@ static void ConvSchemaAndDataToVec(
     arrow::ArrayVector &array_vector, std::vector<std::string> &field_names);
 
 VecAdapter::VecBatchBuffer::VecBatchBuffer()
-    : vec_buffer(0), null_bits_buffer(0), offset_buffer(0), null_counts(0) {
+    : vec_buffer(0),
+      null_bits_buffer(0),
+      offset_buffer(0),
+      null_counts(0)
+#ifdef BUILD_RB_RET_DICT
+      ,
+      is_dict(false),
+      dict_offset_buffer(0),
+      dict_entry_buffer(0)
+#endif
+{
   SetMemoryTakeOver(true);
 };
 
@@ -48,6 +61,11 @@ void VecAdapter::VecBatchBuffer::Reset() {
   null_bits_buffer.Reset();
   offset_buffer.Reset();
   null_counts = 0;
+#ifdef BUILD_RB_RET_DICT
+  is_dict = false;
+  dict_offset_buffer.Reset();
+  dict_entry_buffer.Reset();
+#endif
   SetMemoryTakeOver(true);
 }
 
@@ -55,6 +73,10 @@ void VecAdapter::VecBatchBuffer::SetMemoryTakeOver(bool take) {
   vec_buffer.SetMemTakeOver(take);
   null_bits_buffer.SetMemTakeOver(take);
   offset_buffer.SetMemTakeOver(take);
+#ifdef BUILD_RB_RET_DICT
+  dict_offset_buffer.SetMemTakeOver(take);
+  dict_entry_buffer.SetMemTakeOver(take);
+#endif
 }
 
 static std::tuple<std::shared_ptr<arrow::Buffer>,
@@ -133,6 +155,64 @@ static void ConvSchemaAndDataToVec(
     VecAdapter::VecBatchBuffer *vec_batch_buffer,
     std::vector<std::shared_ptr<arrow::Field>> &schema_types,
     arrow::ArrayVector &array_vector, std::vector<std::string> &field_names) {
+#ifdef BUILD_RB_RET_DICT
+  if (vec_batch_buffer->is_dict) {
+    DataBuffer<char> *index_buffer;
+    DataBuffer<char> *null_buffer;
+    DataBuffer<int32> *desc_offset_buffer;
+    DataBuffer<char> *desc_entry_buffer;
+    Assert(vec_batch_buffer->vec_buffer.GetBuffer());
+
+    index_buffer = &(vec_batch_buffer->vec_buffer);
+    desc_offset_buffer = &(vec_batch_buffer->dict_offset_buffer);
+    desc_entry_buffer = &(vec_batch_buffer->dict_entry_buffer);
+    null_buffer = &(vec_batch_buffer->null_bits_buffer);
+
+    std::shared_ptr<arrow::Int32Array> index_array;
+    {
+      auto index_data_buffer = std::make_shared<arrow::Buffer>(
+          (uint8 *)index_buffer->GetBuffer(), (int64)index_buffer->Capacity());
+
+      std::shared_ptr<arrow::Buffer> arrow_null_buffer = nullptr;
+      if (vec_batch_buffer->null_counts > 0) {
+        arrow_null_buffer = std::make_shared<arrow::Buffer>(
+            (uint8 *)null_buffer->GetBuffer(), (int64)null_buffer->Capacity());
+      }
+
+      index_array = std::make_shared<arrow::Int32Array>(
+          index_buffer->GetSize() / sizeof(int32), index_data_buffer,
+          arrow_null_buffer, vec_batch_buffer->null_counts);
+    }
+
+    std::shared_ptr<arrow::StringArray> dict_desc_array;
+    {
+      auto arrow_desc_entry_buffer = std::make_shared<arrow::Buffer>(
+          (uint8 *)desc_entry_buffer->GetBuffer(),
+          (int64)desc_entry_buffer->Capacity());
+
+      auto arrow_desc_offset_buffer = std::make_shared<arrow::Buffer>(
+          (uint8 *)desc_offset_buffer->GetBuffer(),
+          (int64)desc_offset_buffer->Capacity());
+
+      dict_desc_array = std::make_shared<arrow::StringArray>(
+          desc_offset_buffer->GetSize() - 1, arrow_desc_offset_buffer,
+          arrow_desc_entry_buffer, nullptr, 0);
+    }
+
+    auto dict_array = std::make_shared<arrow::DictionaryArray>(
+        arrow::dictionary(arrow::int32(), arrow::utf8()), index_array,
+        dict_desc_array);
+
+    schema_types.emplace_back(
+        arrow::field(std::string(attname),
+                     arrow::dictionary(arrow::int32(), arrow::utf8())));
+    array_vector.emplace_back(dict_array);
+    field_names.emplace_back(std::string(attname));
+
+    return;
+  }
+#endif
+
   switch (pg_type_oid) {
     case BOOLOID: {
       ConvArrowSchemaAndBuffer<arrow::BooleanArray>(
