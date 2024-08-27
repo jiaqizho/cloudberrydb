@@ -15,6 +15,11 @@ class VecAdapter final {
     DataBuffer<char> null_bits_buffer;
     DataBuffer<int32> offset_buffer;
     size_t null_counts;
+#ifdef BUILD_RB_RET_DICT
+    bool is_dict;
+    DataBuffer<int32> dict_offset_buffer;
+    DataBuffer<char> dict_entry_buffer;
+#endif
 
     VecBatchBuffer();
 

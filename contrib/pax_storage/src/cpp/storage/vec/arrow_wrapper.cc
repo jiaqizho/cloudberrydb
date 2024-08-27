@@ -33,6 +33,10 @@ void ExportArrayRelease(ArrowArray *array) {
     pax::PAX_DELETE_ARRAY<char *>(temp);
   }
 
+  if (array->dictionary) {
+    pax::PAX_DELETE<ArrowArray>(array->dictionary);
+  }
+
   array->release = NULL;
   if (array->private_data) {
     ArrowArray *temp = static_cast<ArrowArray *>(array->private_data);
@@ -68,7 +72,17 @@ static void ExportArrayNodeDetails(ArrowArray *export_array,
     export_array->children[i] = child_array[i];
   }
 
-  export_array->dictionary = nullptr;
+  if (data->dictionary) {
+    ArrowArray *export_array_dict = pax::PAX_NEW<ArrowArray>();
+    std::vector<ArrowArray *> child_array_dict;
+    ExportArrayNodeDetails(export_array_dict, data->dictionary,
+                           child_array_dict, true);
+
+    export_array->dictionary = export_array_dict;
+  } else {
+    export_array->dictionary = nullptr;
+  }
+
   export_array->private_data = is_child ? (void *)export_array : nullptr;
   export_array->release = ExportArrayRelease;
 }
