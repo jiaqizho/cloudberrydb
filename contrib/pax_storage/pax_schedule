@@ -1,5 +1,6 @@
 test: setup
 
+test: cbdb_parallel
 test: alter_distributed 
 test: toast detoast ddl numeric types filter
 test: update
