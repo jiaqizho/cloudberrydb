@@ -282,4 +282,10 @@ void ExecStoreVirtualTuple(TupleTableSlot *slot);
       CBDB_RAISE(cbdb::CException::ExType::kExTypeCError);         \
   }                                                               \
   }
+
+#define CBDB_WRAP_FUNCTION(func, ...) do { \
+    CBDB_WRAP_START; \
+    func(__VA_ARGS__); \
+    CBDB_WRAP_END; \
+} while(0)
 // clang-format on

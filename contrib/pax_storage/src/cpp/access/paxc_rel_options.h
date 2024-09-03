@@ -24,6 +24,10 @@ namespace paxc {
 #define PAX_MAX_COMPRESSLEVEL AO_MAX_COMPRESSLEVEL
 #define PAX_DEFAULT_COMPRESSTYPE ColumnEncoding_Kind_NO_ENCODED_STR
 
+#define PAX_MIN_PARALLEL_WORKERS 0
+#define PAX_MAX_PARALLEL_WORKERS 64
+#define PAX_DEFAULT_PARALLEL_WORKERS -1
+
 #define PAX_SOPT_STORAGE_FORMAT "storage_format"
 #define PAX_SOPT_COMPTYPE SOPT_COMPTYPE
 #define PAX_SOPT_COMPLEVEL SOPT_COMPLEVEL
@@ -31,6 +35,7 @@ namespace paxc {
 #define PAX_SOPT_PARTITION_RANGES "partition_ranges"
 #define PAX_SOPT_MINMAX_COLUMNS "minmax_columns"
 #define PAX_SOPT_CLUSTER_COLUMNS "cluster_columns"
+#define PAX_SOPT_PARALLEL_WORKERS "parallel_workers"
 
 // plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
