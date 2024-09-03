@@ -558,19 +558,26 @@ uint32 PaxAccessMethod::ScanFlags(Relation relation) {
 }
 
 Size PaxAccessMethod::ParallelscanEstimate(Relation /*rel*/) {
-  NOT_IMPLEMENTED_YET;
-  return 0;
+  return sizeof(ParallelBlockTableScanDescData);
 }
 
-Size PaxAccessMethod::ParallelscanInitialize(Relation /*rel*/,
-                                             ParallelTableScanDesc /*pscan*/) {
-  NOT_IMPLEMENTED_YET;
-  return 0;
+Size PaxAccessMethod::ParallelscanInitialize(Relation rel,
+                                             ParallelTableScanDesc pscan) {
+  ParallelBlockTableScanDesc bpscan = (ParallelBlockTableScanDesc)pscan;
+  bpscan->base.phs_relid = RelationGetRelid(rel);
+  pg_atomic_init_u64(&bpscan->phs_nallocated, 0);
+  // Like ao/aocs, we don't need phs_mutex and phs_startblock, though, init
+  // them.
+  SpinLockInit(&bpscan->phs_mutex);
+  bpscan->phs_startblock = InvalidBlockNumber;
+  return sizeof(ParallelBlockTableScanDescData);
 }
 
-void PaxAccessMethod::ParallelscanReinitialize(
-    Relation /*rel*/, ParallelTableScanDesc /*pscan*/) {
-  NOT_IMPLEMENTED_YET;
+void PaxAccessMethod::ParallelscanReinitialize(Relation rel,
+                                               ParallelTableScanDesc pscan) {
+  ParallelBlockTableScanDesc bpscan = (ParallelBlockTableScanDesc)pscan;
+
+  pg_atomic_write_u64(&bpscan->phs_nallocated, 0);
 }
 
 void PaxAccessMethod::TupleInsertSpeculative(Relation /*relation*/,
