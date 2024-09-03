@@ -198,3 +198,11 @@ char *CPaxGetFastSequencesName(Oid oid, bool missing_ok) {
 }
 
 }  // namespace paxc
+
+namespace cbdb {
+  
+int32 CPaxGetFastSequences(Oid objid, bool increase) {
+  return paxc::CPaxGetFastSequences(objid, increase);
+}
+
+}  // namespace cbdb

@@ -171,12 +171,6 @@ insert into ao1 select i, i from generate_series(1, 1200000) g(i);
 analyze ao1;
 insert into ao2 select i%10, i from generate_series(1, 1200000) g(i);
 analyze ao2;
-select segfilecount from pg_appendonly where relid = 'ao1'::regclass;
- segfilecount 
---------------
-            4
-(1 row)
-
 set local enable_parallel = on;
 explain(costs off) select count(*) from ao1;
                     QUERY PLAN                    
@@ -198,12 +192,6 @@ select count(*) from ao1;
 set local enable_parallel = off;
 insert into aocs1 select i, i from generate_series(1, 1200000) g(i);
 analyze aocs1;
-select segfilecount from pg_appendonly where relid = 'aocs1'::regclass;
- segfilecount 
---------------
-            4
-(1 row)
-
 set local enable_parallel = on;
 explain(costs off) select count(*) from aocs1;
                     QUERY PLAN                    
@@ -323,7 +311,7 @@ begin;
 create table t1(c1 int, c2 int) with(parallel_workers=2) distributed by (c1);
 set local enable_parallel = on;
 create index on t1(c2);
-insert into t1 select i, i from generate_series(1, 10000000) i;
+insert into t1 select i, i from generate_series(1, 1000000) i;
 analyze t1;
 set local force_parallel_mode = 1;
 set local enable_seqscan = off;
@@ -360,9 +348,9 @@ explain(locus, costs off) select count(c2) from t1;
 (13 rows)
 
 select count(c2) from t1;
-  count   
-----------
- 10000000
+  count  
+---------
+ 1000000
 (1 row)
 
 set local enable_parallel = off;
@@ -383,129 +371,9 @@ explain(locus, costs off) select count(c2) from t1;
 (11 rows)
 
 select count(c2) from t1;
-  count   
-----------
- 10000000
-(1 row)
-
-abort;
--- test segfilecount according to data volume.
-create table ao_segfilecount(x int, y int);
-create table aocs_segfilecount(x int, y int);
-begin;
-set local gp_appendonly_insert_files = 5;
-set local gp_appendonly_insert_files_tuples_range = 10;
--- no enough data, open only one segment file.
-insert into ao_segfilecount select i, i from generate_series(1, 29) g(i);
-analyze ao_segfilecount;
-select segfilecount from pg_appendonly where relid='ao_segfilecount'::regclass;
- segfilecount 
---------------
-            1
-(1 row)
-
--- no enough data, open two segment files.
-insert into ao_segfilecount select i, i from generate_series(1, 60) g(i);
-analyze ao_segfilecount;
-select segfilecount from pg_appendonly where relid='ao_segfilecount'::regclass;
- segfilecount 
---------------
-            2
-(1 row)
-
--- proper data, open segment file according to GUC.
-insert into ao_segfilecount select i, i from generate_series(1, 150) g(i);
-analyze ao_segfilecount;
-select segfilecount from pg_appendonly where relid='ao_segfilecount'::regclass;
- segfilecount 
---------------
-            5
-(1 row)
-
--- excess data, open segment file according to GUC.
-insert into ao_segfilecount select i, i from generate_series(1, 200) g(i);
-analyze ao_segfilecount;
-select segfilecount from pg_appendonly where relid='ao_segfilecount'::regclass;
- segfilecount 
---------------
-            5
-(1 row)
-
--- no enough data, open only one segment file.
-insert into aocs_segfilecount select i, i from generate_series(1, 29) g(i);
-analyze aocs_segfilecount;
-select segfilecount from pg_appendonly where relid='aocs_segfilecount'::regclass;
- segfilecount 
---------------
-            1
-(1 row)
-
--- no enough data, open two segment files.
-insert into aocs_segfilecount select i, i from generate_series(1, 60) g(i);
-analyze aocs_segfilecount;
-select segfilecount from pg_appendonly where relid='aocs_segfilecount'::regclass;
- segfilecount 
---------------
-            2
-(1 row)
-
--- proper data, open segment file according to GUC.
-insert into aocs_segfilecount select i, i from generate_series(1, 150) g(i);
-analyze aocs_segfilecount;
-select segfilecount from pg_appendonly where relid='aocs_segfilecount'::regclass;
- segfilecount 
---------------
-            5
-(1 row)
-
--- excess data, open segment file according to GUC.
-insert into aocs_segfilecount select i, i from generate_series(1, 200) g(i);
-analyze aocs_segfilecount;
-select segfilecount from pg_appendonly where relid='aocs_segfilecount'::regclass;
- segfilecount 
---------------
-            5
-(1 row)
-
-abort;
-drop table ao_segfilecount;
-drop table aocs_segfilecount;
--- test gp_appendonly_insert_files doesn't take effect
-begin;
-create table t (x int);
-insert into t select i from generate_series(1, 1000) i;
-set local gp_appendonly_insert_files=4;
-set local gp_appendonly_insert_files_tuples_range = 10;
-create table ao1 using ao_row as select * from t;
-analyze ao1;
-select segfilecount from pg_appendonly where relid='ao1'::regclass;
- segfilecount 
---------------
-            1
-(1 row)
-
-create table ao2 as select * from t;
-analyze ao2;
-select segfilecount from pg_appendonly where relid='ao2'::regclass;
- segfilecount 
---------------
-            1
-(1 row)
-
-create table aocs1  using ao_column as select * from t;
-analyze aocs1;
-select segfilecount from pg_appendonly where relid='aocs1'::regclass;
- segfilecount 
---------------
-            1
-(1 row)
-
-create table aocs2 as select * from t;
-analyze aocs2;
-select segfilecount from pg_appendonly where relid='aocs2'::regclass;
- segfilecount 
---------------
-            1
+  count  
+---------
+ 1000000
 (1 row)
 
 abort;
@@ -1488,17 +1356,17 @@ analyze sq1;
 explain (locus, costs off) select * from rt1 union all select * from rt1;
                  QUERY PLAN                 
 --------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 2:1  (slice1; segments: 2)
    Locus: Entry
    ->  Parallel Append
          Locus: SegmentGeneralWorkers
-         Parallel Workers: 3
+         Parallel Workers: 2
          ->  Parallel Seq Scan on rt1
                Locus: SegmentGeneralWorkers
-               Parallel Workers: 3
+               Parallel Workers: 2
          ->  Parallel Seq Scan on rt1 rt1_1
                Locus: SegmentGeneralWorkers
-               Parallel Workers: 3
+               Parallel Workers: 2
  Optimizer: Postgres query optimizer
 (12 rows)
 
@@ -1506,16 +1374,16 @@ explain (locus, costs off) select * from rt1 union all select * from rt1;
 explain (locus, costs off) select * from rt1 union all select * from rt2;
                  QUERY PLAN                 
 --------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 2:1  (slice1; segments: 2)
    Locus: Entry
    ->  Parallel Append
          Locus: SegmentGeneralWorkers
-         Parallel Workers: 3
+         Parallel Workers: 2
          ->  Seq Scan on rt2
                Locus: SegmentGeneral
          ->  Parallel Seq Scan on rt1
                Locus: SegmentGeneralWorkers
-               Parallel Workers: 3
+               Parallel Workers: 2
  Optimizer: Postgres query optimizer
 (11 rows)
 
@@ -1523,21 +1391,21 @@ explain (locus, costs off) select * from rt1 union all select * from rt2;
 explain (locus, costs off) select * from rt1 union all select * from t1;
                          QUERY PLAN                          
 -------------------------------------------------------------
- Gather Motion 9:1  (slice1; segments: 9)
+ Gather Motion 6:1  (slice1; segments: 6)
    Locus: Entry
    ->  Parallel Append
          Locus: Strewn
-         Parallel Workers: 3
+         Parallel Workers: 2
          ->  Result
                Locus: Strewn
-               Parallel Workers: 3
+               Parallel Workers: 2
                One-Time Filter: (gp_execution_segment() = 0)
                ->  Parallel Seq Scan on rt1
                      Locus: SegmentGeneralWorkers
-                     Parallel Workers: 3
+                     Parallel Workers: 2
          ->  Parallel Seq Scan on t1
                Locus: HashedWorkers
-               Parallel Workers: 3
+               Parallel Workers: 2
  Optimizer: Postgres query optimizer
 (16 rows)
 
@@ -1545,20 +1413,20 @@ explain (locus, costs off) select * from rt1 union all select * from t1;
 explain (locus, costs off) select * from rt1 union all select * from t2;
                          QUERY PLAN                          
 -------------------------------------------------------------
- Gather Motion 9:1  (slice1; segments: 9)
+ Gather Motion 6:1  (slice1; segments: 6)
    Locus: Entry
    ->  Parallel Append
          Locus: Strewn
-         Parallel Workers: 3
+         Parallel Workers: 2
          ->  Seq Scan on t2
                Locus: Hashed
          ->  Result
                Locus: Strewn
-               Parallel Workers: 3
+               Parallel Workers: 2
                One-Time Filter: (gp_execution_segment() = 0)
                ->  Parallel Seq Scan on rt1
                      Locus: SegmentGeneralWorkers
-                     Parallel Workers: 3
+                     Parallel Workers: 2
  Optimizer: Postgres query optimizer
 (15 rows)
 
@@ -1589,16 +1457,16 @@ explain (locus, costs off) select a from rt1 union all select count(*) as a from
 explain (locus, costs off) select a from rt1 union all select a from generate_series(1, 1000) a;
                    QUERY PLAN                   
 ------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 2:1  (slice1; segments: 2)
    Locus: Entry
    ->  Parallel Append
          Locus: SegmentGeneralWorkers
-         Parallel Workers: 3
+         Parallel Workers: 2
          ->  Function Scan on generate_series a
                Locus: General
          ->  Parallel Seq Scan on rt1
                Locus: SegmentGeneralWorkers
-               Parallel Workers: 3
+               Parallel Workers: 2
  Optimizer: Postgres query optimizer
 (11 rows)
 

@@ -54,6 +54,11 @@ static const char *kSelfColumnEncodingClauseWhiteList[] = {
 };
 
 static const relopt_parse_elt kSelfReloptTab[] = {
+    // relation->rd_options has stored PaxOptions, but when call
+    // RelationGetParallelWorkers() outsize of extension, kernel not know about
+    // PaxOptions
+    {PAX_SOPT_PARALLEL_WORKERS, RELOPT_TYPE_INT,
+     offsetof(StdRdOptions, parallel_workers)},
     // no allow set with encoding
     {PAX_SOPT_STORAGE_FORMAT, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, storage_format)},
@@ -333,6 +338,12 @@ Bitmapset *paxc_get_cluster_columns_index(Relation rel, bool validate) {
 
 void paxc_reg_rel_options() {
   self_relopt_kind = add_reloption_kind();
+
+  add_int_reloption(self_relopt_kind, PAX_SOPT_PARALLEL_WORKERS,
+                    "parallel workers", PAX_DEFAULT_PARALLEL_WORKERS,
+                    PAX_MIN_PARALLEL_WORKERS, PAX_MAX_PARALLEL_WORKERS,
+                    AccessExclusiveLock);
+
   add_string_reloption(self_relopt_kind, PAX_SOPT_STORAGE_FORMAT,
                        "pax storage format", STORAGE_FORMAT_TYPE_DEFAULT,
                        paxc_validate_rel_options_storage_format,

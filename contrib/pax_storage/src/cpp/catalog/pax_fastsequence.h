@@ -31,3 +31,7 @@ void CPaxInitializeFastSequenceEntry(Oid objid, char init_type,
 int32 CPaxGetFastSequences(Oid objid, bool increase = true);
 char *CPaxGetFastSequencesName(Oid oid, bool missing_ok);
 }  // namespace paxc
+
+namespace cbdb{
+int32 CPaxGetFastSequences(Oid objid, bool increase = true);
+}

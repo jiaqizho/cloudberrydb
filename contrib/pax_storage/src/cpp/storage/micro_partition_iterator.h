@@ -9,7 +9,7 @@
 
 namespace pax {
 class MicroPartitionInfoIterator final
-: public IteratorBase<MicroPartitionMetadata> {
+    : public IteratorBase<MicroPartitionMetadata> {
  public:
   template <typename T, typename... Args>
   friend T *PAX_NEW(Args &&...args);
@@ -23,7 +23,7 @@ class MicroPartitionInfoIterator final
  private:
   MicroPartitionInfoIterator(Relation pax_rel, Snapshot snapshot,
                              std::string rel_path);
-  ~MicroPartitionInfoIterator() override;
+  ~MicroPartitionInfoIterator();
   void Begin();
   void End();
   MicroPartitionMetadata ToValue(HeapTuple tuple);
@@ -34,6 +34,42 @@ class MicroPartitionInfoIterator final
   Snapshot snapshot_ = nullptr;
   SysScanDesc desc_ = nullptr;
   HeapTuple tuple_ = nullptr;
+};
+
+class MicroPartitionInfoParallelIterator final
+    : public IteratorBase<MicroPartitionMetadata> {
+ public:
+  template <typename T, typename... Args>
+  friend T *PAX_NEW(Args &&...args);
+  static std::unique_ptr<IteratorBase<MicroPartitionMetadata>> New(
+      Relation pax_rel, Snapshot snapshot, ParallelBlockTableScanDesc pscan);
+
+  bool HasNext() override;
+  MicroPartitionMetadata Next() override;
+  void Rewind() override;
+
+ private:
+  MicroPartitionInfoParallelIterator(Relation pax_rel, Snapshot snapshot,
+                                     ParallelBlockTableScanDesc pscan,
+                                     std::string rel_path);
+  ~MicroPartitionInfoParallelIterator();
+  MicroPartitionMetadata ToValue(HeapTuple tuple);
+  // paxc
+  void Begin();
+  void End();
+
+  Relation pax_rel_ = nullptr;
+  Relation aux_rel_ = nullptr;
+  Snapshot snapshot_ = nullptr;
+  ParallelBlockTableScanDesc pscan_ = nullptr;
+  SysScanDesc desc_ = nullptr;
+  HeapTuple tuple_ = nullptr;
+  std::string rel_path_;
+
+  Oid index_oid_ = InvalidOid;
+
+  uint64 batch_allocated_ = 2;
+  uint64 allocated_block_id_ = 0;
 };
 
 }  // namespace pax

@@ -230,8 +230,15 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   reader_options.reused_buffer = desc->reused_buffer_;
   reader_options.table_space_id = relation->rd_rel->reltablespace;
   reader_options.filter = filter;
+  std::unique_ptr<pax::IteratorBase<pax::MicroPartitionMetadata>> iter;
+  if (desc->rs_base_.rs_parallel) {
+    ParallelBlockTableScanDesc pt_scan = (ParallelBlockTableScanDesc)pscan;
 
-  auto iter = MicroPartitionInfoIterator::New(relation, snapshot);
+    iter = MicroPartitionInfoParallelIterator::New(relation, snapshot, pt_scan);
+  } else {
+    iter = MicroPartitionInfoIterator::New(relation, snapshot);
+  }
+
   if (filter && filter->HasMicroPartitionFilter()) {
     auto wrap = PAX_NEW<FilterIterator<MicroPartitionMetadata>>(
         std::move(iter), [filter, relation](const auto &x) {
@@ -263,6 +270,9 @@ void PaxScanDesc::EndScan() {
   PAX_DELETE(filter_);
 
   PAX_DELETE(index_desc_);
+
+  if (rs_base_.rs_flags & SO_TEMP_SNAPSHOT)
+    UnregisterSnapshot(rs_base_.rs_snapshot);
 
   // TODO(jiaqizho): please double check with abort transaction @gongxun
   Assert(memory_context_);
