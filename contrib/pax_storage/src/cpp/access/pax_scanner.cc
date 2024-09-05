@@ -165,19 +165,23 @@ bool PaxScanDesc::BitmapNextTuple(struct TBMIterateResult *tbmres,
     if (cindex_ > 0X8000) elog(ERROR, "unexpected offset in pax");
 
     ItemPointerSet(&tid, tbmres->blockno, cindex_);
-  } else if (cindex_ < tbmres->ntuples) {
+  }
+
+  while (cindex_ < tbmres->ntuples) {
     // The maximum value of the last 16 bits in CTID is 0x7FFF + 1,
     // i.e. 0x8000. See layout of ItemPointerData in PAX
     if (tbmres->offsets[cindex_] > 0X8000)
       elog(ERROR, "unexpected offset in pax");
-
     ItemPointerSet(&tid, tbmres->blockno, tbmres->offsets[cindex_]);
-  } else {
-    return false;
+
+    ++cindex_;
+    // invisible tuple should be skipped and fetch next tuple
+    if (index_desc_->FetchTuple(&tid, rs_base_.rs_snapshot, slot, nullptr,
+                                nullptr)) {
+      return true;
+    }
   }
-  ++cindex_;
-  return index_desc_->FetchTuple(&tid, rs_base_.rs_snapshot, slot, nullptr,
-                                 nullptr);
+  return false;
 }
 
 TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
