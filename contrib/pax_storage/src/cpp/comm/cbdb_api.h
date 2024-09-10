@@ -49,6 +49,7 @@ extern "C" {
 #include "catalog/pg_operator.h"
 #include "catalog/toasting.h"
 #include "cdb/cdbdisp_query.h"
+#include "commands/defrem.h"
 #include "commands/progress.h"
 #include "commands/tablecmds.h"
 #include "funcapi.h"
