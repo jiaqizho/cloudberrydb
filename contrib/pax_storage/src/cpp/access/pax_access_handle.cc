@@ -1179,6 +1179,103 @@ static void zorder_cluster_pax_rel(ClusterStmt *stmt, Relation rel,
   CBDB_END_TRY();
 }
 
+static void validateVacuumStmt(VacuumStmt *stmt) {
+  if (!stmt->is_vacuumcmd) return;
+
+  ListCell *option = NULL;
+  foreach (option, stmt->options) {
+    DefElem *defel = (DefElem *)lfirst(option);
+    /* only check vacuum full [table] */
+    if (pg_strcasecmp(defel->defname, "full") == 0) {
+      ListCell *lc;
+
+      foreach (lc, stmt->rels) {
+        VacuumRelation *vrel = lfirst_node(VacuumRelation, lc);
+
+        Assert(vrel->relation);
+
+        Relation rel = table_openrv(vrel->relation, AccessShareLock);
+        if (paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace)) {
+          elog(ERROR,
+               "vacuum full is not supported for tables which in tablespaces "
+               "of type dfs_tablespace.");
+        }
+        table_close(rel, AccessShareLock);
+      }
+    }
+  }
+}
+
+static void validateAlterTableStmt(AlterTableStmt *stmt) {
+  ListCell *lcmd = NULL;
+
+  if (stmt->objtype != OBJECT_TABLE) return;
+
+  foreach (lcmd, stmt->cmds) {
+    AlterTableCmd *cmd = (AlterTableCmd *)lfirst(lcmd);
+    /*only check set tablespace command*/
+    if (cmd->subtype == AT_SetTableSpace) {
+      Relation rel = table_openrv(stmt->relation, AccessShareLock);
+      if (paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace)) {
+        elog(ERROR,
+             "changing the dfs tablespace type in alter table stmt is not "
+             "supported");
+      }
+      table_close(rel, AccessShareLock);
+
+      Oid tablespaceId;
+
+      /* Check that the tablespace exists */
+      tablespaceId = get_tablespace_oid(cmd->name, false);
+
+      /* alter table stmt does not support setting tablespace of dfs tablespace
+       * type */
+      if (OidIsValid(tablespaceId) && paxc::IsDfsTablespaceById(tablespaceId)) {
+        elog(ERROR,
+             "changing the dfs tablespace type in alter table stmt is not "
+             "supported");
+      }
+    }
+  }
+}
+
+static void validateAlterDatabaseStmt(AlterDatabaseStmt *stmt) {
+  ListCell *lcmd = NULL;
+
+  foreach (lcmd, stmt->options) {
+    DefElem *defel = (DefElem *)lfirst(lcmd);
+    if (pg_strcasecmp(defel->defname, "tablespace") == 0) {
+      Oid tablespaceId;
+
+      /* Check that the tablespace exists */
+      tablespaceId = get_tablespace_oid(defGetString(defel), false);
+
+      /* alter database stmt does not support setting tablespace of dfs
+       * tablespace type */
+      if (OidIsValid(tablespaceId) && paxc::IsDfsTablespaceById(tablespaceId)) {
+        elog(ERROR,
+             "changing dfs tablespace in alter database stmt is not supported");
+      }
+    }
+  }
+}
+
+static void checkUnsupportDfsTableSpaceStmt(Node *stmt) {
+  switch (nodeTag(stmt)) {
+    case T_AlterTableStmt:
+      validateAlterTableStmt((AlterTableStmt *)stmt);
+      break;
+    case T_VacuumStmt:
+      validateVacuumStmt((VacuumStmt *)stmt);
+      break;
+    case T_AlterDatabaseStmt:
+      validateAlterDatabaseStmt((AlterDatabaseStmt *)stmt);
+      break;
+    default:
+      return;
+  }
+}
+
 static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
                               bool readOnlyTree, ProcessUtilityContext context,
                               ParamListInfo params, QueryEnvironment *queryEnv,
@@ -1280,6 +1377,8 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
       break;
     }
     default:
+      if (Gp_role == GP_ROLE_DISPATCH)
+        checkUnsupportDfsTableSpaceStmt(pstmt->utilityStmt);
       break;
   }
 
