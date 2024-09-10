@@ -64,14 +64,15 @@ OrcDumpReader::OrcDumpReader(DumpConfig *config)
 
 bool OrcDumpReader::Open() {
   FileSystem *fs = nullptr;
-  FileSystemOptions *fs_opt = nullptr;
-  File *open_file = nullptr, *open_toast_file = nullptr;
-  bool rc = true;
+  std::shared_ptr<FileSystemOptions> fs_opt;
+  std::shared_ptr<File> open_file;
+  std::shared_ptr<File> open_toast_file;
+
   assert(config_);
   assert(config_->file_name);
 
   if (config_->dfs_tblspcid != InvalidOid) {
-    fs_opt = new RemoteFileSystemOptions(config_->dfs_tblspcid);
+    fs_opt = std::make_shared<RemoteFileSystemOptions>(config_->dfs_tblspcid);
     fs = pax::Singleton<RemoteFileSystem>::GetInstance();
   } else {
     fs = pax::Singleton<LocalFileSystem>::GetInstance();
@@ -79,27 +80,28 @@ bool OrcDumpReader::Open() {
 
   open_file = fs->Open(config_->file_name, fs::kReadMode, fs_opt);
   if (open_file->FileLength() == 0) {
-    open_file->Close();
-    rc = false;
-    goto finish;
+    goto err1_out;
   }
 
   if (config_->toast_file_name) {
     open_toast_file = fs->Open(config_->toast_file_name, fs::kReadMode, fs_opt);
     if (open_toast_file->FileLength() == 0) {
-      open_file->Close();
-      open_toast_file->Close();
-      rc = false;
-      goto finish;
+      goto err2_out;
     }
   }
 
   format_reader_ = new OrcFormatReader(open_file, open_toast_file);
   format_reader_->Open();
 
-finish:
-  if (fs_opt) delete fs_opt;
-  return rc;
+  return true;
+
+err2_out:
+  open_toast_file->Close();
+
+err1_out:
+  open_file->Close();
+
+  return false;
 }
 
 void OrcDumpReader::Close() {
@@ -434,7 +436,7 @@ std::string OrcDumpReader::DumpGroupInfo() {
 
 std::string OrcDumpReader::DumpGroupFooter() {
   std::string group_footers;
-  DataBuffer<char> *data_buffer = nullptr;
+  std::shared_ptr<DataBuffer<char>> data_buffer;
   auto footer = &(format_reader_->file_footer_);
   auto stripes = &(footer->stripes());
   auto number_of_columns = footer->colinfo_size();
@@ -457,7 +459,7 @@ std::string OrcDumpReader::DumpGroupFooter() {
                  "should in [0, %u)",
                  config_->file_name, number_of_columns));
 
-  data_buffer = new DataBuffer<char>(8192);
+  data_buffer = std::make_shared<DataBuffer<char>>(8192);
 
   size_t streams_index;
   for (int i = group_start; i < group_end; i++) {
@@ -527,7 +529,6 @@ std::string OrcDumpReader::DumpGroupFooter() {
     group_footers += group_footer_table.str() + "\n";
   }
 
-  delete data_buffer;
   return group_footers;
 }
 
@@ -559,15 +560,15 @@ std::string OrcDumpReader::DumpAllData() {
                  "in [0, %u)",
                  config_->file_name, number_of_columns));
 
-  DataBuffer<char> *data_buffer = nullptr;
+  std::shared_ptr<DataBuffer<char>> data_buffer;
   auto stripe_info = (*stripes)[group_start];
   size_t number_of_rows = 0;
   pax::porc::proto::StripeFooter stripe_footer;
-  bool proj_map[number_of_columns];
-  PaxColumns *columns = nullptr;
-  OrcGroup *group = nullptr;
+  std::vector<bool> proj_map(number_of_columns, false);
+  std::unique_ptr<PaxColumns> columns;
+  std::unique_ptr<OrcGroup> group;
 
-  data_buffer = new DataBuffer<char>(8192);
+  data_buffer = std::make_shared<DataBuffer<char>>(8192);
   number_of_rows = stripe_info.numberofrows();
   stripe_footer = format_reader_->ReadStripeFooter(data_buffer, group_start);
 
@@ -579,7 +580,6 @@ std::string OrcDumpReader::DumpAllData() {
                  "[0, %lu)",
                  config_->file_name, number_of_rows));
 
-  memset(proj_map, false, number_of_columns);
   for (int column_index = column_start; column_index < column_end;
        column_index++) {
     proj_map[column_index] = true;
@@ -592,13 +592,14 @@ std::string OrcDumpReader::DumpAllData() {
   }
 
   columns =
-      format_reader_->ReadStripe(group_start, proj_map, number_of_columns);
+      format_reader_->ReadStripe(group_start, proj_map);
 
   if (!is_vec)
-    group = new OrcGroup(columns, 0, nullptr);
+    group = std::make_unique<OrcGroup>(std::move(columns), 0, nullptr);
   else
-    group = new OrcVecGroup(columns, 0, nullptr);
+    group = std::make_unique<OrcVecGroup>(std::move(columns), 0, nullptr);
 
+  auto all_columns = group->GetAllColumns();
   tabulate::Table data_table;
   tabulate::Table data_datum_table;
   tabulate::Table::Row_t data_table_header;
@@ -616,7 +617,7 @@ std::string OrcDumpReader::DumpAllData() {
          column_index++) {
       Datum d;
       bool null;
-      PaxColumn *column = (*columns)[column_index];
+      auto column = (*all_columns)[column_index];
 
       std::tie(d, null) = group->GetColumnValueNoMissing((size_t)column_index,
                                                          (size_t)row_index);
@@ -679,8 +680,6 @@ std::string OrcDumpReader::DumpAllData() {
   data_table.add_row(tabulate::Table::Row_t{data_datum_table});
   data_table[1].format().hide_border_top();
 
-  delete data_buffer;
-  delete group;
   return data_table.str();
 }
 

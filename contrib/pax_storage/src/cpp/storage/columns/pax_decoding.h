@@ -35,7 +35,7 @@ class PaxDecoder {
 
   virtual PaxDecoder *SetSrcBuffer(char *data, size_t data_len) = 0;
 
-  virtual PaxDecoder *SetDataBuffer(DataBuffer<char> *result_buffer) = 0;
+  virtual PaxDecoder *SetDataBuffer(std::shared_ptr<DataBuffer<char>> result_buffer) = 0;
 
   virtual size_t Next(const char *not_null) = 0;
 
@@ -48,19 +48,19 @@ class PaxDecoder {
   virtual size_t GetBufferSize() const = 0;
 
   template <typename T>
-  static PaxDecoder *CreateDecoder(const DecodingOption &decoder_options);
+  static std::shared_ptr<PaxDecoder> CreateDecoder(const DecodingOption &decoder_options);
 
  protected:
   const DecodingOption &decoder_options_;
 };
 
-extern template PaxDecoder *PaxDecoder::CreateDecoder<int64>(
+extern template std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder<int64>(
     const DecodingOption &);
-extern template PaxDecoder *PaxDecoder::CreateDecoder<int32>(
+extern template std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder<int32>(
     const DecodingOption &);
-extern template PaxDecoder *PaxDecoder::CreateDecoder<int16>(
+extern template std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder<int16>(
     const DecodingOption &);
-extern template PaxDecoder *PaxDecoder::CreateDecoder<int8>(
+extern template std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder<int8>(
     const DecodingOption &);
 
 }  // namespace pax

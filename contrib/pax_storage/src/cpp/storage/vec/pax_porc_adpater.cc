@@ -11,7 +11,7 @@
 #endif
 namespace pax {
 
-void CopyFixedRawBufferWithNull(PaxColumn *column,
+static void CopyFixedRawBufferWithNull(std::shared_ptr<PaxColumn> column,
                                 std::shared_ptr<Bitmap8> visibility_map_bitset,
                                 size_t bitset_index_begin, size_t range_begin,
                                 size_t range_lens, size_t data_index_begin,
@@ -49,7 +49,7 @@ static inline void CopyFixedRawBuffer(char *buffer, size_t len,
   data_buffer->Brush(len);
 }
 
-void CopyFixedBuffer(PaxColumn *column,
+static void CopyFixedBuffer(std::shared_ptr<PaxColumn> column,
                      std::shared_ptr<Bitmap8> visibility_map_bitset,
                      size_t bitset_index_begin, size_t range_begin,
                      size_t range_lens, size_t data_index_begin,
@@ -84,7 +84,7 @@ void CopyFixedBuffer(PaxColumn *column,
   }
 }
 
-void CopyNonFixedBuffer(PaxColumn *column,
+static void CopyNonFixedBuffer(std::shared_ptr<PaxColumn> column,
                         std::shared_ptr<Bitmap8> visibility_map_bitset,
                         size_t bitset_index_begin, size_t range_begin,
                         size_t range_lens, size_t data_index_begin,
@@ -181,7 +181,7 @@ void CopyNonFixedBuffer(PaxColumn *column,
   }
 }
 
-static void CopyDecimalBuffer(PaxColumn *column,
+static void CopyDecimalBuffer(std::shared_ptr<PaxColumn> column,
                               std::shared_ptr<Bitmap8> visibility_map_bitset,
                               size_t bitset_index_begin, size_t range_begin,
                               size_t range_lens, size_t data_index_begin,
@@ -239,7 +239,7 @@ static void CopyDecimalBuffer(PaxColumn *column,
   }
 }
 
-void CopyBitPackedBuffer(PaxColumn *column,
+void CopyBitPackedBuffer(std::shared_ptr<PaxColumn> column,
                          std::shared_ptr<Bitmap8> visibility_map_bitset,
                          size_t group_base_offset, size_t range_begin,
                          size_t range_lens, size_t data_index_begin,
@@ -278,7 +278,7 @@ void CopyBitPackedBuffer(PaxColumn *column,
   }
 }
 
-static size_t CalcRecordBatchDataBufferSize(PaxColumn *column,
+static size_t CalcRecordBatchDataBufferSize(std::shared_ptr<PaxColumn> column,
                                             size_t range_buffer_len,
                                             size_t num_of_not_nulls) {
   size_t toast_counts;
@@ -308,10 +308,9 @@ static size_t CalcRecordBatchDataBufferSize(PaxColumn *column,
   return TYPEALIGN(MEMORY_ALIGN_SIZE, raw_data_size);
 }
 
-std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(PaxColumns *columns,
+std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumns> columns,
                                                        size_t range_begin,
                                                        size_t range_lens) {
-  PaxColumn *column;
   size_t filter_count;
   size_t out_range_lens;
 
@@ -343,7 +342,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(PaxColumns *columns,
       continue;
     }
 
-    column = (*columns)[index];
+    auto column = (*columns)[index];
     Assert(index < (size_t)vec_cache_buffer_lens_ && vec_cache_buffer_);
 
     data_index_begin = column->GetRangeNonNullRows(0, range_begin);
@@ -381,15 +380,15 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(PaxColumns *columns,
                      "should make vector.max_batch_size LE [group size=%lu]",
                      index, columns->GetRows()));
 
-      DataBuffer<int32> *index_buffer;
-      DataBuffer<char> *entry_buffer;
-      DataBuffer<int32> *desc_buffer;
+      std::shared_ptr<DataBuffer<int32>> index_buffer;
+      std::shared_ptr<DataBuffer<char>> entry_buffer;
+      std::shared_ptr<DataBuffer<int32>> desc_buffer;
       bool expect_hdr = false;
 
       char *undecoded_buffer;
       size_t undecoded_buffer_len;
       auto undecoded_data_buffer =
-          ((PaxNonFixedEncodingColumn *)column)->GetUndecodedBuffer();
+          std::dynamic_pointer_cast<PaxNonFixedEncodingColumn>(column)->GetUndecodedBuffer();
       auto out_data_buffer_len =
           TYPEALIGN(MEMORY_ALIGN_SIZE, (range_lens * sizeof(int32)));
       std::tie(index_buffer, entry_buffer, desc_buffer) =

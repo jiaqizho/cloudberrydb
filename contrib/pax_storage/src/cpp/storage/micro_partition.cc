@@ -17,13 +17,13 @@ MicroPartitionWriter *MicroPartitionWriter::SetWriteSummaryCallback(
 }
 
 MicroPartitionWriter *MicroPartitionWriter::SetStatsCollector(
-    MicroPartitionStats *mpstats) {
+    std::shared_ptr<MicroPartitionStats> mpstats) {
   Assert(mp_stats_ == nullptr);
   mp_stats_ = mpstats;
   return this;
 }
 
-MicroPartitionReaderProxy::~MicroPartitionReaderProxy() { PAX_DELETE(reader_); }
+MicroPartitionReaderProxy::~MicroPartitionReaderProxy() { }
 
 void MicroPartitionReaderProxy::Open(
     const MicroPartitionReader::ReaderOptions &options) {
@@ -47,6 +47,12 @@ bool MicroPartitionReaderProxy::GetTuple(TupleTableSlot *slot,
   return reader_->GetTuple(slot, row_index);
 }
 
+void MicroPartitionReaderProxy::SetReader(std::unique_ptr<MicroPartitionReader> &&reader) {
+  Assert(reader);
+  Assert(!reader_);
+  reader_ = std::move(reader);
+}
+
 size_t MicroPartitionReaderProxy::GetGroupNums() {
   return reader_->GetGroupNums();
 }
@@ -60,7 +66,7 @@ MicroPartitionReaderProxy::GetGroupStatsInfo(size_t group_index) {
   return std::move(reader_->GetGroupStatsInfo(group_index));
 }
 
-MicroPartitionReader::Group *MicroPartitionReaderProxy::ReadGroup(
+std::unique_ptr<MicroPartitionReader::Group> MicroPartitionReaderProxy::ReadGroup(
     size_t index) {
   return reader_->ReadGroup(index);
 }

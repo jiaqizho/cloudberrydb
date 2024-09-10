@@ -17,11 +17,7 @@ PaxVecBpCharColumn::PaxVecBpCharColumn(
     : PaxVecNonFixedEncodingColumn(capacity, lengths_capacity, decoding_option),
       number_of_char_(NUMBER_OF_CHAR_UNINIT) {}
 
-PaxVecBpCharColumn::~PaxVecBpCharColumn() {
-  for (auto bpchar_buff : bpchar_holder_) {
-    PAX_DELETE(bpchar_buff);
-  }
-}
+PaxVecBpCharColumn::~PaxVecBpCharColumn() { }
 
 void PaxVecBpCharColumn::Append(char *buffer, size_t size) {
   if (number_of_char_ == NUMBER_OF_CHAR_UNINIT) {
@@ -68,10 +64,11 @@ std::pair<char *, size_t> PaxVecBpCharColumn::GetBuffer(size_t position) {
   auto pair = PaxVecNonFixedColumn::GetBuffer(position);
   Assert(pair.second <= (size_t)number_of_char_);
   if (pair.second < (size_t)number_of_char_) {
-    auto bpchar_buff = PAX_NEW_ARRAY<char>(number_of_char_);
+    ByteBuffer buff(number_of_char_, number_of_char_);
+    auto bpchar_buff = reinterpret_cast<char *>(buff.Addr());
     memcpy(bpchar_buff, pair.first, pair.second);
     memset(bpchar_buff + pair.second, ' ', number_of_char_ - pair.second);
-    bpchar_holder_.emplace_back(bpchar_buff);
+    bpchar_holder_.emplace_back(std::move(buff));
 
     return {bpchar_buff, number_of_char_};
   }

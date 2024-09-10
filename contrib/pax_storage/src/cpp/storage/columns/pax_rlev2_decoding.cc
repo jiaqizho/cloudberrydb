@@ -43,6 +43,22 @@ void UnrolledUnpack56(TreatedDataBuffer<int64> *data_buffer, int64 *data,
 void UnrolledUnpack64(TreatedDataBuffer<int64> *data_buffer, int64 *data,
                       uint64 offset, uint64 len);
 
+static inline unsigned char ReadByte(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer) {
+  return ReadByte(data_buffer.get());
+}
+static inline unsigned char ReadByteWithoutBrush(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer) {
+  return ReadByteWithoutBrush(data_buffer.get());
+}
+static inline int64 ReadLongBE(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer, uint64 bsz) {
+  return ReadLongBE(data_buffer.get(), bsz);
+}
+static inline int64 ReadSignedLong(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer) {
+  return ReadSignedLong(data_buffer.get());
+}
+static inline uint64 ReadUnsignedLong(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer) {
+  return ReadUnsignedLong(data_buffer.get());
+}
+
 /**
  * Decode the next gap and patch from 'unpackedPatch' and update the index on
  * it. Used by PATCHED_BASE.
@@ -56,6 +72,11 @@ void UnrolledUnpack64(TreatedDataBuffer<int64> *data_buffer, int64 *data,
 void AdjustGapAndPatch(DataBuffer<int64> *unpacked, uint32 patch_bits,
                        int64 patch_mask, int64 *res_gap, int64 *res_patch,
                        uint64 *patch_idx);
+static inline void AdjustGapAndPatch(const std::shared_ptr<DataBuffer<int64>> &unpacked, uint32 patch_bits,
+                       int64 patch_mask, int64 *res_gap, int64 *res_patch,
+                       uint64 *patch_idx) {
+  AdjustGapAndPatch(unpacked.get(), patch_bits, patch_mask, res_gap, res_patch, patch_idx);
+}
 
 /*
  * copy temp data to data which will skip the null field
@@ -570,27 +591,23 @@ PaxOrcDecoder<T>::PaxOrcDecoder(
       result_buffer_(nullptr) {}
 
 template <typename T>
-PaxOrcDecoder<T>::~PaxOrcDecoder() {
-  PAX_DELETE(data_buffer_);
-  PAX_DELETE(copy_data_buffer_);
-  PAX_DELETE(unpacked_data_);
-}
+PaxOrcDecoder<T>::~PaxOrcDecoder() { }
 
 template <typename T>
 PaxDecoder *PaxOrcDecoder<T>::SetSrcBuffer(char *data, size_t data_len) {
   Assert(!data_buffer_);
   if (data) {
-    data_buffer_ = PAX_NEW<TreatedDataBuffer<int64>>(
+    data_buffer_ = std::make_shared<TreatedDataBuffer<int64>>(
         reinterpret_cast<int64 *>(data), data_len);
     copy_data_buffer_ =
-        PAX_NEW<DataBuffer<int64>>(ORC_MAX_LITERAL_SIZE * sizeof(int64));
+        std::make_shared<DataBuffer<int64>>(ORC_MAX_LITERAL_SIZE * sizeof(int64));
   }
 
   return this;
 }
 
 template <typename T>
-PaxDecoder *PaxOrcDecoder<T>::SetDataBuffer(DataBuffer<char> *result_buffer) {
+PaxDecoder *PaxOrcDecoder<T>::SetDataBuffer(std::shared_ptr<DataBuffer<char>> result_buffer) {
   result_buffer_ = result_buffer;
   return this;
 }
@@ -713,11 +730,12 @@ size_t PaxOrcDecoder<T>::Decoding(const char *const not_null,
 }
 
 template <typename T>
-uint64 PaxOrcDecoder<T>::NextShortRepeats(TreatedDataBuffer<int64> *data_buffer,
+uint64 PaxOrcDecoder<T>::NextShortRepeats(const std::shared_ptr<TreatedDataBuffer<int64>> &p_data_buffer,
                                           T *const data, uint64 offset,
                                           const char *const not_null) {
   int64 value = 0;
   uint16 data_lens = 0;  // 3 - 10
+  auto data_buffer = p_data_buffer.get();
 
   unsigned char first_byte = ReadByte(data_buffer);
 
@@ -761,9 +779,11 @@ uint64 PaxOrcDecoder<T>::NextShortRepeats(TreatedDataBuffer<int64> *data_buffer,
 }
 
 template <typename T>
-uint64 PaxOrcDecoder<T>::NextDirect(TreatedDataBuffer<int64> *data_buffer,
+uint64 PaxOrcDecoder<T>::NextDirect(const std::shared_ptr<TreatedDataBuffer<int64>> &p_data_buffer,
                                     T *const data, uint64 offset,
                                     const char *const not_null) {
+  auto data_buffer = p_data_buffer.get();
+
   // extract the number of fixed bits
   unsigned char first_byte = ReadByte(data_buffer);
   unsigned char fbo = (first_byte >> 1) & 0x1f;
@@ -804,9 +824,10 @@ uint64 PaxOrcDecoder<T>::NextDirect(TreatedDataBuffer<int64> *data_buffer,
 }
 
 template <typename T>
-uint64 PaxOrcDecoder<T>::NextDelta(TreatedDataBuffer<int64> *data_buffer,
+uint64 PaxOrcDecoder<T>::NextDelta(const std::shared_ptr<TreatedDataBuffer<int64>> &p_data_buffer,
                                    T *data, uint64 offset,
                                    const char *const not_null) {
+  auto data_buffer = p_data_buffer.get();
   unsigned char first_byte = ReadByte(data_buffer);
 
   // extract the number of fixed bits
@@ -903,9 +924,10 @@ uint64 PaxOrcDecoder<T>::NextDelta(TreatedDataBuffer<int64> *data_buffer,
 }
 
 template <typename T>
-uint64 PaxOrcDecoder<T>::NextPatched(TreatedDataBuffer<int64> *data_buffer,
+uint64 PaxOrcDecoder<T>::NextPatched(const std::shared_ptr<TreatedDataBuffer<int64>> &p_data_buffer,
                                      T *const data, uint64 offset,
                                      const char *const not_null) {
+  auto data_buffer = p_data_buffer.get();
   unsigned char first_byte = ReadByte(data_buffer);
   unsigned char fbo = (first_byte >> 1) & 0x1f;
   uint32 bits = DecodeBits(fbo);
@@ -962,7 +984,7 @@ uint64 PaxOrcDecoder<T>::NextPatched(TreatedDataBuffer<int64> *data_buffer,
   }
 
   if (unpacked_data_ == nullptr) {
-    unpacked_data_ = PAX_NEW<DataBuffer<int64>>(pl * sizeof(int64));
+    unpacked_data_ = std::make_shared<DataBuffer<int64>>(pl * sizeof(int64));
   } else {
     unpacked_data_->BrushBackAll();
     if (unpacked_data_->Capacity() < (pl * sizeof(int64))) {

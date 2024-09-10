@@ -34,7 +34,7 @@ class PaxEncoder {
  public:
   explicit PaxEncoder(const EncodingOption &encoder_options);
 
-  void SetDataBuffer(DataBuffer<char> *result_buffer);
+  void SetDataBuffer(std::shared_ptr<DataBuffer<char>> result_buffer);
 
   virtual ~PaxEncoder() = default;
 
@@ -57,12 +57,12 @@ class PaxEncoder {
    *
    * compared with the block method, streaming can reduce one memory copy
    */
-  static PaxEncoder *CreateStreamingEncoder(
+  static std::shared_ptr<PaxEncoder> CreateStreamingEncoder(
       const EncodingOption &encoder_options, bool non_fixed = false);
 
  protected:
   const EncodingOption &encoder_options_;
-  DataBuffer<char> *result_buffer_;
+  std::shared_ptr<DataBuffer<char>> result_buffer_;
 };
 
 }  // namespace pax

@@ -43,7 +43,7 @@ class TableWriter {
 
   TableWriter *SetWriteSummaryCallback(WriteSummaryCallback callback);
 
-  TableWriter *SetFileSplitStrategy(const FileSplitStrategy *strategy);
+  TableWriter *SetFileSplitStrategy(std::unique_ptr<FileSplitStrategy> &&strategy);
 
   BlockNumber GetBlockNumber() const { return current_blockno_; }
 
@@ -57,18 +57,18 @@ class TableWriter {
 
   std::vector<int> GetMinMaxColumnIndexes();
 
-  MicroPartitionWriter *CreateMicroPartitionWriter(
-      MicroPartitionStats *mp_stats, bool write_only = true);
+  std::unique_ptr<MicroPartitionWriter> CreateMicroPartitionWriter(
+      std::shared_ptr<MicroPartitionStats> mp_stats, bool write_only = true);
 
  protected:
   std::string rel_path_;
   const Relation relation_ = nullptr;
-  MicroPartitionWriter *writer_ = nullptr;
-  const FileSplitStrategy *strategy_ = nullptr;
-  MicroPartitionStats *mp_stats_ = nullptr;
+  std::unique_ptr<MicroPartitionWriter> writer_;
+  std::unique_ptr<FileSplitStrategy> strategy_;
+  std::shared_ptr<MicroPartitionStats> mp_stats_;
   WriteSummaryCallback summary_callback_;
   FileSystem *file_system_ = nullptr;
-  FileSystemOptions *file_system_options_ = nullptr;
+  std::shared_ptr<FileSystemOptions> file_system_options_;
 
   size_t num_tuples_ = 0;
   BlockNumber current_blockno_ = 0;
@@ -84,11 +84,11 @@ class TableReader final {
   struct ReaderOptions {
     Oid table_space_id = 0;
 
-    DataBuffer<char> *reused_buffer = nullptr;
+    std::shared_ptr<DataBuffer<char>> reused_buffer;
 
     // Will not used in TableReader
     // But pass into micro partition reader
-    PaxFilter *filter = nullptr;
+    std::shared_ptr<PaxFilter> filter;
 
 #ifdef VEC_BUILD
     bool is_vec = false;
@@ -121,9 +121,9 @@ class TableReader final {
 
  private:
   std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
-  MicroPartitionReader *reader_ = nullptr;
+  std::unique_ptr<MicroPartitionReader> reader_ = nullptr;
   bool is_empty_ = false;
-  const ReaderOptions reader_options_;
+  ReaderOptions reader_options_;
   uint32 current_block_number_ = 0;
 
   int micro_partition_id_;
@@ -133,42 +133,44 @@ class TableReader final {
   // only for analyze scan
   size_t current_block_row_index_ = 0;
   FileSystem *file_system_ = nullptr;
-  FileSystemOptions *file_system_options_ = nullptr;
+  std::shared_ptr<FileSystemOptions> file_system_options_;
   bool is_dfs_table_space_;
 };
 
 class TableDeleter final {
  public:
   TableDeleter(Relation rel,
-               std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
                std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap,
                Snapshot snapshot);
 
-  ~TableDeleter();
+  ~TableDeleter() = default;
 
-  void Delete();
+  void Delete(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator);
 
-  void DeleteWithVisibilityMap(TransactionId delete_xid);
+  void DeleteWithVisibilityMap(
+    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
+    TransactionId delete_xid);
 
  private:
   void UpdateStatsInAuxTable(TransactionId delete_xid,
                              const pax::MicroPartitionMetadata &meta,
                              std::shared_ptr<Bitmap8> visi_bitmap,
                              const std::vector<int> &min_max_col_idxs,
-                             PaxFilter *filter);
+                             std::shared_ptr<PaxFilter> filter);
 
-  void OpenWriter();
-  void OpenReader();
+  std::unique_ptr<TableWriter> OpenWriter();
+
+  std::unique_ptr<TableReader> OpenReader(
+    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator);
 
  private:
   Relation rel_;
-  std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iterator_;
-  std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap_;
   Snapshot snapshot_;
-  TableReader *reader_;
-  TableWriter *writer_;
+
+  std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap_;
+
   FileSystem *file_system_ = nullptr;
-  FileSystemOptions *file_system_options_ = nullptr;
+  std::shared_ptr<FileSystemOptions> file_system_options_;
 };
 
 }  // namespace pax

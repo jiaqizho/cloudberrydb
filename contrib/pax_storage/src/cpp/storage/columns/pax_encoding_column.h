@@ -17,7 +17,7 @@ class PaxEncodingColumn : public PaxCommColumn<T> {
 
   ~PaxEncodingColumn() override;
 
-  void Set(DataBuffer<T> *data) override;
+  void Set(std::shared_ptr<DataBuffer<T>> data) override;
 
   std::pair<char *, size_t> GetBuffer() override;
 
@@ -36,13 +36,13 @@ class PaxEncodingColumn : public PaxCommColumn<T> {
 
  protected:
   PaxEncoder::EncodingOption encoder_options_;
-  PaxEncoder *encoder_;
+  std::shared_ptr<PaxEncoder> encoder_;
 
   PaxDecoder::DecodingOption decoder_options_;
-  PaxDecoder *decoder_;
-  DataBuffer<char> *shared_data_;
+  std::shared_ptr<PaxDecoder> decoder_;
+  std::shared_ptr<DataBuffer<char>> shared_data_;
 
-  PaxCompressor *compressor_;
+  std::shared_ptr<PaxCompressor> compressor_;
   bool compress_route_;
 };
 

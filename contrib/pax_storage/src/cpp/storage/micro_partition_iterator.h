@@ -11,21 +11,26 @@ namespace pax {
 class MicroPartitionInfoIterator final
     : public IteratorBase<MicroPartitionMetadata> {
  public:
-  template <typename T, typename... Args>
-  friend T *PAX_NEW(Args &&...args);
+  MicroPartitionInfoIterator(Relation pax_rel, Snapshot snapshot,
+                             const std::string &rel_path);
   static std::unique_ptr<IteratorBase<MicroPartitionMetadata>> New(
       Relation pax_rel, Snapshot snapshot);
 
   bool HasNext() override;
   MicroPartitionMetadata Next() override;
   void Rewind() override;
+  void Release() override { End(true); }
+  ~MicroPartitionInfoIterator() = default;
 
  private:
-  MicroPartitionInfoIterator(Relation pax_rel, Snapshot snapshot,
-                             std::string rel_path);
-  ~MicroPartitionInfoIterator();
+  // paxc function
+  void paxc_begin();
+  void paxc_end(bool close_aux);
+
+  // pax function, wrap paxc_xxx in c++
   void Begin();
-  void End();
+  void End(bool close_aux);
+
   MicroPartitionMetadata ToValue(HeapTuple tuple);
 
   std::string rel_path_;
@@ -39,24 +44,28 @@ class MicroPartitionInfoIterator final
 class MicroPartitionInfoParallelIterator final
     : public IteratorBase<MicroPartitionMetadata> {
  public:
-  template <typename T, typename... Args>
-  friend T *PAX_NEW(Args &&...args);
+  MicroPartitionInfoParallelIterator(Relation pax_rel, Snapshot snapshot,
+                                     ParallelBlockTableScanDesc pscan,
+                                     std::string rel_path);
   static std::unique_ptr<IteratorBase<MicroPartitionMetadata>> New(
       Relation pax_rel, Snapshot snapshot, ParallelBlockTableScanDesc pscan);
 
   bool HasNext() override;
   MicroPartitionMetadata Next() override;
   void Rewind() override;
+  void Release() override { End(true); }
+  ~MicroPartitionInfoParallelIterator() = default;
 
  private:
-  MicroPartitionInfoParallelIterator(Relation pax_rel, Snapshot snapshot,
-                                     ParallelBlockTableScanDesc pscan,
-                                     std::string rel_path);
-  ~MicroPartitionInfoParallelIterator();
   MicroPartitionMetadata ToValue(HeapTuple tuple);
-  // paxc
+
+  // paxc function
+  void paxc_begin();
+  void paxc_end(bool close_aux);
+
+  // pax function, wrap paxc_xxx in c++
   void Begin();
-  void End();
+  void End(bool close_aux);
 
   Relation pax_rel_ = nullptr;
   Relation aux_rel_ = nullptr;

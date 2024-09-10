@@ -16,7 +16,7 @@ PaxClusteringReader::PaxClusteringReader(
 
   if (is_dfs_table_space_) {
     file_system_options_ =
-        PAX_NEW<RemoteFileSystemOptions>(relation_->rd_rel->reltablespace);
+        std::make_shared<RemoteFileSystemOptions>(relation_->rd_rel->reltablespace);
     file_system_ = Singleton<RemoteFileSystem>::GetInstance();
   } else {
     file_system_ = Singleton<LocalFileSystem>::GetInstance();
@@ -31,7 +31,6 @@ bool PaxClusteringReader::GetNextTuple(TupleTableSlot *slot) {
     if (iter_->HasNext()) {
       if (reader_ != nullptr) {
         reader_->Close();
-        PAX_DELETE(reader_);
         reader_ = nullptr;
       }
       auto meta_info = iter_->Next();
@@ -48,10 +47,11 @@ bool PaxClusteringReader::GetNextTuple(TupleTableSlot *slot) {
         file->Close();
       }
 
-      File *file =
+      std::shared_ptr<File> file;
+      std::shared_ptr<File> toast_file;
+      file =
           file_system_->Open(meta_info.GetFileName(), pax::fs::kReadMode);
 
-      File *toast_file = nullptr;
       if (meta_info.GetExistToast()) {
         toast_file = file_system_->Open(
             meta_info.GetFileName() + TOAST_FILE_SUFFIX, pax::fs::kReadMode);
@@ -71,9 +71,10 @@ bool PaxClusteringReader::GetNextTuple(TupleTableSlot *slot) {
 void PaxClusteringReader::Close() {
   if (reader_) {
     reader_->Close();
-    PAX_DELETE(reader_);
     reader_ = nullptr;
   }
+  iter_->Release();
+  iter_ = nullptr;
 }
 
 }  // namespace clustering

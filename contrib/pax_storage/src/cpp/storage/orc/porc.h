@@ -24,7 +24,7 @@ class OrcWriter : public MicroPartitionWriter {
  public:
   OrcWriter(const MicroPartitionWriter::WriterOptions &orc_writer_options,
             const std::vector<pax::porc::proto::Type_Kind> &column_types,
-            File *file, File *toast_file = nullptr);
+            std::shared_ptr<File> file, std::shared_ptr<File> toast_file = nullptr);
 
   ~OrcWriter() override;
 
@@ -45,11 +45,12 @@ class OrcWriter : public MicroPartitionWriter {
  protected:  // NOLINT
 #endif
 
+#ifdef RUN_GTEST
   // only for test
-  static MicroPartitionWriter *CreateWriter(
+  static std::unique_ptr<MicroPartitionWriter> CreateWriter(
       MicroPartitionWriter::WriterOptions options,
-      const std::vector<pax::porc::proto::Type_Kind> &column_types, File *file,
-      File *toast_file = nullptr) {
+      const std::vector<pax::porc::proto::Type_Kind> &column_types, std::shared_ptr<File> file,
+      std::shared_ptr<File> toast_file = nullptr) {
     std::vector<std::tuple<ColumnEncoding_Kind, int>> all_no_encoding_types;
     for (auto _ : column_types) {
       (void)_;
@@ -59,10 +60,11 @@ class OrcWriter : public MicroPartitionWriter {
 
     options.encoding_opts = all_no_encoding_types;
 
-    return PAX_NEW<OrcWriter>(options, column_types, file, toast_file);
+    return std::make_unique<OrcWriter>(options, column_types, file, toast_file);
   }
+#endif
 
-  void PerpareWriteTuple(TupleTableSlot *slot);
+  std::vector<std::pair<int, Datum>> PerpareWriteTuple(TupleTableSlot *slot);
   void EndWriteTuple(TupleTableSlot *slot);
 
   void BuildFooterType();
@@ -78,22 +80,27 @@ class OrcWriter : public MicroPartitionWriter {
   void MergePaxColumns(OrcWriter *writer);
   void MergeGroups(OrcWriter *orc_writer);
   void MergeGroup(OrcWriter *orc_writer, int group_index,
-                  DataBuffer<char> *merge_buffer);
+                  std::shared_ptr<DataBuffer<char>> &merge_buffer);
   void DeleteUnstateFile();
 
  protected:
   bool is_closed_;
-  PaxColumns *pax_columns_;
+  std::unique_ptr<PaxColumns> pax_columns_;
   // Hold the detoast and new generate toast datum
   // pair.first save the origin datum
   // pair.secord save the detoast datum which need free
-  std::vector<Datum> origin_datum_holder_;
-  std::vector<Datum> detoast_holder_;
-  std::vector<Datum> gen_toast_holder_;
+  std::vector<std::pair<int, Datum>> origin_datum_holder_;
+
+  // buffers to hold pax toasted values
+  std::vector<std::shared_ptr<MemoryObject>> toast_memory_holder_;
+
+  // detoasted values, needs to free memory after the writing tuple
+  // If exception happens, the detoasted values should not be touched.
+  std::vector<void*> detoast_memory_holder_;
 
   const std::vector<pax::porc::proto::Type_Kind> column_types_;
-  File *file_;
-  File *toast_file_;
+  std::shared_ptr<File> file_;
+  std::shared_ptr<File> toast_file_;
   int32 current_written_phy_size_;
   WriteSummary summary_;
 
@@ -109,7 +116,7 @@ class OrcWriter : public MicroPartitionWriter {
 
 class OrcReader : public MicroPartitionReader {
  public:
-  explicit OrcReader(File *file, File *toast_file = nullptr);
+  explicit OrcReader(std::shared_ptr<File> file, std::shared_ptr<File> toast_file = nullptr);
 
   ~OrcReader() override = default;
 
@@ -125,14 +132,10 @@ class OrcReader : public MicroPartitionReader {
 
   size_t GetTupleCountsInGroup(size_t group_index) override;
 
-  MicroPartitionReader::Group *ReadGroup(size_t group_index) override;
+  std::unique_ptr<MicroPartitionReader::Group> ReadGroup(size_t group_index) override;
 
   std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
       size_t group_index) override;
-
-  void SetProjColumnIndex(const std::vector<int> &proj_column_index) {
-    proj_column_index_ = &proj_column_index;
-  }
 
 #ifndef RUN_GTEST
  protected:  // NOLINT
@@ -142,19 +145,14 @@ class OrcReader : public MicroPartitionReader {
   void ResetCurrentReading();
 
  protected:
-  MicroPartitionReader::Group *working_group_;
+  std::unique_ptr<MicroPartitionReader::Group> working_group_;
 
   // used to cache the group in `GetTuple`
-  MicroPartitionReader::Group *cached_group_;
+  std::unique_ptr<MicroPartitionReader::Group> cached_group_;
   size_t current_group_index_;
 
-  // nullptr means read all columns
-  bool *proj_map_;
-  size_t proj_len_;
-
-  // nullptr means read all columns
-  // only a reference, owner by pax_filter
-  const std::vector<int> *proj_column_index_;
+  // hold filtler to ensure that the projection is always vaild.
+  std::shared_ptr<PaxFilter> filter_;
 
   OrcFormatReader format_reader_;
   bool is_closed_;

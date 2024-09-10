@@ -18,7 +18,7 @@ class PaxClusteringWriter final : public ClusteringDataWriter {
 
  private:
   Relation rel_ = nullptr;
-  TableWriter *writer_ = nullptr;
+  std::unique_ptr<TableWriter> writer_ = nullptr;
 };
 }  // namespace clustering
 

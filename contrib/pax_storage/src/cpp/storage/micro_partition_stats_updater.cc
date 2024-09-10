@@ -30,14 +30,15 @@ MicroPartitionStatsUpdater::MicroPartitionStatsUpdater(
   }
 }
 
-MicroPartitionStats *MicroPartitionStatsUpdater::Update(
+std::shared_ptr<MicroPartitionStats> MicroPartitionStatsUpdater::Update(
     TupleTableSlot *slot, const std::vector<int> &minmax_columns) {
   TupleDesc desc;
-  MicroPartitionStats *mp_stats, *group_stats = nullptr;
+  std::shared_ptr<MicroPartitionStats> mp_stats;
+  std::shared_ptr<MicroPartitionStats> group_stats;
 
   Assert(slot);
   desc = slot->tts_tupleDescriptor;
-  mp_stats = PAX_NEW<MicroPartitionStats>(desc);
+  mp_stats = std::make_shared<MicroPartitionStats>(desc);
   mp_stats->Initialize(minmax_columns);
 
   Assert(exist_invisible_tuples_.size() == reader_->GetGroupNums());
@@ -46,7 +47,7 @@ MicroPartitionStats *MicroPartitionStatsUpdater::Update(
        group_index++) {
     if (exist_invisible_tuples_[group_index]) {
       if (!group_stats) {
-        group_stats = PAX_NEW<MicroPartitionStats>(desc);
+        group_stats = std::make_shared<MicroPartitionStats>(desc);
         group_stats->Initialize(minmax_columns);
       }
 
@@ -56,7 +57,7 @@ MicroPartitionStats *MicroPartitionStatsUpdater::Update(
       size_t read_count = 0;
 #endif
       while (group->ReadTuple(slot).first) {
-        group_stats->AddRow(slot, {});
+        group_stats->AddRow(slot);
 #ifdef ENABLE_DEBUG
         ++read_count;
 #endif
@@ -67,30 +68,27 @@ MicroPartitionStats *MicroPartitionStatsUpdater::Update(
       Assert(read_count < group->GetRows());
 #endif
 
-      PAX_DELETE(group);
     } else {
       ::pax::stats::MicroPartitionStatisticsInfo stat_info;
-      auto group_stats = reader_->GetGroupStatsInfo(group_index);
+      auto column_group_stats = reader_->GetGroupStatsInfo(group_index);
       for (int column_index = 0; column_index < desc->natts; column_index++) {
         auto new_col_stats = stat_info.add_columnstats();
 
         new_col_stats->mutable_datastats()->CopyFrom(
-            group_stats->DataStats(column_index));
-        new_col_stats->set_allnull(group_stats->AllNull(column_index));
-        new_col_stats->set_hasnull(group_stats->HasNull(column_index));
-        new_col_stats->set_nonnullrows(group_stats->NonNullRows(column_index));
+            column_group_stats->DataStats(column_index));
+        new_col_stats->set_allnull(column_group_stats->AllNull(column_index));
+        new_col_stats->set_hasnull(column_group_stats->HasNull(column_index));
+        new_col_stats->set_nonnullrows(column_group_stats->NonNullRows(column_index));
         new_col_stats->mutable_info()->CopyFrom(
-            group_stats->ColumnInfo(column_index));
+            column_group_stats->ColumnInfo(column_index));
       }
       mp_stats->MergeRawInfo(&stat_info);
     }
   }
 
   if (group_stats) {
-    mp_stats->MergeTo(group_stats);
+    mp_stats->MergeTo(group_stats.get());
   }
-
-  PAX_DELETE(group_stats);
 
   return mp_stats;
 }

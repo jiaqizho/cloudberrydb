@@ -32,7 +32,7 @@ void ZOrderCluster(Relation rel, Snapshot snapshot,
 
   std::vector<MicroPartitionMetadata> delete_files;
   auto iter = MicroPartitionInfoIterator::New(rel, snapshot);
-  auto wrap = PAX_NEW<FilterIterator<MicroPartitionMetadata>>(
+  auto wrap = std::make_unique<FilterIterator<MicroPartitionMetadata>>(
       std::move(iter),
       [&delete_files, is_incremental_cluster](const MicroPartitionMetadata &x) {
         // if is incremental cluster, only cluster the non-clustered blocks
@@ -42,11 +42,10 @@ void ZOrderCluster(Relation rel, Snapshot snapshot,
         delete_files.push_back(x);
         return true;
       });
-  iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap);
 
-  auto reader = PAX_NEW<clustering::PaxClusteringReader>(rel, std::move(iter));
+  auto reader = std::make_unique<clustering::PaxClusteringReader>(rel, std::move(wrap));
 
-  auto writer = PAX_NEW<clustering::PaxClusteringWriter>(rel);
+  auto writer = std::make_unique<clustering::PaxClusteringWriter>(rel);
 
   // create cluster, singleton
   auto cluster = clustering::DataClustering::CreateDataClustering(
@@ -65,12 +64,10 @@ void ZOrderCluster(Relation rel, Snapshot snapshot,
   options.nulls_first_flags = false;
   options.work_mem = maintenance_work_mem;
 
-  cluster->Clustering(reader, writer, &options);
+  cluster->Clustering(reader.get(), writer.get(), &options);
 
   writer->Close();
-  PAX_DELETE(writer);
   reader->Close();
-  PAX_DELETE(reader);
 
   std::shared_ptr<IteratorBase<MicroPartitionMetadata>> iter_ptr =
       std::make_shared<VectorIterator<MicroPartitionMetadata>>(
@@ -83,9 +80,9 @@ void IndexCluster(Relation old_rel, Relation new_rel, Relation index,
   auto iter = MicroPartitionInfoIterator::New(old_rel, snapshot);
 
   auto reader =
-      PAX_NEW<clustering::PaxClusteringReader>(old_rel, std::move(iter));
+      std::make_unique<clustering::PaxClusteringReader>(old_rel, std::move(iter));
 
-  auto writer = PAX_NEW<clustering::PaxClusteringWriter>(new_rel);
+  auto writer = std::make_unique<clustering::PaxClusteringWriter>(new_rel);
 
   auto cluster = clustering::DataClustering::CreateDataClustering(
       clustering::DataClustering::kClusterTypeIndex);
@@ -95,12 +92,10 @@ void IndexCluster(Relation old_rel, Relation new_rel, Relation index,
   options.tup_desc = old_rel->rd_att;
   options.index_rel = index;
   options.work_mem = maintenance_work_mem;
-  cluster->Clustering(reader, writer, &options);
+  cluster->Clustering(reader.get(), writer.get(), &options);
 
   writer->Close();
-  PAX_DELETE(writer);
   reader->Close();
-  PAX_DELETE(reader);
 }
 
 }  // namespace pax

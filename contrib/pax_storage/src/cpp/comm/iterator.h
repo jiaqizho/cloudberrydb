@@ -13,6 +13,7 @@ class IteratorBase {
   virtual bool HasNext() = 0;
   virtual T Next() = 0;
   virtual void Rewind() = 0;
+  virtual void Release() {}; // empty release
   virtual ~IteratorBase() = default;
 };  // class IteratorBase
 
@@ -52,6 +53,11 @@ class FilterIterator : public IteratorBase<T> {
     valid_value_ = false;
   }
 
+  void Release() override {
+    it_->Release();
+    valid_value_ = false;
+  }
+
   virtual ~FilterIterator() = default;
 
  protected:
@@ -73,6 +79,8 @@ class VectorIterator : public IteratorBase<T> {
     return v_[index_++];
   }
   void Rewind() override { index_ = 0; }
+
+  void Release() override { index_ = v_.size(); }
 
  protected:
   std::vector<T> v_;

@@ -12,9 +12,9 @@ namespace pax {
 static std::set<ColumnEncoding_Kind> non_fixed_column_white_list = {
     ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY};
 
-PaxEncoder *PaxEncoder::CreateStreamingEncoder(
+std::shared_ptr<PaxEncoder> PaxEncoder::CreateStreamingEncoder(
     const EncodingOption &encoder_options, bool non_fixed) {
-  PaxEncoder *encoder = nullptr;
+  std::shared_ptr<PaxEncoder> encoder;
 
   // non-fixed only support dict encoder
   if (non_fixed &&
@@ -25,7 +25,7 @@ PaxEncoder *PaxEncoder::CreateStreamingEncoder(
 
   switch (encoder_options.column_encode_type) {
     case ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2: {
-      encoder = PAX_NEW<PaxOrcEncoder>(encoder_options);
+      encoder = std::make_shared<PaxOrcEncoder>(encoder_options);
       break;
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA: {
@@ -39,7 +39,7 @@ PaxEncoder *PaxEncoder::CreateStreamingEncoder(
                      ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED));
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY: {
-      encoder = PAX_NEW<PaxDictEncoder>(encoder_options);
+      encoder = std::make_shared<PaxDictEncoder>(encoder_options);
       break;
     }
     // two cases here:
@@ -56,7 +56,7 @@ PaxEncoder *PaxEncoder::CreateStreamingEncoder(
 PaxEncoder::PaxEncoder(const EncodingOption &encoder_options)
     : encoder_options_(encoder_options), result_buffer_(nullptr) {}
 
-void PaxEncoder::SetDataBuffer(DataBuffer<char> *result_buffer) {
+void PaxEncoder::SetDataBuffer(std::shared_ptr<DataBuffer<char>> result_buffer) {
   Assert(!result_buffer_ && result_buffer);
   Assert(result_buffer->IsMemTakeOver());
   result_buffer_ = result_buffer;

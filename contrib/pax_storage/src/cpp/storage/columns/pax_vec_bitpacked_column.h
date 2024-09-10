@@ -13,7 +13,7 @@ class PaxVecBitPackedColumn final : public PaxVecEncodingColumn<int8> {
   PaxVecBitPackedColumn(uint32 capacity,
                         const PaxDecoder::DecodingOption &decoding_option);
 
-  void Set(DataBuffer<int8> *data, size_t non_null_rows) override;
+  void Set(std::shared_ptr<DataBuffer<int8>> data, size_t non_null_rows) override;
 
   PaxColumnTypeInMem GetPaxColumnTypeInMem() const;
 
@@ -28,6 +28,6 @@ class PaxVecBitPackedColumn final : public PaxVecEncodingColumn<int8> {
 
  private:
   BitmapRaw<uint8> bitmap_raw_;
-  DataBuffer<bool> *flat_buffer_;
+  std::unique_ptr<DataBuffer<bool>> flat_buffer_;
 };
 }  // namespace pax

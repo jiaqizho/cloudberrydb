@@ -15,10 +15,10 @@
 #include "storage/columns/pax_rlev2_encoding.h"
 namespace pax::tests {
 
-PaxDecoder *GetDecoderByBits(
-    uint8 data_bits, DataBuffer<char> *shared_data,
+std::shared_ptr<PaxDecoder> GetDecoderByBits(
+    uint8 data_bits, std::shared_ptr<DataBuffer<char>> shared_data,
     const PaxDecoder::DecodingOption &decoder_options) {
-  PaxDecoder *decoder = nullptr;
+  std::shared_ptr<PaxDecoder> decoder;
   switch (data_bits) {
     case 8:
       decoder = PaxDecoder::CreateDecoder<int8>(decoder_options);
@@ -178,10 +178,9 @@ TEST_F(PaxEncodingTest, TestPaxTreatedBuffer) {
 }
 
 TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
-  PaxEncoder *encoder;
   int64 *data;
-  auto shared_data = new DataBuffer<char>(1024);
-  auto shared_dst_data = new DataBuffer<char>(10240);
+  auto shared_data = std::make_shared<DataBuffer<char>>(1024);
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(10240);
   auto sr_len = ::testing::get<0>(GetParam());
   auto sign = ::testing::get<1>(GetParam());
   auto data_bits = ::testing::get<2>(GetParam());
@@ -190,13 +189,13 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
   encoder->SetDataBuffer(shared_data);
 
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(sizeof(int64)));
+  data = new int64[1];
   *data = sign ? -2 : 2;
   for (size_t i = 0; i < sr_len; i++) {
     encoder->Append((char *)data, sizeof(int64));
@@ -221,7 +220,7 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
 
-  PaxDecoder *decoder =
+  auto decoder =
       GetDecoderByBits(data_bits, shared_data, std::move(decoder_options));
   EXPECT_TRUE(decoder);
 
@@ -279,11 +278,7 @@ TEST_P(PaxEncodingShortRepeatRangeTest, TestOrcShortRepeatEncoding) {
       break;
   }
 
-  delete data;
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
+  delete[] data;
 }
 
 INSTANTIATE_TEST_SUITE_P(PaxEncodingRangeTestCombine,
@@ -294,26 +289,25 @@ INSTANTIATE_TEST_SUITE_P(PaxEncodingRangeTestCombine,
                                           testing::Values(8, 16, 32, 64)));
 
 TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
-  PaxEncoder *encoder;
   int64 *data;
   auto delta_len = ::testing::get<0>(GetParam());
   auto sign = ::testing::get<1>(GetParam());
   auto data_bits = ::testing::get<2>(GetParam());
 
-  auto shared_data = new DataBuffer<char>(delta_len * sizeof(int64));
-  auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
+  auto shared_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
   encoder->SetDataBuffer(shared_data);
 
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(sizeof(int64)));
+  data = pax::PAX_ALLOC<int64 *>(sizeof(int64));
   *data = sign ? -10 : 1;
   for (size_t i = 0; i < delta_len; i++) {
     encoder->Append((char *)data, sizeof(int64));
@@ -338,7 +332,7 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
 
-  PaxDecoder *decoder =
+  auto decoder =
       GetDecoderByBits(data_bits, shared_data, std::move(decoder_options));
   EXPECT_TRUE(decoder);
 
@@ -396,11 +390,7 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
       break;
   }
 
-  delete data;
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
+  pax::PAX_FREE(data);
 }
 
 INSTANTIATE_TEST_SUITE_P(PaxEncodingRangeTestCombine, PaxEncodingDeltaRangeTest,
@@ -410,25 +400,24 @@ INSTANTIATE_TEST_SUITE_P(PaxEncodingRangeTestCombine, PaxEncodingDeltaRangeTest,
                                           testing::Values(16, 32, 64)));
 
 TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
-  PaxEncoder *encoder;
   int64 *data;
   auto delta_len = ::testing::get<0>(GetParam());
   auto delta_inc = ::testing::get<1>(GetParam());
   auto sign = ::testing::get<2>(GetParam());
-  auto shared_data = new DataBuffer<char>(delta_len * sizeof(int64));
-  auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
+  auto shared_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
   encoder->SetDataBuffer(shared_data);
 
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(delta_len * sizeof(int64)));
+  data = pax::PAX_ALLOC<int64 *>(delta_len * sizeof(int64));
   for (size_t i = 0; i < delta_len; i++) {
     data[i] = i * delta_inc;
   }
@@ -458,8 +447,8 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
-      PaxDecoder::CreateDecoder<int64>(decoder_options)
-          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+      PaxDecoder::CreateDecoder<int64>(decoder_options);
+  decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -467,41 +456,35 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
   EXPECT_EQ(shared_dst_data->Used(), delta_len * sizeof(int64));
 
   auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
+      std::make_shared<DataBuffer<int64>>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
                             shared_dst_data->Used(), false, false);
 
   for (size_t i = 0; i < delta_len; i++) {
     EXPECT_EQ((*result_dst_data)[i], data[i]);
   }
 
-  delete result_dst_data;
-  delete data;
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
+  pax::PAX_FREE(data);
 }
 
 TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
-  PaxEncoder *encoder;
   int64 *data;
   auto delta_len = ::testing::get<0>(GetParam());
   auto delta_inc = ::testing::get<1>(GetParam());
   auto sign = ::testing::get<2>(GetParam());
-  auto shared_data = new DataBuffer<char>(delta_len * sizeof(int64));
-  auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
+  auto shared_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
   encoder->SetDataBuffer(shared_data);
 
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(delta_len * sizeof(int64)));
+  data = new int64[delta_len];
   for (size_t i = 0; i < delta_len; i++) {
     data[i] = i * delta_inc;
     if (i < delta_inc && i % 2 == 0) {
@@ -530,8 +513,8 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
-      PaxDecoder::CreateDecoder<int64>(decoder_options)
-          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+      PaxDecoder::CreateDecoder<int64>(decoder_options);
+  decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -539,40 +522,34 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncWithoutFixedDeltaEncoding) {
   EXPECT_EQ(shared_dst_data->Used(), delta_len * sizeof(int64));
 
   auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
+      std::make_shared<DataBuffer<int64>>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
                             shared_dst_data->Used(), false, false);
 
   for (size_t i = 0; i < delta_len; i++) {
     EXPECT_EQ((*result_dst_data)[i], data[i]);
   }
 
-  delete result_dst_data;
-  delete data;
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
+  delete[] data;
 }
 
 TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
-  PaxEncoder *encoder;
   int64 *data;
   auto delta_len = ::testing::get<0>(GetParam());
   auto delta_dec = ::testing::get<1>(GetParam());
   auto sign = ::testing::get<2>(GetParam());
-  auto shared_data = new DataBuffer<char>(delta_len * sizeof(int64));
-  auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
+  auto shared_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
   encoder->SetDataBuffer(shared_data);
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(delta_len * sizeof(int64)));
+  data = new int64[delta_len];
 
   size_t j = 0;
   for (int64 i = (static_cast<int64>(delta_len - 1) * delta_dec); i >= 0;
@@ -605,8 +582,8 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
-      PaxDecoder::CreateDecoder<int64>(decoder_options)
-          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+      PaxDecoder::CreateDecoder<int64>(decoder_options);
+  decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -614,40 +591,34 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecDeltaEncoding) {
   EXPECT_EQ(shared_dst_data->Used(), delta_len * sizeof(int64));
 
   auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
+      std::make_shared<DataBuffer<int64>>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
                             shared_dst_data->Used(), false, false);
 
   for (size_t i = 0; i < delta_len; i++) {
     EXPECT_EQ((*result_dst_data)[i], data[i]);
   }
 
-  delete result_dst_data;
-  delete data;
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
+  delete[] data;
 }
 
 TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
-  PaxEncoder *encoder;
   int64 *data;
   auto delta_len = ::testing::get<0>(GetParam());
   auto delta_dec = ::testing::get<1>(GetParam());
   auto sign = ::testing::get<2>(GetParam());
-  auto shared_data = new DataBuffer<char>(delta_len * sizeof(int64));
-  auto shared_dst_data = new DataBuffer<char>(delta_len * sizeof(int64));
+  auto shared_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(delta_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
   encoder->SetDataBuffer(shared_data);
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(delta_len * sizeof(int64)));
+  data = new int64[delta_len];
 
   size_t j = 0;
   for (int64 i = (static_cast<int64>(delta_len - 1) * delta_dec); i >= 0;
@@ -680,8 +651,8 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
-      PaxDecoder::CreateDecoder<int64>(decoder_options)
-          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+      PaxDecoder::CreateDecoder<int64>(decoder_options);
+  decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -689,19 +660,14 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcDecWithoutFixedDeltaEncoding) {
   EXPECT_EQ(shared_dst_data->Used(), delta_len * sizeof(int64));
 
   auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
+      std::make_shared<DataBuffer<int64>>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
                             shared_dst_data->Used(), false, false);
 
   for (size_t i = 0; i < delta_len; i++) {
     EXPECT_EQ((*result_dst_data)[i], data[i]);
   }
 
-  delete result_dst_data;
-  delete data;
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
+  delete[] data;
 }
 
 INSTANTIATE_TEST_SUITE_P(PaxEncodingRangeTestCombine,
@@ -721,13 +687,12 @@ TEST_P(PaxEncodingWriteReadLongsRangeTest, TestOrcDirectWriteReadLong) {
 
   DataBuffer<char> *write_dst_buffer;
   TreatedDataBuffer<int64> *read_src_buffer;
-  int64 *data, *result;
+  int64 data[3];
+  int64 result[3];
 
   write_dst_buffer = new DataBuffer<char>(1024);
   read_src_buffer = new TreatedDataBuffer<int64>(
       reinterpret_cast<int64 *>(write_dst_buffer->GetBuffer()), 1024);
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(3 * sizeof(int64)));
-  result = reinterpret_cast<int64 *>(cbdb::Palloc(3 * sizeof(int64)));
 
   data[0] = 0;
   std::random_device rd;
@@ -776,25 +741,24 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(false)));
 
 TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
-  PaxEncoder *encoder;
   int64 *data;
   auto direct_len = ::testing::get<0>(GetParam());
   auto direct_range = ::testing::get<1>(GetParam());
   auto sign = ::testing::get<2>(GetParam());
   // will auto expanded
-  auto shared_data = new DataBuffer<char>(direct_len * sizeof(int64));
-  auto shared_dst_data = new DataBuffer<char>(direct_len * sizeof(int64));
+  auto shared_data = std::make_shared<DataBuffer<char>>(direct_len * sizeof(int64));
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(direct_len * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = sign;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
   encoder->SetDataBuffer(shared_data);
 
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(direct_len * sizeof(int64)));
+  data = new int64[direct_len];
   for (size_t i = 0; i < direct_len; i++) {
     data[i] = i * direct_range;
   }
@@ -830,8 +794,8 @@ TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = sign;
   auto decoder =
-      PaxDecoder::CreateDecoder<int64>(decoder_options)
-          ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+      PaxDecoder::CreateDecoder<int64>(decoder_options);
+  decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
   decoder->SetDataBuffer(shared_dst_data);
   decoder->Decoding();
@@ -839,19 +803,14 @@ TEST_P(PaxEncodingDirectRangeTest, TestOrcDirectEncoding) {
   EXPECT_EQ(shared_dst_data->Used(), direct_len * sizeof(int64));
 
   auto result_dst_data =
-      new DataBuffer<int64>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
+      std::make_shared<DataBuffer<int64>>(reinterpret_cast<int64 *>(shared_dst_data->Start()),
                             shared_dst_data->Used(), false, false);
 
   for (size_t i = 0; i < direct_len; i++) {
     EXPECT_EQ((*result_dst_data)[i], data[i]);
   }
 
-  delete result_dst_data;
-  delete data;
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
+  delete[] data;
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -861,18 +820,17 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(true, false)));
 
 TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
-  PaxEncoder *encoder;
   auto data_vec = ::testing::get<0>(GetParam());
   auto data_bits = ::testing::get<1>(GetParam());
   auto data_lens = data_vec.size();
-  auto shared_data = new DataBuffer<char>(data_lens * sizeof(int64));
-  auto shared_dst_data = new DataBuffer<char>(data_lens * sizeof(int64));
+  auto shared_data = std::make_shared<DataBuffer<char>>(data_lens * sizeof(int64));
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(data_lens * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = true;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
   encoder->SetDataBuffer(shared_data);
@@ -929,11 +887,6 @@ TEST_P(PaxEncodingPBTest, TestOrcPBEncoding) {
     default:
       break;
   }
-
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -952,18 +905,17 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(32, 64)));
 
 TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
-  PaxEncoder *encoder;
   auto data_vec = ::testing::get<0>(GetParam());
   auto data_bits = ::testing::get<1>(GetParam());
   auto data_lens = data_vec.size();
-  auto shared_data = new DataBuffer<char>(data_lens * sizeof(int64));
-  auto shared_dst_data = new DataBuffer<char>(data_lens * sizeof(int64));
+  auto shared_data = std::make_shared<DataBuffer<char>>(data_lens * sizeof(int64));
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(data_lens * sizeof(int64));
 
   PaxEncoder::EncodingOption encoder_options;
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = true;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
   encoder->SetDataBuffer(shared_data);
@@ -1021,11 +973,6 @@ TEST_P(PaxEncodingRawDataTest, TestOrcMixEncoding) {
     default:
       break;
   }
-
-  delete shared_data;
-  delete shared_dst_data;
-  delete encoder;
-  delete decoder;
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1073,9 +1020,8 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(32, 64)));
 
 TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
-  PaxEncoder *encoder;
   int64 *data;
-  auto shared_data = new DataBuffer<char>(1024);
+  auto shared_data = std::make_shared<DataBuffer<char>>(1024);
 
   size_t sr_len = 10;
   size_t total_len = 15;
@@ -1085,13 +1031,13 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = true;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
   encoder->SetDataBuffer(shared_data);
 
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(sizeof(int64)));
+  data = pax::PAX_ALLOC<int64 *>(sizeof(int64));
   *data = 2;
   for (size_t i = 0; i < sr_len; i++) {
     encoder->Append((char *)data, sizeof(int64));
@@ -1105,13 +1051,13 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
   EXPECT_EQ(static_cast<EncodingType>((encoding_buff[0] >> 6) & 0x03),
             EncodingType::kShortRepeat);
 
-  char *cpy_data = reinterpret_cast<char *>(palloc(shared_data->Used()));
+  char *cpy_data = new char[shared_data->Used()];
   memcpy(cpy_data, shared_data->GetBuffer(), shared_data->Used());
 
   {
     // case 1 null in header
     // (total_len - sr_len) * null , sr data
-    auto shared_dst_data = new DataBuffer<char>(10240);
+    auto shared_dst_data = std::make_shared<DataBuffer<char>>(10240);
 
     std::vector<char> not_null;
     for (size_t i = 0; i < total_len; ++i) {
@@ -1122,14 +1068,14 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
         ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
-        PaxDecoder::CreateDecoder<int64>(decoder_options)
-            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+        PaxDecoder::CreateDecoder<int64>(decoder_options);
+    decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
     ASSERT_EQ(n_read, shared_dst_data->Used());
 
-    auto result_dst_data = new DataBuffer<int64>(
+    auto result_dst_data = std::make_shared<DataBuffer<int64>>(
         reinterpret_cast<int64 *>(shared_dst_data->Start()),
         shared_dst_data->Used(), false, false);
 
@@ -1142,16 +1088,12 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     for (size_t i = 0; i < shared_data->Used(); i++) {
       ASSERT_EQ(cpy_data[i], (*shared_data)[i]);
     }
-
-    delete shared_dst_data;
-    delete result_dst_data;
-    delete decoder;
   }
 
   {
     // case 2 null in tail
     // sr data, (total_len - sr_len) * null
-    auto shared_dst_data = new DataBuffer<char>(10240);
+    auto shared_dst_data = std::make_shared<DataBuffer<char>>(10240);
 
     std::vector<char> not_null;
     for (size_t i = 0; i < total_len; ++i) {
@@ -1162,14 +1104,14 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
         ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
-        PaxDecoder::CreateDecoder<int64>(decoder_options)
-            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+        PaxDecoder::CreateDecoder<int64>(decoder_options);
+    decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
     ASSERT_EQ(n_read, shared_dst_data->Used());
 
-    auto result_dst_data = new DataBuffer<int64>(
+    auto result_dst_data = std::make_shared<DataBuffer<int64>>(
         reinterpret_cast<int64 *>(shared_dst_data->Start()),
         shared_dst_data->Used(), false, false);
 
@@ -1182,16 +1124,12 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     for (size_t i = 0; i < shared_data->Used(); i++) {
       ASSERT_EQ(cpy_data[i], (*shared_data)[i]);
     }
-
-    delete shared_dst_data;
-    delete result_dst_data;
-    delete decoder;
   }
 
   {
     // case 3 null inside delta
     // sr data, (total_len - sr_len) * null
-    auto shared_dst_data = new DataBuffer<char>(10240);
+    auto shared_dst_data = std::make_shared<DataBuffer<char>>(10240);
 
     std::vector<char> not_null;
     for (size_t i = 0; i < total_len; ++i) {
@@ -1203,14 +1141,14 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
         ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
-        PaxDecoder::CreateDecoder<int64>(decoder_options)
-            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+        PaxDecoder::CreateDecoder<int64>(decoder_options);
+    decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
     ASSERT_EQ(n_read, shared_dst_data->Used());
 
-    auto result_dst_data = new DataBuffer<int64>(
+    auto result_dst_data = std::make_shared<DataBuffer<int64>>(
         reinterpret_cast<int64 *>(shared_dst_data->Start()),
         shared_dst_data->Used(), false, false);
 
@@ -1225,22 +1163,15 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
     for (size_t i = 0; i < shared_data->Used(); i++) {
       ASSERT_EQ(cpy_data[i], (*shared_data)[i]);
     }
-
-    delete shared_dst_data;
-    delete result_dst_data;
-    delete decoder;
   }
 
-  delete cpy_data;
-  delete data;
-  delete shared_data;
-  delete encoder;
+  delete[] cpy_data;
+  pax::PAX_FREE(data);
 }
 
 TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
-  PaxEncoder *encoder;
   int64 *data;
-  auto shared_data = new DataBuffer<char>(1024);
+  auto shared_data = std::make_shared<DataBuffer<char>>(1024);
 
   size_t delta_len = 20;
   size_t total_len = 30;
@@ -1249,13 +1180,13 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
   encoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   encoder_options.is_sign = true;
-  encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
+  auto encoder = PaxEncoder::CreateStreamingEncoder(encoder_options);
 
   EXPECT_TRUE(encoder);
 
   encoder->SetDataBuffer(shared_data);
 
-  data = reinterpret_cast<int64 *>(cbdb::Palloc(sizeof(int64)));
+  data = new int64;
   *data = 2;
   for (size_t i = 0; i < delta_len; i++) {
     encoder->Append((char *)data, sizeof(int64));
@@ -1266,13 +1197,13 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
   EXPECT_EQ(static_cast<EncodingType>((encoding_buff[0] >> 6) & 0x03),
             EncodingType::kDelta);
 
-  char *cpy_data = reinterpret_cast<char *>(palloc(shared_data->Used()));
+  char *cpy_data = new char[shared_data->Used()];
   memcpy(cpy_data, shared_data->GetBuffer(), shared_data->Used());
 
   {
     // case 1 null in header
     // (total_len - delta_len) * null , delta data
-    auto shared_dst_data = new DataBuffer<char>(10240);
+    auto shared_dst_data = std::make_shared<DataBuffer<char>>(10240);
 
     std::vector<char> not_null;
     for (size_t i = 0; i < total_len; ++i) {
@@ -1283,14 +1214,14 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
         ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
-        PaxDecoder::CreateDecoder<int64>(decoder_options)
-            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+        PaxDecoder::CreateDecoder<int64>(decoder_options);
+    decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
     ASSERT_EQ(n_read, shared_dst_data->Used());
 
-    auto result_dst_data = new DataBuffer<int64>(
+    auto result_dst_data = std::make_shared<DataBuffer<int64>>(
         reinterpret_cast<int64 *>(shared_dst_data->Start()),
         shared_dst_data->Used(), false, false);
 
@@ -1303,16 +1234,12 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     for (size_t i = 0; i < shared_data->Used(); i++) {
       ASSERT_EQ(cpy_data[i], (*shared_data)[i]);
     }
-
-    delete shared_dst_data;
-    delete result_dst_data;
-    delete decoder;
   }
 
   {
     // case 2 null in tail
     // delta data, (total_len - delta_len) * null
-    auto shared_dst_data = new DataBuffer<char>(10240);
+    auto shared_dst_data = std::make_shared<DataBuffer<char>>(10240);
 
     std::vector<char> not_null;
     for (size_t i = 0; i < total_len; ++i) {
@@ -1323,14 +1250,14 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
         ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
-        PaxDecoder::CreateDecoder<int64>(decoder_options)
-            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+        PaxDecoder::CreateDecoder<int64>(decoder_options);
+    decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
     ASSERT_EQ(n_read, shared_dst_data->Used());
 
-    auto result_dst_data = new DataBuffer<int64>(
+    auto result_dst_data = std::make_shared<DataBuffer<int64>>(
         reinterpret_cast<int64 *>(shared_dst_data->Start()),
         shared_dst_data->Used(), false, false);
 
@@ -1343,15 +1270,11 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     for (size_t i = 0; i < shared_data->Used(); i++) {
       ASSERT_EQ(cpy_data[i], (*shared_data)[i]);
     }
-
-    delete shared_dst_data;
-    delete result_dst_data;
-    delete decoder;
   }
 
   {
     // case 3 null inside delta
-    auto shared_dst_data = new DataBuffer<char>(10240);
+    auto shared_dst_data = std::make_shared<DataBuffer<char>>(10240);
 
     std::vector<char> not_null;
     for (size_t i = 0; i < total_len; ++i) {
@@ -1363,14 +1286,14 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
         ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
     decoder_options.is_sign = true;
     auto decoder =
-        PaxDecoder::CreateDecoder<int64>(decoder_options)
-            ->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
+        PaxDecoder::CreateDecoder<int64>(decoder_options);
+    decoder->SetSrcBuffer(shared_data->GetBuffer(), shared_data->Used());
 
     decoder->SetDataBuffer(shared_dst_data);
     auto n_read = decoder->Decoding(not_null.data(), total_len);
     ASSERT_EQ(n_read, shared_dst_data->Used());
 
-    auto result_dst_data = new DataBuffer<int64>(
+    auto result_dst_data = std::make_shared<DataBuffer<int64>>(
         reinterpret_cast<int64 *>(shared_dst_data->Start()),
         shared_dst_data->Used(), false, false);
 
@@ -1385,20 +1308,14 @@ TEST_F(PaxEncodingTest, TestOrcDeltaEncodingWithNULL) {
     for (size_t i = 0; i < shared_data->Used(); i++) {
       ASSERT_EQ(cpy_data[i], (*shared_data)[i]);
     }
-
-    delete shared_dst_data;
-    delete result_dst_data;
-    delete decoder;
   }
 
-  delete cpy_data;
+  delete[] cpy_data;
   delete data;
-  delete shared_data;
-  delete encoder;
 }
 
 TEST_F(PaxEncodingTest, TestEncodingWithAllNULL) {
-  auto shared_dst_data = new DataBuffer<char>(10240);
+  auto shared_dst_data = std::make_shared<DataBuffer<char>>(10240);
 
   std::vector<char> not_null;
   for (size_t i = 0; i < 20; ++i) {
@@ -1409,8 +1326,8 @@ TEST_F(PaxEncodingTest, TestEncodingWithAllNULL) {
   decoder_options.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2;
   decoder_options.is_sign = true;
-  auto decoder = PaxDecoder::CreateDecoder<int64>(decoder_options)
-                     ->SetSrcBuffer(nullptr, 0);
+  auto decoder = PaxDecoder::CreateDecoder<int64>(decoder_options);
+  decoder->SetSrcBuffer(nullptr, 0);
 
   decoder->SetDataBuffer(shared_dst_data);
   auto n_read = decoder->Decoding(not_null.data(), 20);

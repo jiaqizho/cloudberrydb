@@ -4,6 +4,7 @@
 
 #include <unordered_set>
 
+#include "comm/pax_memory.h"
 #include "storage/pax.h"
 #include "storage/pax_filter.h"
 #ifdef VEC_BUILD
@@ -22,6 +23,9 @@ class PaxIndexScanDesc final {
   ~PaxIndexScanDesc();
   bool FetchTuple(ItemPointer tid, Snapshot snapshot, TupleTableSlot *slot,
                   bool *call_again, bool *all_dead);
+
+  // release internal reader
+  void Release(); 
   inline IndexFetchTableData *ToBase() { return &base_; }
   inline Relation GetRelation() { return base_.rel; }
   static inline PaxIndexScanDesc *FromBase(IndexFetchTableData *base) {
@@ -33,16 +37,17 @@ class PaxIndexScanDesc final {
 
   IndexFetchTableData base_;
   BlockNumber current_block_ = InvalidBlockNumber;
-  MicroPartitionReader *reader_ = nullptr;
+  std::unique_ptr<MicroPartitionReader> reader_;
   std::string rel_path_;
 };
 
 class PaxScanDesc {
  public:
+  PaxScanDesc() = default;
   static TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
                                  int nkeys, struct ScanKeyData *key,
                                  ParallelTableScanDesc pscan, uint32 flags,
-                                 PaxFilter *filter, bool build_bitmap);
+                                 std::shared_ptr<PaxFilter> &&pax_filter, bool build_bitmap);
 
   static TableScanDesc BeginScanExtractColumns(
       Relation rel, Snapshot snapshot, int nkeys, struct ScanKeyData *key,
@@ -66,7 +71,7 @@ class PaxScanDesc {
   bool BitmapNextBlock(struct TBMIterateResult *tbmres);
   bool BitmapNextTuple(struct TBMIterateResult *tbmres, TupleTableSlot *slot);
 
-  ~PaxScanDesc() = default;
+  ~PaxScanDesc();
 
   static inline PaxScanDesc *ToDesc(TableScanDesc scan) {
     auto desc = reinterpret_cast<PaxScanDesc *>(scan);
@@ -76,16 +81,11 @@ class PaxScanDesc {
   inline Relation GetRelation() { return rs_base_.rs_rd; }
 
  private:
-  template <typename T, typename... Args>
-  friend T *PAX_NEW(Args &&...args);
-  PaxScanDesc() = default;
-
- private:
   TableScanDescData rs_base_{};
 
-  TableReader *reader_ = nullptr;
+  std::unique_ptr<TableReader> reader_;
 
-  DataBuffer<char> *reused_buffer_ = nullptr;
+  std::shared_ptr<DataBuffer<char>> reused_buffer_;
 
   MemoryContext memory_context_ = nullptr;
 
@@ -100,10 +100,13 @@ class PaxScanDesc {
   uint64 total_tuples_ = 0;
 
   // filter used to do column projection
-  PaxFilter *filter_ = nullptr;
+  std::shared_ptr<PaxFilter> filter_ = nullptr;
+#ifdef VEC_BUILD
+  std::unique_ptr<VecAdapter> vec_adapter_;
+#endif
 
   // used only by bitmap index scan
-  PaxIndexScanDesc *index_desc_ = nullptr;
+  std::unique_ptr<PaxIndexScanDesc> index_desc_;
   int cindex_ = 0;
 };  // class PaxScanDesc
 

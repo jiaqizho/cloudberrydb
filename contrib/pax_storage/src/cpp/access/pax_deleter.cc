@@ -21,10 +21,11 @@ CPaxDeleter::CPaxDeleter(Relation rel, Snapshot snapshot)
 TM_Result CPaxDeleter::DeleteTuple(Relation relation, ItemPointer tid,
                                    CommandId cid, Snapshot snapshot,
                                    TM_FailureData *tmfd) {
-  CPaxDeleter *deleter =
+  TM_Result result;
+
+  auto deleter =
       CPaxDmlStateLocal::Instance()->GetDeleter(relation, snapshot);
   Assert(deleter != nullptr);
-  TM_Result result;
   result = deleter->MarkDelete(tid);
   if (result == TM_SelfModified) {
     tmfd->cmax = cid;
@@ -39,8 +40,7 @@ TM_Result CPaxDeleter::MarkDelete(ItemPointer tid) {
   int block_id = MapToBlockNumber(rel_, *tid);
 
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
-    block_bitmap_map_[block_id] =
-        pax_shared_ptr<Bitmap8>(PAX_NEW<Bitmap8>());  // NOLINT
+    block_bitmap_map_[block_id] = std::make_shared<Bitmap8>();
     if (!use_visimap_) {
       cbdb::DeleteMicroPartitionEntry(RelationGetRelid(rel_), snapshot_,
                                       block_id);
@@ -70,7 +70,7 @@ void CPaxDeleter::MarkDelete(BlockNumber pax_block_id) {
   int block_id = int(pax_block_id);
 
   if (block_bitmap_map_.find(block_id) == block_bitmap_map_.end()) {
-    block_bitmap_map_[block_id] = pax_shared_ptr<Bitmap8>(PAX_NEW<Bitmap8>());
+    block_bitmap_map_[block_id] = std::make_shared<Bitmap8>();
     cbdb::DeleteMicroPartitionEntry(RelationGetRelid(rel_), snapshot_,
                                     block_id);
   }
@@ -79,16 +79,16 @@ void CPaxDeleter::MarkDelete(BlockNumber pax_block_id) {
 void CPaxDeleter::ExecDelete() {
   if (block_bitmap_map_.empty()) return;
 
-  TableDeleter table_deleter(rel_, BuildDeleteIterator(), block_bitmap_map_,
+  TableDeleter table_deleter(rel_, block_bitmap_map_,
                              snapshot_);
   if (use_visimap_) {
-    table_deleter.DeleteWithVisibilityMap(delete_xid_);
+    table_deleter.DeleteWithVisibilityMap(BuildDeleteIterator(), delete_xid_);
   } else {
-    table_deleter.Delete();
+    table_deleter.Delete(BuildDeleteIterator());
   }
 }
 
-pax_unique_ptr<IteratorBase<MicroPartitionMetadata>>
+std::unique_ptr<IteratorBase<MicroPartitionMetadata>>
 CPaxDeleter::BuildDeleteIterator() {
   std::vector<pax::MicroPartitionMetadata> micro_partitions;
   auto rel_path = cbdb::BuildPaxDirectoryPath(
@@ -104,11 +104,8 @@ CPaxDeleter::BuildDeleteIterator() {
       micro_partitions.push_back(std::move(meta_info));
     }
   }
-  IteratorBase<MicroPartitionMetadata> *iter =
-      PAX_NEW<VectorIterator<MicroPartitionMetadata>>(
+  return std::make_unique<VectorIterator<MicroPartitionMetadata>>(
           std::move(micro_partitions));
-
-  return pax_unique_ptr<IteratorBase<MicroPartitionMetadata>>(iter);
 }
 
 }  // namespace pax

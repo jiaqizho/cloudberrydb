@@ -8,10 +8,10 @@
 #include "storage/vec/pax_vec_reader.h"
 
 namespace pax {
-MicroPartitionReader *MicroPartitionFileFactory::CreateMicroPartitionReader(
-    const MicroPartitionReader::ReaderOptions &options, int32 flags, File *file,
-    File *toast_file) {
-  MicroPartitionReader *reader = PAX_NEW<OrcReader>(file, toast_file);
+std::unique_ptr<MicroPartitionReader> MicroPartitionFileFactory::CreateMicroPartitionReader(
+    const MicroPartitionReader::ReaderOptions &options, int32 flags, std::shared_ptr<File> file,
+    std::shared_ptr<File> toast_file) {
+  std::unique_ptr<MicroPartitionReader> reader = std::make_unique<OrcReader>(file, toast_file);
 
 #ifdef VEC_BUILD
   if (flags & ReaderFlags::FLAGS_VECTOR_PATH) {
@@ -31,11 +31,11 @@ MicroPartitionReader *MicroPartitionFileFactory::CreateMicroPartitionReader(
     auto vec_adapter_ptr = std::make_shared<VecAdapter>(
         options.tuple_desc, max_batch_size,
         (flags & ReaderFlags::FLAGS_SCAN_WITH_CTID) != 0);
-    reader = PAX_NEW<PaxVecReader>(reader, vec_adapter_ptr, options.filter);
+    reader = std::make_unique<PaxVecReader>(std::move(reader), vec_adapter_ptr, options.filter);
   } else
 #endif
       if (options.filter && options.filter->HasRowScanFilter()) {
-    reader = MicroPartitionRowFilterReader::New(reader, options.filter,
+    reader = MicroPartitionRowFilterReader::New(std::move(reader), options.filter,
                                                 options.visibility_bitmap);
   }
 
@@ -43,17 +43,15 @@ MicroPartitionReader *MicroPartitionFileFactory::CreateMicroPartitionReader(
   return reader;
 }
 
-MicroPartitionWriter *MicroPartitionFileFactory::CreateMicroPartitionWriter(
-    const MicroPartitionWriter::WriterOptions &options, File *file,
-    File *toast_file) {
+std::unique_ptr<MicroPartitionWriter> MicroPartitionFileFactory::CreateMicroPartitionWriter(
+    const MicroPartitionWriter::WriterOptions &options, std::shared_ptr<File> file,
+    std::shared_ptr<File> toast_file) {
   std::vector<pax::porc::proto::Type_Kind> type_kinds;
-  MicroPartitionWriter *writer = nullptr;
   type_kinds = OrcWriter::BuildSchema(
       options.rel_tuple_desc,
       options.storage_format == PaxStorageFormat::kTypeStoragePorcVec);
-  writer = PAX_NEW<OrcWriter>(std::move(options), std::move(type_kinds), file,
+  return std::make_unique<OrcWriter>(options, std::move(type_kinds), file,
                               toast_file);
-  return writer;
 }
 
 }  // namespace pax

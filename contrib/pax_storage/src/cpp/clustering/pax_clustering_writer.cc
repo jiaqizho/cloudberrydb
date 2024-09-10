@@ -13,15 +13,15 @@ static void InsertOrUpdateClusteredMicroPartitionEntry(
 }
 
 PaxClusteringWriter::PaxClusteringWriter(Relation rel)
-    : rel_(rel), writer_(nullptr) {}
+    : rel_(rel) {}
 
-PaxClusteringWriter::~PaxClusteringWriter() { PAX_DELETE(writer_); }
+PaxClusteringWriter::~PaxClusteringWriter() { }
 
 void PaxClusteringWriter::WriteTuple(TupleTableSlot *tuple) {
   if (writer_ == nullptr) {
-    writer_ = PAX_NEW<TableWriter>(rel_);
+    writer_ = std::make_unique<TableWriter>(rel_);
     writer_->SetWriteSummaryCallback(InsertOrUpdateClusteredMicroPartitionEntry)
-        ->SetFileSplitStrategy(PAX_NEW<PaxDefaultSplitStrategy>())
+        ->SetFileSplitStrategy(std::make_unique<PaxDefaultSplitStrategy>())
         ->Open();
   }
   writer_->WriteTuple(tuple);

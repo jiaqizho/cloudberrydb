@@ -14,28 +14,28 @@ static inline bool TestExecQual(ExprState *estate, ExprContext *econtext) {
   CBDB_WRAP_END;
 }
 
-MicroPartitionRowFilterReader *MicroPartitionRowFilterReader::New(
-    MicroPartitionReader *reader, PaxFilter *filter,
+std::unique_ptr<MicroPartitionReader> MicroPartitionRowFilterReader::New(
+    std::unique_ptr<MicroPartitionReader> &&reader,
+    std::shared_ptr<PaxFilter> filter,
     std::shared_ptr<Bitmap8> visibility_bitmap) {
   Assert(reader);
   Assert(filter && filter->HasRowScanFilter());
 
-  auto r = PAX_NEW<MicroPartitionRowFilterReader>();
-  r->reader_ = reader;
-  r->micro_partition_visibility_bitmap_ = visibility_bitmap;
+  auto r = std::make_unique<MicroPartitionRowFilterReader>();
+  r->SetReader(std::move(reader));
+  r->SetVisibilityBitmap(visibility_bitmap);
   r->filter_ = filter;
   return r;
 }
 
-MicroPartitionReader::Group *MicroPartitionRowFilterReader::GetNextGroup(
+std::shared_ptr<MicroPartitionReader::Group> MicroPartitionRowFilterReader::GetNextGroup(
     TupleDesc desc) {
   auto ngroups = reader_->GetGroupNums();
 retry_next_group:
   if (group_index_ >= ngroups) return nullptr;
   auto info = reader_->GetGroupStatsInfo(group_index_);
   ++group_index_;
-  if (filter_ &&
-      !filter_->TestScan(*info, desc, PaxFilterStatisticsKind::kGroup)) {
+  if (!filter_->TestScan(*info, desc, PaxFilterStatisticsKind::kGroup)) {
     goto retry_next_group;
   }
   group_ = reader_->ReadGroup(group_index_ - 1);
@@ -61,7 +61,6 @@ retry_next_group:
   nrows = g->GetRows();
 retry_next:
   if (current_group_row_index_ >= nrows) {
-    PAX_DELETE(group_);
     group_ = nullptr;
     goto retry_next_group;
   }
@@ -71,7 +70,6 @@ retry_next:
                                                     g->GetRowOffset())) {
       current_group_row_index_++;
       if (current_group_row_index_ >= nrows) {
-        PAX_DELETE(group_);
         group_ = nullptr;
         goto retry_next_group;
       }
