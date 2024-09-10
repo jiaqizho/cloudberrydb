@@ -164,6 +164,8 @@ class BitmapTpl final {
   BitmapTpl(const BitmapTpl &tpl) = delete;
   BitmapTpl(BitmapTpl &&tpl)
       : raw_(std::move(tpl.raw_)), policy_(tpl.policy_) {}
+  BitmapTpl(BitmapRaw<T> &&raw)
+      : raw_(std::move(raw)), policy_(DefaultBitmapMemoryPolicy) {}
   BitmapTpl &operator=(const BitmapTpl &tpl) = delete;
   BitmapTpl &operator=(BitmapTpl &&tpl) = delete;
   ~BitmapTpl() {
@@ -171,11 +173,11 @@ class BitmapTpl final {
     if (policy_ == ReadOnlyRefBitmap) raw_.bitmap = nullptr;
   }
 
-  BitmapTpl *Clone() const {
+  std::unique_ptr<BitmapTpl> Clone() const {
     auto p = PAX_NEW_ARRAY<T>(raw_.size);
     memcpy(p, raw_.bitmap, sizeof(T) * raw_.size);
     BitmapRaw<T> bm_raw(p, raw_.size);
-    return PAX_NEW<BitmapTpl>(std::move(bm_raw));
+    return std::make_unique<BitmapTpl>(std::move(bm_raw));
   }
 
   inline size_t WordBits() const { return BM_WORD_BITS; }
@@ -258,13 +260,13 @@ class BitmapTpl final {
     return nwords * sizeof(T);
   }
 
-  static BitmapTpl<T> *BitmapTplCopy(const BitmapTpl<T> *bitmap) {
+  static std::unique_ptr<BitmapTpl<T>> BitmapTplCopy(const BitmapTpl<T> *bitmap) {
     if (bitmap == nullptr) return nullptr;
     return bitmap->Clone();
   }
 
-  static BitmapTpl<T> *Union(const BitmapTpl<T> *a, const BitmapTpl<T> *b) {
-    BitmapTpl<T> *result;
+  static std::unique_ptr<BitmapTpl<T>> Union(const BitmapTpl<T> *a, const BitmapTpl<T> *b) {
+    std::unique_ptr<BitmapTpl<T>> result;
     const BitmapTpl<T> *large;
     const BitmapTpl<T> *small;
 
@@ -287,13 +289,10 @@ class BitmapTpl final {
   }
 
  private:
-  template <typename NewT, typename... Args>
-  friend NewT *PAX_NEW(Args &&...args);
   inline bool HasEnoughSpace(uint32 index) const {
     return raw_.HasEnoughSpace(index);
   }
-  BitmapTpl(BitmapRaw<T> &&raw)
-      : raw_(std::move(raw)), policy_(DefaultBitmapMemoryPolicy) {}
+
   BitmapRaw<T> raw_;
   BitmapMemoryPolicy policy_;
 };

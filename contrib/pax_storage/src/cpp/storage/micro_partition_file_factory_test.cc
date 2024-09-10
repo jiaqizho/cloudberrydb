@@ -67,7 +67,6 @@ TEST_F(MicroPartitionFileFactoryTest, CreateMicroPartitionWriter) {
   writer->Close();
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
 }
 
 TEST_F(MicroPartitionFileFactoryTest, CreateMicroPartitionReader) {
@@ -112,8 +111,6 @@ TEST_F(MicroPartitionFileFactoryTest, CreateMicroPartitionReader) {
 
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
-  delete reader;
 }
 
 TEST_F(MicroPartitionFileFactoryTest, OrcReadWithVisibilitymap) {
@@ -179,8 +176,6 @@ TEST_F(MicroPartitionFileFactoryTest, OrcReadWithVisibilitymap) {
 
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
-  PAX_DELETE(writer);
-  PAX_DELETE(reader);
 }
 #ifdef VEC_BUILD
 TEST_F(MicroPartitionFileFactoryTest, VecReadWithVisibilitymap) {

@@ -105,8 +105,8 @@ class PaxOrcEncoder final : public PaxEncoder {
 
  private:
   EncoderContext encoder_context_;
-  UntreatedDataBuffer<int64> *data_buffer_;
-  DataBuffer<int64> *zigzag_buffer_;
+  std::shared_ptr<UntreatedDataBuffer<int64>> data_buffer_;
+  std::shared_ptr<DataBuffer<int64>> zigzag_buffer_;
   EncoderStatus status_;
 };
 

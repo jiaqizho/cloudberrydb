@@ -181,13 +181,13 @@ class PaxColumn {
   inline bool AllNull() const { return null_bitmap_ && null_bitmap_->Empty(); }
 
   // Set the null bitmap
-  inline void SetBitmap(Bitmap8 *null_bitmap) {
+  inline void SetBitmap(std::shared_ptr<Bitmap8> null_bitmap) {
     Assert(!null_bitmap_);
-    null_bitmap_ = null_bitmap;
+    null_bitmap_ = std::move(null_bitmap);
   }
 
   // Get the null bitmap
-  inline Bitmap8 *GetBitmap() const { return null_bitmap_; }
+  inline std::shared_ptr<Bitmap8> GetBitmap() const { return null_bitmap_; }
 
   // Set the column kv attributes
   void SetAttributes(const std::map<std::string, std::string> &attrs);
@@ -234,17 +234,17 @@ class PaxColumn {
   bool IsToast(size_t position);
 
   // Set the toast indexes
-  void SetToastIndexes(DataBuffer<int32> *toast_indexes);
+  void SetToastIndexes(std::shared_ptr<DataBuffer<int32>> toast_indexes);
 
   // Get the toast indexes
-  inline DataBuffer<int32> *GetToastIndexes() const { return toast_indexes_; }
+  inline std::shared_ptr<DataBuffer<int32>> GetToastIndexes() const { return toast_indexes_; }
 
   // Set the external toast buffer
   virtual void SetExternalToastDataBuffer(
-      DataBuffer<char> *external_toast_data);
+      std::shared_ptr<DataBuffer<char>> external_toast_data);
 
   // Get the external toast data buffer
-  virtual DataBuffer<char> *GetExternalToastDataBuffer();
+  virtual std::shared_ptr<DataBuffer<char>> GetExternalToastDataBuffer();
 
  protected:
   // The encoding option should pass in sub-class
@@ -291,7 +291,7 @@ class PaxColumn {
 
  protected:
   // null field bit map
-  Bitmap8 *null_bitmap_;
+  std::shared_ptr<Bitmap8> null_bitmap_;
 
   // Writer: write pointer
   // Reader: total rows
@@ -334,10 +334,10 @@ class PaxColumn {
 
   // The indexes of toast. PAX does not store too many toasts,
   // So we used a buffer rather than a Bitmap8
-  DataBuffer<int32> *toast_indexes_;
+  std::shared_ptr<DataBuffer<int32>> toast_indexes_;
 
   // The flat map of toast indexes
-  Bitmap8 *toast_flat_map_;
+  std::shared_ptr<Bitmap8> toast_flat_map_;
 
   // The number of external toast
   size_t numeber_of_external_toast_;
@@ -346,7 +346,7 @@ class PaxColumn {
   // PAX will use PaxColumns to include all columns
   // all of column inside PaxColumns will used the `external_toast_data_`
   // in PaxColumns.
-  DataBuffer<char> *external_toast_data_;
+  std::shared_ptr<DataBuffer<char>> external_toast_data_;
 
  private:
   PaxColumn(const PaxColumn &);
@@ -362,7 +362,7 @@ class PaxCommColumn : public PaxColumn {
 
   PaxCommColumn();
 
-  virtual void Set(DataBuffer<T> *data);
+  virtual void Set(std::shared_ptr<DataBuffer<T>> data);
 
   PaxColumnTypeInMem GetPaxColumnTypeInMem() const override;
 
@@ -390,7 +390,7 @@ class PaxCommColumn : public PaxColumn {
   int32 GetTypeLength() const override;
 
  protected:
-  DataBuffer<T> *data_;
+  std::shared_ptr<DataBuffer<T>> data_;
 };
 
 extern template class PaxCommColumn<char>;
@@ -409,7 +409,7 @@ class PaxNonFixedColumn : public PaxColumn {
 
   ~PaxNonFixedColumn() override;
 
-  virtual void Set(DataBuffer<char> *data, DataBuffer<int32> *lengths,
+  virtual void Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> lengths,
                    size_t total_size);
 
   void Append(char *buffer, size_t size) override;
@@ -442,13 +442,13 @@ class PaxNonFixedColumn : public PaxColumn {
 
  protected:
   size_t estimated_size_;
-  DataBuffer<char> *data_;
+  std::shared_ptr<DataBuffer<char>> data_;
 
   // orc needs to serialize int32 array
   // the length of a single tuple field will not exceed 2GB,
   // so a variable-length element of the lengths stream can use int32
   // to represent the length
-  DataBuffer<int32> *lengths_;
+  std::shared_ptr<DataBuffer<int32>> lengths_;
   std::vector<uint64> offsets_;
 };
 

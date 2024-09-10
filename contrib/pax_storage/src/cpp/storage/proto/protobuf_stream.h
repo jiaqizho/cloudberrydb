@@ -11,7 +11,7 @@ class BufferedOutputStream : public google::protobuf::io::ZeroCopyOutputStream {
  public:
   explicit BufferedOutputStream(uint64 block_size);
 
-  virtual void Set(DataBuffer<char> *data_buffer);
+  virtual void Set(std::shared_ptr<DataBuffer<char>> data_buffer);
 
   bool Next(void **buffer, int *size) override;
 
@@ -25,7 +25,7 @@ class BufferedOutputStream : public google::protobuf::io::ZeroCopyOutputStream {
 
   virtual uint64 GetSize() const;
 
-  virtual DataBuffer<char> *GetDataBuffer() const;
+  virtual std::shared_ptr<DataBuffer<char>> GetDataBuffer() const;
 
   virtual void StartBufferOutRecord();
 
@@ -35,7 +35,7 @@ class BufferedOutputStream : public google::protobuf::io::ZeroCopyOutputStream {
 
  private:
   size_t last_used_ = 0;
-  DataBuffer<char> *data_buffer_;
+  std::shared_ptr<DataBuffer<char>> data_buffer_;
   uint64 block_size_;
 };
 

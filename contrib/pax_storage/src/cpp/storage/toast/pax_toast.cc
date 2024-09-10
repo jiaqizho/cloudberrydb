@@ -11,30 +11,55 @@
 
 namespace pax {
 
-static std::pair<char *, size_t> pax_pglz_compress_datum_without_hdr(
+class ExternalToastData : public MemoryObject {
+ public:
+  ExternalToastData(std::shared_ptr<struct pax_varatt_external_ref> external_ref, ByteBuffer &&buffer)
+    : ref_(std::move(external_ref))
+    , buffer_(std::move(buffer)) {
+
+  }
+  ExternalToastData(const ExternalToastData &)=delete;
+  ExternalToastData &operator=(const ExternalToastData &)=delete;
+  ExternalToastData &operator=(ExternalToastData &&tmp) {
+    if (this != &tmp) {
+      ref_ = std::move(tmp.ref_);
+      buffer_ = std::move(tmp.buffer_);
+    }
+    return *this;
+  }
+
+  // Free both objects in destructor function
+  ~ExternalToastData() = default;
+
+ private:
+  std::shared_ptr<struct pax_varatt_external_ref> ref_;
+  ByteBuffer buffer_;
+};
+
+static ByteBuffer pax_pglz_compress_datum_without_hdr(
     const struct varlena *value) {
   int32 valsize, len;
-  char *tmp = nullptr;
   PgLZCompressor compressor;
 
   valsize = VARSIZE_ANY_EXHDR(DatumGetPointer(value));
 
   if (valsize < PGLZ_strategy_default->min_input_size ||
       valsize > PGLZ_strategy_default->max_input_size)
-    return std::make_pair(nullptr, 0);
+    return ByteBuffer();
 
   len = compressor.GetCompressBound(valsize);
-  tmp = PAX_NEW_ARRAY<char>(len);
-  len = compressor.Compress(tmp, len, VARDATA_ANY(value), valsize,
+
+  ByteBuffer buffer(len, len);
+  len = compressor.Compress(buffer.Addr(), len, VARDATA_ANY(value), valsize,
                             0 /* level has no effect*/);
+  buffer.SetSize(len);
   if (compressor.IsError(len)) {
-    PAX_DELETE(tmp);
-    return std::make_pair(nullptr, 0);
+    return ByteBuffer();
   }
-  return std::make_pair(tmp, len);
+  return buffer;
 }
 
-static struct varlena *pax_pglz_compress_datum(const struct varlena *value) {
+static ByteBuffer pax_pglz_compress_datum(const struct varlena *value) {
   int32 valsize, len;
   struct varlena *tmp = nullptr;
   PgLZCompressor compressor;
@@ -45,27 +70,28 @@ static struct varlena *pax_pglz_compress_datum(const struct varlena *value) {
   // range for compression.
   if (valsize < PGLZ_strategy_default->min_input_size ||
       valsize > PGLZ_strategy_default->max_input_size)
-    return nullptr;
+    return ByteBuffer();
 
   len = compressor.GetCompressBound(valsize);
 
   // Figure out the maximum possible size of the pglz output, add the bytes
   // that will be needed for varlena overhead, and allocate that amount.
-  tmp = (struct varlena *)PAX_NEW_ARRAY<char>(len + VARHDRSZ_COMPRESSED);
+
+  ByteBuffer buffer(len + VARHDRSZ_COMPRESSED, len + VARHDRSZ_COMPRESSED);
+  tmp = reinterpret_cast<struct varlena *>(buffer.Addr());
   len = compressor.Compress((char *)tmp + VARHDRSZ_COMPRESSED, len,
                             VARDATA_ANY(value), valsize,
                             0 /* level has no effect*/);
   if (compressor.IsError(len)) {
-    PAX_DELETE(tmp);
-    return nullptr;
+    return ByteBuffer();
   }
-
+  buffer.SetSize(len + VARHDRSZ_COMPRESSED);
   SET_VARSIZE_COMPRESSED(tmp, len + VARHDRSZ_COMPRESSED);
 
-  return tmp;
+  return buffer;
 }
 
-static std::pair<char *, size_t> pax_lz4_compress_datum_without_hdr(
+static ByteBuffer pax_lz4_compress_datum_without_hdr(
     const struct varlena *value) {
 #ifndef USE_LZ4
   CBDB_RAISE(cbdb::CException::kExTypeToastNoLZ4Support);
@@ -73,7 +99,6 @@ static std::pair<char *, size_t> pax_lz4_compress_datum_without_hdr(
   int32 valsize;
   int32 len;
   int32 max_size;
-  char *tmp = nullptr;
   PaxLZ4Compressor compressor;
 
   valsize = VARSIZE_ANY_EXHDR(value);
@@ -81,26 +106,25 @@ static std::pair<char *, size_t> pax_lz4_compress_datum_without_hdr(
   // that will be needed for varlena overhead, and allocate that amount.
   max_size = compressor.GetCompressBound(valsize);
 
-  tmp = PAX_NEW_ARRAY<char>(max_size);
-  len = compressor.Compress(tmp, max_size, VARDATA_ANY(value), valsize,
+  ByteBuffer buffer(max_size);
+  len = compressor.Compress(buffer.Addr(), max_size, VARDATA_ANY(value), valsize,
                             0 /* level has no effect*/);
   if (compressor.IsError(len) || len > valsize) {
-    PAX_DELETE(tmp);
-    return std::make_pair(nullptr, 0);
+    return ByteBuffer();
   }
-
-  return std::make_pair(tmp, len);
+  buffer.SetSize(len);
+  return buffer;
 #endif
 }
 
-static struct varlena *pax_lz4_compress_datum(const struct varlena *value) {
+static ByteBuffer pax_lz4_compress_datum(const struct varlena *value) {
 #ifndef USE_LZ4
   CBDB_RAISE(cbdb::CException::kExTypeToastNoLZ4Support);
 #else
   int32 valsize;
   int32 len;
   int32 max_size;
-  struct varlena *tmp = nullptr;
+  void *tmp;
   PaxLZ4Compressor compressor;
 
   valsize = VARSIZE_ANY_EXHDR(value);
@@ -108,8 +132,8 @@ static struct varlena *pax_lz4_compress_datum(const struct varlena *value) {
   // that will be needed for varlena overhead, and allocate that amount.
   max_size = compressor.GetCompressBound(valsize);
 
-  tmp = (struct varlena *)PAX_NEW_ARRAY<char>(max_size + VARHDRSZ_COMPRESSED);
-
+  ByteBuffer buffer(max_size + VARHDRSZ_COMPRESSED);
+  tmp = buffer.Addr();
   len = compressor.Compress((char *)tmp + VARHDRSZ_COMPRESSED, max_size,
                             VARDATA_ANY(value), valsize,
                             0 /* level has no effect*/);
@@ -117,19 +141,21 @@ static struct varlena *pax_lz4_compress_datum(const struct varlena *value) {
   // Should allow current datum compress failed
   // data is incompressible so just free the memory and return NULL
   if (compressor.IsError(len) || len > valsize) {
-    PAX_DELETE(tmp);
-    return nullptr;
+    return ByteBuffer();
   }
 
+  buffer.SetSize(len + VARHDRSZ_COMPRESSED);
   SET_VARSIZE_COMPRESSED(tmp, len + VARHDRSZ_COMPRESSED);
 
-  return tmp;
+  return buffer;
 #endif
 }
 
-static Datum pax_make_compressed_toast(
+static ByteBuffer pax_make_compressed_toast(
     Datum value, char cmethod = InvalidCompressionMethod) {
-  if (!VARATT_CAN_MAKE_PAX_COMPRESSED_TOAST(value)) return value;
+  if (!VARATT_CAN_MAKE_PAX_COMPRESSED_TOAST(value)) return ByteBuffer();
+
+  ByteBuffer buffer;
   struct varlena *tmp = nullptr;
   uint32 valsize;
   ToastCompressionId cmid = TOAST_INVALID_COMPRESSION_ID;
@@ -147,11 +173,11 @@ static Datum pax_make_compressed_toast(
   // Call appropriate compression routine for the compression method.
   switch (cmethod) {
     case TOAST_PGLZ_COMPRESSION:
-      tmp = pax_pglz_compress_datum((const struct varlena *)value);
+      buffer = pax_pglz_compress_datum((const struct varlena *)value);
       cmid = TOAST_PGLZ_COMPRESSION_ID;
       break;
     case TOAST_LZ4_COMPRESSION:
-      tmp = pax_lz4_compress_datum((const struct varlena *)value);
+      buffer = pax_lz4_compress_datum((const struct varlena *)value);
       cmid = TOAST_LZ4_COMPRESSION_ID;
       break;
     default:
@@ -159,7 +185,7 @@ static Datum pax_make_compressed_toast(
                  fmt("Invalid toast compress method [cmethod=%c]", cmethod));
   }
 
-  if (tmp == nullptr) return PointerGetDatum(nullptr);
+  if (buffer.Empty()) return ByteBuffer();
 
   // We recheck the actual size even if compression reports success, because
   // it might be satisfied with having saved as little as one byte in the
@@ -169,24 +195,23 @@ static Datum pax_make_compressed_toast(
   // VARSIZE(tmp)), whereas the uncompressed format would take only one
   // header byte and no padding if the value is short enough.  So we insist
   // on a savings of more than 2 bytes to ensure we have a gain.
+  tmp = reinterpret_cast<struct varlena*>(buffer.Addr());
   if (VARSIZE(tmp) < valsize - 2) {
     // successful compression
     Assert(cmid != TOAST_INVALID_COMPRESSION_ID);
     TOAST_COMPRESS_SET_SIZE_AND_COMPRESS_METHOD(tmp, valsize, cmid);
-    return PointerGetDatum(tmp);
+    return buffer;
   } else {
     // incompressible data
-    PAX_DELETE(tmp);
-    return PointerGetDatum(nullptr);
+    return ByteBuffer();
   }
 }
 
-static std::tuple<char *, size_t, ToastCompressionId> pax_do_compressed_raw(
+static std::pair<ByteBuffer, ToastCompressionId> pax_do_compressed_raw(
     Datum value, char cmethod) {
   ToastCompressionId cmid = TOAST_INVALID_COMPRESSION_ID;
+  ByteBuffer buffer;
   int32 valsize;
-  char *tmp = nullptr;
-  size_t tmp_len = 0;
 
   valsize = VARSIZE_ANY_EXHDR(DatumGetPointer(value));
 
@@ -199,12 +224,12 @@ static std::tuple<char *, size_t, ToastCompressionId> pax_do_compressed_raw(
   // should allow no compress here
   switch (cmethod) {
     case TOAST_PGLZ_COMPRESSION:
-      std::tie(tmp, tmp_len) =
+      buffer =
           pax_pglz_compress_datum_without_hdr((const struct varlena *)value);
       cmid = TOAST_PGLZ_COMPRESSION_ID;
       break;
     case TOAST_LZ4_COMPRESSION:
-      std::tie(tmp, tmp_len) =
+      buffer =
           pax_lz4_compress_datum_without_hdr((const struct varlena *)value);
       cmid = TOAST_LZ4_COMPRESSION_ID;
       break;
@@ -213,30 +238,29 @@ static std::tuple<char *, size_t, ToastCompressionId> pax_do_compressed_raw(
   }
 
   // compress failed
-  if (tmp == nullptr) {
+  if (buffer.Empty()) {
     goto no_compress;
   }
 
-  if (tmp_len >= (uint32)(valsize)-2) {
+  if (buffer.Size() >= (uint32)(valsize)-2) {
     // incompressible data
-    PAX_DELETE(tmp);
     goto no_compress;
   }
 
   Assert(cmid != TOAST_INVALID_COMPRESSION_ID);
-  return std::make_tuple(tmp, tmp_len, cmid);
+  return std::pair<ByteBuffer, ToastCompressionId>{std::move(buffer), cmid};
+
 no_compress:
-  return std::make_tuple(nullptr, 0, TOAST_INVALID_COMPRESSION_ID);
+  return std::pair<ByteBuffer, ToastCompressionId>{ByteBuffer(), TOAST_INVALID_COMPRESSION_ID};
 }
 
-static Datum pax_make_external_toast(Datum value,
-                                     char cmethod = InvalidCompressionMethod,
-                                     bool need_compress = true) {
-  char *tmp = nullptr;
-  size_t tmp_len = 0;
+static std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_external_toast(Datum value,
+                                     bool need_compress) {
   ToastCompressionId cmid = TOAST_INVALID_COMPRESSION_ID;
   pax_varatt_external_ref *varatt_ref;
+  ByteBuffer buffer;
   int32 valsize;
+  char cmethod = InvalidCompressionMethod;
 
   Assert(!VARATT_IS_EXTERNAL(DatumGetPointer(value)));
   Assert(!VARATT_IS_COMPRESSED(DatumGetPointer(value)));
@@ -244,67 +268,41 @@ static Datum pax_make_external_toast(Datum value,
   valsize = VARSIZE_ANY_EXHDR(DatumGetPointer(value));
 
   if (!VARATT_CAN_MAKE_PAX_COMPRESSED_TOAST(value))
-    return PointerGetDatum(nullptr);
+    return {PointerGetDatum(nullptr), nullptr};
 
   if (need_compress) {
-    std::tie(tmp, tmp_len, cmid) = pax_do_compressed_raw(value, cmethod);
+    std::tie(buffer, cmid) = pax_do_compressed_raw(value, cmethod);
   }
 
-  AssertImply(tmp, cmid != TOAST_INVALID_COMPRESSION_ID);
-  AssertImply(!tmp, cmid == TOAST_INVALID_COMPRESSION_ID);
+  AssertImply(!buffer.Empty(), cmid != TOAST_INVALID_COMPRESSION_ID);
+  AssertImply(buffer.Empty(), cmid == TOAST_INVALID_COMPRESSION_ID);
 
-  varatt_ref = PAX_NEW<pax_varatt_external_ref>();
+  auto obj_ref = std::make_shared<pax_varatt_external_ref>();
+  varatt_ref = obj_ref.get();
   PAX_EXTERNAL_TOAST_SET_SIZE_AND_COMPRESS_METHOD(
       varatt_ref, valsize,
-      (cmid != TOAST_INVALID_COMPRESSION_ID) ? tmp_len
+      (cmid != TOAST_INVALID_COMPRESSION_ID) ? buffer.Size()
                                              : VARSIZE_ANY_EXHDR(value),
       cmid);
 
   if (cmid != TOAST_INVALID_COMPRESSION_ID) {
-    varatt_ref->data_ref = tmp;
-    varatt_ref->data_size = tmp_len;
+    varatt_ref->data_ref = reinterpret_cast<char *>(buffer.Addr());
+    varatt_ref->data_size = buffer.Size();
   } else {
     varatt_ref->data_ref = VARDATA_ANY(value);
     varatt_ref->data_size = VARSIZE_ANY_EXHDR(value);
   }
 
   SET_VARTAG_EXTERNAL(varatt_ref, VARTAG_CUSTOM);
-  return PointerGetDatum(varatt_ref);
+  return {PointerGetDatum(varatt_ref), std::make_shared<ExternalToastData>(obj_ref, std::move(buffer))};
 }
 
-static void pax_free_compress_toast(Datum d) {
-  Assert(VARATT_IS_COMPRESSED(d));
-  auto ref = DatumGetPointer(d);
-  PAX_DELETE(ref);
-}
+std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_toast(Datum d, char storage_type) {
+  std::shared_ptr<MemoryObject> mobj;
+  Datum datum = d;
 
-static void pax_free_external_toast(Datum d) {
-  Assert(VARATT_IS_PAX_EXTERNAL_TOAST(d));
-  auto ref = PaxExtRefGetDatum(d);
-  // If current external toast not the compress toast
-  // then we should never free it
-  if (PAX_VARATT_EXTERNAL_CMID(ref) != TOAST_INVALID_COMPRESSION_ID) {
-    PAX_DELETE(ref->data_ref);
-  }
-  PAX_DELETE(ref);
-}
-
-void pax_free_toast(Datum d) {
-  if (!d) {
-    return;
-  }
-
-  if (VARATT_IS_PAX_EXTERNAL_TOAST(d)) {
-    pax_free_external_toast(d);
-  } else if (VARATT_IS_COMPRESSED(d)) {
-    pax_free_compress_toast(d);
-  }
-}
-
-Datum pax_make_toast(Datum d, char storage_type) {
-  Datum result = PointerGetDatum(nullptr);
   if (!pax_enable_toast) {
-    return false;
+    return {0, nullptr};
   }
 
   switch (storage_type) {
@@ -315,23 +313,26 @@ Datum pax_make_toast(Datum d, char storage_type) {
     case TYPSTORAGE_EXTENDED: {
       if (VARATT_CAN_MAKE_PAX_COMPRESSED_TOAST(d) &&
           !VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST(d)) {
-        result = pax_make_compressed_toast(PointerGetDatum(d));
+        auto buffer = pax_make_compressed_toast(PointerGetDatum(d));
+        datum = PointerGetDatum(buffer.Addr());
+        mobj = std::make_shared<ExternalToastValue>(std::move(buffer));
       } else if (VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST(d)) {
-        result = pax_make_external_toast(PointerGetDatum(d));
+        std::tie(datum, mobj) = pax_make_external_toast(PointerGetDatum(d), true);
       }
       break;
     }
     case TYPSTORAGE_EXTERNAL: {
       if (VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST(d)) {
         // should not make compress toast here
-        result = pax_make_external_toast(PointerGetDatum(d),
-                                         InvalidCompressionMethod, false);
+        std::tie(datum, mobj) = pax_make_external_toast(PointerGetDatum(d), false);
       }
       break;
     }
     case TYPSTORAGE_MAIN: {
       if (VARATT_CAN_MAKE_PAX_COMPRESSED_TOAST(d)) {
-        result = pax_make_compressed_toast(PointerGetDatum(d));
+        auto buffer = pax_make_compressed_toast(PointerGetDatum(d));
+        datum = PointerGetDatum(buffer.Addr());
+        mobj = std::make_shared<ExternalToastValue>(std::move(buffer));
       }
 
       break;
@@ -341,7 +342,7 @@ Datum pax_make_toast(Datum d, char storage_type) {
     }
   }
 
-  return result;
+  return {datum, mobj};
 }
 
 size_t pax_toast_raw_size(Datum d) {
@@ -464,12 +465,15 @@ size_t pax_detoast_raw(Datum d, char *dst_buff, size_t dst_cap, char *ext_buff,
   return decompress_size;
 }
 
-Datum pax_detoast(Datum d, char *ext_buff, size_t ext_buff_size) {
+std::pair<Datum, std::shared_ptr<MemoryObject>> pax_detoast(Datum d, char *ext_buff, size_t ext_buff_size) {
+  std::shared_ptr<ExternalToastValue> value;
+
   if (VARATT_IS_COMPRESSED(d)) {
     char *result;
     size_t raw_size = VARDATA_COMPRESSED_GET_EXTSIZE(d);
-    // allocate memory for the uncompressed data
-    result = PAX_NEW_ARRAY<char>(raw_size + VARHDRSZ);
+
+    value = std::make_shared<ExternalToastValue>(raw_size + VARHDRSZ);
+    result = reinterpret_cast<char *>(value->Addr());
     // only external toast exist invalid compress toast
     Assert((ToastCompressionId)(TOAST_COMPRESS_METHOD(d)) !=
            TOAST_INVALID_COMPRESSION_ID);
@@ -479,7 +483,8 @@ Datum pax_detoast(Datum d, char *ext_buff, size_t ext_buff_size) {
     Assert(decompress_size == raw_size);
 
     SET_VARSIZE(result, raw_size + VARHDRSZ);
-    return PointerGetDatum(result);
+
+    return std::pair<Datum, std::shared_ptr<MemoryObject>>{PointerGetDatum(result), value};
   } else if (VARATT_IS_PAX_EXTERNAL_TOAST(d)) {
     char *result;
     Assert(ext_buff);
@@ -494,19 +499,23 @@ Datum pax_detoast(Datum d, char *ext_buff, size_t ext_buff_size) {
                    "buff size=%lu]",
                    offset, raw_size, ext_buff_size));
 
-    // allocate memory for the uncompressed data
-    result = PAX_NEW_ARRAY<char>(origin_size + VARHDRSZ);
+    value = std::make_shared<ExternalToastValue>(origin_size + VARHDRSZ);
 
+    result = reinterpret_cast<char *>(value->Addr());
     auto pg_attribute_unused() decompress_size =
         pax_decompress_buffer(PAX_VARATT_EXTERNAL_CMID(d), result + VARHDRSZ,
                               origin_size, ext_buff + offset, raw_size);
 
     Assert(decompress_size == origin_size);
     SET_VARSIZE(result, origin_size + VARHDRSZ);
-    return PointerGetDatum(result);
+    return std::pair<Datum, std::shared_ptr<MemoryObject>>{PointerGetDatum(result), value};
   }
 
-  return d;
+  return std::pair<Datum, std::shared_ptr<MemoryObject>>{d, nullptr};
 }
 
+ExternalToastValue::ExternalToastValue(size_t size)
+  : buffer_(ByteBuffer(size, size)) { }
+ExternalToastValue::ExternalToastValue(ByteBuffer &&buffer)
+  : buffer_(std::move(buffer)) { }
 }  // namespace pax

@@ -47,7 +47,7 @@ void VarlenaToRawBuffer(char *buffer, size_t buffer_len, char **out_data,
   *out_data = VARDATA_ANY(vl);
 }
 
-void CopyBitmapBuffer(PaxColumn *column,
+void CopyBitmapBuffer(std::shared_ptr<PaxColumn> column,
                       std::shared_ptr<Bitmap8> visibility_map_bitset,
                       size_t bitset_index_begin, size_t range_begin,
                       size_t range_lens, size_t data_range_lens,
@@ -58,20 +58,18 @@ void CopyBitmapBuffer(PaxColumn *column,
       // null length depends on `range_lens`
       auto null_align_bytes =
           TYPEALIGN(MEMORY_ALIGN_SIZE, BITS_TO_BYTES(range_lens));
-      Bitmap8 *bitmap = nullptr;
       Assert(!null_bits_buffer->GetBuffer());
       null_bits_buffer->Set(BlockBuffer::Alloc<char *>(null_align_bytes),
                             null_align_bytes);
-      bitmap = column->GetBitmap();
+      auto bitmap = column->GetBitmap();
       Assert(bitmap);
-      CopyBitmap(bitmap, range_begin, range_lens, null_bits_buffer);
+      CopyBitmap(bitmap.get(), range_begin, range_lens, null_bits_buffer);
       *out_visable_null_counts = range_lens - data_range_lens;
     } else {
-      Bitmap8 *bitmap = nullptr;
-      bitmap = column->GetBitmap();
+      auto bitmap = column->GetBitmap();
       Assert(bitmap);
 
-      Bitmap8 *null_bitmap = PAX_NEW<Bitmap8>(out_range_lens);
+      Bitmap8 null_bitmap(out_range_lens);
       size_t null_count = 0;
       size_t null_index = 0;
       for (size_t i = range_begin; i < range_begin + range_lens; i++) {
@@ -84,7 +82,7 @@ void CopyBitmapBuffer(PaxColumn *column,
             null_count++;
           } else {
             // not null
-            null_bitmap->Set(null_index);
+            null_bitmap.Set(null_index);
           }
           null_index++;
         }
@@ -95,14 +93,13 @@ void CopyBitmapBuffer(PaxColumn *column,
       Assert(!null_bits_buffer->GetBuffer());
       null_bits_buffer->Set(BlockBuffer::Alloc0<char *>(null_bytes),
                             null_bytes);
-      CopyBitmap(null_bitmap, 0, out_range_lens, null_bits_buffer);
+      CopyBitmap(&null_bitmap, 0, out_range_lens, null_bits_buffer);
       *out_visable_null_counts = null_count;
       CBDB_CHECK(out_range_lens == null_index,
                  cbdb::CException::ExType::kExTypeOutOfRange,
                  fmt("The required range len not match the null counts [range "
                      "len=%lu, null count=%lu]",
                      out_range_lens, null_index));
-      PAX_DELETE(null_bitmap);
     }
   }
 }

@@ -2,9 +2,11 @@
 
 set(pax_comm_src
     comm/bitmap.cc
+    comm/byte_buffer.cc
     comm/guc.cc
     comm/paxc_wrappers.cc
     comm/pax_memory.cc
+    comm/pax_resource.cc
     comm/cbdb_wrappers.cc
     comm/vec_numeric.cc)
 
@@ -32,7 +34,6 @@ set(pax_storage_src
     storage/oper/pax_oper.cc
     storage/oper/pax_stats.cc
     storage/file_system.cc
-    storage/file_system_helper.cc
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc

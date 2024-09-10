@@ -11,11 +11,11 @@ class OrcDumpReader;
 }
 class OrcFormatReader final {
  public:
-  explicit OrcFormatReader(File *file, File *toast_file = nullptr);
+  explicit OrcFormatReader(std::shared_ptr<File> file, std::shared_ptr<File> toast_file = nullptr);
 
   ~OrcFormatReader();
 
-  void SetReusedBuffer(DataBuffer<char> *data_buffer);
+  void SetReusedBuffer(std::shared_ptr<DataBuffer<char>> data_buffer);
 
   void Open();
 
@@ -27,22 +27,21 @@ class OrcFormatReader final {
 
   size_t GetStripeOffset(size_t stripe_index);
 
-  PaxColumns *ReadStripe(size_t group_index, bool *proj_map = nullptr,
-                         size_t proj_len = 0);
+  std::unique_ptr<PaxColumns> ReadStripe(size_t group_index, const std::vector<bool> &proj_cols);
 
  private:
   pax::porc::proto::StripeFooter ReadStripeWithProjection(
-      DataBuffer<char> *data_buffer,
+      std::shared_ptr<DataBuffer<char>> data_buffer,
       const ::pax::porc::proto::StripeInformation &stripe_info,
-      const bool *proj_map, size_t proj_len, size_t group_index);
+      const std::vector<bool> &proj_cols, size_t group_index);
 
-  pax::porc::proto::StripeFooter ReadStripeFooter(DataBuffer<char> *data_buffer,
+  pax::porc::proto::StripeFooter ReadStripeFooter(std::shared_ptr<DataBuffer<char>> data_buffer,
                                                   size_t sf_length,
                                                   off64_t sf_offset,
                                                   size_t sf_data_len,
                                                   size_t group_index);
 
-  pax::porc::proto::StripeFooter ReadStripeFooter(DataBuffer<char> *data_buffer,
+  pax::porc::proto::StripeFooter ReadStripeFooter(std::shared_ptr<DataBuffer<char>> data_buffer,
                                                   size_t stripe_index);
 
   void BuildProtoTypes();
@@ -52,9 +51,9 @@ class OrcFormatReader final {
   friend class OrcGroupStatsProvider;
   std::vector<pax::porc::proto::Type_Kind> column_types_;
   std::vector<std::map<std::string, std::string>> column_attrs_;
-  File *file_;
-  File *toast_file_;
-  DataBuffer<char> *reused_buffer_;
+  std::shared_ptr<File> file_;
+  std::shared_ptr<File> toast_file_;
+  std::shared_ptr<DataBuffer<char>> reused_buffer_;
   size_t num_of_stripes_;
   bool is_vec_;
 

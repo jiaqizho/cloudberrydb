@@ -55,28 +55,24 @@ class OrcGroupStatsProvider final : public ColumnStatsProvider {
   size_t group_index_;
 };
 
-OrcReader::OrcReader(File *file, File *toast_file)
+OrcReader::OrcReader(std::shared_ptr<File> file, std::shared_ptr<File> toast_file)
     : working_group_(nullptr),
       cached_group_(nullptr),
       current_group_index_(0),
-      proj_map_(nullptr),
-      proj_len_(0),
-      proj_column_index_(nullptr),
       format_reader_(file, toast_file),
       is_closed_(true) {}
 
 std::unique_ptr<ColumnStatsProvider> OrcReader::GetGroupStatsInfo(
     size_t group_index) {
-  auto x = PAX_NEW<OrcGroupStatsProvider>(format_reader_, group_index);
-  return std::unique_ptr<ColumnStatsProvider>(x);
+  return std::make_unique<OrcGroupStatsProvider>(format_reader_, group_index);
 }
 
-MicroPartitionReader::Group *OrcReader::ReadGroup(size_t group_index) {
-  PaxColumns *pax_columns = nullptr;
+std::unique_ptr<MicroPartitionReader::Group> OrcReader::ReadGroup(size_t group_index) {
+  std::unique_ptr<PaxColumns> pax_columns;
 
   Assert(group_index < GetGroupNums());
 
-  pax_columns = format_reader_.ReadStripe(group_index, proj_map_, proj_len_);
+  pax_columns = format_reader_.ReadStripe(group_index, filter_ ? filter_->GetColumnProjection() : std::vector<bool>{});
 
 #ifdef ENABLE_DEBUG
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
@@ -93,12 +89,13 @@ MicroPartitionReader::Group *OrcReader::ReadGroup(size_t group_index) {
   }
 #endif  // ENABLE_DEBUG
 
-  MicroPartitionReader::Group *group;
+  std::unique_ptr<MicroPartitionReader::Group> group;
   size_t group_offset = format_reader_.GetStripeOffset(group_index);
+  const std::vector<int> *proj_column_index = filter_ ? &filter_->GetColumnProjectionIndex() : nullptr;
   if (COLUMN_STORAGE_FORMAT_IS_VEC(pax_columns))
-    group = PAX_NEW<OrcVecGroup>(pax_columns, group_offset, proj_column_index_);
+    group = std::make_unique<OrcVecGroup>(std::move(pax_columns), group_offset, proj_column_index);
   else
-    group = PAX_NEW<OrcGroup>(pax_columns, group_offset, proj_column_index_);
+    group = std::make_unique<OrcGroup>(std::move(pax_columns), group_offset, proj_column_index);
 
   group->SetVisibilityMap(visibility_bitmap_);
   return group;
@@ -121,10 +118,7 @@ void OrcReader::Open(const ReaderOptions &options) {
     format_reader_.SetReusedBuffer(options.reused_buffer);
   }
 
-  if (options.filter) {
-    std::tie(proj_map_, proj_len_) = options.filter->GetColumnProjection();
-    SetProjColumnIndex(options.filter->GetColumnProjectionIndex());
-  }
+  filter_ = options.filter;
 
   format_reader_.Open();
   is_closed_ = false;
@@ -134,10 +128,8 @@ void OrcReader::Open(const ReaderOptions &options) {
 }
 
 void OrcReader::ResetCurrentReading() {
-  PAX_DELETE(working_group_);
   working_group_ = nullptr;
 
-  PAX_DELETE(cached_group_);
   cached_group_ = nullptr;
 
   current_group_index_ = 0;
@@ -179,7 +171,6 @@ retry_read_group:
 
   std::tie(ok, group_row_offset) = working_group_->ReadTuple(slot);
   if (!ok) {
-    PAX_DELETE(working_group_);
     working_group_ = nullptr;
     goto retry_read_group;
   }
@@ -228,7 +219,6 @@ bool OrcReader::GetTuple(TupleTableSlot *slot, size_t row_index) {
 
   // group_offset have been inited in loop
   // and must not in cached_group_
-  PAX_DELETE(cached_group_);
   cached_group_ = ReadGroup(group_index);
 
 found:

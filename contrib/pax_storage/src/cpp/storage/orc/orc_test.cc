@@ -33,8 +33,8 @@ class OrcTest : public ::testing::Test {
     ReleaseTestResourceOwner();
   }
 
-  static void VerifySingleStripe(PaxColumns *columns,
-                                 const bool *const proj_map = nullptr) {
+  static void VerifySingleStripe(std::shared_ptr<PaxColumns> columns,
+                                 const std::vector<bool> &proj_map=std::vector<bool>()) {
     char column_buff[COLUMN_SIZE];
     struct varlena *vl = nullptr;
     struct varlena *tunpacked = nullptr;
@@ -45,8 +45,8 @@ class OrcTest : public ::testing::Test {
 
     EXPECT_EQ(static_cast<size_t>(COLUMN_NUMS), columns->GetColumns());
 
-    if (!proj_map || proj_map[0]) {
-      auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
+    if (proj_map.empty() || proj_map[0]) {
+      auto column1 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[0]);
       EXPECT_EQ(1UL, column1->GetNonNullRows());
       char *column1_buffer = column1->GetBuffer(0).first;
       EXPECT_EQ(
@@ -64,8 +64,8 @@ class OrcTest : public ::testing::Test {
       EXPECT_EQ(read_data, column1_buffer + VARHDRSZ);
     }
 
-    if (!proj_map || proj_map[1]) {
-      auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[1]);
+    if (proj_map.empty() || proj_map[1]) {
+      auto column2 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[1]);
       char *column2_buffer = column2->GetBuffer(0).first;
       EXPECT_EQ(1UL, column2->GetNonNullRows());
       EXPECT_EQ(
@@ -80,8 +80,8 @@ class OrcTest : public ::testing::Test {
       EXPECT_EQ(read_data, column2_buffer + VARHDRSZ);
     }
 
-    if (!proj_map || proj_map[2]) {
-      auto column3 = reinterpret_cast<PaxCommColumn<int32> *>((*columns)[2]);
+    if (proj_map.empty() || proj_map[2]) {
+      auto column3 = std::static_pointer_cast<PaxCommColumn<int32>>((*columns)[2]);
       std::tie(read_data, read_len) = column3->GetBuffer();
       EXPECT_EQ(4, read_len);
       EXPECT_EQ(INT32_COLUMN_VALUE, *(int32 *)read_data);
@@ -128,7 +128,6 @@ TEST_F(OrcTest, WriteTuple) {
   writer->Close();
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
 }
 
 TEST_F(OrcTest, OpenOrc) {
@@ -157,7 +156,6 @@ TEST_F(OrcTest, OpenOrc) {
   reader->Close();
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
   delete reader;
 }
 
@@ -195,8 +193,6 @@ TEST_F(OrcTest, WriteReadStripes) {
   reader->Close();
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete group;
-  delete writer;
   delete reader;
 }
 
@@ -233,8 +229,8 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   GenTextBuffer(column_buff, COLUMN_SIZE);
 
   EXPECT_EQ(static_cast<size_t>(COLUMN_NUMS), columns->GetColumns());
-  auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
-  auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[1]);
+  auto column1 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[0]);
+  auto column2 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[1]);
 
   EXPECT_EQ(2UL, column1->GetNonNullRows());
   EXPECT_EQ(0, std::memcmp(column1->GetBuffer(0).first + VARHDRSZ, column_buff,
@@ -248,8 +244,6 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
                            COLUMN_SIZE));
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete group;
-  delete writer;
   delete reader;
 }
 
@@ -288,11 +282,41 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
   OrcTest::VerifySingleStripe(columns2);
   reader->Close();
 
-  delete group1;
-  delete group2;
-
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
+  delete reader;
+}
+
+TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
+  TupleTableSlot *tuple_slot = CreateTestTupleTableSlot();
+  auto local_fs = Singleton<LocalFileSystem>::GetInstance();
+  ASSERT_NE(nullptr, local_fs);
+
+  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  EXPECT_NE(nullptr, file_ptr);
+
+  MicroPartitionWriter::WriterOptions writer_options;
+  writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
+
+  auto writer = OrcWriter::CreateWriter(
+      writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
+  writer->WriteTuple(tuple_slot);
+  writer->Flush();
+
+  // close without any data
+  writer->Close();
+
+  file_ptr = local_fs->Open(file_name_, fs::kReadMode);
+
+  MicroPartitionReader::ReaderOptions reader_options;
+  auto reader = new OrcReader(file_ptr);
+  reader->Open(reader_options);
+
+  EXPECT_EQ(1UL, reader->GetGroupNums());
+  auto group = reader->ReadGroup(0);
+  auto columns = group->GetAllColumns();
+  OrcTest::VerifySingleStripe(columns);
+  reader->Close();
+
   delete reader;
 }
 
@@ -322,7 +346,6 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   EXPECT_EQ(0UL, reader->GetGroupNums());
   reader->Close();
 
-  delete writer;
   delete reader;
 }
 
@@ -356,7 +379,6 @@ TEST_F(OrcTest, ReadTuple) {
 
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
   delete reader;
 }
 
@@ -414,7 +436,6 @@ TEST_F(OrcTest, GetTuple) {
 
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
   delete reader;
 }
 
@@ -615,15 +636,11 @@ TEST_F(OrcTest, WriteReadTupleWithToast) {
 
   toast_file_ptr = local_fs->Open(toast_file_name, fs::kReadMode);
   EXPECT_NE(nullptr, file_ptr);
-  bool *projection = PAX_NEW_ARRAY<bool>(TOAST_COLUMN_NUMS);
-  projection[0] = false;
-  projection[1] = true;
-  projection[2] = true;
-  projection[3] = true;
-  PaxFilter filter(false);
+  std::vector<bool> projection = {false, true, true, true};
+  std::shared_ptr<PaxFilter> filter = std::make_shared<PaxFilter>(false);
 
-  filter.SetColumnProjection(projection, TOAST_COLUMN_NUMS);
-  reader_options.filter = &filter;
+  filter->SetColumnProjection(std::move(projection));
+  reader_options.filter = filter;
   reader = new OrcReader(file_ptr, toast_file_ptr);
   reader->Open(reader_options);
   EXPECT_EQ(6UL, reader->GetGroupNums());
@@ -684,7 +701,6 @@ TEST_F(OrcTest, WriteReadTupleWithToast) {
 
   ExecDropSingleTupleTableSlot(tuple_slot_empty);
   ExecDropSingleTupleTableSlot(tuple_slot);
-  delete writer;
   delete reader;
 
   pax_min_size_of_compress_toast = origin_pax_min_size_of_compress_toast;
@@ -868,10 +884,10 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
 
   ASSERT_EQ(2UL, columns->GetColumns());
 
-  auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
+  auto column1 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[0]);
   ASSERT_EQ(1000UL, column1->GetNonNullRows());
 
-  auto column2 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[1]);
+  auto column2 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[1]);
   ASSERT_EQ(1000UL, column2->GetNonNullRows());
 
   for (size_t i = 0; i < 1000; i++) {
@@ -885,7 +901,6 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
   reader->Close();
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete group;
   delete writer;
   delete reader;
 }
@@ -906,7 +921,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   MicroPartitionWriter::WriterOptions writer_options;
   writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
 
-  auto *writer = OrcWriter::CreateWriter(
+  auto writer = OrcWriter::CreateWriter(
       writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
 
   writer->WriteTuple(tuple_slot);
@@ -947,7 +962,6 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
 
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
   delete reader;
 }
 
@@ -962,7 +976,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
   MicroPartitionWriter::WriterOptions writer_options;
   writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
 
-  auto *writer = OrcWriter::CreateWriter(
+  auto writer = OrcWriter::CreateWriter(
       writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
 
   writer->WriteTuple(tuple_slot);
@@ -983,7 +997,6 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
 
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
   delete reader;
 }
 
@@ -1021,7 +1034,6 @@ TEST_F(OrcTest, ReadTupleDroppedColumnWithProjection) {
 
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
   delete reader;
 }
 
@@ -1090,7 +1102,6 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   reader->Close();
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete writer;
   delete reader;
 }
 
@@ -1133,7 +1144,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   auto columns = group->GetAllColumns();
 
   EXPECT_EQ(static_cast<size_t>(COLUMN_NUMS), columns->GetColumns());
-  auto column1 = reinterpret_cast<PaxNonFixedColumn *>((*columns)[0]);
+  auto column1 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[0]);
 
   GenTextBuffer(column_buff_origin, COLUMN_SIZE);
 
@@ -1146,8 +1157,6 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   reader->Close();
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete group;
-  delete writer;
   delete reader;
 }
 
@@ -1162,7 +1171,7 @@ TEST_F(OrcTest, WriteReadWithNullField) {
   OrcWriter::WriterOptions writer_options;
   writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
 
-  auto *writer = OrcWriter::CreateWriter(
+  auto writer = OrcWriter::CreateWriter(
       writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
 
   // str str int
@@ -1226,7 +1235,6 @@ TEST_F(OrcTest, WriteReadWithNullField) {
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
   delete reader;
-  delete writer;
 }
 
 TEST_F(OrcTest, WriteReadWithBoundNullField) {
@@ -1240,7 +1248,7 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
   OrcWriter::WriterOptions writer_options;
   writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
 
-  auto *writer = OrcWriter::CreateWriter(
+  auto writer = OrcWriter::CreateWriter(
       writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
 
   // null null null
@@ -1293,7 +1301,6 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
   delete reader;
-  delete writer;
 }
 
 TEST_F(OrcTest, WriteReadWithALLNullField) {
@@ -1307,7 +1314,7 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   OrcWriter::WriterOptions writer_options;
   writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
 
-  auto *writer = OrcWriter::CreateWriter(
+  auto writer = OrcWriter::CreateWriter(
       writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
 
   tuple_slot->tts_isnull[0] = true;
@@ -1337,7 +1344,6 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   DeleteTestTupleTableSlot(tuple_slot_empty);
   DeleteTestTupleTableSlot(tuple_slot);
   delete reader;
-  delete writer;
 }
 
 TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
@@ -1346,15 +1352,12 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
   ASSERT_NE(nullptr, local_fs);
   size_t proj_index = ::testing::get<0>(GetParam());
   auto reversal = ::testing::get<1>(GetParam());
-  bool *proj_map;
-
-  proj_map = new bool[COLUMN_NUMS];
-  memset(proj_map, false, COLUMN_NUMS);
+  std::vector<bool> proj_map(COLUMN_NUMS, false);
 
   ASSERT_LE(proj_index, static_cast<size_t>(COLUMN_NUMS));
   ASSERT_GE(proj_index, 0UL);
   if (reversal) {
-    memset(proj_map, true, COLUMN_NUMS);
+    proj_map = std::vector<bool>(COLUMN_NUMS, true);
   }
 
   if (proj_index < COLUMN_NUMS) {
@@ -1378,8 +1381,8 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
 
   file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
-  auto pax_filter = new PaxFilter();
-  pax_filter->SetColumnProjection(proj_map, COLUMN_NUMS);
+  auto pax_filter = std::make_shared<PaxFilter>();
+  pax_filter->SetColumnProjection(std::vector<bool>(proj_map));
   MicroPartitionReader::ReaderOptions reader_options;
   reader_options.filter = pax_filter;
 
@@ -1399,11 +1402,7 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
   reader->Close();
 
   DeleteTestTupleTableSlot(tuple_slot);
-  delete group1;
-  delete group2;
 
-  delete pax_filter;
-  delete writer;
   delete reader;
 }
 
@@ -1537,7 +1536,7 @@ TEST_F(OrcTest, WriteException) {
   TupleTableSlot *tuple_slot = CreateTestTupleTableSlot();
 
   stub = new Stub();
-  auto create_test_writer = [&]() -> MicroPartitionWriter * {
+  auto create_test_writer = [&]() {
     OrcWriter::WriterOptions writer_options;
     auto local_fs = Singleton<LocalFileSystem>::GetInstance();
     local_fs->Delete(file_name_);
@@ -1572,7 +1571,6 @@ TEST_F(OrcTest, WriteException) {
 
   ASSERT_TRUE(get_exception);
   get_exception = false;
-  delete writer;
 
   // 2. check serialize FOOTER
   writer = create_test_writer();
@@ -1594,7 +1592,6 @@ TEST_F(OrcTest, WriteException) {
 
   ASSERT_TRUE(get_exception);
   get_exception = false;
-  delete writer;
 
   // 3. check serialize POSTSCRIPT
   writer = create_test_writer();
@@ -1616,7 +1613,6 @@ TEST_F(OrcTest, WriteException) {
 
   ASSERT_TRUE(get_exception);
   get_exception = false;
-  delete writer;
 
   delete stub;
   DeleteTestTupleTableSlot(tuple_slot);
@@ -1656,16 +1652,15 @@ TEST_F(OrcTest, ReadException) {
     writer->WriteTuple(tuple_slot);
   }
   writer->Close();
-  delete writer;
 
   DeleteTestTupleTableSlot(tuple_slot);
 
-  auto create_test_reader = [&]() -> MicroPartitionReader * {
+  auto create_test_reader = [&]() {
     auto local_fs = Singleton<LocalFileSystem>::GetInstance();
     ;
     auto file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
-    return new OrcReader(file_ptr);
+    return std::make_unique<OrcReader>(file_ptr);
   };
 
   stub = new Stub();
@@ -1691,7 +1686,6 @@ TEST_F(OrcTest, ReadException) {
   get_exception = false;
 
   stub->reset(ADDR(::google::protobuf::MessageLite, ParseFromArray));
-  delete reader;
 
   // 2. failed to parse FOOTER
   reader = create_test_reader();
@@ -1715,7 +1709,6 @@ TEST_F(OrcTest, ReadException) {
   get_exception = false;
 
   stub->reset(ADDR(::google::protobuf::MessageLite, ParseFromZeroCopyStream));
-  delete reader;
 
   // 3. failed to parse STRIPE FOOTER
   reader = create_test_reader();
@@ -1743,7 +1736,6 @@ TEST_F(OrcTest, ReadException) {
   get_exception = false;
 
   stub->reset(ADDR(::google::protobuf::MessageLite, ParseFromZeroCopyStream));
-  delete reader;
 
   delete stub;
   DeleteTestTupleTableSlot(tuple_slot_empty);

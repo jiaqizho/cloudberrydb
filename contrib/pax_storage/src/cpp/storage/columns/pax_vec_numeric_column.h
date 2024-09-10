@@ -24,7 +24,7 @@ class PaxShortNumericColumn final : public PaxVecEncodingColumn<int8> {
   std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
                                            size_t len) override;
 
-  DataBuffer<int8> *GetDataBuffer();
+  std::shared_ptr<DataBuffer<int8>> GetDataBuffer();
 
   int32 GetTypeLength() const override;
 

@@ -14,10 +14,10 @@
 #include "catalog/pg_pax_tables.h"
 #include "comm/guc.h"
 #include "comm/pax_memory.h"
+#include "comm/pax_resource.h"
 #include "comm/paxc_wrappers.h"
 #include "comm/vec_numeric.h"
 #include "exceptions/CException.h"
-#include "storage/file_system_helper.h"
 #include "storage/local_file_system.h"
 
 #define NOT_IMPLEMENTED_YET                        \
@@ -98,6 +98,8 @@ struct IndexFetchTableData *CCPaxAccessMethod::IndexFetchBegin(Relation rel) {
   {
     Assert(RELATION_IS_PAX(rel));
     auto desc = PAX_NEW<PaxIndexScanDesc>(rel);
+    pax::common::RememberResourceCallback(pax::ReleaseTopObject<PaxIndexScanDesc>,
+                                          PointerGetDatum(desc));
     return desc->ToBase();
   }
   CBDB_CATCH_DEFAULT();
@@ -110,6 +112,10 @@ void CCPaxAccessMethod::IndexFetchEnd(IndexFetchTableData *scan) {
   CBDB_TRY();
   {
     auto desc = PaxIndexScanDesc::FromBase(scan);
+    desc->Release();
+
+    pax::common::ForgetResourceCallback(pax::ReleaseTopObject<PaxIndexScanDesc>,
+                                        PointerGetDatum(desc));
     PAX_DELETE(desc);
   }
   CBDB_CATCH_DEFAULT();
@@ -332,6 +338,7 @@ bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
 void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
                                     CommandId cid, int options,
                                     BulkInsertState bistate) {
+
   CBDB_TRY();
   {
     MemoryContext old_ctx;
@@ -484,6 +491,7 @@ bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
 void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
                                     int ntuples, CommandId cid, int options,
                                     BulkInsertState bistate) {
+  
   CBDB_TRY();
   {
     MemoryContext old_ctx;
@@ -1580,8 +1588,9 @@ void _PG_init(void) {  // NOLINT
 
   paxc::DefineGUCs();
 
-  RegisterResourceReleaseCallback(paxc::FdHandleAbortCallback, NULL);
+  pax::common::InitResourceCallback();
 
   paxc::paxc_reg_rel_options();
+
 }
 }  // extern "C"

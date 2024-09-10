@@ -151,8 +151,6 @@ TEST_F(BitMapTest, Clone) {
     }
   }
 
-  PAX_DELETE<Bitmap8>(bm8_copy);
-
   Bitmap64 bm(1024);
 
   for (int i = 0; i < 1024; i++) {
@@ -173,8 +171,6 @@ TEST_F(BitMapTest, Clone) {
       ASSERT_TRUE(bm_copy->Test(i));
     }
   }
-
-  PAX_DELETE<Bitmap64>(bm_copy);
 }
 
 TEST_F(BitMapTest, Union) {

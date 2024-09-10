@@ -20,41 +20,28 @@ void CPaxDmlStateLocal::InitDmlState(Relation rel, CmdType operation) {
          Gp_interconnect_queue_depth);
   }
 
-  if (!dml_descriptor_tab_) {
-    HASHCTL hash_ctl;
-    Assert(!cbdb::pax_memory_context);
-
+  if (!cbdb::pax_memory_context) {
     cbdb::pax_memory_context = AllocSetContextCreate(
         CurrentMemoryContext, "Pax Storage", PAX_ALLOCSET_DEFAULT_SIZES);
 
     cbdb::MemoryCtxRegisterResetCallback(cbdb::pax_memory_context, &cb_);
-
-    memset(&hash_ctl, 0, sizeof(hash_ctl));
-    hash_ctl.keysize = sizeof(Oid);
-    hash_ctl.entrysize = sizeof(PaxDmlState);
-    hash_ctl.hcxt = cbdb::pax_memory_context;
-    dml_descriptor_tab_ = cbdb::HashCreate(
-        "Pax DML state", 128, &hash_ctl, HASH_CONTEXT | HASH_ELEM | HASH_BLOBS);
   }
 
-  EntryDmlState(cbdb::RelationGetRelationId(rel));
+  auto oid = cbdb::RelationGetRelationId(rel);
+  last_state_ = std::make_shared<DmlStateValue>();
+  last_oid_ = oid;
+  dml_descriptor_tab_[oid] = last_state_;
 }
 
 void CPaxDmlStateLocal::FinishDmlState(Relation rel, CmdType /*operation*/) {
-  PaxDmlState *state;
-  state = RemoveDmlState(cbdb::RelationGetRelationId(rel));
+  auto state = RemoveDmlState(cbdb::RelationGetRelationId(rel));
 
-  if (state == nullptr) {
-    return;
-  }
+  if (state == nullptr) return;
 
   if (state->deleter) {
-    // TODO(gongxun): deleter finish
     state->deleter->ExecDelete();
 
-    PAX_DELETE(state->deleter);
     state->deleter = nullptr;
-    // FIXME: it's update operation, maybe we should do something here
   }
 
   if (state->inserter) {
@@ -63,87 +50,66 @@ void CPaxDmlStateLocal::FinishDmlState(Relation rel, CmdType /*operation*/) {
 
     old_ctx = MemoryContextSwitchTo(cbdb::pax_memory_context);
     state->inserter->FinishInsert();
-    PAX_DELETE(state->inserter);
-    state->inserter = nullptr;
     MemoryContextSwitchTo(old_ctx);
+    state->inserter = nullptr;
   }
 }
 
-CPaxInserter *CPaxDmlStateLocal::GetInserter(Relation rel) {
-  PaxDmlState *state;
-  state = FindDmlState(cbdb::RelationGetRelationId(rel));
-  // TODO(gongxun): switch memory context??
+std::shared_ptr<CPaxInserter> CPaxDmlStateLocal::GetInserter(Relation rel) {
+  auto state = FindDmlState(cbdb::RelationGetRelationId(rel));
   if (state->inserter == nullptr) {
-    state->inserter = PAX_NEW<CPaxInserter>(rel);
+    state->inserter = std::make_shared<CPaxInserter>(rel);
   }
   return state->inserter;
 }
 
-CPaxDeleter *CPaxDmlStateLocal::GetDeleter(Relation rel, Snapshot snapshot,
+std::shared_ptr<CPaxDeleter> CPaxDmlStateLocal::GetDeleter(Relation rel, Snapshot snapshot,
                                            bool missing_null) {
-  PaxDmlState *state;
-  state = FindDmlState(cbdb::RelationGetRelationId(rel));
-  // TODO(gongxun): switch memory context??
+  auto state = FindDmlState(cbdb::RelationGetRelationId(rel));
   if (state->deleter == nullptr && !missing_null) {
-    state->deleter = PAX_NEW<CPaxDeleter>(rel, snapshot);
+    state->deleter = std::make_shared<CPaxDeleter>(rel, snapshot);
   }
   return state->deleter;
 }
 
 void CPaxDmlStateLocal::Reset() {
-  last_used_state_ = nullptr;
-  dml_descriptor_tab_ = nullptr;
   cbdb::pax_memory_context = nullptr;
 }
 
 CPaxDmlStateLocal::CPaxDmlStateLocal()
-    : last_used_state_(nullptr),
-      dml_descriptor_tab_(nullptr),
-      cb_{.func = DmlStateResetCallback, .arg = NULL} {}
+    : last_oid_(InvalidOid)
+    , cb_{.func = DmlStateResetCallback, .arg = NULL} {}
 
-PaxDmlState *CPaxDmlStateLocal::EntryDmlState(const Oid &oid) {
-  PaxDmlState *state;
-  bool found;
-  Assert(this->dml_descriptor_tab_);
+std::shared_ptr<CPaxDmlStateLocal::DmlStateValue> CPaxDmlStateLocal::RemoveDmlState(const Oid &oid) {
+  std::shared_ptr<CPaxDmlStateLocal::DmlStateValue> value;
 
-  state = reinterpret_cast<PaxDmlState *>(
-      cbdb::HashSearch(this->dml_descriptor_tab_, &oid, HASH_ENTER, &found));
-  state->inserter = nullptr;
-  state->deleter = nullptr;
-  Assert(!found);
+  auto it = dml_descriptor_tab_.find(oid);
+  if (it != dml_descriptor_tab_.end()) {
+    value = it->second;
+    dml_descriptor_tab_.erase(it);
 
-  this->last_used_state_ = state;
-  return state;
+    if (last_oid_ == oid) {
+      last_oid_ = InvalidOid;
+      last_state_ = nullptr;
+    }
+  }
+  return value;
 }
 
-PaxDmlState *CPaxDmlStateLocal::RemoveDmlState(const Oid &oid) {
-  Assert(this->dml_descriptor_tab_);
+std::shared_ptr<CPaxDmlStateLocal::DmlStateValue> CPaxDmlStateLocal::FindDmlState(const Oid &oid) {
+  Assert(OidIsValid(oid));
 
-  PaxDmlState *state;
-  state = reinterpret_cast<PaxDmlState *>(
-      cbdb::HashSearch(this->dml_descriptor_tab_, &oid, HASH_REMOVE, NULL));
+  if (this->last_oid_ == oid)
+    return last_state_;
 
-  if (!state) return NULL;
+  auto it = dml_descriptor_tab_.find(oid);
+  if (it != dml_descriptor_tab_.end()) {
+    last_oid_ = oid;
+    last_state_ = it->second;
+    return last_state_;
+  }
 
-  if (this->last_used_state_ && this->last_used_state_->oid == oid)
-    this->last_used_state_ = NULL;
-
-  return state;
-}
-
-PaxDmlState *CPaxDmlStateLocal::FindDmlState(const Oid &oid) {
-  Assert(this->dml_descriptor_tab_);
-
-  if (this->last_used_state_ && this->last_used_state_->oid == oid)
-    return last_used_state_;
-
-  PaxDmlState *state;
-  state = reinterpret_cast<PaxDmlState *>(
-      cbdb::HashSearch(this->dml_descriptor_tab_, &oid, HASH_FIND, NULL));
-  Assert(state);
-
-  this->last_used_state_ = state;
-  return state;
+  return nullptr;
 }
 
 }  // namespace pax

@@ -19,7 +19,7 @@ class PaxOrcDecoder final : public PaxDecoder {
 
   PaxDecoder *SetSrcBuffer(char *data, size_t data_len) override;
 
-  PaxDecoder *SetDataBuffer(DataBuffer<char> *result_buffer) override;
+  PaxDecoder *SetDataBuffer(std::shared_ptr<DataBuffer<char>> result_buffer) override;
 
   const char *GetBuffer() const override;
 
@@ -32,23 +32,23 @@ class PaxOrcDecoder final : public PaxDecoder {
   size_t Decoding(const char *not_null, size_t not_null_len) override;
 
  private:
-  uint64 NextShortRepeats(TreatedDataBuffer<int64> *data_buffer, T *data,
+  uint64 NextShortRepeats(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer, T *data,
                           uint64 offset, const char *not_null);
-  uint64 NextDirect(TreatedDataBuffer<int64> *data_buffer, T *data,
+  uint64 NextDirect(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer, T *data,
                     uint64 offset, const char *not_null);
-  uint64 NextPatched(TreatedDataBuffer<int64> *data_buffer, T *data,
+  uint64 NextPatched(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer, T *data,
                      uint64 offset, const char *not_null);
-  uint64 NextDelta(TreatedDataBuffer<int64> *data_buffer, T *data,
+  uint64 NextDelta(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer, T *data,
                    uint64 offset, const char *not_null);
 
  private:
-  TreatedDataBuffer<int64> *data_buffer_;
+  std::shared_ptr<TreatedDataBuffer<int64>> data_buffer_;
   // Used to fill null field
-  DataBuffer<int64> *copy_data_buffer_;
+  std::shared_ptr<DataBuffer<int64>> copy_data_buffer_;
   // Used by PATCHED_BASE
-  DataBuffer<int64> *unpacked_data_;
+  std::shared_ptr<DataBuffer<int64>> unpacked_data_;
   // result buffer
-  DataBuffer<char> *result_buffer_;
+  std::shared_ptr<DataBuffer<char>> result_buffer_;
 };
 
 extern template class PaxOrcDecoder<int64>;
@@ -60,6 +60,12 @@ extern template class PaxOrcDecoder<int8>;
 template <typename T>
 void ReadLongs(TreatedDataBuffer<int64> *data_buffer, T *data, uint64 offset,
                uint64 len, uint64 fbs, uint32 *bits_left);
+template <typename T>
+void ReadLongs(const std::shared_ptr<TreatedDataBuffer<int64>> &data_buffer, T *data, uint64 offset,
+               uint64 len, uint64 fbs, uint32 *bits_left) {
+    ReadLongs(data_buffer.get(), data, offset, len, fbs, bits_left);
+}
+                 
 #endif
 
 }  // namespace pax

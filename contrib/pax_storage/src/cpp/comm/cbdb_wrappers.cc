@@ -321,15 +321,16 @@ static bool paxc_extractcolumns_walker(  // NOLINT
     if (var->varattno < 0) {
       Assert(var->varattno > FirstLowInvalidHeapAttributeNumber);
       ec_ctx->system_attr_number_mask[~var->varattno] = true;
-    } else if (ec_ctx->cols) {
+    } else if (!ec_ctx->col_bits.empty()) {
+      auto natts = static_cast<int>(ec_ctx->col_bits.size());
       if (var->varattno == 0) {
         // If all attributes are included,
         // set all entries in mask to true.
-        for (int attno = 0; attno < ec_ctx->natts; attno++)
-          ec_ctx->cols[attno] = true;
+        for (int attno = 0; attno < natts; attno++)
+          ec_ctx->col_bits[attno] = true;
         ec_ctx->found = true;
-      } else if (var->varattno <= ec_ctx->natts) {
-        ec_ctx->cols[var->varattno - 1] = true;
+      } else if (var->varattno <= natts) {
+        ec_ctx->col_bits[var->varattno - 1] = true;
         ec_ctx->found = true;
       }
       // Still need fill `system_attr_number_mask`
@@ -358,9 +359,13 @@ bool cbdb::ExtractcolumnsFromNode(Node *expr,
   CBDB_WRAP_END;
 }
 
-bool cbdb::ExtractcolumnsFromNode(Node *expr, bool *cols, int natts) {
+bool cbdb::ExtractcolumnsFromNode(Node *expr, std::vector<bool> &col_bits) {
   CBDB_WRAP_START;
-  { return extractcolumns_from_node(expr, cols, natts); }
+  {
+    PaxcExtractcolumnContext ec_ctx(col_bits);
+    paxc_extractcolumns_walker(expr, &ec_ctx);
+    return ec_ctx.found;
+  }
   CBDB_WRAP_END;
 }
 

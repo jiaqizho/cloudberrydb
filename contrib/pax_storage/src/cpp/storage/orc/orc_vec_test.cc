@@ -112,7 +112,6 @@ TEST_F(OrcVecTest, WriteReadGroup) {
   writer->Close();
 
   DeleteTupleSlot(tuple_slot);
-  delete writer;
 
   MicroPartitionReader::ReaderOptions reader_options;
 
@@ -129,8 +128,8 @@ TEST_F(OrcVecTest, WriteReadGroup) {
 
   EXPECT_EQ(2UL, columns1->GetColumns());
 
-  auto column1 = (PaxVecNonFixedColumn *)(*columns1)[0];
-  auto column2 = (PaxVecCommColumn<int32> *)(*columns1)[1];
+  auto column1 = std::static_pointer_cast<PaxVecNonFixedColumn>((*columns1)[0]);
+  auto column2 = std::static_pointer_cast<PaxVecCommColumn<int32>>((*columns1)[1]);
 
   auto column1_data = column1->GetDataBuffer();
   auto column2_data = column2->GetDataBuffer();
@@ -172,8 +171,8 @@ TEST_F(OrcVecTest, WriteReadGroup) {
   auto group2 = reader->ReadGroup(1);
   auto columns2 = group2->GetAllColumns();
 
-  column1 = (PaxVecNonFixedColumn *)(*columns2)[0];
-  column2 = (PaxVecCommColumn<int32> *)(*columns2)[1];
+  column1 = std::static_pointer_cast<PaxVecNonFixedColumn>((*columns2)[0]);
+  column2 = std::static_pointer_cast<PaxVecCommColumn<int32>>((*columns2)[1]);
 
   column1_data = column1->GetDataBuffer();
   column2_data = column2->GetDataBuffer();
@@ -205,8 +204,6 @@ TEST_F(OrcVecTest, WriteReadGroup) {
 
   ASSERT_EQ((*column2_data)[0], 10000);
 
-  delete group1;
-  delete group2;
   delete reader;
 }
 
@@ -281,8 +278,8 @@ TEST_F(OrcVecTest, WriteReadGroupWithEncoding) {
 
   EXPECT_EQ(2UL, columns1->GetColumns());
 
-  auto column1 = (PaxVecNonFixedColumn *)(*columns1)[0];
-  auto column2 = (PaxVecCommColumn<int32> *)(*columns1)[1];
+  auto column1 = std::static_pointer_cast<PaxVecNonFixedColumn>((*columns1)[0]);
+  auto column2 = std::static_pointer_cast<PaxVecCommColumn<int32>>((*columns1)[1]);
 
   auto column1_data = column1->GetDataBuffer();
   auto column2_data = column2->GetDataBuffer();
@@ -324,8 +321,8 @@ TEST_F(OrcVecTest, WriteReadGroupWithEncoding) {
   auto group2 = reader->ReadGroup(1);
   auto columns2 = group2->GetAllColumns();
 
-  column1 = (PaxVecNonFixedColumn *)(*columns2)[0];
-  column2 = (PaxVecCommColumn<int32> *)(*columns2)[1];
+  column1 = std::static_pointer_cast<PaxVecNonFixedColumn>((*columns2)[0]);
+  column2 = std::static_pointer_cast<PaxVecCommColumn<int32>>((*columns2)[1]);
 
   column1_data = column1->GetDataBuffer();
   column2_data = column2->GetDataBuffer();
@@ -355,8 +352,6 @@ TEST_F(OrcVecTest, WriteReadGroupWithEncoding) {
 
   ASSERT_EQ((*column2_data)[0], 10000);
 
-  delete group1;
-  delete group2;
   delete reader;
 }
 

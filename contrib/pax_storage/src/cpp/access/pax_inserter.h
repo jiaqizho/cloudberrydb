@@ -29,8 +29,7 @@ class CPaxInserter {
   Relation rel_;
   uint32 insert_count_;
 
-  PartitionObject *part_obj_;
-  TableWriter *writer_;
+  std::unique_ptr<TableWriter> writer_;
 };  // class CPaxInserter
 
 }  // namespace pax
