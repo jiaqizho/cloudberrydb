@@ -8,6 +8,7 @@
 #include "catalog/pg_pax_tables.h"
 #include "comm/guc.h"
 #include "comm/pax_memory.h"
+#include "comm/pax_resource.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/micro_partition_iterator.h"
@@ -65,6 +66,58 @@ bool IndexUniqueCheck(Relation rel, ItemPointer tid, Snapshot snapshot,
 
 namespace pax {
 
+// select count(*) from p1; or select count(1) from p1
+// For the above query, any column could be returned,
+// to minimize the cost, we choose the column with smallest
+// type length, even if the column is dropped.
+static inline int ChooseCheapColumn(TupleDesc desc) {
+  int i;
+  int natts = desc->natts;
+
+  // dropped index
+  int drop_i = -1;
+
+  // fixed-length index and length
+  int fix_i = -1;
+  int fix_n = -1;
+
+  // byref index and length;
+  int var_i = -1;
+  int var_n = -1;
+
+  for (i = 0; i < natts; i++) {
+    auto att = TupleDescAttr(desc, i);
+    auto attlen = att->attlen;
+    if (attlen < 0) continue;
+
+    if (att->attisdropped) {
+      if (drop_i < 0)
+        drop_i = i;
+      continue;
+    }
+
+    if (att->attbyval) {
+      Assert((fix_i >= 0) == (fix_n > 0));
+
+      if (fix_i < 0 || fix_n > attlen) {
+        fix_i = i;
+        fix_n = attlen;
+      }
+    } else if (var_i < 0 || var_n > attlen) {
+      Assert((var_i >= 0) == (var_n > 0));
+      var_i = i;
+      var_n = attlen;
+    }
+  }
+
+  // return the smallest fixed-length column
+  if (fix_i >= 0) return fix_i;
+  if (var_i >= 0) return var_i;
+  if (drop_i >= 0) return drop_i;
+
+  return 0;
+}
+
 static inline bool CheckExists(Relation rel, ItemPointer tid, Snapshot snapshot,
                                bool *all_dead) {
   CBDB_WRAP_START;
@@ -80,12 +133,7 @@ PaxIndexScanDesc::PaxIndexScanDesc(Relation rel) : base_{.rel = rel} {
       cbdb::IsDfsTablespaceById(rel->rd_rel->reltablespace));
 }
 
-PaxIndexScanDesc::~PaxIndexScanDesc() {
-  if (reader_) {
-    reader_->Close();
-    PAX_DELETE(reader_);
-  }
-}
+PaxIndexScanDesc::~PaxIndexScanDesc() { }
 
 bool PaxIndexScanDesc::FetchTuple(ItemPointer tid, Snapshot snapshot,
                                   TupleTableSlot *slot, bool *call_again,
@@ -135,23 +183,29 @@ bool PaxIndexScanDesc::OpenMicroPartition(BlockNumber block,
     auto file_name = cbdb::BuildPaxFilePath(rel_path_, block_name);
     auto file = Singleton<LocalFileSystem>::GetInstance()->Open(file_name,
                                                                 fs::kReadMode);
-    auto reader = PAX_NEW<OrcReader>(file);
+    auto reader = std::make_unique<OrcReader>(file);
     reader->Open(options);
     if (reader_) {
       reader_->Close();
-      PAX_DELETE(reader_);
     }
-    reader_ = reader;
+    reader_ = std::move(reader);
     current_block_ = block;
   }
 
   return ok;
 }
 
+void PaxIndexScanDesc::Release() {
+  if (reader_) {
+    reader_->Close();
+    reader_ = nullptr;
+  }
+}
+
 bool PaxScanDesc::BitmapNextBlock(struct TBMIterateResult *tbmres) {
   cindex_ = 0;
   if (!index_desc_) {
-    index_desc_ = PAX_NEW<PaxIndexScanDesc>(rs_base_.rs_rd);
+    index_desc_ = std::make_unique<PaxIndexScanDesc>(rs_base_.rs_rd);
   }
   return true;
 }
@@ -187,16 +241,17 @@ bool PaxScanDesc::BitmapNextTuple(struct TBMIterateResult *tbmres,
 TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
                                      int nkeys, struct ScanKeyData * /*key*/,
                                      ParallelTableScanDesc pscan, uint32 flags,
-                                     PaxFilter *filter, bool build_bitmap) {
-  PaxScanDesc *desc;
+                                     std::shared_ptr<PaxFilter> &&pax_filter, bool build_bitmap) {
+  std::unique_ptr<PaxScanDesc> desc;
   MemoryContext old_ctx;
+  std::shared_ptr<PaxFilter> filter;
   TableReader::ReaderOptions reader_options{};
 
   StaticAssertStmt(
       offsetof(PaxScanDesc, rs_base_) == 0,
       "rs_base should be the first field and aligned to the object address");
 
-  desc = PAX_NEW<PaxScanDesc>();
+  desc = std::make_unique<PaxScanDesc>();
 
   desc->memory_context_ = cbdb::AllocSetCtxCreate(
       CurrentMemoryContext, "Pax Storage", PAX_ALLOCSET_DEFAULT_SIZES);
@@ -207,17 +262,16 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   desc->rs_base_.rs_nkeys = nkeys;
   desc->rs_base_.rs_flags = flags;
   desc->rs_base_.rs_parallel = pscan;
-  desc->reused_buffer_ = PAX_NEW<DataBuffer<char>>(pax_scan_reuse_buffer_size);
-  desc->filter_ = filter;
-  if (!desc->filter_) {
-    desc->filter_ = PAX_NEW<PaxFilter>();
-  }
+  desc->reused_buffer_ = std::make_shared<DataBuffer<char>>(pax_scan_reuse_buffer_size);
+  if (pax_filter)
+    desc->filter_ = std::move(pax_filter);
+  else
+    desc->filter_ = std::make_shared<PaxFilter>();
 
-  if (!desc->filter_->GetColumnProjection().first) {
+  filter = desc->filter_;
+  if (filter->GetColumnProjection().empty()) {
     auto natts = cbdb::RelationGetAttributesNumber(relation);
-    auto cols = PAX_NEW_ARRAY<bool>(natts);
-    memset(cols, true, natts);
-    desc->filter_->SetColumnProjection(cols, natts);
+    filter->SetColumnProjection(std::vector<bool>(natts, true));
   }
 
 #ifdef VEC_BUILD
@@ -234,6 +288,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   reader_options.reused_buffer = desc->reused_buffer_;
   reader_options.table_space_id = relation->rd_rel->reltablespace;
   reader_options.filter = filter;
+
   std::unique_ptr<pax::IteratorBase<pax::MicroPartitionMetadata>> iter;
   if (desc->rs_base_.rs_parallel) {
     ParallelBlockTableScanDesc pt_scan = (ParallelBlockTableScanDesc)pscan;
@@ -243,46 +298,50 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
     iter = MicroPartitionInfoIterator::New(relation, snapshot);
   }
 
-  if (filter && filter->HasMicroPartitionFilter()) {
-    auto wrap = PAX_NEW<FilterIterator<MicroPartitionMetadata>>(
+  if (filter->HasMicroPartitionFilter()) {
+    auto wrap = std::make_unique<FilterIterator<MicroPartitionMetadata>>(
         std::move(iter), [filter, relation](const auto &x) {
           MicroPartitionStatsProvider provider(x.GetStats());
           auto ok = filter->TestScan(provider, RelationGetDescr(relation),
                                      PaxFilterStatisticsKind::kFile);
           return ok;
         });
-    iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap);
+    iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap.release());
   }
-  desc->reader_ = PAX_NEW<TableReader>(std::move(iter), reader_options);
+  desc->reader_ = std::make_unique<TableReader>(std::move(iter), reader_options);
   desc->reader_->Open();
 
   MemoryContextSwitchTo(old_ctx);
   pgstat_count_heap_scan(relation);
-  return &desc->rs_base_;
+
+  // TODO:(wuhao) register the scanner desc, if the transaction/statement fails, the scanner
+  // desc and all children must be freed.
+  auto self = desc.release();
+  pax::common::RememberResourceCallback(pax::ReleaseTopObject<PaxScanDesc>, cbdb::PointerToDatum(self));
+  return &self->rs_base_;
 }
 
+PaxScanDesc::~PaxScanDesc() { }
 void PaxScanDesc::EndScan() {
   if (pax_enable_debug && filter_) {
     filter_->LogStatistics();
   }
 
+  auto memory_context = memory_context_;
+  Assert(memory_context_);
   Assert(reader_);
   reader_->Close();
-
-  PAX_DELETE(reused_buffer_);
-  PAX_DELETE(reader_);
-  PAX_DELETE(filter_);
-
-  PAX_DELETE(index_desc_);
+  
+  // optional index_scan should close internal file
+  if (index_desc_)
+    index_desc_->Release();
 
   if (rs_base_.rs_flags & SO_TEMP_SNAPSHOT)
     UnregisterSnapshot(rs_base_.rs_snapshot);
 
-  // TODO(jiaqizho): please double check with abort transaction @gongxun
-  Assert(memory_context_);
-  cbdb::MemoryCtxDelete(memory_context_);
-  auto self = this;
-  PAX_DELETE(self);
+  pax::common::ForgetResourceCallback(pax::ReleaseTopObject<PaxScanDesc>, cbdb::PointerToDatum(this));
+  PAX_DELETE(this);
+  cbdb::MemoryCtxDelete(memory_context);
 }
 
 TableScanDesc PaxScanDesc::BeginScanExtractColumns(
@@ -290,40 +349,36 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
     struct ScanKeyData * /*key*/, ParallelTableScanDesc parallel_scan,
     struct PlanState *ps, uint32 flags) {
   TableScanDesc paxscan;
-  PaxFilter *filter;
+  std::shared_ptr<PaxFilter> filter;
   List *targetlist = ps->plan->targetlist;
   List *qual = ps->plan->qual;
   auto natts = cbdb::RelationGetAttributesNumber(rel);
-  bool *cols;
   bool found = false;
   bool build_bitmap = true;
-  PaxcExtractcolumnContext extract_column;
+  std::vector<bool> col_bits(natts, false);
+  {
+    PaxcExtractcolumnContext extract_column(col_bits);
 
-  filter = PAX_NEW<PaxFilter>();
 
-  Assert(natts >= 0);
-
-  cols = PAX_NEW_ARRAY<bool>(natts);
-  memset(cols, false, natts);
-
-  extract_column.cols = cols;
-  extract_column.natts = natts;
-
-  found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(targetlist),
-                                       &extract_column);
-  found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(qual), cols,
-                                       natts) ||
-          found;
-  build_bitmap = cbdb::IsSystemAttrNumExist(&extract_column,
-                                            SelfItemPointerAttributeNumber);
+    found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(targetlist),
+					 &extract_column);
+    found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(qual), col_bits) ||
+	    found;
+    build_bitmap = cbdb::IsSystemAttrNumExist(&extract_column,
+					      SelfItemPointerAttributeNumber);
+  }
+  filter = std::make_shared<PaxFilter>();
 
   // In some cases (for example, count(*)), targetlist and qual may be null,
   // extractcolumns_walker will return immediately, so no columns are specified.
   // We always scan the first column.
-  if (!found && !build_bitmap && natts > 0) cols[0] = true;
+  if (!found && !build_bitmap && natts > 0) {
+    int i = ChooseCheapColumn(RelationGetDescr(rel));
+    col_bits[i] = true;
+  }
 
   // The `cols` life cycle will be bound to `PaxFilter`
-  filter->SetColumnProjection(cols, natts);
+  filter->SetColumnProjection(std::move(col_bits));
 
   if (pax_enable_filter) {
     ScanKey scan_keys = nullptr;
@@ -344,7 +399,7 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
       filter->BuildExecutionFilterForColumns(rel, ps);
 #endif
   }
-  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, filter,
+  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, std::move(filter),
                       build_bitmap);
 
   return paxscan;

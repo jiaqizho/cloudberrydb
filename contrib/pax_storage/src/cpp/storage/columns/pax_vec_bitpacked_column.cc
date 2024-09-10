@@ -16,7 +16,7 @@ PaxVecBitPackedColumn::PaxVecBitPackedColumn(
     uint32 capacity, const PaxDecoder::DecodingOption &decoding_option)
     : PaxVecEncodingColumn(capacity, decoding_option), flat_buffer_(nullptr) {}
 
-void PaxVecBitPackedColumn::Set(DataBuffer<int8> *data, size_t non_null_rows) {
+void PaxVecBitPackedColumn::Set(std::shared_ptr<DataBuffer<int8>> data, size_t non_null_rows) {
   PaxVecEncodingColumn::Set(data, non_null_rows);
   bitmap_raw_.bitmap = (uint8 *)data_->Start();
   bitmap_raw_.size = data_->Used() * BYTES_TO_BITS;
@@ -63,7 +63,7 @@ std::pair<char *, size_t> PaxVecBitPackedColumn::GetBuffer(size_t position) {
              fmt("Fail to get buffer [pos=%lu, total rows=%lu], \n %s",
                  position, GetRows(), DebugString().c_str()));
   if (!flat_buffer_) {
-    flat_buffer_ = new DataBuffer<bool>(non_null_rows_ * sizeof(bool));
+    flat_buffer_ = std::make_unique<DataBuffer<bool>>(non_null_rows_ * sizeof(bool));
   }
   Assert(flat_buffer_->Available() >= sizeof(bool));
   flat_buffer_->Write(bitmap_raw_.Test(position));

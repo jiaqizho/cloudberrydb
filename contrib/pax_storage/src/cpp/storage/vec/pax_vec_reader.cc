@@ -8,18 +8,15 @@
 
 namespace pax {
 
-PaxVecReader::PaxVecReader(MicroPartitionReader *reader,
+PaxVecReader::PaxVecReader(std::unique_ptr<MicroPartitionReader> &&reader,
                            std::shared_ptr<VecAdapter> adapter,
-                           PaxFilter *filter)
-    : reader_(reader),
-      adapter_(adapter),
-      working_group_(nullptr),
+                           std::shared_ptr<PaxFilter> filter)
+    : adapter_(std::move(adapter)),
       current_group_index_(0),
-      filter_(filter) {
-  Assert(reader && adapter);
+      filter_(std::move(filter)) {
+  Assert(reader && adapter_);
+  SetReader(std::move(reader));
 }
-
-PaxVecReader::~PaxVecReader() { PAX_DELETE(reader_); }
 
 void PaxVecReader::Open(const ReaderOptions &options) {
   auto visimap = options.visibility_bitmap;
@@ -30,6 +27,8 @@ void PaxVecReader::Open(const ReaderOptions &options) {
 }
 
 void PaxVecReader::Close() { reader_->Close(); }
+
+PaxVecReader::~PaxVecReader() { }
 
 bool PaxVecReader::ReadTuple(TupleTableSlot *slot) {
   auto desc = adapter_->GetRelationTupleDesc();
@@ -53,7 +52,6 @@ retry_read_group:
 
   auto flush_nums_of_rows = adapter_->AppendToVecBuffer();
   if (flush_nums_of_rows == -1) {
-    PAX_DELETE(working_group_);
     working_group_ = nullptr;
     goto retry_read_group;
   }
@@ -84,10 +82,10 @@ std::unique_ptr<ColumnStatsProvider> PaxVecReader::GetGroupStatsInfo(
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
-MicroPartitionReader::Group *PaxVecReader::ReadGroup(size_t index) {
+std::unique_ptr<MicroPartitionReader::Group> PaxVecReader::ReadGroup(size_t index) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
-};  // namespace pax
+}  // namespace pax
 
 #endif  // VEC_BUILD

@@ -14,21 +14,21 @@
 namespace pax {
 
 CPaxInserter::CPaxInserter(Relation rel)
-    : rel_(rel), insert_count_(0), part_obj_(nullptr), writer_(nullptr) {
-  part_obj_ = PAX_NEW<PartitionObject>();
-  auto ok = part_obj_->Initialize(rel_);
+    : rel_(rel), insert_count_(0), writer_(nullptr) {
+  auto part_obj = std::make_unique<PartitionObject>();
+  auto ok = part_obj->Initialize(rel_);
   if (ok) {
-    writer_ = PAX_NEW<TableParitionWriter>(rel, part_obj_);
+    writer_ = std::make_unique<TableParitionWriter>(rel, std::move(part_obj));
   } else {
     // fallback to TableWriter
-    writer_ = PAX_NEW<TableWriter>(rel);
-    part_obj_->Release();
-    PAX_DELETE(part_obj_);
-    part_obj_ = nullptr;
+    writer_ = std::make_unique<TableWriter>(rel);
+    part_obj->Release();
+    part_obj = nullptr;
   }
 
+//  auto split_strategy = std::make_unique<PaxDefaultSplitStrategy>();
   writer_->SetWriteSummaryCallback(&cbdb::InsertOrUpdateMicroPartitionEntry)
-      ->SetFileSplitStrategy(PAX_NEW<PaxDefaultSplitStrategy>())
+      ->SetFileSplitStrategy(std::make_unique<PaxDefaultSplitStrategy>())
       ->Open();
 }
 
@@ -48,7 +48,7 @@ void CPaxInserter::InsertTuple(Relation relation, TupleTableSlot *slot,
 void CPaxInserter::MultiInsert(Relation relation, TupleTableSlot **slots,
                                int ntuples, CommandId cid, int options,
                                BulkInsertState bistate) {
-  CPaxInserter *inserter =
+  auto inserter =
       pax::CPaxDmlStateLocal::Instance()->GetInserter(relation);
   Assert(inserter != nullptr);
 
@@ -63,20 +63,13 @@ void CPaxInserter::FinishBulkInsert(Relation relation, int /*options*/) {
 
 void CPaxInserter::FinishInsert() {
   writer_->Close();
-  PAX_DELETE(writer_);
   writer_ = nullptr;
-
-  if (part_obj_) {
-    part_obj_->Release();
-    PAX_DELETE(part_obj_);
-    part_obj_ = nullptr;
-  }
 }
 
 void CPaxInserter::TupleInsert(Relation relation, TupleTableSlot *slot,
                                CommandId cid, int options,
                                BulkInsertState bistate) {
-  CPaxInserter *inserter = CPaxDmlStateLocal::Instance()->GetInserter(relation);
+  auto inserter = CPaxDmlStateLocal::Instance()->GetInserter(relation);
   Assert(inserter != nullptr);
 
   inserter->InsertTuple(relation, slot, cid, options, bistate);

@@ -814,7 +814,7 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
     dst_file.append(iter);
     auto file1 = fs->Open(src_file, pax::fs::kReadMode);
     auto file2 = fs->Open(dst_file, pax::fs::kWriteMode);
-    fs->CopyFile(file1, file2);
+    fs->CopyFile(file1.get(), file2.get());
     file1->Close();
     file2->Close();
   }
@@ -839,8 +839,8 @@ void CCPaxAuxTable::PaxAuxRelationFileUnlink(RelFileNode node,
 
   if (is_dfs_tablespace) {
     fs = pax::Singleton<RemoteFileSystem>::GetInstance();
-    RemoteFileSystemOptions options(node.spcNode);
-    fs->DeleteDirectory(relpath, delete_topleveldir, &options);
+    auto options = std::make_shared<RemoteFileSystemOptions>(node.spcNode);
+    fs->DeleteDirectory(relpath, delete_topleveldir, options);
   } else {
     fs = pax::Singleton<LocalFileSystem>::GetInstance();
     fs->DeleteDirectory(relpath, delete_topleveldir);

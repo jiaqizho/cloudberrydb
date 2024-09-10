@@ -15,9 +15,11 @@ bison_target(paxc_gram access/paxc_gram.y ${CMAKE_CURRENT_BINARY_DIR}/paxc_gram.
 
 set(pax_comm_src
     comm/bitmap.cc
+    comm/byte_buffer.cc
     comm/guc.cc
     comm/paxc_wrappers.cc
     comm/pax_memory.cc
+    comm/pax_resource.cc
     comm/cbdb_wrappers.cc
     comm/vec_numeric.cc)
 
@@ -45,7 +47,6 @@ set(pax_storage_src
     storage/oper/pax_oper.cc
     storage/oper/pax_stats.cc
     storage/file_system.cc
-    storage/file_system_helper.cc
     storage/local_file_system.cc
     storage/micro_partition.cc
     storage/micro_partition_file_factory.cc
@@ -111,7 +112,8 @@ set(pax_vec_src
   storage/vec/pax_porc_vec_adpater.cc
   storage/vec/pax_vec_adapter.cc
   storage/vec/pax_vec_comm.cc
-  storage/vec/pax_vec_reader.cc)
+  storage/vec/pax_vec_reader.cc
+)
 
 # add tabulate which used in the UDF
 add_subdirectory(contrib/tabulate)
@@ -192,6 +194,7 @@ if(BUILD_GBENCH)
     add_dependencies(bench_main ${pax_target_dependencies} gtest gmock)
     target_include_directories(bench_main PUBLIC ${pax_target_include} ${CMAKE_CURRENT_SOURCE_DIR} contrib/googlebench/include contrib/cpp-stub/src/ contrib/cpp-stub/src_linux/)
     link_directories(contrib/googlebench/src)
+    target_link_directories(bench_main PUBLIC ${pax_target_link_directories})
     target_link_libraries(bench_main PUBLIC ${pax_target_link_libs} gtest gmock benchmark postgres)
     if (VEC_BUILD)
       target_link_libraries(bench_main PRIVATE arrow)

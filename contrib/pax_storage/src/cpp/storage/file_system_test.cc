@@ -35,7 +35,6 @@ TEST_F(LocalFileSystemTest, Open) {
   ASSERT_NE(nullptr, file_ptr);
 
   file_ptr->Close();
-  delete file_ptr;
 }
 
 TEST_F(LocalFileSystemTest, BuildPath) {
@@ -45,11 +44,10 @@ TEST_F(LocalFileSystemTest, BuildPath) {
   auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   ASSERT_NE(nullptr, file_ptr);
 
-  auto path = local_fs->BuildPath(file_ptr);
+  auto path = local_fs->BuildPath(file_ptr.get());
   ASSERT_EQ(path, "./test.file");
 
   file_ptr->Close();
-  delete file_ptr;
 }
 
 TEST_F(LocalFileSystemTest, WriteRead) {
@@ -88,7 +86,7 @@ TEST_F(LocalFileSystemTest, ListDirectory) {
     path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
-    File *f = fs->Open(path, fs::kWriteMode);
+    auto f = fs->Open(path, fs::kWriteMode);
     f->Close();
   }
 
@@ -110,7 +108,7 @@ TEST_F(LocalFileSystemTest, CopyFile) {
     ASSERT_NE(access(pax_copy_test_dir, F_OK), 0);
 
     cbdb::MakedirRecursive(pax_copy_test_dir);
-    File *src_file = fs->Open(pax_copy_src_path, pax::fs::kWriteMode);
+    auto src_file = fs->Open(pax_copy_src_path, pax::fs::kWriteMode);
 
     src_file->Write("abc", 3);
     src_file->Flush();
@@ -118,10 +116,10 @@ TEST_F(LocalFileSystemTest, CopyFile) {
 
     src_file = fs->Open(pax_copy_src_path, pax::fs::kReadMode);
 
-    File *dst_file = fs->Open(pax_copy_dst_path, pax::fs::kWriteMode);
+    auto dst_file = fs->Open(pax_copy_dst_path, pax::fs::kWriteMode);
 
     InitFileAccess();
-    fs->CopyFile(src_file, dst_file);
+    fs->CopyFile(src_file.get(), dst_file.get());
 
     src_file->Close();
     dst_file->Close();
@@ -170,7 +168,7 @@ TEST_F(LocalFileSystemTest, CreateDeleteDirectory) {
     path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
-    File *f = fs->Open(path, fs::kWriteMode);
+    auto f = fs->Open(path, fs::kWriteMode);
     f->Close();
   }
 
@@ -196,7 +194,7 @@ TEST_F(LocalFileSystemTest, DeleteDirectoryReserveToplevel) {
     path.append(file_path_);
     path.append("/test");
     path.append(std::to_string(i));
-    File *f = fs->Open(path, fs::kWriteMode);
+    auto f = fs->Open(path, fs::kWriteMode);
     f->Close();
   }
 
@@ -438,7 +436,6 @@ TEST_F(LocalFileSystemTest, TestFileException) {
 
   stub->reset(close);
   file_ptr->Close();
-  delete file_ptr;
   delete stub;
 }
 
@@ -489,7 +486,7 @@ TEST_F(LocalFileSystemTest, TestFileSystemException) {
 
   stub->set(write, MockWrite2);
   try {
-    local_fs->CopyFile(file_ptr1, file_ptr2);
+    local_fs->CopyFile(file_ptr1.get(), file_ptr2.get());
   } catch (cbdb::CException &e) {
     std::string exception_str(e.What());
     std::cout << exception_str << std::endl;
@@ -508,8 +505,6 @@ TEST_F(LocalFileSystemTest, TestFileSystemException) {
 
   file_ptr1->Close();
   file_ptr2->Close();
-  delete file_ptr1;
-  delete file_ptr2;
 
   remove(std::string(file_name_ + ".1").c_str());
   remove(std::string(file_name_ + ".2").c_str());

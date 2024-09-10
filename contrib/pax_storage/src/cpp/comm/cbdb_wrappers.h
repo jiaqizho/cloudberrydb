@@ -11,8 +11,11 @@
 struct PaxcExtractcolumnContext {
   // If cols set and call ExtractcolumnsFromNode with
   // `target list`. Then the cols will fill with projection mask.
-  bool *cols = nullptr;
-  int natts = 0;
+  PaxcExtractcolumnContext(std::vector<bool> &col_bitmap)
+    : col_bits(col_bitmap) {
+    
+  }
+  std::vector<bool> &col_bits;
   bool found = false;
 
   // This mask use to filter system attribute number.
@@ -95,6 +98,8 @@ Oid RelationGetRelationId(Relation rel);
 static inline void *DatumToPointer(Datum d) noexcept {
   return DatumGetPointer(d);
 }
+
+static inline Datum PointerToDatum(void *p) noexcept { return PointerGetDatum(p); }
 
 static inline int8 DatumToInt8(Datum d) noexcept { return DatumGetInt8(d); }
 
@@ -186,7 +191,7 @@ bool ExtractcolumnsFromNode(Node *expr,
 bool IsSystemAttrNumExist(struct PaxcExtractcolumnContext *context,
                           AttrNumber number);
 
-bool ExtractcolumnsFromNode(Node *expr, bool *cols, int natts);
+bool ExtractcolumnsFromNode(Node *expr, std::vector<bool> &col_bits);
 
 bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *opfamily,
                                FmgrInfo *finfo, StrategyNumber strategynum);

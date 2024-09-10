@@ -21,14 +21,6 @@ class LruCache {
   typedef typename std::pair<K, V> key_value_pair_t;
   typedef typename std::list<key_value_pair_t>::iterator list_iterator_t;
 
-  struct MemoryContextGuard {
-    MemoryContextGuard(MemoryContext ctx) {
-      saved = MemoryContextSwitchTo(ctx);
-    }
-    ~MemoryContextGuard() { MemoryContextSwitchTo(saved); }
-    MemoryContext saved;
-  };
-
   LruCache(size_t max_size) : max_size_(max_size) {}
 
   void Put(const K &key, const V &value) {
@@ -51,9 +43,6 @@ class LruCache {
   const V Get(const K &key, const std::function<V(const K &)> &load_func) {
     auto it = cache_items_map_.find(key);
 
-    // FIXME: The memory of c++ objects is allocated from memory context
-    // We'll remove the memory context later
-    MemoryContextGuard guard(TopMemoryContext);
     if (it == cache_items_map_.end()) {
       Assert(load_func);
 
@@ -74,8 +63,8 @@ class LruCache {
   size_t Size() const { return cache_items_map_.size(); }
 
  private:
-  std::list<key_value_pair_t> cache_items_list_;
   std::unordered_map<K, list_iterator_t> cache_items_map_;
+  std::list<key_value_pair_t> cache_items_list_;
   size_t max_size_;
 };
 
@@ -83,7 +72,7 @@ static LruCache<std::string, std::shared_ptr<std::vector<uint8>>> visimap_cache(
     16);
 
 std::shared_ptr<std::vector<uint8>> LoadVisimapInternal(
-    FileSystem *file_system, FileSystemOptions *options,
+    FileSystem *file_system, const std::shared_ptr<FileSystemOptions> &options,
     const std::string &visimap_file_path) {
   auto file = file_system->Open(visimap_file_path, pax::fs::kReadMode, options);
   Assert(file);
@@ -107,7 +96,7 @@ std::shared_ptr<std::vector<uint8>> LoadVisimapInternal(
 }
 
 std::shared_ptr<std::vector<uint8>> LoadVisimap(
-    FileSystem *fs, FileSystemOptions *options,
+    FileSystem *fs, const std::shared_ptr<FileSystemOptions> &options,
     const std::string &visimap_file_path) {
   return visimap_cache.Get(visimap_file_path, [&](const std::string &key) {
     return LoadVisimapInternal(fs, options, key);
@@ -118,8 +107,8 @@ std::shared_ptr<std::vector<uint8>> LoadVisimap(
 // false: invisible
 bool TestVisimap(Relation rel, const char *visimap_name, int offset) {
   FileSystem *fs;
-  FileSystemOptions *options = nullptr;
-  static RemoteFileSystemOptions remote_options;
+  std::shared_ptr<FileSystemOptions> options;
+  static std::shared_ptr<RemoteFileSystemOptions> remote_options = std::make_shared<RemoteFileSystemOptions>();
   // FIXME(gongxun): mount the is_dfs_tablespace in the PaxIndexScanDesc
   bool is_dfs_tablespace =
       cbdb::IsDfsTablespaceById(rel->rd_rel->reltablespace);
@@ -129,8 +118,8 @@ bool TestVisimap(Relation rel, const char *visimap_name, int offset) {
 
   if (is_dfs_tablespace) {
     fs = Singleton<RemoteFileSystem>::GetInstance();
-    remote_options.tablespace_id_ = rel->rd_rel->reltablespace;
-    options = &remote_options;
+    remote_options->tablespace_id_ = rel->rd_rel->reltablespace;
+    options = remote_options;
   } else {
     fs = Singleton<LocalFileSystem>::GetInstance();
   }

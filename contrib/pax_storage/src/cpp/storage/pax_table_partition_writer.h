@@ -8,7 +8,7 @@ namespace pax {
 class PartitionObject;
 class TableParitionWriter : public TableWriter {
  public:
-  explicit TableParitionWriter(Relation relation, PartitionObject *part_obj);
+  explicit TableParitionWriter(Relation relation, std::unique_ptr<PartitionObject> &&part_obj);
 
   ~TableParitionWriter() override;
 
@@ -24,11 +24,11 @@ class TableParitionWriter : public TableWriter {
   std::vector<std::vector<size_t>> GetPartitionMergeInfos();
 
  private:
-  PartitionObject *part_obj_;
-  MicroPartitionWriter **writers_;
-  MicroPartitionStats **mp_stats_array_;
-  size_t *num_tuples_;
-  BlockNumber *current_blocknos_;
+  std::unique_ptr<PartitionObject> part_obj_;
+  std::vector<std::unique_ptr<MicroPartitionWriter>> writers_;
+  std::vector<std::shared_ptr<MicroPartitionStats>> mp_stats_array_;
+  std::vector<size_t> num_tuples_;
+  std::vector<BlockNumber> current_blocknos_;
 
   int writer_counts_;
 };

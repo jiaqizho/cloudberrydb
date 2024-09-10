@@ -92,14 +92,14 @@ class MicroPartitionWriter {
   virtual MicroPartitionWriter *SetWriteSummaryCallback(
       WriteSummaryCallback callback);
 
-  virtual MicroPartitionWriter *SetStatsCollector(MicroPartitionStats *mpstats);
+  virtual MicroPartitionWriter *SetStatsCollector(std::shared_ptr<MicroPartitionStats> mpstats);
 
  protected:
   WriteSummaryCallback summary_callback_;
   WriterOptions writer_options_;
   FileSystem *file_system_ = nullptr;
   // only reference the mpstats, not the owner
-  MicroPartitionStats *mp_stats_ = nullptr;
+  std::shared_ptr<MicroPartitionStats> mp_stats_;
 };
 
 template <typename T>
@@ -145,7 +145,7 @@ class MicroPartitionReader {
     // fetch, compression/encoding. At the same time, pax column can also be
     // used as a general interface for internal using, because it's zero copy
     // from buffer. more details in `storage/columns`
-    virtual PaxColumns *GetAllColumns() const = 0;
+    virtual std::shared_ptr<PaxColumns> GetAllColumns() const = 0;
 
     virtual void SetVisibilityMap(
         std::shared_ptr<Bitmap8> visibility_bitmap) = 0;
@@ -156,9 +156,9 @@ class MicroPartitionReader {
 
     // Optional, when reused buffer is not set, new memory will be generated for
     // ReadTuple
-    DataBuffer<char> *reused_buffer = nullptr;
+    std::shared_ptr<DataBuffer<char>> reused_buffer;
 
-    PaxFilter *filter = nullptr;
+    std::shared_ptr<PaxFilter> filter;
 
 #ifdef VEC_BUILD
     TupleDesc tuple_desc = nullptr;
@@ -198,7 +198,7 @@ class MicroPartitionReader {
 
   virtual size_t GetGroupNums() = 0;
 
-  virtual Group *ReadGroup(size_t group_index) = 0;
+  virtual std::unique_ptr<Group> ReadGroup(size_t group_index) = 0;
 
   virtual std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
       size_t group_index) = 0;
@@ -213,7 +213,7 @@ class MicroPartitionReaderProxy : public MicroPartitionReader {
  public:
   MicroPartitionReaderProxy() = default;
 
-  ~MicroPartitionReaderProxy() override;
+  virtual ~MicroPartitionReaderProxy() override;
 
   void Open(const MicroPartitionReader::ReaderOptions &options) override;
 
@@ -238,7 +238,11 @@ class MicroPartitionReaderProxy : public MicroPartitionReader {
   std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
       size_t group_index) override;
 
-  Group *ReadGroup(size_t index) override;
+  std::unique_ptr<Group> ReadGroup(size_t index) override;
+
+  void SetReader(std::unique_ptr<MicroPartitionReader> &&reader);
+  MicroPartitionReader *GetReader() { return reader_.get(); }
+  const MicroPartitionReader *GetReader() const { return reader_.get(); }
 
  protected:
   // Allow different MicroPartitionReader shared columns
@@ -251,7 +255,7 @@ class MicroPartitionReaderProxy : public MicroPartitionReader {
   // as a general interface for internal using, because it's zero copy from
   // buffer. more details in `storage/columns`
 
-  MicroPartitionReader *reader_ = nullptr;
+  std::unique_ptr<MicroPartitionReader> reader_;
 };
 
 }  // namespace pax

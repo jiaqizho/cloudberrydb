@@ -18,7 +18,7 @@ class PaxVecEncodingColumn : public PaxVecCommColumn<T> {
 
   ~PaxVecEncodingColumn() override;
 
-  void Set(DataBuffer<T> *data, size_t non_null_rows) override;
+  void Set(std::shared_ptr<DataBuffer<T>> data, size_t non_null_rows) override;
 
   std::pair<char *, size_t> GetBuffer() override;
 
@@ -37,13 +37,13 @@ class PaxVecEncodingColumn : public PaxVecCommColumn<T> {
 
  protected:
   PaxEncoder::EncodingOption encoder_options_;
-  PaxEncoder *encoder_;
+  std::shared_ptr<PaxEncoder> encoder_;
 
   PaxDecoder::DecodingOption decoder_options_;
-  PaxDecoder *decoder_;
-  DataBuffer<char> *shared_data_;
+  std::shared_ptr<PaxDecoder> decoder_;
+  std::shared_ptr<DataBuffer<char>> shared_data_;
 
-  PaxCompressor *compressor_;
+  std::shared_ptr<PaxCompressor> compressor_;
   bool compress_route_;
 };
 
@@ -64,7 +64,7 @@ class PaxVecNonFixedEncodingColumn : public PaxVecNonFixedColumn {
 
   ~PaxVecNonFixedEncodingColumn() override;
 
-  void Set(DataBuffer<char> *data, DataBuffer<int32> *offsets,
+  void Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> offsets,
            size_t total_size, size_t non_null_rows) override;
 
   std::pair<char *, size_t> GetBuffer() override;
@@ -79,12 +79,12 @@ class PaxVecNonFixedEncodingColumn : public PaxVecNonFixedColumn {
   PaxEncoder::EncodingOption encoder_options_;
   PaxDecoder::DecodingOption decoder_options_;
 
-  PaxCompressor *compressor_;
+  std::shared_ptr<PaxCompressor> compressor_;
   bool compress_route_;
-  DataBuffer<char> *shared_data_;
+  std::shared_ptr<DataBuffer<char>> shared_data_;
 
-  PaxCompressor *offsets_compressor_;
-  DataBuffer<char> *shared_offsets_data_;
+  std::shared_ptr<PaxCompressor> offsets_compressor_;
+  std::shared_ptr<DataBuffer<char>> shared_offsets_data_;
 };
 
 }  // namespace pax

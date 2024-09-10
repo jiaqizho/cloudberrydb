@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include "comm/pax_memory.h"
 #include "storage/columns/pax_encoding_utils.h"
 
 namespace pax {
@@ -35,7 +36,7 @@ class PaxCompressor {
    * but the timing of compression/decompression method calls is different from
    * encoding/decoding.
    */
-  static PaxCompressor *CreateBlockCompressor(ColumnEncoding_Kind kind);
+  static std::shared_ptr<PaxCompressor> CreateBlockCompressor(ColumnEncoding_Kind kind);
 };
 
 class PaxZSTDCompressor final : public PaxCompressor {

@@ -367,17 +367,17 @@ VecAdapter::~VecAdapter() {
   }
 }
 
-void VecAdapter::SetDataSource(PaxColumns *columns, int group_base_offset) {
+void VecAdapter::SetDataSource(std::shared_ptr<PaxColumns> columns, int group_base_offset) {
   Assert(columns);
   Assert(group_base_offset >= 0);
   Assert(group_base_offset < static_cast<int>(PAX_MAX_NUM_TUPLES_PER_FILE));
 
-  process_columns_ = columns;
+  process_columns_ = std::move(columns);
   group_base_offset_ = group_base_offset;
   current_index_ = 0;
   cached_batch_lens_ = 0;
   AssertImply(vec_cache_buffer_,
-              columns->GetColumns() <= (size_t)vec_cache_buffer_lens_);
+              process_columns_->GetColumns() <= (size_t)vec_cache_buffer_lens_);
   if (!vec_cache_buffer_) {
     vec_cache_buffer_lens_ = rel_tuple_desc_->natts;
     vec_cache_buffer_ = PAX_NEW_ARRAY<VecBatchBuffer>(vec_cache_buffer_lens_);
@@ -425,7 +425,7 @@ int VecAdapter::AppendToVecBuffer() {
 
 void VecAdapter::BuildCtidOffset(size_t range_begin, size_t range_lens) {
   auto buffer_len = sizeof(int32) * cached_batch_lens_;
-  ctid_offset_in_current_range_ = PAX_NEW<DataBuffer<int32>>(
+  ctid_offset_in_current_range_ = std::make_shared<DataBuffer<int32>>(
       BlockBuffer::Alloc<int32 *>(buffer_len), buffer_len, false, false);
 
   size_t range_row_index = 0;
@@ -472,7 +472,6 @@ void VecAdapter::FullWithCTID(TupleTableSlot *slot,
                                ctid_data_buffer.Capacity());
   batch_buffer->vec_buffer.SetMemTakeOver(false);
   batch_buffer->vec_buffer.BrushAll();
-  PAX_DELETE(ctid_offset_in_current_range_);
   ctid_offset_in_current_range_ = nullptr;
 }
 
@@ -659,7 +658,7 @@ size_t VecAdapter::FlushVecBuffer(TupleTableSlot *slot) {
   size_t column_size = 0;
   size_t rc = 0;
 
-  columns = process_columns_;
+  columns = process_columns_.get();
   Assert(columns);
 
   vslot = VECSLOT(slot);
@@ -812,7 +811,7 @@ size_t VecAdapter::FlushVecBuffer(TupleTableSlot *slot) {
   return rc;
 }
 
-bool VecAdapter::IsInitialized() const { return process_columns_; }
+bool VecAdapter::IsInitialized() const { return !!process_columns_; }
 
 }  // namespace pax
 

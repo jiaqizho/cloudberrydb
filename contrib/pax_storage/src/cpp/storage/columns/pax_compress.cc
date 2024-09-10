@@ -11,16 +11,16 @@
 
 namespace pax {
 
-PaxCompressor *PaxCompressor::CreateBlockCompressor(
+std::shared_ptr<PaxCompressor> PaxCompressor::CreateBlockCompressor(
     const ColumnEncoding_Kind kind) {
-  PaxCompressor *compressor = nullptr;
+  std::shared_ptr<PaxCompressor> compressor;
   switch (kind) {
     case ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZSTD: {
-      compressor = PAX_NEW<PaxZSTDCompressor>();
+      compressor = std::make_shared<PaxZSTDCompressor>();
       break;
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZLIB: {
-      compressor = PAX_NEW<PaxZlibCompressor>();
+      compressor = std::make_shared<PaxZlibCompressor>();
       break;
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED: {

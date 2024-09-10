@@ -10,25 +10,11 @@
 
 namespace pax {
 TableParitionWriter::TableParitionWriter(Relation relation,
-                                         PartitionObject *part_obj)
+                                         std::unique_ptr<PartitionObject> &&part_obj)
     : TableWriter(relation),
-      part_obj_(part_obj),
-      writers_(nullptr),
-      mp_stats_array_(nullptr),
-      num_tuples_(nullptr),
-      current_blocknos_(nullptr),
-      writer_counts_(0) {}
+      part_obj_(std::move(part_obj)) {}
 
-TableParitionWriter::~TableParitionWriter() {
-  for (int i = 0; i < writer_counts_; i++) {
-    PAX_DELETE(writers_[i]);
-    PAX_DELETE(mp_stats_array_[i]);
-  }
-  PAX_DELETE_ARRAY(writers_);
-  PAX_DELETE_ARRAY(mp_stats_array_);
-  PAX_DELETE_ARRAY(num_tuples_);
-  PAX_DELETE_ARRAY(current_blocknos_);
-}
+TableParitionWriter::~TableParitionWriter() {}
 
 void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
   auto part_index = part_obj_->FindPartition(slot);
@@ -41,11 +27,9 @@ void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
 
   if (!writers_[part_index]) {
     Assert(!mp_stats_array_[part_index]);
-    auto stats = PAX_NEW<MicroPartitionStats>(RelationGetDescr(relation_));
-    stats->Initialize(GetMinMaxColumnIndexes());
-    mp_stats_array_[part_index] = stats;
-    writers_[part_index] =
-        CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
+    mp_stats_array_[part_index] = std::make_shared<MicroPartitionStats>(RelationGetDescr(relation_));
+    mp_stats_array_[part_index]->Initialize(GetMinMaxColumnIndexes());
+    writers_[part_index] = CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
 
     // insert tuple into the aux table before inserting any tuples.
     current_blocknos_[part_index] = current_blockno_;
@@ -54,9 +38,7 @@ void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
   } else if (strategy_->ShouldSplit(writers_[part_index]->PhysicalSize(),
                                     num_tuples_[part_index])) {
     writers_[part_index]->Close();
-    PAX_DELETE(writers_[part_index]);
-    writers_[part_index] =
-        CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
+    writers_[part_index] = CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
     num_tuples_[part_index] = 0;
 
     // insert tuple into the aux table before inserting any tuples.
@@ -80,22 +62,16 @@ void TableParitionWriter::Open() {
   writer_counts_ = part_obj_->NumPartitions() + 1;
   Assert(writer_counts_ > 1);
 
-  writers_ = PAX_NEW_ARRAY<MicroPartitionWriter *>(writer_counts_);
-  memset(writers_, 0,
-         sizeof(MicroPartitionWriter *) * writer_counts_);  // NOLINT
-
-  mp_stats_array_ = PAX_NEW_ARRAY<MicroPartitionStats *>(writer_counts_);
-  memset(mp_stats_array_, 0,
-         sizeof(MicroPartitionStats *) * writer_counts_);  // NOLINT
-
-  num_tuples_ = PAX_NEW_ARRAY<size_t>(writer_counts_);
-  memset(num_tuples_, 0, sizeof(size_t) * writer_counts_);
-
-  current_blocknos_ = PAX_NEW_ARRAY<BlockNumber>(writer_counts_);
+  writers_.resize(writer_counts_);
+  mp_stats_array_.resize(writer_counts_);
+  num_tuples_.resize(writer_counts_);
+  current_blocknos_.resize(writer_counts_);
 }
 
-static inline bool PartIndexIsNear(const int *const inverted_indexes,
-                                   int part_counts, int l, int r) {
+static inline bool PartIndexIsNear(const std::vector<int> &inverted_indexes,
+                                   int l, int r) {
+  int part_counts pg_attribute_unused() = static_cast<int>(inverted_indexes.size());
+
   Assert(l < part_counts && r < part_counts);
   if (inverted_indexes[l] == -1 || inverted_indexes[r] == -1) {
     return false;
@@ -105,7 +81,8 @@ static inline bool PartIndexIsNear(const int *const inverted_indexes,
 }
 
 static void BuildInvertedPartIndex(
-    const std::pair<int *, size_t> &merge_list_info, int *inverted_indexes,
+    const std::pair<int *, size_t> &merge_list_info,
+    std::vector<int> &inverted_indexes,
     int part_counts) {
   int *part_range = nullptr;
   size_t part_range_size = 0;
@@ -147,9 +124,9 @@ std::vector<std::vector<size_t>> TableParitionWriter::GetPartitionMergeInfos() {
   size_t tuples_counts;
 
   std::vector<std::vector<size_t>> merge_list;
-  int part_counts = writer_counts_ - 1;
+  const int part_counts = writer_counts_ - 1;
   std::pair<int *, size_t> near_list = part_obj_->GetMergeListInfo();
-  int *inverted_indexes = PAX_NEW_ARRAY<int>(part_counts);
+  std::vector<int> inverted_indexes(part_counts);
   auto split_tuple_limit = strategy_->SplitTupleNumbers();
 
   BuildInvertedPartIndex(near_list, inverted_indexes, part_counts);
@@ -196,7 +173,7 @@ std::vector<std::vector<size_t>> TableParitionWriter::GetPartitionMergeInfos() {
       }
 
       // check current partition is near the last partition
-      if (PartIndexIsNear(inverted_indexes, part_counts, r - 1, r)) {
+      if (PartIndexIsNear(inverted_indexes, r - 1, r)) {
         r++;
       } else if (r - 1 !=
                  l) {  // not nearby last one and not the single partition
@@ -223,8 +200,6 @@ std::vector<std::vector<size_t>> TableParitionWriter::GetPartitionMergeInfos() {
     merge_list.emplace_back(gen_merge_info(l, r));
   }
 
-  PAX_DELETE_ARRAY(inverted_indexes);
-
   return merge_list;
 }
 
@@ -249,11 +224,10 @@ void TableParitionWriter::Close() {
       Snapshot snapshot = nullptr;
       pax::CPaxDeleter del(relation_, snapshot);
       for (size_t i = 0; i < merge_indexes.size(); i++) {
-        auto w = writers_[merge_indexes[i]];
-        auto block = current_blocknos_[merge_indexes[i]];
-        w->Close();
-        PAX_DELETE(w);
-        writers_[merge_indexes[i]] = nullptr;
+        auto idx = merge_indexes[i];
+        auto block = current_blocknos_[idx];
+        writers_[idx]->Close();
+        writers_[idx] = nullptr;
 
         del.MarkDelete(block);
       }
@@ -262,14 +236,13 @@ void TableParitionWriter::Close() {
     }
   } else {  // no index
     for (const auto &merge_indexes : merge_indexes_list) {
-      auto first_write = writers_[merge_indexes[0]];
+      auto &first_write = writers_[merge_indexes[0]];
 
       for (size_t i = 1; i < merge_indexes.size(); i++) {
-        auto w = writers_[merge_indexes[i]];
+        auto &w = writers_[merge_indexes[i]];
         Assert(w);
-        first_write->MergeTo(w);
+        first_write->MergeTo(w.get());
         w->Close();
-        PAX_DELETE(w);
         writers_[merge_indexes[i]] = nullptr;
 
         // Delete the place holder
@@ -281,7 +254,6 @@ void TableParitionWriter::Close() {
       }
       CommandCounterIncrement();
       first_write->Close();
-      PAX_DELETE(first_write);
       writers_[merge_indexes[0]] = nullptr;
     }
   }
@@ -289,7 +261,6 @@ void TableParitionWriter::Close() {
   for (int i = 0; i < writer_counts_; i++) {
     if (writers_[i]) {
       writers_[i]->Close();
-      PAX_DELETE(writers_[i]);
       writers_[i] = nullptr;
     }
   }

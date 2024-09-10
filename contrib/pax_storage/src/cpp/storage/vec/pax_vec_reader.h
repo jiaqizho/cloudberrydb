@@ -1,5 +1,6 @@
 #pragma once
 #include "storage/micro_partition.h"
+#include "storage/vec/arrow_wrapper.h"
 
 #ifdef VEC_BUILD
 
@@ -7,14 +8,16 @@ namespace pax {
 
 class PaxFilter;
 class VecAdapter;
+class PaxFragmentInterface;
 
-class PaxVecReader : public MicroPartitionReader {
+class PaxVecReader : public MicroPartitionReaderProxy {
  public:
   // If enable read tuple from vec reader,
   // then OrcReader will be hold by PaxVecReader,
   // current MicroPartitionReader lifecycle will be bound to the PaxVecReader)
-  PaxVecReader(MicroPartitionReader *reader,
-               std::shared_ptr<VecAdapter> adapter, PaxFilter *filter);
+  PaxVecReader(std::unique_ptr<MicroPartitionReader> &&reader,
+               std::shared_ptr<VecAdapter> adapter,
+               std::shared_ptr<PaxFilter> filter);
 
   ~PaxVecReader() override;
 
@@ -33,15 +36,17 @@ class PaxVecReader : public MicroPartitionReader {
   std::unique_ptr<ColumnStatsProvider> GetGroupStatsInfo(
       size_t group_index) override;
 
-  MicroPartitionReader::Group *ReadGroup(size_t index) override;
+  std::unique_ptr<MicroPartitionReader::Group> ReadGroup(size_t index) override;
+
+  std::shared_ptr<arrow::RecordBatch> ReadBatch();
 
  private:
-  MicroPartitionReader *reader_;
   std::shared_ptr<VecAdapter> adapter_;
 
-  MicroPartitionReader::Group *working_group_;
+  std::unique_ptr<MicroPartitionReader::Group> working_group_;
   size_t current_group_index_;
-  PaxFilter *filter_;
+  std::shared_ptr<PaxFilter> filter_;
+
 };
 
 }  // namespace pax

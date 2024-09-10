@@ -1,6 +1,7 @@
 #include "storage/oper/pax_oper.h"
 
 #include "comm/cbdb_wrappers.h"
+#include "comm/pax_memory.h"
 #include "exceptions/CException.h"
 
 namespace pax {
@@ -500,8 +501,8 @@ static inline int VarstrCmp(const char *arg1, int len1, const char *arg2,
     char *a1p, *a2p;
     if (len1 == len2 && memcmp(arg1, arg2, len1) == 0) return 0;
 
-    a1p = (len1 >= TEXTBUFLEN) ? (char *)cbdb::Palloc(len1 + 1) : a1buf;
-    a2p = (len2 >= TEXTBUFLEN) ? (char *)cbdb::Palloc(len2 + 1) : a2buf;
+    a1p = (len1 >= TEXTBUFLEN) ? ::pax::PAX_ALLOC<char *>(len1 + 1) : a1buf;
+    a2p = (len2 >= TEXTBUFLEN) ? ::pax::PAX_ALLOC<char *>(len2 + 1) : a2buf;
 
     memcpy(a1p, arg1, len1);
     a1p[len1] = '\0';
@@ -512,9 +513,9 @@ static inline int VarstrCmp(const char *arg1, int len1, const char *arg2,
 
     if (rc == 0) rc = strcmp(a1p, a2p);
 
-    if (a1p != a1buf) cbdb::Pfree(a1p);
+    if (a1p != a1buf) ::pax::PAX_FREE(a1p);
 
-    if (a2p != a2buf) cbdb::Pfree(a2p);
+    if (a2p != a2buf) ::pax::PAX_FREE(a2p);
   } else {
     // not support special provider
     CBDB_RAISE(cbdb::CException::ExType::kExTypeUnImplements);

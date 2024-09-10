@@ -1,6 +1,8 @@
 #pragma once
 #include "storage/columns/pax_vec_encoding_column.h"
 
+#include "comm/byte_buffer.h"
+
 namespace pax {
 
 class PaxVecBpCharColumn final : public PaxVecNonFixedEncodingColumn {
@@ -21,7 +23,7 @@ class PaxVecBpCharColumn final : public PaxVecNonFixedEncodingColumn {
 
  private:
   int64 number_of_char_;
-  std::vector<char *> bpchar_holder_;
+  std::vector<ByteBuffer> bpchar_holder_;
 };
 
 }  // namespace pax
