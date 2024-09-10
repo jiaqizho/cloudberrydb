@@ -37,6 +37,7 @@
 #include <arrow/array/data.h>
 #include <arrow/c/abi.h>
 #include <arrow/c/bridge.h>
+#include <arrow/record_batch.h>
 #include <arrow/util/bit_util.h>
 
 #pragma GCC diagnostic pop

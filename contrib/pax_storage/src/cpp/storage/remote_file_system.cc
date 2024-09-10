@@ -1,14 +1,37 @@
 #include "storage/remote_file_system.h"
 
 #include "comm/fmt.h"
+#include "comm/pax_resource.h"
 #include "exceptions/CException.h"
-#include "storage/file_system_helper.h"
 
 namespace pax {
-RemoteFile::RemoteFile(pax_fd_handle_t *ht, Oid tbl_space_id,
+
+class RemoteFile final : public File {
+ public:
+  RemoteFile(UFile *file, Oid tbl_space_id,
+             const std::string &file_path);
+
+  ssize_t Read(void *ptr, size_t n) const override;
+  ssize_t Write(const void *ptr, size_t n) override;
+  ssize_t PWrite(const void *ptr, size_t n, off_t offset) override;
+  ssize_t PRead(void *ptr, size_t n, off_t offset) const override;
+  size_t FileLength() const override;
+  void Flush() override;
+  void Delete() override;
+  void Close() override;
+  std::string GetPath() const override;
+  std::string DebugString() const override;
+
+ private:
+  // UFile is allocated by palloc, MUST use raw pointer here.
+  UFile *ufile_;
+  Oid tbl_space_id_;
+  std::string file_path_;
+};
+
+RemoteFile::RemoteFile(UFile *file, Oid tbl_space_id,
                        const std::string &file_path)
-    : handle_t_(ht),
-      ufile_(ht->file),
+    : ufile_(file),
       tbl_space_id_(tbl_space_id),
       file_path_(file_path) {}
 
@@ -77,13 +100,14 @@ void RemoteFile::Delete() {
 
 void RemoteFile::Close() {
   int ret;
-  ret = cbdb::UFileClose(ufile_);
 
-  ForgetFdHandle(handle_t_);
+  Assert(ufile_);
+  ret = cbdb::UFileClose(ufile_);
+  ufile_ = nullptr;
+
   CBDB_CHECK(ret >= 0, cbdb::CException::kExTypeIOError,
              fmt("Fail to delete [rc=%d], %s, %s", ret, DebugString().c_str(),
                  UFileGetLastError(ufile_)));
-  ufile_ = nullptr;
 }
 
 std::string RemoteFile::GetPath() const { return file_path_; }
@@ -95,20 +119,19 @@ std::string RemoteFile::DebugString() const {
 
 // RemoteFileSystem
 
-RemoteFileSystemOptions *RemoteFileSystem::CastOptions(
-    FileSystemOptions *options) const {
+std::shared_ptr<RemoteFileSystemOptions> RemoteFileSystem::CastOptions(
+    const std::shared_ptr<FileSystemOptions> &options) const {
   Assert(options);
-  RemoteFileSystemOptions *remote_options =
-      dynamic_cast<RemoteFileSystemOptions *>(options);
+  auto remote_options = std::dynamic_pointer_cast<RemoteFileSystemOptions>(options);
   CBDB_CHECK(remote_options, cbdb::CException::kExTypeLogicError,
              "open remote file with invalid options");
 
   return remote_options;
 }
 
-File *RemoteFileSystem::Open(const std::string &file_path, int flags,
-                             FileSystemOptions *options) {
-  RemoteFileSystemOptions *remote_options;
+std::shared_ptr<File> RemoteFileSystem::Open(const std::string &file_path, int flags,
+                             const std::shared_ptr<FileSystemOptions> &options) {
+  std::shared_ptr<RemoteFileSystemOptions> remote_options;
   char errorMessage[UFILE_ERROR_SIZE] = {0};
   UFile *file;
 
@@ -130,19 +153,13 @@ File *RemoteFileSystem::Open(const std::string &file_path, int flags,
           file_path.c_str(), flags, remote_options->tablespace_id_,
           errorMessage));
 
-  auto ht = RememberRemoteFileHandle(file);
-  CBDB_CHECK(
-      ht, cbdb::CException::ExType::kExTypeIOError,
-      fmt("Fail to remember remote file [path=%s, flags=%d, tablespace id=%u]]",
-          file_path.c_str(), flags, remote_options->tablespace_id_));
-
-  return PAX_NEW<RemoteFile>(ht, remote_options->tablespace_id_, file_path);
+  return std::make_shared<RemoteFile>(file, remote_options->tablespace_id_, file_path);
 }
 std::string RemoteFileSystem::BuildPath(const File *file) const {
   return file->GetPath();
 }
 void RemoteFileSystem::Delete(const std::string &file_path,
-                              FileSystemOptions *options) const {
+                              const std::shared_ptr<FileSystemOptions> &options) const {
   auto remote_options = CastOptions(options);
   cbdb::UFileUnlink(remote_options->tablespace_id_, file_path.c_str());
 }
@@ -169,17 +186,17 @@ int RemoteFileSystem::CopyFile(const File *src_file, File *dst_file) {
 }
 
 std::vector<std::string> RemoteFileSystem::ListDirectory(
-    const std::string &path, FileSystemOptions *options) const {
+    const std::string &path, const std::shared_ptr<FileSystemOptions> &options) const {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeUnImplements);
 }
 
 int RemoteFileSystem::CreateDirectory(const std::string &path,
-                                      FileSystemOptions *options) const {
+                                      const std::shared_ptr<FileSystemOptions> &options) const {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeUnImplements);
 }
 void RemoteFileSystem::DeleteDirectory(const std::string &path,
                                        bool delete_topleveldir,
-                                       FileSystemOptions *options) const {
+                                       const std::shared_ptr<FileSystemOptions> &options) const {
   auto remote_options = CastOptions(options);
   cbdb::UFileRmdir(remote_options->tablespace_id_, path.c_str());
 }

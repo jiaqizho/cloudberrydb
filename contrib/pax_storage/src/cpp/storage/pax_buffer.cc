@@ -40,7 +40,9 @@ DataBuffer<T>::DataBuffer(T *data_buffer, size_t size, bool allow_null,
   if (!allow_null && !data_buffer_ && size != 0) {
     data_buffer_ = BlockBuffer::Alloc<T *>(size);
   }
-  BlockBufferBase::Set(reinterpret_cast<char *>(data_buffer_), size, 0);
+  auto ptr = reinterpret_cast<char *>(data_buffer_);
+  block_buffer_ = BlockBuffer(ptr, ptr + size);
+  block_pos_ = ptr;
 }
 
 template <typename T>
@@ -56,15 +58,8 @@ DataBuffer<T>::DataBuffer(size_t size)
 template <typename T>
 DataBuffer<T>::~DataBuffer() {
   if (mem_take_over_ && data_buffer_) {
-    cbdb::Pfree(data_buffer_);
+    BlockBuffer::Free(data_buffer_);
   }
-}
-
-template <typename T>
-void DataBuffer<T>::Set(char *ptr, size_t size, size_t offset) {
-  Assert(data_buffer_ == nullptr);
-  BlockBufferBase::Set(ptr, size, offset);
-  data_buffer_ = reinterpret_cast<T *>(ptr);
 }
 
 template <typename T>

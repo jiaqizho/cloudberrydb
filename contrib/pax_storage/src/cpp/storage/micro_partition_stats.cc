@@ -397,6 +397,7 @@ struct SumStatsInMem {
   bool final_func_exist = false;
 
   bool final_func_called = false;
+  // The result pointed memory is allocated by palloc in pg function.
   Datum result = 0;
   // same as min-max 'status'
   char status = STATUS_UNINITIALIZED;
@@ -421,9 +422,10 @@ MicroPartitionStats::MicroPartitionStats(TupleDesc desc,
   Assert(tuple_desc_);
   natts = tuple_desc_->natts;
 
-  stats_ = PAX_NEW<MicroPartitionStatsData>(natts);
+  stats_ = std::make_unique<MicroPartitionStatsData>(natts);
 
   memset(&finfo, 0, sizeof(finfo));
+  memset(&expr_context_, 0, sizeof(expr_context_));
   opfamilies_.clear();
   finfos_.clear();
   local_funcs_.clear();
@@ -444,8 +446,6 @@ MicroPartitionStats::MicroPartitionStats(TupleDesc desc,
 }
 
 MicroPartitionStats::~MicroPartitionStats() {
-  cbdb::Pfree(agg_state_);
-  PAX_DELETE(stats_);
 }
 
 ::pax::stats::MicroPartitionStatisticsInfo *MicroPartitionStats::Serialize() {
@@ -467,10 +467,8 @@ MicroPartitionStats::~MicroPartitionStats() {
 
       // after serialize to pb, clear the memory
       if (!typbyval && typlen == -1) {
-        char *ref = (char *)cbdb::DatumToPointer(min_in_mem_[column_index]);
-        PAX_DELETE(ref);
-        ref = (char *)cbdb::DatumToPointer(max_in_mem_[column_index]);
-        PAX_DELETE(ref);
+        buffer_holders_.erase(min_in_mem_[column_index]);
+        buffer_holders_.erase(max_in_mem_[column_index]);
       }
 
       min_in_mem_[column_index] = 0;
@@ -538,8 +536,7 @@ MicroPartitionStats *MicroPartitionStats::Reset() {
   return this;
 }
 
-void MicroPartitionStats::AddRow(TupleTableSlot *slot,
-                                 const std::vector<Datum> &detoast_vals) {
+void MicroPartitionStats::AddRow(TupleTableSlot *slot) {
   auto n = tuple_desc_->natts;
 
   Assert(initialized_);
@@ -547,19 +544,19 @@ void MicroPartitionStats::AddRow(TupleTableSlot *slot,
              cbdb::CException::ExType::kExTypeSchemaNotMatch,
              fmt("Current stats initialized [N=%lu], in tuple desc [natts=%d] ",
                  status_.size(), n));
-  AssertImply(!detoast_vals.empty(), detoast_vals.size() == (size_t)n);
   for (auto i = 0; i < n; i++) {
     if (slot->tts_isnull[i])
       AddNullColumn(i);
     else
-      AddNonNullColumn(i, slot->tts_values[i],
-                       detoast_vals.empty() ? 0 : detoast_vals[i]);
+      AddNonNullColumn(i, slot->tts_values[i]);
+      //AddNonNullColumn(i, slot->tts_values[i],
+      //                 detoast_vals.empty() ? 0 : detoast_vals[i]);
   }
 }
 
 void MicroPartitionStats::MergeRawInfo(
     ::pax::stats::MicroPartitionStatisticsInfo *stats_info) {
-  auto merge_const_stats = [](MicroPartitionStatsData *origin,
+  auto merge_const_stats = [](std::unique_ptr<MicroPartitionStatsData> &origin,
                               ::pax::stats::MicroPartitionStatisticsInfo *info,
                               size_t column_index) {
     if (origin->GetAllNull(column_index) &&
@@ -655,9 +652,8 @@ void MicroPartitionStats::MergeRawInfo(
       Datum newval = cbdb::FunctionCall2Coll(&sum_stat->add_func, InvalidOid,
                                              sum_stat->result, sum_result);
       if (!sum_stat->rettypbyval &&
-          cbdb::DatumToPointer(newval) !=
-              cbdb::DatumToPointer(sum_stat->result)) {
-        if (sum_stat->result)
+          newval != sum_stat->result &&
+          sum_stat->result) {
           cbdb::Pfree(cbdb::DatumToPointer(sum_stat->result));
       }
       sum_stat->result =
@@ -711,7 +707,7 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
     if (stats->status_[column_index] == STATUS_MISSING_INIT_VAL ||
         stats->status_[column_index] == STATUS_NOT_SUPPORT) {
       // still need update all and has null
-      merge_const_stats(stats_, stats->stats_, column_index);
+      merge_const_stats(stats_.get(), stats->stats_.get(), column_index);
       goto update_sum_stats;
     }
 
@@ -735,16 +731,14 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
         Assert(col_basic_stats->collation() == collation);
       }
 
-      merge_const_stats(stats_, stats->stats_, column_index);
+      merge_const_stats(stats_.get(), stats->stats_.get(), column_index);
 
       UpdateMinMaxValue(column_index, stats->min_in_mem_[column_index],
                         collation, typlen, typbyval);
       UpdateMinMaxValue(column_index, stats->max_in_mem_[column_index],
                         collation, typlen, typbyval);
     } else if (status_[column_index] == STATUS_MISSING_INIT_VAL) {
-      stats_->CopyFrom(
-          stats->stats_,
-          column_index);  // do the copy, no need call merge_const_stats
+      stats_->CopyFrom(stats->stats_.get(), column_index);
       CopyDatum(stats->min_in_mem_[column_index], &min_in_mem_[column_index],
                 typlen, typbyval);
       CopyDatum(stats->max_in_mem_[column_index], &max_in_mem_[column_index],
@@ -787,8 +781,7 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
                                             InvalidOid, right_sum_stat->result);
 
       if (!left_sum_stat->transtypbyval &&
-          cbdb::DatumToPointer(newval) !=
-              cbdb::DatumToPointer(right_sum_stat->result)) {
+          newval != right_sum_stat->result) {
         if (right_sum_stat->result)
           cbdb::Pfree(cbdb::DatumToPointer(right_sum_stat->result));
         right_sum_stat->result = cbdb::datumCopy(
@@ -808,9 +801,8 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
                                              InvalidOid, left_sum_stat->result,
                                              right_sum_stat->result);
       if (!left_sum_stat->rettypbyval &&
-          cbdb::DatumToPointer(newval) !=
-              cbdb::DatumToPointer(left_sum_stat->result)) {
-        if (left_sum_stat->result)
+          newval != left_sum_stat->result &&
+          left_sum_stat->result) {
           cbdb::Pfree(cbdb::DatumToPointer(left_sum_stat->result));
       }
       left_sum_stat->result = cbdb::datumCopy(newval, left_sum_stat->rettyplen,
@@ -833,8 +825,7 @@ void MicroPartitionStats::AddNullColumn(int column_index) {
   stats_->SetHasNull(column_index, true);
 }
 
-void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value,
-                                           Datum detoast) {
+void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value) {
   Assert(column_index >= 0);
   Assert(column_index < static_cast<int>(opfamilies_.size()));
 
@@ -846,10 +837,6 @@ void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value,
   stats_->SetAllNull(column_index, false);
   stats_->SetNonNullRows(column_index,
                          stats_->GetNonNullRows(column_index) + 1);
-
-  if (detoast != 0 && value != detoast) {
-    value = detoast;
-  }
 
   // update min/max
   switch (status_[column_index]) {
@@ -981,10 +968,12 @@ void MicroPartitionStats::CopyDatum(Datum src, Datum *dst, int typlen,
     val = (struct varlena *)cbdb::PointerAndLenFromDatum(src, &len);
     Assert(val && len != -1);
 
-    auto alloc_new_datum = [](struct varlena *vl, int vl_len, Datum *dest) {
-      char *tmp = PAX_NEW_ARRAY<char>(vl_len);
-      memcpy(tmp, (char *)vl, vl_len);
-      *dest = PointerGetDatum(tmp);
+    auto alloc_new_datum = [this](struct varlena *vl, int vl_len, Datum *dest) {
+      ByteBuffer buffer(vl_len, vl_len);
+      auto p = buffer.Addr();
+      memcpy(p, vl, vl_len);
+      *dest = PointerGetDatum(p);
+      buffer_holders_[*dest] = std::move(buffer);
     };
 
     // check the source datum
@@ -996,7 +985,7 @@ void MicroPartitionStats::CopyDatum(Datum src, Datum *dst, int typlen,
       if (dst_len > len) {
         memcpy(result, (char *)val, len);
       } else {
-        PAX_DELETE(result);
+        buffer_holders_.erase(*dst);
         alloc_new_datum(val, len, dst);
       }
     }

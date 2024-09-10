@@ -28,62 +28,65 @@ std::vector<pax::porc::proto::Type_Kind> OrcWriter::BuildSchema(TupleDesc desc,
   return type_kinds;
 }
 
-static PaxColumn *CreateDecimalColumn(bool is_vec,
+static std::shared_ptr<PaxColumn> CreateDecimalColumn(bool is_vec,
                                       const PaxEncoder::EncodingOption &opts) {
   if (is_vec) {
-    return (PaxColumn *)
+    return
         traits::ColumnOptCreateTraits2<PaxShortNumericColumn>::create_encoding(
             DEFAULT_CAPACITY, opts);
   } else {
-    return (PaxColumn *)
+    return
         traits::ColumnOptCreateTraits2<PaxPgNumericColumn>::create_encoding(
             DEFAULT_CAPACITY, DEFAULT_CAPACITY, opts);
   }
 }
 
-static PaxColumn *CreateBpCharColumn(bool is_vec,
+static std::shared_ptr<PaxColumn> CreateBpCharColumn(bool is_vec,
                                      const PaxEncoder::EncodingOption &opts) {
-  return is_vec
-             ? (PaxColumn *)traits::ColumnOptCreateTraits2<
+  if (is_vec)
+    return traits::ColumnOptCreateTraits2<
                    PaxVecBpCharColumn>::create_encoding(DEFAULT_CAPACITY,
-                                                        DEFAULT_CAPACITY, opts)
-             : (PaxColumn *)traits::ColumnOptCreateTraits2<
+                                                        DEFAULT_CAPACITY, opts);
+  
+  return traits::ColumnOptCreateTraits2<
                    PaxBpCharColumn>::create_encoding(DEFAULT_CAPACITY,
                                                      DEFAULT_CAPACITY, opts);
 }
 
-static PaxColumn *CreateBitPackedColumn(
+static std::shared_ptr<PaxColumn> CreateBitPackedColumn(
     bool is_vec, const PaxEncoder::EncodingOption &opts) {
-  return is_vec
-             ? (PaxColumn *)traits::ColumnOptCreateTraits2<
+  if (is_vec)
+    return traits::ColumnOptCreateTraits2<
                    PaxVecBitPackedColumn>::create_encoding(DEFAULT_CAPACITY,
-                                                           opts)
-             : (PaxColumn *)traits::ColumnOptCreateTraits2<
+                                                           opts);
+ 
+  return traits::ColumnOptCreateTraits2<
                    PaxBitPackedColumn>::create_encoding(DEFAULT_CAPACITY, opts);
 }
 
 template <typename N>
-static PaxColumn *CreateCommColumn(bool is_vec,
+static std::shared_ptr<PaxColumn> CreateCommColumn(bool is_vec,
                                    const PaxEncoder::EncodingOption &opts) {
-  return is_vec
-             ? (PaxColumn *)traits::ColumnOptCreateTraits<
+  if (is_vec)
+    return traits::ColumnOptCreateTraits<
                    PaxVecEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
-                                                             opts)
-             : (PaxColumn *)traits::ColumnOptCreateTraits<
+                                                             opts);
+
+  return traits::ColumnOptCreateTraits<
                    PaxEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
                                                           opts);
 }
 
-static PaxColumns *BuildColumns(
+static std::unique_ptr<PaxColumns> BuildColumns(
     const std::vector<pax::porc::proto::Type_Kind> &types,
     const std::vector<std::tuple<ColumnEncoding_Kind, int>>
         &column_encoding_types,
     const std::pair<ColumnEncoding_Kind, int> &lengths_encoding_types,
     const PaxStorageFormat &storage_format) {
-  PaxColumns *columns;
+  std::unique_ptr<PaxColumns> columns;
   bool is_vec;
 
-  columns = PAX_NEW<PaxColumns>();
+  columns = std::make_unique<PaxColumns>();
   is_vec = (storage_format == PaxStorageFormat::kTypeStoragePorcVec);
   columns->SetStorageFormat(storage_format);
 
@@ -107,15 +110,18 @@ static PaxColumns *BuildColumns(
     switch (type) {
       case (pax::porc::proto::Type_Kind::Type_Kind_STRING): {
         encoding_option.is_sign = false;
-        columns->Append(
-            is_vec ? (PaxColumn *)traits::ColumnOptCreateTraits2<
+        if (is_vec) {
+          columns->Append(traits::ColumnOptCreateTraits2<
                          PaxVecNonFixedEncodingColumn>::
                          create_encoding(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
-                                         std::move(encoding_option))
-                   : (PaxColumn *)traits::ColumnOptCreateTraits2<
+                                         std::move(encoding_option)));
+        } else {
+          columns->Append(traits::ColumnOptCreateTraits2<
                          PaxNonFixedEncodingColumn>::
                          create_encoding(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
                                          std::move(encoding_option)));
+        }
+
         break;
       }
       case (pax::porc::proto::Type_Kind::Type_Kind_VECNOHEADER): {
@@ -173,8 +179,9 @@ static PaxColumns *BuildColumns(
 
 OrcWriter::OrcWriter(
     const MicroPartitionWriter::WriterOptions &writer_options,
-    const std::vector<pax::porc::proto::Type_Kind> &column_types, File *file,
-    File *toast_file)
+    const std::vector<pax::porc::proto::Type_Kind> &column_types,
+    std::shared_ptr<File> file,
+    std::shared_ptr<File> toast_file)
     : MicroPartitionWriter(writer_options),
       is_closed_(false),
       column_types_(column_types),
@@ -224,11 +231,6 @@ OrcWriter::OrcWriter(
     }
 
     column->SetAlignSize(align_size);
-
-    // init the datum holder
-    origin_datum_holder_.emplace_back(0);
-    detoast_holder_.emplace_back(0);
-    gen_toast_holder_.emplace_back(0);
   }
 
   summary_.rel_oid = writer_options.rel_oid;
@@ -244,17 +246,14 @@ OrcWriter::OrcWriter(
   group_stats_.Initialize(writer_options.enable_min_max_col_idxs);
 }
 
-OrcWriter::~OrcWriter() {
-  PAX_DELETE(pax_columns_);
-  PAX_DELETE(file_);
-  PAX_DELETE(toast_file_);
-}
+OrcWriter::~OrcWriter() { }
 
 void OrcWriter::Flush() {
   BufferedOutputStream buffer_mem_stream(2048);
   DataBuffer<char> toast_mem(nullptr, 0, true, false);
-  PaxColumns *new_columns;
+
   if (WriteStripe(&buffer_mem_stream, &toast_mem)) {
+    std::unique_ptr<PaxColumns> new_columns;
     current_written_phy_size_ += pax_columns_->PhysicalSize();
     Assert(current_offset_ >= buffer_mem_stream.GetDataBuffer()->Used());
     summary_.file_size += buffer_mem_stream.GetDataBuffer()->Used();
@@ -283,12 +282,11 @@ void OrcWriter::Flush() {
       }
     }
 
-    PAX_DELETE(pax_columns_);
-    pax_columns_ = new_columns;
+    pax_columns_ = std::move(new_columns);
   }
 }
 
-void OrcWriter::PerpareWriteTuple(TupleTableSlot *table_slot) {
+std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(TupleTableSlot *table_slot) {
   TupleDesc tuple_desc;
   int16 type_len;
   bool type_by_val;
@@ -296,10 +294,12 @@ void OrcWriter::PerpareWriteTuple(TupleTableSlot *table_slot) {
   Datum tts_value;
   char type_storage;
   struct varlena *tts_value_vl = nullptr, *detoast_vl = nullptr;
+  std::vector<std::pair<int, Datum>> detoast_map;
 
   tuple_desc = writer_options_.rel_tuple_desc;
   Assert(tuple_desc);
   for (int i = 0; i < tuple_desc->natts; i++) {
+    bool save_origin_datum;
     auto attrs = TupleDescAttr(tuple_desc, i);
     type_len = attrs->attlen;
     type_by_val = attrs->attbyval;
@@ -309,49 +309,55 @@ void OrcWriter::PerpareWriteTuple(TupleTableSlot *table_slot) {
 
     AssertImply(attrs->attisdropped, is_null);
 
-    if (is_null) {
+    if (is_null || type_by_val || type_len != -1) {
       continue;
     }
 
     // prepare toast
-    if (!type_by_val && type_len == -1) {
-      tts_value_vl = (struct varlena *)DatumGetPointer(tts_value);
-      origin_datum_holder_[i] = tts_value;
+    tts_value_vl = (struct varlena *)DatumGetPointer(tts_value);
 
-      // Once passin toast is compress toast and datum is within the range
-      // allowed by PAX, then PAX will direct store it
-      if (VARATT_IS_COMPRESSED(tts_value_vl)) {
-        auto compress_toast_extsize =
-            VARDATA_COMPRESSED_GET_EXTSIZE(tts_value_vl);
+    // Once passin toast is compress toast and datum is within the range
+    // allowed by PAX, then PAX will direct store it
+    if (VARATT_IS_COMPRESSED(tts_value_vl)) {
+      auto compress_toast_extsize =
+          VARDATA_COMPRESSED_GET_EXTSIZE(tts_value_vl);
 
-        if (type_storage != TYPSTORAGE_PLAIN &&
-            !VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST_BY_SIZE(
-                compress_toast_extsize) &&
-            VARATT_CAN_MAKE_PAX_COMPRESSED_TOAST_BY_SIZE(
-                compress_toast_extsize)) {
-          continue;
-        }
-      }
-
-      // still detoast the origin toast
-      detoast_vl = cbdb::PgDeToastDatum(tts_value_vl);
-      Assert(detoast_vl != nullptr);
-      detoast_holder_[i] = PointerGetDatum(detoast_vl);
-
-      if (tts_value_vl != detoast_vl) {
-        table_slot->tts_values[i] = PointerGetDatum(detoast_vl);
-      }
-
-      // only make toast here
-      Datum new_toast =
-          pax_make_toast(PointerGetDatum(detoast_vl), type_storage);
-
-      if (new_toast) {
-        gen_toast_holder_[i] = new_toast;
-        table_slot->tts_values[i] = new_toast;
+      if (type_storage != TYPSTORAGE_PLAIN &&
+          !VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST_BY_SIZE(
+              compress_toast_extsize) &&
+          VARATT_CAN_MAKE_PAX_COMPRESSED_TOAST_BY_SIZE(
+              compress_toast_extsize)) {
+        continue;
       }
     }
+
+    save_origin_datum = false;
+    // still detoast the origin toast
+    detoast_vl = cbdb::PgDeToastDatum(tts_value_vl);
+    Assert(detoast_vl != nullptr);
+
+    if (tts_value_vl != detoast_vl) {
+      table_slot->tts_values[i] = PointerGetDatum(detoast_vl);
+      detoast_memory_holder_.emplace_back(detoast_vl);
+      save_origin_datum = true;
+      detoast_map.emplace_back(std::pair<int, Datum>{i, PointerGetDatum(detoast_vl)});
+    }
+
+    // only make toast here
+    std::shared_ptr<MemoryObject> mobj;
+    std::tie(table_slot->tts_values[i], mobj) =
+        pax_make_toast(PointerGetDatum(detoast_vl), type_storage);
+
+    if (mobj) {
+      toast_memory_holder_.emplace_back(std::move(mobj));
+      save_origin_datum = true;
+    }
+
+    if (save_origin_datum)
+      origin_datum_holder_.emplace_back(std::pair<int, Datum>{i, tts_value});
   }
+
+  return detoast_map;
 }
 
 void OrcWriter::WriteTuple(TupleTableSlot *table_slot) {
@@ -362,7 +368,8 @@ void OrcWriter::WriteTuple(TupleTableSlot *table_slot) {
   bool is_null;
   Datum tts_value;
   struct varlena *tts_value_vl = nullptr;
-  PerpareWriteTuple(table_slot);
+  
+  auto detoast_map = PerpareWriteTuple(table_slot);
 
   // The reason why
   tuple_desc = writer_options_.rel_tuple_desc;
@@ -469,43 +476,25 @@ void OrcWriter::WriteTuple(TupleTableSlot *table_slot) {
 
   summary_.num_tuples++;
   pax_columns_->AddRows(1);
-  group_stats_.AddRow(table_slot, detoast_holder_);
+  for (const auto &pair : detoast_map)
+    table_slot->tts_values[pair.first] = pair.second;
+
+  group_stats_.AddRow(table_slot);
 
   EndWriteTuple(table_slot);
 }
 
 void OrcWriter::EndWriteTuple(TupleTableSlot *table_slot) {
-  TupleDesc tuple_desc;
-
-  tuple_desc = writer_options_.rel_tuple_desc;
-  Assert(tuple_desc);
-
-  for (int i = 0; i < tuple_desc->natts; i++) {
-    auto attrs = TupleDescAttr(tuple_desc, i);
-    auto type_len = attrs->attlen;
-    auto type_byval = attrs->attbyval;
-    auto is_null = table_slot->tts_isnull[i];
-
-    if (is_null || type_byval || type_len != -1) {
-      continue;
-    }
-
-    // no need take care current datum refer
-    table_slot->tts_values[i] = origin_datum_holder_[i];
-
-    // detoast happend
-    if (detoast_holder_[i] != origin_datum_holder_[i]) {
-      cbdb::Pfree(DatumGetPointer(detoast_holder_[i]));
-    }
-
-    // created new pax toast
-    if (gen_toast_holder_[i] != 0) {
-      pax_free_toast(gen_toast_holder_[i]);
-    }
-    detoast_holder_[i] = 0;
-    origin_datum_holder_[i] = 0;
-    gen_toast_holder_[i] = 0;
+  // restore original datum value
+  for (auto const &pair : origin_datum_holder_) {
+    table_slot->tts_values[pair.first] = pair.second;
   }
+  for (auto p : detoast_memory_holder_) {
+    cbdb::Pfree(p);
+  }
+  origin_datum_holder_.clear();
+  toast_memory_holder_.clear();
+  detoast_memory_holder_.clear();
 
   if (pax_columns_->GetRows() >= writer_options_.group_limit) {
     Flush();
@@ -532,12 +521,12 @@ void OrcWriter::MergeTo(MicroPartitionWriter *writer) {
   summary_.num_tuples += orc_writer->summary_.num_tuples;
 
   if (mp_stats_) {
-    mp_stats_->MergeTo(orc_writer->mp_stats_);
+    mp_stats_->MergeTo(orc_writer->mp_stats_.get());
   }
 }
 
 void OrcWriter::MergePaxColumns(OrcWriter *writer) {
-  PaxColumns *columns = writer->pax_columns_;
+  PaxColumns *columns = writer->pax_columns_.get();
   bool ok pg_attribute_unused();
   Assert(columns->GetColumns() == pax_columns_->GetColumns());
   Assert(columns->GetRows() < writer_options_.group_limit);
@@ -548,7 +537,7 @@ void OrcWriter::MergePaxColumns(OrcWriter *writer) {
   BufferedOutputStream buffer_mem_stream(2048);
   DataBuffer<char> toast_mem(nullptr, 0, true, false);
   ok = WriteStripe(&buffer_mem_stream, &toast_mem, columns,
-                   &(writer->group_stats_), writer->mp_stats_);
+                   &(writer->group_stats_), writer->mp_stats_.get());
 
   // must be ok
   Assert(ok);
@@ -569,16 +558,16 @@ void OrcWriter::MergePaxColumns(OrcWriter *writer) {
 }
 
 void OrcWriter::MergeGroups(OrcWriter *orc_writer) {
-  DataBuffer<char> merge_buffer(0);
+  auto merge_buffer = std::make_shared<DataBuffer<char>>(0);
 
   for (int index = 0; index < orc_writer->file_footer_.stripes_size();
        index++) {
-    MergeGroup(orc_writer, index, &merge_buffer);
+    MergeGroup(orc_writer, index, merge_buffer);
   }
 }
 
 void OrcWriter::MergeGroup(OrcWriter *orc_writer, int group_index,
-                           DataBuffer<char> *merge_buffer) {
+                           std::shared_ptr<DataBuffer<char>> &merge_buffer) {
   const auto &stripe_info = orc_writer->file_footer_.stripes(group_index);
   auto total_len = stripe_info.footerlength();
   auto stripe_data_len = stripe_info.datalength();
@@ -590,13 +579,10 @@ void OrcWriter::MergeGroup(OrcWriter *orc_writer, int group_index,
   // will not flush empty group in disk
   Assert(stripe_data_len);
 
-  if (!merge_buffer->GetBuffer()) {
-    merge_buffer->Set(BlockBuffer::Alloc<char *>(total_len), total_len);
-    merge_buffer->SetMemTakeOver(true);
-  } else if (merge_buffer->Capacity() < total_len) {
-    merge_buffer->Clear();
-    merge_buffer->Set(BlockBuffer::Alloc<char *>(total_len), total_len);
+  if (!merge_buffer->GetBuffer() || merge_buffer->Capacity() < total_len) {
+    merge_buffer = std::make_shared<DataBuffer<char>>(total_len);
   }
+
   orc_writer->file_->Flush();
   orc_writer->file_->PReadN(merge_buffer->GetBuffer(), total_len,
                             stripe_info.offset());
@@ -614,8 +600,7 @@ void OrcWriter::MergeGroup(OrcWriter *orc_writer, int group_index,
     Assert(toast_file_);
     Assert(merge_buffer->GetBuffer());
     if (merge_buffer->Capacity() < toast_len) {
-      merge_buffer->Clear();
-      merge_buffer->Set(BlockBuffer::Alloc<char *>(toast_len), toast_len);
+      merge_buffer = std::make_shared<DataBuffer<char>>(toast_len);
     }
     orc_writer->toast_file_->Flush();
     orc_writer->toast_file_->PReadN(merge_buffer->GetBuffer(), toast_len,
@@ -668,8 +653,8 @@ void OrcWriter::DeleteUnstateFile() {
 
 bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
                             DataBuffer<char> *toast_mem) {
-  return WriteStripe(buffer_mem_stream, toast_mem, pax_columns_, &group_stats_,
-                     mp_stats_);
+  return WriteStripe(buffer_mem_stream, toast_mem, pax_columns_.get(), &group_stats_,
+                     mp_stats_.get());
 }
 
 bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
@@ -727,7 +712,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
         encoding_kinds.push_back(std::move(column_encoding));
       };
 
-  DataBuffer<char> *data_buffer =
+  auto data_buffer =
       pax_columns->GetDataBuffer(column_streams_func, column_encoding_func);
 
   Assert(data_buffer->Used() == data_buffer->Capacity());
@@ -749,7 +734,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
     auto pb_stats = stripe_info->add_colstats();
     auto col_stats = stats_info->columnstats(static_cast<int>(i));
-    PaxColumn *pax_column = (*pax_columns)[i];
+    auto pax_column = (*pax_columns)[i];
 
     Assert(col_stats.hasnull() == pax_column->HasNull());
     Assert(col_stats.allnull() == pax_column->AllNull());
@@ -807,7 +792,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
   stripe_info->set_toastlength(toast_len);
   stripe_info->set_numberoftoast(number_of_toast);
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
-    PaxColumn *pax_column = (*pax_columns)[i];
+    auto pax_column = (*pax_columns)[i];
     auto ext_buffer = pax_column->GetExternalToastDataBuffer();
     stripe_info->add_exttoastlength(ext_buffer ? ext_buffer->Used() : 0);
   }
@@ -826,12 +811,12 @@ void OrcWriter::Close() {
   BufferedOutputStream buffer_mem_stream(2048);
   size_t file_offset = current_offset_;
   bool empty_stripe = false;
-  DataBuffer<char> *data_buffer = nullptr;
+  std::shared_ptr<DataBuffer<char>> data_buffer;
   DataBuffer<char> toast_mem(nullptr, 0, true, false);
 
   empty_stripe = !WriteStripe(&buffer_mem_stream, &toast_mem);
   if (empty_stripe) {
-    data_buffer = PAX_NEW<DataBuffer<char>>(2048);
+    data_buffer = std::make_shared<DataBuffer<char>>(2048);
     buffer_mem_stream.Set(data_buffer);
   }
 
@@ -864,9 +849,6 @@ void OrcWriter::Close() {
 
   file_->Flush();
   file_->Close();
-  if (empty_stripe) {
-    PAX_DELETE(data_buffer);
-  }
 
   if (summary_callback_) {
     summary_.mp_stats = !mp_stats_ ? nullptr : mp_stats_->Serialize();

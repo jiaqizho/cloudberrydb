@@ -27,12 +27,7 @@ PaxColumn::PaxColumn()
       numeber_of_external_toast_(0),
       external_toast_data_(nullptr) {}
 
-PaxColumn::~PaxColumn() {
-  PAX_DELETE(null_bitmap_);
-  PAX_DELETE(toast_indexes_);
-  PAX_DELETE(toast_flat_map_);
-  PAX_DELETE(external_toast_data_);
-}
+PaxColumn::~PaxColumn() { }
 
 PaxColumnTypeInMem PaxColumn::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeInvalid;
@@ -65,7 +60,7 @@ size_t PaxColumn::GetRangeNonNullRows(size_t start_pos, size_t len) {
 
 void PaxColumn::CreateNulls(size_t cap) {
   Assert(!null_bitmap_);
-  null_bitmap_ = PAX_NEW<Bitmap8>(cap);
+  null_bitmap_ = std::make_shared<Bitmap8>(cap);
   null_bitmap_->SetN(total_rows_);
 }
 
@@ -125,11 +120,11 @@ bool PaxColumn::IsToast(size_t pos) {
   return !toast_flat_map_->Test(pos);
 }
 
-void PaxColumn::SetToastIndexes(DataBuffer<int32> *toast_indexes) {
+void PaxColumn::SetToastIndexes(std::shared_ptr<DataBuffer<int32>> toast_indexes) {
   Assert(!toast_indexes_ && !toast_flat_map_);
   toast_indexes_ = toast_indexes;
   Assert(total_rows_ > 0 && toast_indexes->Used() > 0);
-  toast_flat_map_ = PAX_NEW<Bitmap8>(total_rows_ / 8 + 1);
+  toast_flat_map_ = std::make_shared<Bitmap8>(total_rows_ / 8 + 1);
   toast_flat_map_->SetN(total_rows_);
 
   for (size_t i = 0; i < toast_indexes_->GetSize(); i++) {
@@ -140,19 +135,19 @@ void PaxColumn::SetToastIndexes(DataBuffer<int32> *toast_indexes) {
 }
 
 void PaxColumn::SetExternalToastDataBuffer(
-    DataBuffer<char> *external_toast_data) {
+    std::shared_ptr<DataBuffer<char>> external_toast_data) {
   Assert(!external_toast_data_);
-  external_toast_data_ = external_toast_data;
+  external_toast_data_ = std::move(external_toast_data);
 }
 
-DataBuffer<char> *PaxColumn::GetExternalToastDataBuffer() {
+std::shared_ptr<DataBuffer<char>> PaxColumn::GetExternalToastDataBuffer() {
   return external_toast_data_;
 }
 
 size_t PaxColumn::AppendExternalToastData(char *data, size_t size) {
   size_t rc;
   if (!external_toast_data_) {
-    external_toast_data_ = PAX_NEW<DataBuffer<char>>(DEFAULT_CAPACITY);
+    external_toast_data_ = std::make_unique<DataBuffer<char>>(DEFAULT_CAPACITY);
   }
 
   if (external_toast_data_->Available() < size) {
@@ -167,10 +162,10 @@ size_t PaxColumn::AppendExternalToastData(char *data, size_t size) {
 
 void PaxColumn::AddToastIndex(int32 index_of_toast) {
   if (!toast_indexes_) {
-    toast_indexes_ = PAX_NEW<DataBuffer<int32>>(DEFAULT_CAPACITY);
+    toast_indexes_ = std::make_shared<DataBuffer<int32>>(DEFAULT_CAPACITY);
 
     Assert(!toast_flat_map_);
-    toast_flat_map_ = PAX_NEW<Bitmap8>(DEFAULT_CAPACITY);
+    toast_flat_map_ = std::make_shared<Bitmap8>(DEFAULT_CAPACITY);
     toast_flat_map_->SetN(total_rows_);
   }
 
@@ -200,22 +195,18 @@ std::string PaxColumn::DebugString() {
 
 template <typename T>
 PaxCommColumn<T>::PaxCommColumn(uint32 capacity) {
-  data_ = PAX_NEW<DataBuffer<T>>(capacity * sizeof(T));
+  data_ = std::make_shared<DataBuffer<T>>(capacity * sizeof(T));
 }
 
 template <typename T>
-PaxCommColumn<T>::~PaxCommColumn() {
-  PAX_DELETE(data_);
-}
+PaxCommColumn<T>::~PaxCommColumn() { }
 
 template <typename T>  // NOLINT: redirect constructor
 PaxCommColumn<T>::PaxCommColumn() : PaxCommColumn(DEFAULT_CAPACITY) {}
 
 template <typename T>
-void PaxCommColumn<T>::Set(DataBuffer<T> *data) {
-  PAX_DELETE(data_);
-
-  data_ = data;
+void PaxCommColumn<T>::Set(std::shared_ptr<DataBuffer<T>> data) {
+  data_ = std::move(data);
 }
 
 template <typename T>
@@ -314,25 +305,20 @@ template class PaxCommColumn<double>;
 PaxNonFixedColumn::PaxNonFixedColumn(uint32 data_capacity,
                                      uint32 lengths_capacity)
     : estimated_size_(0),
-      data_(PAX_NEW<DataBuffer<char>>(data_capacity)),
-      lengths_(PAX_NEW<DataBuffer<int32>>(lengths_capacity)) {}
+      data_(std::make_shared<DataBuffer<char>>(data_capacity)),
+      lengths_(std::make_shared<DataBuffer<int32>>(lengths_capacity)) {}
 
 PaxNonFixedColumn::PaxNonFixedColumn()
     : PaxNonFixedColumn(DEFAULT_CAPACITY, DEFAULT_CAPACITY) {}
 
-PaxNonFixedColumn::~PaxNonFixedColumn() {
-  PAX_DELETE(data_);
-  PAX_DELETE(lengths_);
-}
+PaxNonFixedColumn::~PaxNonFixedColumn() { }
 
-void PaxNonFixedColumn::Set(DataBuffer<char> *data, DataBuffer<int32> *lengths,
+void PaxNonFixedColumn::Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> lengths,
                             size_t total_size) {
-  PAX_DELETE(data_);
-  PAX_DELETE(lengths_);
 
   estimated_size_ = total_size;
-  data_ = data;
-  lengths_ = lengths;
+  data_ = std::move(data);
+  lengths_ = std::move(lengths);
   BuildOffsets();
 }
 

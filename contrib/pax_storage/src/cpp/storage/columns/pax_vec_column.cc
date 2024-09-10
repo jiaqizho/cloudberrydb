@@ -7,23 +7,20 @@ namespace pax {
 
 template <typename T>
 PaxVecCommColumn<T>::PaxVecCommColumn(uint32 capacity) {
-  data_ = PAX_NEW<DataBuffer<T>>(
+  data_ = std::make_shared<DataBuffer<T>>(
       TYPEALIGN(MEMORY_ALIGN_SIZE, capacity * sizeof(T)));
 }
 
 template <typename T>
 PaxVecCommColumn<T>::~PaxVecCommColumn() {
-  PAX_DELETE(data_);
 }
 
 template <typename T>  // NOLINT: redirect constructor
 PaxVecCommColumn<T>::PaxVecCommColumn() : PaxVecCommColumn(DEFAULT_CAPACITY) {}
 
 template <typename T>
-void PaxVecCommColumn<T>::Set(DataBuffer<T> *data, size_t non_null_rows) {
-  PAX_DELETE(data_);
-
-  data_ = data;
+void PaxVecCommColumn<T>::Set(std::shared_ptr<DataBuffer<T>> data, size_t non_null_rows) {
+  data_ = std::move(data);
   non_null_rows_ = non_null_rows;
 }
 
@@ -119,7 +116,7 @@ std::pair<char *, size_t> PaxVecCommColumn<T>::GetRangeBuffer(size_t start_pos,
 }
 
 template <typename T>
-DataBuffer<T> *PaxVecCommColumn<T>::GetDataBuffer() {
+std::shared_ptr<DataBuffer<T>> PaxVecCommColumn<T>::GetDataBuffer() {
   return data_;
 }
 
@@ -134,9 +131,9 @@ template class PaxVecCommColumn<double>;
 PaxVecNonFixedColumn::PaxVecNonFixedColumn(uint32 data_capacity,
                                            uint32 lengths_capacity)
     : estimated_size_(0),
-      data_(PAX_NEW<DataBuffer<char>>(
+      data_(std::make_shared<DataBuffer<char>>(
           TYPEALIGN(MEMORY_ALIGN_SIZE, data_capacity))),
-      offsets_(PAX_NEW<DataBuffer<int32>>(lengths_capacity)),
+      offsets_(std::make_shared<DataBuffer<int32>>(lengths_capacity)),
       next_offsets_(0) {
   Assert(data_capacity % sizeof(int64) == 0);
 }
@@ -144,21 +141,16 @@ PaxVecNonFixedColumn::PaxVecNonFixedColumn(uint32 data_capacity,
 PaxVecNonFixedColumn::PaxVecNonFixedColumn()
     : PaxVecNonFixedColumn(DEFAULT_CAPACITY, DEFAULT_CAPACITY) {}
 
-PaxVecNonFixedColumn::~PaxVecNonFixedColumn() {
-  PAX_DELETE(data_);
-  PAX_DELETE(offsets_);
-}
+PaxVecNonFixedColumn::~PaxVecNonFixedColumn() { }
 
-void PaxVecNonFixedColumn::Set(DataBuffer<char> *data,
-                               DataBuffer<int32> *offsets, size_t total_size,
+void PaxVecNonFixedColumn::Set(std::shared_ptr<DataBuffer<char>> data,
+                               std::shared_ptr<DataBuffer<int32>> offsets, size_t total_size,
                                size_t non_null_rows) {
-  PAX_DELETE(data_);
-  PAX_DELETE(offsets_);
   Assert(data && offsets);
 
   estimated_size_ = total_size;
-  data_ = data;
-  offsets_ = offsets;
+  data_ = std::move(data);
+  offsets_ = std::move(offsets);
   non_null_rows_ = non_null_rows;
   next_offsets_ = -1;
 }
@@ -287,6 +279,6 @@ std::pair<char *, size_t> PaxVecNonFixedColumn::GetRangeBuffer(size_t start_pos,
                         last_offset - start_offset);
 }
 
-DataBuffer<char> *PaxVecNonFixedColumn::GetDataBuffer() { return data_; }
+std::shared_ptr<DataBuffer<char>> PaxVecNonFixedColumn::GetDataBuffer() { return data_; }
 
 }  // namespace pax

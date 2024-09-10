@@ -36,6 +36,5 @@ enum PaxFilterStatisticsKind {
   kGroup = 1,
 };
 
-static std::vector<const char *> filter_kind_desc = {"file", "group"};
 
 }  // namespace pax

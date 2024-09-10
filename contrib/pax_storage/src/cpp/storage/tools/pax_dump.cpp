@@ -229,16 +229,15 @@ invalid_args:
 }
 
 int main(int argc, char **argv) {
-  pax::tools::OrcDumpReader *reader = nullptr;
   pax::tools::DumpConfig config;
   int rc = 0;
 
   progname = argv[0];
   InitConfig(&config, argc, argv);
 
-  reader = new pax::tools::OrcDumpReader(&config);
+  pax::tools::OrcDumpReader reader(&config);
   try {
-    bool ok = reader->Open();
+    bool ok = reader.Open();
     if (!ok) {
       std::cout << "Failed to dump current file: " << config.file_name
                 << ", Toast file: " << config.toast_file_name  // safe
@@ -247,7 +246,7 @@ int main(int argc, char **argv) {
       goto finish;
     }
 
-    std::cout << reader->Dump() << std::endl;
+    std::cout << reader.Dump() << std::endl;
   } catch (cbdb::CException &e) {
     std::cout << "error happend while dumping.\n  " << e.What() << std::endl;
     std::cout << "Stack: \n" << e.Stack() << std::endl;
@@ -258,7 +257,6 @@ int main(int argc, char **argv) {
 finish:
   free(config.file_name);
   free(config.toast_file_name);
-  reader->Close();
-  delete reader;
+  reader.Close();
   return rc;
 }

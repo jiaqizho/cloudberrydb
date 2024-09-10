@@ -24,11 +24,7 @@ PaxColumnTypeInMem PaxShortNumericColumn::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeVecDecimal;
 }
 
-PaxShortNumericColumn::~PaxShortNumericColumn() {
-  for (auto numeric : numeric_holder_) {
-    cbdb::Pfree(numeric);
-  }
-}
+PaxShortNumericColumn::~PaxShortNumericColumn() { }
 
 void PaxShortNumericColumn::AppendNull() {
   static char null_buffer[sizeof(int64) * 2] = {0};
@@ -100,7 +96,7 @@ std::pair<char *, size_t> PaxShortNumericColumn::GetBuffer(size_t position) {
   return {DatumGetPointer(datum), VARSIZE_ANY_EXHDR(vl) + VARHDRSZ};
 }
 
-DataBuffer<int8> *PaxShortNumericColumn::GetDataBuffer() { return data_; }
+std::shared_ptr<DataBuffer<int8>> PaxShortNumericColumn::GetDataBuffer() { return data_; }
 
 int32 PaxShortNumericColumn::GetTypeLength() const {
   return VEC_SHORT_NUMERIC_STORE_BYTES;

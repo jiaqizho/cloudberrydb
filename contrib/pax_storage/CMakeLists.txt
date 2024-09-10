@@ -1,6 +1,6 @@
 project(Pax)
 cmake_minimum_required (VERSION 3.11.0)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 set(TOP_DIR ${PROJECT_SOURCE_DIR}/../..)
 set(CBDB_INCLUDE_DIR ${TOP_DIR}/src/include)
@@ -9,10 +9,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -Wno-error=ignored
 
 # Build gtest options
 option(BUILD_GTEST "Build with google test" ON)
-option(BUILD_GBENCH "Build with google benchmark" OFF)
+option(BUILD_GBENCH "Build with google benchmark" ON)
 
 # Build pax tools
-option(BUILD_TOOLS "Build with pax tools" ON)
+option(BUILD_TOOLS "Build with pax tools" OFF)
 
 # Build with return dictionary in record batch
 option(BUILD_RB_RET_DICT "Build with pax direct return dictionary in record batch." OFF)

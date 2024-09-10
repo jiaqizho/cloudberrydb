@@ -12,7 +12,7 @@ class PaxVecCommColumn : public PaxColumn {
 
   PaxVecCommColumn();
 
-  virtual void Set(DataBuffer<T> *data, size_t non_null_rows);
+  virtual void Set(std::shared_ptr<DataBuffer<T>> data, size_t non_null_rows);
 
   PaxColumnTypeInMem GetPaxColumnTypeInMem() const override;
 
@@ -40,13 +40,13 @@ class PaxVecCommColumn : public PaxColumn {
   int32 GetTypeLength() const override;
 
   // directly pass the buffer to vec
-  DataBuffer<T> *GetDataBuffer();
+  std::shared_ptr<DataBuffer<T>> GetDataBuffer();
 
  protected:
   void AppendInternal(char *buffer, size_t size);
 
  protected:  // NOLINT
-  DataBuffer<T> *data_;
+  std::shared_ptr<DataBuffer<T>> data_;
 };
 
 extern template class PaxVecCommColumn<char>;
@@ -65,7 +65,7 @@ class PaxVecNonFixedColumn : public PaxColumn {
 
   ~PaxVecNonFixedColumn() override;
 
-  virtual void Set(DataBuffer<char> *data, DataBuffer<int32> *offsets,
+  virtual void Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> offsets,
                    size_t total_size, size_t non_null_rows);
 
   void Append(char *buffer, size_t size) override;
@@ -94,18 +94,18 @@ class PaxVecNonFixedColumn : public PaxColumn {
   virtual std::pair<char *, size_t> GetOffsetBuffer(bool append_last);
 
   // directly pass the buffer to vec
-  DataBuffer<char> *GetDataBuffer();
+  std::shared_ptr<DataBuffer<char>> GetDataBuffer();
 #ifndef RUN_GTEST
  protected:
 #endif
   void AppendLastOffset();
 
-  DataBuffer<int32> *GetOffsetDataBuffer() { return offsets_; }
+  std::shared_ptr<DataBuffer<int32>> GetOffsetDataBuffer() { return offsets_; }
 
  protected:
   size_t estimated_size_;
-  DataBuffer<char> *data_;
-  DataBuffer<int32> *offsets_;
+  std::shared_ptr<DataBuffer<char>> data_;
+  std::shared_ptr<DataBuffer<int32>> offsets_;
 
   // used in `kTypeStoragePorcVec`
   int32 next_offsets_;

@@ -4,7 +4,9 @@
 #include <utility>
 #include <vector>
 
+#include "comm/byte_buffer.h"
 #include "comm/guc.h"
+#include "comm/pax_memory.h"
 #include "storage/oper/pax_stats.h"
 #include "storage/pax_filter.h"
 
@@ -23,7 +25,8 @@ class MicroPartitionStats final {
   ~MicroPartitionStats();
 
   void Initialize(const std::vector<int> &minmax_columns);
-  void AddRow(TupleTableSlot *slot, const std::vector<Datum> &detoast_vals);
+  void AddRow(TupleTableSlot *slot);
+  //void AddRow(TupleTableSlot *slot, const std::vector<Datum> &detoast_vals);
   MicroPartitionStats *Reset();
   ::pax::stats::MicroPartitionStatisticsInfo *Serialize();
 
@@ -43,7 +46,7 @@ class MicroPartitionStats final {
 
  private:
   void AddNullColumn(int column_index);
-  void AddNonNullColumn(int column_index, Datum value, Datum detoast);
+  void AddNonNullColumn(int column_index, Datum value);
   void UpdateMinMaxValue(int column_index, Datum datum, Oid collation,
                          int typlen, bool typbyval);
   void UpdateSumValue(int column_index, SumStatsInMem *sum_stats);
@@ -52,9 +55,10 @@ class MicroPartitionStats final {
  private:
   TupleDesc tuple_desc_;
   // stats_: only references the info object by pointer
-  MicroPartitionStatsData *stats_;
+  std::unique_ptr<MicroPartitionStatsData> stats_;
   std::vector<Datum> min_in_mem_;
   std::vector<Datum> max_in_mem_;
+  std::unordered_map<Datum, ByteBuffer> buffer_holders_;
 
   // the stats to desc sum
   std::vector<SumStatsInMem> sum_stats_;

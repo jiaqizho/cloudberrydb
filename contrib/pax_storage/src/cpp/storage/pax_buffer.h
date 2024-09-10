@@ -7,6 +7,7 @@
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/fmt.h"
+#include "comm/pax_memory.h"
 
 namespace pax {
 
@@ -34,24 +35,18 @@ struct BlockBuffer {
     std::swap(end_offset_, other.end_offset_);
   }
 
-  template <typename T = char *>
-  static inline T Alloc(size_t size) {
-    return reinterpret_cast<T>(cbdb::Palloc(size));
-  }
+  template <typename T=char *>
+  static inline T Alloc(size_t size) { return PAX_ALLOC<T>(size); }
 
-  template <typename T = char *>
-  static inline T Alloc0(size_t size) {
-    return reinterpret_cast<T>(cbdb::Palloc0(size));
-  }
+  template <typename T=char *>
+  static inline T Alloc0(size_t size) { return PAX_ALLOC0<T>(size); }
 
-  template <typename T = char *>
+  template <typename T=char *>
   static inline T Realloc(void *ptr, size_t new_size) {
-    return reinterpret_cast<T>(cbdb::RePalloc(ptr, new_size));
+    return PAX_REALLOC<T>(ptr, new_size);
   }
   template <typename T>
-  static inline void Free(T ptr) {
-    cbdb::Pfree(ptr);
-  }
+  static inline void Free(T ptr) { PAX_FREE(ptr); }
 
  private:
   char *begin_offset_;
@@ -100,10 +95,6 @@ class BlockBufferBase {
     return size_t(res);
   }
 
-  virtual void Set(char *ptr, size_t size, size_t offset);
-
-  virtual void Set(char *ptr, size_t size);
-
   inline void Write(char *ptr, size_t size) {
     Assert(block_pos_ + size <= block_buffer_.End());
     memcpy(block_pos_, ptr, size);
@@ -119,6 +110,11 @@ class BlockBufferBase {
   virtual ~BlockBufferBase() = default;
 
  protected:
+  void Set(char *ptr, size_t size, size_t offset);
+
+  void Set(char *ptr, size_t size);
+
+
   char *block_pos_;
   BlockBuffer block_buffer_;
 };
@@ -183,10 +179,8 @@ class DataBuffer : public BlockBufferBase {
 
   // Set a memory buffer, should make sure internal buffer is nullptr.
   // This method is split from the constructor.
-  // Sometimes caller need prealloc a DataBuffer without internal buffer.
-  void Set(char *ptr, size_t size, size_t offset) override;
 
-  void Set(char *ptr, size_t size) override;
+  void Set(char *ptr, size_t size);
 
   // Reset the DataBuffer
   void Reset();

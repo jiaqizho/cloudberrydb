@@ -2,6 +2,8 @@
 #include "comm/cbdb_api.h"
 
 #include "comm/guc.h"
+#include "comm/byte_buffer.h"
+#include "comm/pax_memory.h"
 
 namespace pax {
 
@@ -32,6 +34,30 @@ typedef struct pax_varatt_external_ref {
   char *data_ref;
   size_t data_size;
 } pax_varatt_external_ref;
+
+class ExternalToastValue : public MemoryObject {
+ public:
+  explicit ExternalToastValue(size_t size);
+  explicit ExternalToastValue(ByteBuffer &&tmp);
+  explicit ExternalToastValue(ExternalToastValue &&tmp);
+  ExternalToastValue(const ExternalToastValue &) = delete;
+
+  ~ExternalToastValue() = default;
+
+  ExternalToastValue &operator=(const ExternalToastValue &)=delete;
+  ExternalToastValue &operator=(ExternalToastValue &&tmp) {
+    if (this == &tmp) return *this;
+    buffer_ = std::move(tmp.buffer_);
+
+    return *this;
+  };
+
+  Datum GetDatum() {return PointerGetDatum(Addr()); };
+  void *Addr() { return buffer_.Addr(); }
+  size_t Size() { return buffer_.Size(); }
+ private:
+  ByteBuffer buffer_;
+};
 
 #define PaxExtGetDatum(PTR) (pax_varatt_external *)(PTR)
 #define PaxExtRefGetDatum(PTR) (pax_varatt_external_ref *)(PTR)
@@ -81,7 +107,7 @@ typedef struct pax_varatt_external_ref {
   (pax_enable_toast && SIZE >= (uint32)pax_min_size_of_external_toast)
 
 // make pax toast
-Datum pax_make_toast(Datum d, char storage_type);
+std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_toast(Datum d, char storage_type);
 
 // raw size of pax toast
 size_t pax_toast_raw_size(Datum d);
@@ -90,7 +116,7 @@ size_t pax_toast_hdr_size(Datum d);
 // detoast pax toast
 size_t pax_detoast_raw(Datum d, char *dst_buff, size_t dst_size,
                        char *ext_buff = nullptr, size_t ext_buff_size = 0);
-Datum pax_detoast(Datum d, char *ext_buff = nullptr, size_t ext_buff_size = 0);
+std::pair<Datum, std::shared_ptr<MemoryObject>> pax_detoast(Datum d, char *ext_buff = nullptr, size_t ext_buff_size = 0);
 
 // free pax toast
 void pax_free_toast(Datum d);

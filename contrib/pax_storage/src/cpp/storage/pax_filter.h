@@ -50,14 +50,15 @@ class PaxFilter final {
 
   bool HasMicroPartitionFilter() const { return num_scan_keys_ > 0; }
 
-  std::pair<bool *, size_t> GetColumnProjection();
-
   const std::vector<int> &GetColumnProjectionIndex() const {
     return proj_column_index_;
   }
 
-  void SetColumnProjection(bool *proj, size_t proj_len);
+  void SetColumnProjection(std::vector<bool> &&proj_cols);
 
+  const std::vector<bool> &GetColumnProjection() const {
+     return proj_;
+  }
   void SetColumnProjection(const std::vector<int> &cols, int natts);
 
   void SetScanKeys(ScanKey scan_keys, int num_scan_keys);
@@ -85,16 +86,7 @@ class PaxFilter final {
     return filter_failed;
   }
 
-  inline void LogStatistics() {
-    for (size_t i = 0; i < filter_kind_desc.size(); i++) {
-      if (this->totals_[i] == 0) {
-        PAX_LOG("kind %s, no filter. ", filter_kind_desc[i]);
-      } else {
-        PAX_LOG("kind %s, filter rate: %d / %d", filter_kind_desc[i], hits_[i],
-                this->totals_[i]);
-      }
-    }
-  }
+  void LogStatistics();
 
   inline bool HasRowScanFilter() const { return efctx_.HasExecutionFilter(); }
   inline bool BuildExecutionFilterForColumns(Relation rel, PlanState *ps) {
@@ -119,8 +111,7 @@ class PaxFilter final {
   int num_scan_keys_ = 0;
 
   // column projection
-  bool *proj_ = nullptr;
-  size_t proj_len_ = 0;
+  std::vector<bool> proj_;
   std::vector<int> proj_column_index_;
 
   // row-level filter

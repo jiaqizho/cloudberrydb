@@ -14,13 +14,13 @@
 namespace pax {
 
 template <typename N>
-static PaxColumn *CreateCommColumn(bool is_vec,
+static std::shared_ptr<PaxColumn> CreateCommColumn(bool is_vec,
                                    const PaxEncoder::EncodingOption &opts) {
   return is_vec
-             ? (PaxColumn *)traits::ColumnOptCreateTraits<
+             ? traits::ColumnOptCreateTraits<
                    PaxVecEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
                                                              opts)
-             : (PaxColumn *)traits::ColumnOptCreateTraits<
+             : traits::ColumnOptCreateTraits<
                    PaxEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
                                                           opts);
 }
@@ -29,20 +29,10 @@ PaxColumns::PaxColumns()
     : PaxColumn(),
       row_nums_(0),
       storage_format_(PaxStorageFormat::kTypeStoragePorcNonVec) {
-  data_ = PAX_NEW<DataBuffer<char>>(0);
+  data_ = std::make_shared<DataBuffer<char>>(0);
 }
 
-PaxColumns::~PaxColumns() {
-  // Notice that: the resources freed here,
-  // must transform owner in `PaxColumns::Merge`
-  for (auto column : columns_) {
-    PAX_DELETE(column);
-  }
-  for (auto holder : data_holder_) {
-    PAX_DELETE(holder);
-  }
-  PAX_DELETE(data_);
-}
+PaxColumns::~PaxColumns() { }
 
 void PaxColumns::SetStorageFormat(PaxStorageFormat format) {
   storage_format_ = format;
@@ -52,7 +42,7 @@ PaxStorageFormat PaxColumns::GetStorageFormat() const {
   return storage_format_;
 }
 
-void PaxColumns::Merge(PaxColumns *columns) {
+void PaxColumns::Merge(std::shared_ptr<PaxColumns> columns) {
   Assert(GetColumns() == columns->GetColumns());
   Assert(GetRows() == columns->GetRows());
   Assert(columns->data_holder_.empty());
@@ -70,12 +60,11 @@ void PaxColumns::Merge(PaxColumns *columns) {
     columns->data_ = nullptr;
   }
 
-  PAX_DELETE(columns);
 }
 
-PaxColumn *PaxColumns::operator[](uint64 i) { return columns_[i]; }
+std::shared_ptr<PaxColumn> PaxColumns::operator[](uint64 i) { return columns_[i]; }
 
-void PaxColumns::Append(PaxColumn *column) { columns_.emplace_back(column); }
+void PaxColumns::Append(std::shared_ptr<PaxColumn> column) { columns_.emplace_back(column); }
 
 void PaxColumns::Append(char * /*buffer*/, size_t /*size*/) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
@@ -85,11 +74,10 @@ void PaxColumns::AppendToast(char *buffer, size_t size) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
-void PaxColumns::Set(DataBuffer<char> *data) {
+void PaxColumns::Set(std::shared_ptr<DataBuffer<char>> data) {
   Assert(data_->GetBuffer() == nullptr);
 
-  PAX_DELETE(data_);
-  data_ = data;
+  data_ = std::move(data);
 }
 
 size_t PaxColumns::GetNonNullRows() const {
@@ -131,10 +119,10 @@ size_t PaxColumns::ToastCounts() {
 }
 
 void PaxColumns::SetExternalToastDataBuffer(
-    DataBuffer<char> *external_toast_data,
+    std::shared_ptr<DataBuffer<char>> external_toast_data,
     const std::vector<size_t> &column_sizes) {
   Assert(!external_toast_data_);
-  external_toast_data_ = external_toast_data;
+  external_toast_data_ = std::move(external_toast_data);
   size_t curr_offset = 0;
   for (size_t i = 0; i < columns_.size(); i++) {
     auto column = columns_[i];
@@ -149,26 +137,25 @@ void PaxColumns::SetExternalToastDataBuffer(
       continue;
     }
 
-    CBDB_CHECK(curr_offset + column_size <= external_toast_data->Used(),
+    CBDB_CHECK(curr_offset + column_size <= external_toast_data_->Used(),
                cbdb::CException::ExType::kExTypeOutOfRange,
                fmt("Invalid toast desc [offset=%lu, size=%lu, toast buffer "
                    "size=%lu]",
-                   curr_offset, column_size, external_toast_data->Used()));
+                   curr_offset, column_size, external_toast_data_->Used()));
 
-    auto column_eb = PAX_NEW<DataBuffer<char>>(
-        external_toast_data->Start() + curr_offset, column_size, false, false);
+    auto column_eb = std::make_unique<DataBuffer<char>>(
+        external_toast_data_->Start() + curr_offset, column_size, false, false);
     column_eb->BrushAll();
-    column->SetExternalToastDataBuffer(column_eb);
+    column->SetExternalToastDataBuffer(std::move(column_eb));
     curr_offset += column_size;
   }
 }
 
-DataBuffer<char> *PaxColumns::GetExternalToastDataBuffer() {
-  DataBuffer<char> *column_external_buffer;
+std::shared_ptr<DataBuffer<char>> PaxColumns::GetExternalToastDataBuffer() {
   size_t buffer_len = 0;
 
   if (!external_toast_data_) {
-    external_toast_data_ = PAX_NEW<DataBuffer<char>>(DEFAULT_CAPACITY);
+    external_toast_data_ = std::make_shared<DataBuffer<char>>(DEFAULT_CAPACITY);
   }
 
   if (external_toast_data_->Used() != 0) {
@@ -180,7 +167,7 @@ DataBuffer<char> *PaxColumns::GetExternalToastDataBuffer() {
     if (!column) {
       continue;
     }
-    column_external_buffer = column->GetExternalToastDataBuffer();
+    auto column_external_buffer = column->GetExternalToastDataBuffer();
     if (!column_external_buffer) {
       continue;
     }
@@ -204,7 +191,6 @@ void PaxColumns::VerifyAllExternalToasts(
 #else
   std::vector<std::pair<size_t, size_t>> result_uncombined;
   std::vector<std::pair<size_t, size_t>> result;
-  DataBuffer<int32> *data_indexes;
   char *buffer;
   size_t buff_len;
   if (COLUMN_STORAGE_FORMAT_IS_VEC(this)) {
@@ -218,7 +204,7 @@ void PaxColumns::VerifyAllExternalToasts(
     if (!column) {
       continue;
     }
-    data_indexes = column->GetToastIndexes();
+    auto data_indexes = column->GetToastIndexes();
     // no toast here
     if (!data_indexes) {
       Assert(ext_toast_lens[i] == 0);
@@ -258,7 +244,7 @@ void PaxColumns::VerifyAllExternalToasts(
       continue;
     }
 
-    data_indexes = column->GetToastIndexes();
+    auto data_indexes = column->GetToastIndexes();
     // no toast here
     if (!data_indexes) {
       Assert(ext_toast_lens[i] == 0);
@@ -334,7 +320,7 @@ size_t PaxColumns::AlignSize(size_t buf_len, size_t len, size_t align_size) {
   return len;
 }
 
-DataBuffer<char> *PaxColumns::GetDataBuffer(
+std::shared_ptr<DataBuffer<char>> PaxColumns::GetDataBuffer(
     const ColumnStreamsFunc &column_streams_func,
     const ColumnEncodingFunc &column_encoding_func) {
   size_t buffer_len = 0;
@@ -355,12 +341,12 @@ DataBuffer<char> *PaxColumns::GetDataBuffer(
   if (COLUMN_STORAGE_FORMAT_IS_VEC(this)) {
     buffer_len =
         MeasureVecDataBuffer(column_streams_func, column_encoding_func);
-    data_->Set(BlockBuffer::Alloc<char *>(buffer_len), buffer_len, 0);
+    data_ = std::make_shared<DataBuffer<char>>(buffer_len);
     CombineVecDataBuffer();
   } else {
     buffer_len =
         MeasureOrcDataBuffer(column_streams_func, column_encoding_func);
-    data_->Set(BlockBuffer::Alloc<char *>(buffer_len), buffer_len, 0);
+    data_ = std::make_shared<DataBuffer<char>>(buffer_len);
     CombineOrcDataBuffer();
   }
 
@@ -373,11 +359,12 @@ size_t PaxColumns::MeasureVecDataBuffer(
     const ColumnStreamsFunc &column_streams_func,
     const ColumnEncodingFunc &column_encoding_func) {
   size_t buffer_len = 0;
-  for (const auto &column : columns_) {
-    if (!column) {
+  for (const auto &p_column : columns_) {
+    if (!p_column) {
       continue;
     }
 
+    auto column = p_column.get();
     size_t total_rows = column->GetRows();
     size_t non_null_rows = column->GetNonNullRows();
 
@@ -481,11 +468,12 @@ size_t PaxColumns::MeasureOrcDataBuffer(
     const ColumnEncodingFunc &column_encoding_func) {
   size_t buffer_len = 0;
 
-  for (const auto &column : columns_) {
-    if (!column) {
+  for (const auto &p_column : columns_) {
+    if (!p_column) {
       continue;
     }
 
+    auto column = p_column.get();
     // has null will generate a bitmap in current stripe
     if (column->HasNull()) {
       auto bm = column->GetBitmap();
@@ -571,7 +559,7 @@ void PaxColumns::CombineVecDataBuffer() {
   size_t buffer_len = 0;
 
   auto fill_padding_buffer = [](PaxColumn *column,
-                                DataBuffer<char> *data_buffer,
+                                const std::shared_ptr<DataBuffer<char>> &data_buffer,
                                 size_t buffer_len, size_t align) {
     Assert(data_buffer);
 
@@ -589,11 +577,12 @@ void PaxColumns::CombineVecDataBuffer() {
     data_buffer->Brush(gap_size);
   };
 
-  for (const auto &column : columns_) {
-    if (!column) {
+  for (const auto &p_column : columns_) {
+    if (!p_column) {
       continue;
     }
 
+    auto column = p_column.get();
     if (column->HasNull()) {
       auto bm = column->GetBitmap();
       Assert(bm);
@@ -676,11 +665,12 @@ void PaxColumns::CombineOrcDataBuffer() {
   char *buffer = nullptr;
   size_t buffer_len = 0;
 
-  for (const auto &column : columns_) {
-    if (!column) {
+  for (const auto &p_column : columns_) {
+    if (!p_column) {
       continue;
     }
 
+    auto column = p_column.get();
     if (column->HasNull()) {
       auto bm = column->GetBitmap();
       Assert(bm);

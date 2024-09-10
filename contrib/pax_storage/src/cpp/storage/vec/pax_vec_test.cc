@@ -151,9 +151,9 @@ class PaxVecTest
 };
 
 TEST_P(PaxVecTest, PaxColumnToVec) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
+  std::shared_ptr<VecAdapter> adapter;
+  std::shared_ptr<PaxColumns> columns;
+  std::shared_ptr<PaxColumn> column;
 
   auto is_fixed = ::testing::get<0>(GetParam());
   auto with_visimap = ::testing::get<1>(GetParam());
@@ -164,12 +164,12 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
   }
 
   adapter =
-      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
-  columns = PAX_NEW<PaxColumns>();
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
-    column = PAX_NEW<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
+    column = std::make_shared<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
   } else {
-    column = PAX_NEW<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
+    column = std::make_shared<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
                                         VEC_BATCH_LENGTH + 1000);
   }
 
@@ -371,31 +371,24 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
   }
 
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 #ifdef BUILD_RB_RET_DICT
 
 TEST_P(PaxVecTest, PaxColumnWithDictToVec) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
-
   [[maybe_unused]] auto is_fixed = ::testing::get<0>(GetParam());
   [[maybe_unused]] auto with_visimap = ::testing::get<1>(GetParam());
   auto tuple_slot = CreateTupleSlot(false, false, false);
 
-  adapter =
-      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
-  columns = PAX_NEW<PaxColumns>();
+  auto adapter =
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  auto columns = std::make_shared<PaxColumns>();
 
   PaxEncoder::EncodingOption encoding_option;
   encoding_option.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY;
 
-  column = PAX_NEW<PaxNonFixedEncodingColumn>(
+  auto column = std::make_shared<PaxNonFixedEncodingColumn>(
       VEC_BATCH_LENGTH, VEC_BATCH_LENGTH, std::move(encoding_option));
 
   for (size_t i = 0; i < VEC_BATCH_LENGTH; i++) {
@@ -487,30 +480,24 @@ TEST_P(PaxVecTest, PaxColumnWithDictToVec) {
   }
 
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 TEST_P(PaxVecTest, PaxColumnWithNullAndDictToVec) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
   size_t null_counts = 0;
 
   [[maybe_unused]] auto is_fixed = ::testing::get<0>(GetParam());
   [[maybe_unused]] auto with_visimap = ::testing::get<1>(GetParam());
   auto tuple_slot = CreateTupleSlot(false, false, false);
 
-  adapter = PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor,
+  auto adapter = std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor,
                                 VEC_BATCH_LENGTH * 10);
-  columns = PAX_NEW<PaxColumns>();
+  auto columns = std::make_shared<PaxColumns>();
 
   PaxEncoder::EncodingOption encoding_option;
   encoding_option.column_encode_type =
       ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY;
 
-  column = PAX_NEW<PaxNonFixedEncodingColumn>(
+  auto column = std::make_shared<PaxNonFixedEncodingColumn>(
       VEC_BATCH_LENGTH, VEC_BATCH_LENGTH, std::move(encoding_option));
 
   for (size_t i = 0; i < VEC_BATCH_LENGTH; i++) {
@@ -634,29 +621,26 @@ TEST_P(PaxVecTest, PaxColumnWithNullAndDictToVec) {
   }
 
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 #endif  // BUILD_RB_RET_DICT
 
 TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
+  std::shared_ptr<VecAdapter> adapter;
+  std::shared_ptr<PaxColumns> columns;
+  std::shared_ptr<PaxColumn> column;
   size_t null_counts = 0;
   auto is_fixed = ::testing::get<0>(GetParam());
 
   TupleTableSlot *tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
-  columns = PAX_NEW<PaxColumns>();
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
-    column = PAX_NEW<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
+    column = std::make_shared<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
   } else {
-    column = PAX_NEW<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
+    column = std::make_shared<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
                                         VEC_BATCH_LENGTH + 1000);
   }
 
@@ -908,26 +892,23 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
   }
 
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 TEST_P(PaxVecTest, PaxColumnToVecNoFull) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
+  std::shared_ptr<VecAdapter> adapter;
+  std::shared_ptr<PaxColumns> columns;
+  std::shared_ptr<PaxColumn> column;
 
   auto is_fixed = ::testing::get<0>(GetParam());
   auto tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
-  columns = PAX_NEW<PaxColumns>();
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
-    column = PAX_NEW<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
+    column = std::make_shared<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
   } else {
-    column = PAX_NEW<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
+    column = std::make_shared<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
                                         VEC_BATCH_LENGTH + 1000);
   }
 
@@ -1013,27 +994,24 @@ TEST_P(PaxVecTest, PaxColumnToVecNoFull) {
   }
 
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 TEST_P(PaxVecTest, PaxColumnWithNullToVecNoFull) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
+  std::shared_ptr<VecAdapter> adapter;
+  std::shared_ptr<PaxColumns> columns;
+  std::shared_ptr<PaxColumn> column;
   size_t null_counts = 0;
 
   auto is_fixed = ::testing::get<0>(GetParam());
   auto tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
-  columns = PAX_NEW<PaxColumns>();
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
-    column = PAX_NEW<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
+    column = std::make_shared<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
   } else {
-    column = PAX_NEW<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
+    column = std::make_shared<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
                                         VEC_BATCH_LENGTH + 1000);
   }
 
@@ -1171,26 +1149,23 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVecNoFull) {
   }
 
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 TEST_P(PaxVecTest, PaxColumnAllNullToVec) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
+  std::shared_ptr<VecAdapter> adapter;
+  std::shared_ptr<PaxColumns> columns;
+  std::shared_ptr<PaxColumn> column;
 
   auto is_fixed = ::testing::get<0>(GetParam());
   auto tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
-  columns = PAX_NEW<PaxColumns>();
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
-    column = PAX_NEW<PaxCommColumn<int32>>(1000);
+    column = std::make_shared<PaxCommColumn<int32>>(1000);
   } else {
-    column = PAX_NEW<PaxNonFixedColumn>(1000, 1000);
+    column = std::make_shared<PaxNonFixedColumn>(1000, 1000);
   }
 
   for (size_t i = 0; i < 1000; i++) {
@@ -1271,9 +1246,6 @@ TEST_P(PaxVecTest, PaxColumnAllNullToVec) {
   }
 
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 TEST_P(PaxVecTest, DecimalTest) {
@@ -1283,10 +1255,10 @@ TEST_P(PaxVecTest, DecimalTest) {
   TupleTableSlot *tuple_slot = CreateDecimalTupleSlot();
 
   auto adapter =
-      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
-  auto columns = PAX_NEW<PaxColumns>();
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  auto columns = std::make_shared<PaxColumns>();
   auto column =
-      PAX_NEW<PaxShortNumericColumn>(VEC_BATCH_LENGTH + 1000, encoding_option);
+      std::make_shared<PaxShortNumericColumn>(VEC_BATCH_LENGTH + 1000, encoding_option);
 
   for (size_t i = 0; i < VEC_BATCH_LENGTH; i++) {
     auto numeric = int64_to_numeric(i);
@@ -1347,15 +1319,12 @@ TEST_P(PaxVecTest, DecimalTest) {
   }
 
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 TEST_P(PaxVecTest, PaxColumnWithNullAndVisimapToVec) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
+  std::shared_ptr<VecAdapter> adapter;
+  std::shared_ptr<PaxColumns> columns;
+  std::shared_ptr<PaxColumn> column;
   size_t null_counts = 0;
   auto is_fixed = ::testing::get<0>(GetParam());
   auto with_visimap = ::testing::get<1>(GetParam());
@@ -1367,12 +1336,12 @@ TEST_P(PaxVecTest, PaxColumnWithNullAndVisimapToVec) {
   TupleTableSlot *tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
-  columns = PAX_NEW<PaxColumns>();
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH);
+  columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
-    column = PAX_NEW<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
+    column = std::make_shared<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
   } else {
-    column = PAX_NEW<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
+    column = std::make_shared<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
                                         VEC_BATCH_LENGTH + 1000);
   }
 
@@ -1508,15 +1477,12 @@ TEST_P(PaxVecTest, PaxColumnWithNullAndVisimapToVec) {
     ASSERT_EQ(child_array->dictionary, nullptr);
   }
   DeleteTupleSlot(tuple_slot);
-
-  PAX_DELETE(columns);
-  PAX_DELETE(adapter);
 }
 
 TEST_P(PaxVecTest, PaxColumnBuildCtidToVec) {
-  VecAdapter *adapter;
-  PaxColumns *columns;
-  PaxColumn *column;
+  std::shared_ptr<VecAdapter> adapter;
+  std::shared_ptr<PaxColumns> columns;
+  std::shared_ptr<PaxColumn> column;
 
   auto is_fixed = ::testing::get<0>(GetParam());
   auto with_visimap = ::testing::get<1>(GetParam());
@@ -1526,13 +1492,13 @@ TEST_P(PaxVecTest, PaxColumnBuildCtidToVec) {
     visimap = std::make_shared<Bitmap8>(VEC_BATCH_LENGTH + 1000);
   }
 
-  adapter = PAX_NEW<VecAdapter>(tuple_slot->tts_tupleDescriptor,
+  adapter = std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor,
                                 VEC_BATCH_LENGTH, true);
-  columns = PAX_NEW<PaxColumns>();
+  columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
-    column = PAX_NEW<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
+    column = std::make_shared<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
   } else {
-    column = PAX_NEW<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
+    column = std::make_shared<PaxNonFixedColumn>(VEC_BATCH_LENGTH + 1000,
                                         VEC_BATCH_LENGTH + 1000);
   }
 
@@ -1629,7 +1595,7 @@ class MockTableWriter : public TableWriter {
   MockTableWriter(const Relation relation, WriteSummaryCallback callback)
       : TableWriter(relation) {
     SetWriteSummaryCallback(callback);
-    SetFileSplitStrategy(PAX_NEW<PaxDefaultSplitStrategy>());
+    SetFileSplitStrategy(std::make_unique<PaxDefaultSplitStrategy>());
   }
 
   MOCK_METHOD(std::string, GenFilePath, (const std::string &), (override));
@@ -1672,7 +1638,7 @@ TEST_P(PaxVecTest, PaxVecReaderTest) {
         callback_called = true;
       };
 
-  auto writer = PAX_NEW<MockTableWriter>(relation, callback);
+  auto writer = std::make_unique<MockTableWriter>(relation, callback);
   EXPECT_CALL(*writer, GenFilePath(_))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(file_name_));
@@ -1692,7 +1658,6 @@ TEST_P(PaxVecTest, PaxVecReaderTest) {
   ASSERT_TRUE(callback_called);
 
   DeleteTupleSlot(tuple_slot);
-  PAX_DELETE(writer);
 
   tuple_slot = CreateTupleSlot(is_fixed);
 
@@ -1704,15 +1669,13 @@ TEST_P(PaxVecTest, PaxVecReaderTest) {
   meta_info_list.push_back(std::move(meta_info));
 
   std::unique_ptr<IteratorBase<MicroPartitionMetadata>> meta_info_iterator =
-      std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(
-          PAX_NEW<MockReaderInterator>(meta_info_list));
+        std::make_unique<MockReaderInterator>(meta_info_list);
 
-  TableReader *reader;
   TableReader::ReaderOptions reader_options{};
   reader_options.is_vec = true;
   reader_options.tuple_desc = tuple_slot->tts_tupleDescriptor;
 
-  reader = PAX_NEW<TableReader>(std::move(meta_info_iterator), reader_options);
+  auto reader = PAX_NEW<TableReader>(std::move(meta_info_iterator), reader_options);
   reader->Open();
 
   bool ok = reader->ReadTuple(tuple_slot);
@@ -1725,9 +1688,7 @@ TEST_P(PaxVecTest, PaxVecReaderTest) {
 
   reader->Close();
   DeleteTupleSlot(tuple_slot);
-  PAX_DELETE(relation);
-
-  PAX_DELETE(reader);
+  cbdb::Pfree(relation);
 }
 
 INSTANTIATE_TEST_SUITE_P(PaxVecTestCombine, PaxVecTest,

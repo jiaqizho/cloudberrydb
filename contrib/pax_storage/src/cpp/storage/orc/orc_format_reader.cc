@@ -8,20 +8,17 @@
 
 namespace pax {
 
-OrcFormatReader::OrcFormatReader(File *file, File *toast_file)
-    : file_(file),
-      toast_file_(toast_file),
+OrcFormatReader::OrcFormatReader(std::shared_ptr<File> file, std::shared_ptr<File> toast_file)
+    : file_(std::move(file)),
+      toast_file_(std::move(toast_file)),
       reused_buffer_(nullptr),
       num_of_stripes_(0),
       is_vec_(false) {}
 
-OrcFormatReader::~OrcFormatReader() {
-  PAX_DELETE(file_);
-  PAX_DELETE(toast_file_);
-}
+OrcFormatReader::~OrcFormatReader() { }
 
-void OrcFormatReader::SetReusedBuffer(DataBuffer<char> *data_buffer) {
-  reused_buffer_ = data_buffer;
+void OrcFormatReader::SetReusedBuffer(std::shared_ptr<DataBuffer<char>> data_buffer) {
+  reused_buffer_ = std::move(data_buffer);
 }
 
 void OrcFormatReader::Open() {
@@ -204,7 +201,7 @@ size_t OrcFormatReader::GetStripeOffset(size_t stripe_index) {
 }
 
 pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeFooter(
-    DataBuffer<char> *data_buffer, size_t sf_length, off64_t sf_offset,
+    std::shared_ptr<DataBuffer<char>> data_buffer, size_t sf_length, off64_t sf_offset,
     size_t sf_data_len, size_t group_index) {
   pax::porc::proto::StripeFooter stripe_footer;
 
@@ -226,7 +223,7 @@ pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeFooter(
 }
 
 pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeFooter(
-    DataBuffer<char> *data_buffer, size_t group_index) {
+    std::shared_ptr<DataBuffer<char>> data_buffer, size_t group_index) {
   size_t sf_data_len;
   off64_t sf_offset;
   size_t sf_length;
@@ -252,9 +249,9 @@ pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeFooter(
 }
 
 pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
-    DataBuffer<char> *data_buffer,
+    std::shared_ptr<DataBuffer<char>> data_buffer,
     const ::pax::porc::proto::StripeInformation &stripe_info,
-    const bool *const proj_map, size_t proj_len, size_t group_index) {
+    const std::vector<bool> &proj_cols, size_t group_index) {
   pax::porc::proto::StripeFooter stripe_footer;
   size_t stripe_footer_data_len;
   off64_t stripe_footer_offset;
@@ -269,11 +266,11 @@ pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
   stripe_footer_offset = stripe_info.offset();
   stripe_footer_length = stripe_info.footerlength();
 
-  /* Check all column projection is true, if proj_map
-   * is nullptr no need do column projection, read all
+  /* Check all column projection is true, if proj_cols
+   * is empty no need do column projection, read all
    * buffer(data + stripe footer) from stripe and decode stripe footer.
    */
-  if (!proj_map) {
+  if (proj_cols.empty()) {
     file_->PReadN(data_buffer->GetBuffer(), stripe_footer_length,
                   stripe_footer_offset);
     SeekableInputStream input_stream(
@@ -304,7 +301,7 @@ pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
   while (index < column_types_.size()) {
     // Current column have been skipped
     // Move `batch_offset` and `streams_index` to the right position
-    if (!proj_map[index]) {
+    if (!proj_cols[index]) {
       index++;
 
       const pax::porc::proto::Stream *n_stream = nullptr;
@@ -357,7 +354,7 @@ pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
         len_or_data_stream = &stripe_footer.streams(streams_index++);
         batch_len += len_or_data_stream->length();
       }
-    } while ((++index) < column_types_.size() && proj_map[index]);
+    } while ((++index) < column_types_.size() && proj_cols[index]);
 
     // There is only one situation where batch_len is equal to 0, that is all
     // values in this column are null. null_bitmap does not store data when it
@@ -381,19 +378,19 @@ pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
 }
 
 template <typename T>
-static PaxColumn *BuildEncodingColumn(
-    DataBuffer<char> *data_buffer, const pax::porc::proto::Stream &data_stream,
+static std::shared_ptr<PaxColumn> BuildEncodingColumn(
+    std::shared_ptr<DataBuffer<char>> data_buffer, const pax::porc::proto::Stream &data_stream,
     const ColumnEncoding &data_encoding, bool is_vec) {
   uint32 not_null_rows = 0;
   uint64 data_stream_len = 0;
-  DataBuffer<T> *data_stream_buffer = nullptr;
+  std::shared_ptr<DataBuffer<T>> data_stream_buffer;
 
   Assert(data_stream.kind() == pax::porc::proto::Stream_Kind_DATA);
 
   not_null_rows = static_cast<uint32>(data_stream.column());
   data_stream_len = static_cast<uint64>(data_stream.length());
 
-  data_stream_buffer = PAX_NEW<DataBuffer<T>>(
+  data_stream_buffer = std::make_shared<DataBuffer<T>>(
       reinterpret_cast<T *>(data_buffer->GetAvailableBuffer()), data_stream_len,
       false, false);
 
@@ -435,19 +432,19 @@ static PaxColumn *BuildEncodingColumn(
   Assert(false);
 }
 
-static PaxColumn *BuildEncodingBitPackedColumn(
-    DataBuffer<char> *data_buffer, const porc::proto::Stream &data_stream,
+static std::shared_ptr<PaxColumn> BuildEncodingBitPackedColumn(
+    std::shared_ptr<DataBuffer<char>> data_buffer, const porc::proto::Stream &data_stream,
     const ColumnEncoding &data_encoding, bool is_vec) {
   uint32 not_null_rows = 0;
   uint64 column_data_len = 0;
-  DataBuffer<int8> *column_data_buffer = nullptr;
+  std::shared_ptr<DataBuffer<int8>> column_data_buffer;
 
   Assert(data_stream.kind() == pax::porc::proto::Stream_Kind_DATA);
 
   not_null_rows = static_cast<uint32>(data_stream.column());
   column_data_len = static_cast<uint64>(data_stream.length());
 
-  column_data_buffer = PAX_NEW<DataBuffer<int8>>(
+  column_data_buffer = std::make_shared<DataBuffer<int8>>(
       reinterpret_cast<int8 *>(data_buffer->GetAvailableBuffer()),
       column_data_len, false, false);
 
@@ -489,23 +486,23 @@ static PaxColumn *BuildEncodingBitPackedColumn(
   Assert(false);
 }
 
-static PaxColumn *BuildEncodingDecimalColumn(
-    DataBuffer<char> *data_buffer, const pax::porc::proto::Stream &data_stream,
+static std::shared_ptr<PaxColumn> BuildEncodingDecimalColumn(
+    const std::shared_ptr<DataBuffer<char>> &data_buffer, const pax::porc::proto::Stream &data_stream,
     const pax::porc::proto::Stream &len_stream,
     const ColumnEncoding &data_encoding) {
   uint32 not_null_rows = 0;
   uint64 length_stream_len = 0;
   uint64 data_stream_len = 0;
-  DataBuffer<int32> *length_stream_buffer = nullptr;
-  DataBuffer<char> *data_stream_buffer = nullptr;
-  PaxNonFixedColumn *pax_column = nullptr;
+  std::shared_ptr<DataBuffer<int32>> length_stream_buffer;
+  std::shared_ptr<DataBuffer<char>> data_stream_buffer;
+  std::shared_ptr<PaxNonFixedColumn> pax_column;
   uint64 padding = 0;
 
   not_null_rows = static_cast<uint32>(len_stream.column());
   length_stream_len = static_cast<uint64>(len_stream.length());
   padding = len_stream.padding();
 
-  length_stream_buffer = PAX_NEW<DataBuffer<int32>>(
+  length_stream_buffer = std::make_shared<DataBuffer<int32>>(
       reinterpret_cast<int32 *>(data_buffer->GetAvailableBuffer()),
       length_stream_len, false, false);
 
@@ -535,7 +532,7 @@ static PaxColumn *BuildEncodingDecimalColumn(
   }
 #endif
 
-  data_stream_buffer = PAX_NEW<DataBuffer<char>>(
+  data_stream_buffer = std::make_shared<DataBuffer<char>>(
       data_buffer->GetAvailableBuffer(), data_stream_len, false, false);
   data_stream_buffer->BrushAll();
   data_buffer->Brush(data_stream_len);
@@ -570,12 +567,12 @@ static PaxColumn *BuildEncodingDecimalColumn(
   return pax_column;
 }
 
-static PaxColumn *BuildVecEncodingDecimalColumn(
-    DataBuffer<char> *data_buffer, const pax::porc::proto::Stream &data_stream,
+static std::shared_ptr<PaxColumn> BuildVecEncodingDecimalColumn(
+    const std::shared_ptr<DataBuffer<char>> &data_buffer, const pax::porc::proto::Stream &data_stream,
     const ColumnEncoding &data_encoding, bool is_vec) {
   uint32 not_null_rows = 0;
   uint64 data_stream_len = 0;
-  DataBuffer<int8> *data_stream_buffer = nullptr;
+  std::shared_ptr<DataBuffer<int8>> data_stream_buffer;
 
   CBDB_CHECK(is_vec, cbdb::CException::ExType::kExTypeLogicError);
 
@@ -584,7 +581,7 @@ static PaxColumn *BuildVecEncodingDecimalColumn(
   not_null_rows = static_cast<uint32>(data_stream.column());
   data_stream_len = static_cast<uint64>(data_stream.length());
 
-  data_stream_buffer = PAX_NEW<DataBuffer<int8>>(
+  data_stream_buffer = std::make_shared<DataBuffer<int8>>(
       reinterpret_cast<int8 *>(data_buffer->GetAvailableBuffer()),
       data_stream_len, false, false);
 
@@ -609,17 +606,17 @@ static PaxColumn *BuildVecEncodingDecimalColumn(
   return pax_column;
 }
 
-static PaxColumn *BuildEncodingVecNonFixedColumn(
-    DataBuffer<char> *data_buffer, const pax::porc::proto::Stream &data_stream,
+static std::shared_ptr<PaxColumn> BuildEncodingVecNonFixedColumn(
+    const std::shared_ptr<DataBuffer<char>> &data_buffer, const pax::porc::proto::Stream &data_stream,
     const pax::porc::proto::Stream &len_stream,
     const ColumnEncoding &data_encoding, bool is_bpchar, bool is_no_hdr) {
   uint32 not_null_rows = 0;
   uint64 length_stream_len = 0;
   uint64 padding = 0;
   uint64 data_stream_len = 0;
-  DataBuffer<int32> *length_stream_buffer = nullptr;
-  DataBuffer<char> *data_stream_buffer = nullptr;
-  PaxVecNonFixedColumn *pax_column = nullptr;
+  std::shared_ptr<DataBuffer<int32>> length_stream_buffer;
+  std::shared_ptr<DataBuffer<char>> data_stream_buffer;
+  std::shared_ptr<PaxVecNonFixedColumn> pax_column;
   PaxDecoder::DecodingOption decoding_option;
   size_t data_cap, lengths_cap;
 
@@ -631,7 +628,7 @@ static PaxColumn *BuildEncodingVecNonFixedColumn(
   length_stream_len = static_cast<uint64>(len_stream.length());
   padding = len_stream.padding();
 
-  length_stream_buffer = PAX_NEW<DataBuffer<int32>>(
+  length_stream_buffer = std::make_shared<DataBuffer<int32>>(
       reinterpret_cast<int32 *>(data_buffer->GetAvailableBuffer()),
       length_stream_len, false, false);
 
@@ -649,7 +646,7 @@ static PaxColumn *BuildEncodingVecNonFixedColumn(
   }
 
   data_buffer->Brush(length_stream_len);
-  data_stream_buffer = PAX_NEW<DataBuffer<char>>(
+  data_stream_buffer = std::make_shared<DataBuffer<char>>(
       data_buffer->GetAvailableBuffer(), data_stream_len, false, false);
 
   decoding_option.column_encode_type = data_encoding.kind();
@@ -708,16 +705,16 @@ static PaxColumn *BuildEncodingVecNonFixedColumn(
   return pax_column;
 }
 
-static PaxColumn *BuildEncodingNonFixedColumn(
-    DataBuffer<char> *data_buffer, const pax::porc::proto::Stream &data_stream,
+static std::shared_ptr<PaxColumn> BuildEncodingNonFixedColumn(
+    std::shared_ptr<DataBuffer<char>> data_buffer, const pax::porc::proto::Stream &data_stream,
     const pax::porc::proto::Stream &len_stream,
     const ColumnEncoding &data_encoding, bool is_bpchar) {
   uint32 not_null_rows = 0;
   uint64 length_stream_len = 0;
   uint64 data_stream_len = 0;
-  DataBuffer<int32> *length_stream_buffer = nullptr;
-  DataBuffer<char> *data_stream_buffer = nullptr;
-  PaxNonFixedColumn *pax_column = nullptr;
+  std::shared_ptr<DataBuffer<int32>> length_stream_buffer;
+  std::shared_ptr<DataBuffer<char>> data_stream_buffer;
+  std::shared_ptr<PaxNonFixedColumn> pax_column;
   uint64 padding = 0;
   PaxDecoder::DecodingOption decoding_option;
   size_t data_cap, lengths_cap;
@@ -726,7 +723,7 @@ static PaxColumn *BuildEncodingNonFixedColumn(
   length_stream_len = static_cast<uint64>(len_stream.length());
   padding = len_stream.padding();
 
-  length_stream_buffer = PAX_NEW<DataBuffer<int32>>(
+  length_stream_buffer = std::make_shared<DataBuffer<int32>>(
       reinterpret_cast<int32 *>(data_buffer->GetAvailableBuffer()),
       length_stream_len, false, false);
 
@@ -756,7 +753,7 @@ static PaxColumn *BuildEncodingNonFixedColumn(
   }
 #endif
 
-  data_stream_buffer = PAX_NEW<DataBuffer<char>>(
+  data_stream_buffer = std::make_shared<DataBuffer<char>>(
       data_buffer->GetAvailableBuffer(), data_stream_len, false, false);
   data_stream_buffer->BrushAll();
   data_buffer->Brush(data_stream_len);
@@ -805,11 +802,10 @@ static PaxColumn *BuildEncodingNonFixedColumn(
 
 // TODO(jiaqizho): add args buffer
 // which can read from a prev read buffer
-PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
-                                        size_t proj_len) {
+std::unique_ptr<PaxColumns> OrcFormatReader::ReadStripe(size_t group_index, const std::vector<bool> &proj_cols) {
   auto stripe_info = file_footer_.stripes(static_cast<int>(group_index));
-  auto pax_columns = PAX_NEW<PaxColumns>();
-  DataBuffer<char> *data_buffer = nullptr;
+  auto pax_columns = std::make_unique<PaxColumns>();
+  std::shared_ptr<DataBuffer<char>> data_buffer;
   pax::porc::proto::StripeFooter stripe_footer;
   size_t streams_index = 0;
   size_t streams_size = 0;
@@ -827,11 +823,11 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
       reused_buffer_->ReSize(
           reused_buffer_->Used() + stripe_info.footerlength(), 1.5);
     }
-    data_buffer = PAX_NEW<DataBuffer<char>>(
+    data_buffer = std::make_shared<DataBuffer<char>>(
         reused_buffer_->GetBuffer(), reused_buffer_->Capacity(), false, false);
 
   } else {
-    data_buffer = PAX_NEW<DataBuffer<char>>(stripe_info.footerlength());
+    data_buffer = std::make_shared<DataBuffer<char>>(stripe_info.footerlength());
   }
   pax_columns->Set(data_buffer);
   pax_columns->SetStorageFormat(is_vec_
@@ -839,15 +835,15 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
                                     : PaxStorageFormat::kTypeStoragePorcNonVec);
 
   /* `ReadStripeWithProjection` will read the column memory which filter by
-   * `proj_map`, and initialize `stripe_footer`
+   * `proj_cols`, and initialize `stripe_footer`
    *
    * Notice that: should catch `kExTypeIOError` then delete pax columns
    * But for now we will destroy memory context if exception happen.
    * And we don't have a decision that should we use `try...catch` at yet,
    * so it's ok that we just no catch here.
    */
-  stripe_footer = ReadStripeWithProjection(data_buffer, stripe_info, proj_map,
-                                           proj_len, group_index);
+  stripe_footer = ReadStripeWithProjection(data_buffer, stripe_info,
+                                           proj_cols, group_index);
 
   streams_size = stripe_footer.streams_size();
 
@@ -857,7 +853,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
 
   data_buffer->BrushBackAll();
 
-  AssertImply(proj_len != 0, column_types_.size() <= proj_len);
+  AssertImply(!proj_cols.empty(), column_types_.size() <= proj_cols.size());
   Assert(static_cast<size_t>(stripe_footer.pax_col_encodings_size()) <=
          column_types_.size());
   Assert(column_types_.size() == column_attrs_.size());
@@ -867,7 +863,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
      * `Stream_Kind_DATA` but still need append nullptr into `PaxColumns` to
      * make sure sizeof pax_columns eq with column number
      */
-    if (proj_map && !proj_map[index]) {
+    if (!proj_cols.empty() && !proj_cols[index]) {
       const pax::porc::proto::Stream *n_stream = nullptr;
       do {
         n_stream = &stripe_footer.streams(streams_index++);
@@ -878,7 +874,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
       continue;
     }
 
-    Bitmap8 *non_null_bitmap = nullptr;
+    std::shared_ptr<Bitmap8> non_null_bitmap;
     bool has_null = stripe_info.colstats(index).hasnull();
     if (has_null) {
       const pax::porc::proto::Stream &non_null_stream =
@@ -888,12 +884,12 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
           reinterpret_cast<uint8 *>(data_buffer->GetAvailableBuffer());
 
       Assert(non_null_stream.kind() == pax::porc::proto::Stream_Kind_PRESENT);
-      non_null_bitmap = PAX_NEW<Bitmap8>(BitmapRaw<uint8>(bm_bytes, bm_nbytes),
+      non_null_bitmap = std::make_shared<Bitmap8>(BitmapRaw<uint8>(bm_bytes, bm_nbytes),
                                          BitmapTpl<uint8>::ReadOnlyRefBitmap);
       data_buffer->Brush(bm_nbytes);
     }
 
-    DataBuffer<int32> *toast_indexes = nullptr;
+    std::shared_ptr<DataBuffer<int32>> toast_indexes;
     bool has_toast = stripe_info.colstats(index).hastoast();
     if (has_toast) {
       const pax::porc::proto::Stream &toast_stream =
@@ -903,7 +899,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
 
       Assert(toast_nbytes >= toast_n * sizeof(int32));
       Assert(toast_stream.kind() == pax::porc::proto::Stream_Kind_TOAST);
-      toast_indexes = PAX_NEW<DataBuffer<int32>>(
+      toast_indexes = std::make_shared<DataBuffer<int32>>(
           reinterpret_cast<int32 *>(data_buffer->GetAvailableBuffer()),
           toast_n * sizeof(int32), false, false);
       toast_indexes->BrushAll();
@@ -1035,7 +1031,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
     size_t toast_file_size;
     uint64 ext_total_size = 0;
     off64_t curr_column_ext_offset = 0;
-    DataBuffer<char> *external_toast_buffer;
+    std::unique_ptr<DataBuffer<char>> external_toast_buffer;
 
     Assert(stripe_info.numberoftoast() != 0);
     Assert((size_t)stripe_info.exttoastlength_size() ==
@@ -1075,7 +1071,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
       i = j;
     }
 
-    external_toast_buffer = new DataBuffer<char>(ext_total_size);
+    external_toast_buffer = std::make_unique<DataBuffer<char>>(ext_total_size);
 
     for (const auto &range : projection) {
       CBDB_CHECK(
@@ -1100,7 +1096,7 @@ PaxColumns *OrcFormatReader::ReadStripe(size_t group_index, bool *proj_map,
 
     Assert(external_toast_buffer->Available() == 0);
 
-    pax_columns->SetExternalToastDataBuffer(external_toast_buffer,
+    pax_columns->SetExternalToastDataBuffer(std::move(external_toast_buffer),
                                             column_ext_sizes);
   }
 
