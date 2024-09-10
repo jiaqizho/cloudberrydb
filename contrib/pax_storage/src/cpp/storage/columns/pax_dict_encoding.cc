@@ -91,16 +91,16 @@ PaxDictDecoder::PaxDictDecoder(
       data_buffer_(nullptr),
       result_buffer_(nullptr) {}
 
-PaxDictDecoder::~PaxDictDecoder() { PAX_DELETE(data_buffer_); }
+PaxDictDecoder::~PaxDictDecoder() { }
 
 PaxDecoder *PaxDictDecoder::SetSrcBuffer(char *data, size_t data_len) {
   if (data) {
-    data_buffer_ = PAX_NEW<DataBuffer<char>>(data, data_len, false, false);
+    data_buffer_ = std::make_shared<DataBuffer<char>>(data, data_len, false, false);
   }
   return this;
 }
 
-PaxDecoder *PaxDictDecoder::SetDataBuffer(DataBuffer<char> *result_buffer) {
+PaxDecoder *PaxDictDecoder::SetDataBuffer(std::shared_ptr<DataBuffer<char>> result_buffer) {
   result_buffer_ = result_buffer;
   return this;
 }
@@ -117,7 +117,6 @@ size_t PaxDictDecoder::Next(const char * /*not_null*/) {
 
 size_t PaxDictDecoder::Decoding() {
   PaxDictHead head;
-  DataBuffer<int32> *index_buffer, *desc_buffer;
   std::vector<int32> offsets;
   int32 index, offset;
   char *buffer;
@@ -136,32 +135,28 @@ size_t PaxDictDecoder::Decoding() {
 
   buffer = data_buffer_->GetBuffer();
 
-  index_buffer =
-      PAX_NEW<DataBuffer<int32>>((int32 *)buffer, head.indexsz, false, false);
-  index_buffer->BrushAll();
+  DataBuffer<int32> index_buffer((int32 *)buffer, head.indexsz, false, false);
+  index_buffer.BrushAll();
 
-  desc_buffer =
-      PAX_NEW<DataBuffer<int32>>((int32 *)(buffer + head.indexsz + head.dictsz),
+  DataBuffer<int32> desc_buffer((int32 *)(buffer + head.indexsz + head.dictsz),
                                  head.dict_descsz, false, false);
-  desc_buffer->BrushAll();
+  desc_buffer.BrushAll();
 
-  for (size_t i = 0; i < desc_buffer->GetSize(); i++) {
-    offsets.emplace_back(i == 0 ? 0 : offsets[i - 1] + (*desc_buffer)[i - 1]);
+  for (size_t i = 0; i < desc_buffer.GetSize(); i++) {
+    offsets.emplace_back(i == 0 ? 0 : offsets[i - 1] + (desc_buffer)[i - 1]);
   }
 
-  for (size_t i = 0; i < index_buffer->GetSize(); i++) {
-    index = (*index_buffer)[i];
+  for (size_t i = 0; i < index_buffer.GetSize(); i++) {
+    index = (index_buffer)[i];
 
-    CBDB_CHECK(index >= 0 && (size_t)index < desc_buffer->GetSize(),
+    CBDB_CHECK(index >= 0 && (size_t)index < desc_buffer.GetSize(),
                cbdb::CException::kExTypeOutOfRange);
 
     offset = offsets[index] + head.indexsz;
-    result_buffer_->Write(buffer + offset, (*desc_buffer)[index]);
-    result_buffer_->Brush((*desc_buffer)[index]);
+    result_buffer_->Write(buffer + offset, (desc_buffer)[index]);
+    result_buffer_->Brush((desc_buffer)[index]);
   }
 
-  PAX_DELETE(index_buffer);
-  PAX_DELETE(desc_buffer);
   return data_buffer_->Used();
 }
 

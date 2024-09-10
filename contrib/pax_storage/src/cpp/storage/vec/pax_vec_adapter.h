@@ -33,7 +33,7 @@ class VecAdapter final {
 
   ~VecAdapter();
 
-  void SetDataSource(PaxColumns *columns, int group_base_offset);
+  void SetDataSource(std::shared_ptr<PaxColumns> columns, int group_base_offset);
 
   bool IsInitialized() const;
 
@@ -61,10 +61,10 @@ class VecAdapter final {
   void FullWithCTID(TupleTableSlot *slot, VecBatchBuffer *batch_buffer);
   void FillMissColumn(int attr_index);
 
-  std::pair<size_t, size_t> AppendPorcFormat(PaxColumns *columns,
+  std::pair<size_t, size_t> AppendPorcFormat(std::shared_ptr<PaxColumns> columns,
                                              size_t range_begin,
                                              size_t range_lens);
-  std::pair<size_t, size_t> AppendPorcVecFormat(PaxColumns *columns);
+  std::pair<size_t, size_t> AppendPorcVecFormat(std::shared_ptr<PaxColumns> columns);
 
   inline size_t GetInvisibleNumber(size_t range_begin, size_t range_lens) {
     if (micro_partition_visibility_bitmap_ == nullptr) {
@@ -87,7 +87,7 @@ class VecAdapter final {
   VecBatchBuffer *vec_cache_buffer_;
   int vec_cache_buffer_lens_;
 
-  PaxColumns *process_columns_;
+  std::shared_ptr<PaxColumns> process_columns_;
   size_t current_index_;
   bool build_ctid_;
 
@@ -96,7 +96,7 @@ class VecAdapter final {
   std::shared_ptr<Bitmap8> micro_partition_visibility_bitmap_ = nullptr;
 
   // ctid offset in current batch range
-  DataBuffer<int32> *ctid_offset_in_current_range_;
+  std::shared_ptr<DataBuffer<int32>> ctid_offset_in_current_range_;
 };
 }  // namespace pax
 

@@ -15,7 +15,7 @@ class PaxNonFixedEncodingColumn : public PaxNonFixedColumn {
 
   ~PaxNonFixedEncodingColumn() override;
 
-  void Set(DataBuffer<char> *data, DataBuffer<int32> *lengths,
+  void Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> lengths,
            size_t total_size) override;
 
   std::pair<char *, size_t> GetBuffer() override;
@@ -27,7 +27,7 @@ class PaxNonFixedEncodingColumn : public PaxNonFixedColumn {
   size_t GetAlignSize() const override;
 
 #ifdef BUILD_RB_RET_DICT
-  inline DataBuffer<char> *GetUndecodedBuffer() { return shared_data_; }
+  inline std::shared_ptr<DataBuffer<char>> GetUndecodedBuffer() { return shared_data_; }
 #endif
 
   // The reason why `PaxNonFixedEncodingColumn` not override the
@@ -45,15 +45,15 @@ class PaxNonFixedEncodingColumn : public PaxNonFixedColumn {
   PaxEncoder::EncodingOption encoder_options_;
   PaxDecoder::DecodingOption decoder_options_;
 
-  PaxEncoder *encoder_;
-  PaxDecoder *decoder_;
+  std::shared_ptr<PaxEncoder> encoder_;
+  std::shared_ptr<PaxDecoder> decoder_;
 
-  PaxCompressor *compressor_;
+  std::shared_ptr<PaxCompressor> compressor_;
   bool compress_route_;
-  DataBuffer<char> *shared_data_;
+  std::shared_ptr<DataBuffer<char>> shared_data_;
 
-  PaxCompressor *lengths_compressor_;
-  DataBuffer<char> *shared_lengths_data_;
+  std::shared_ptr<PaxCompressor> lengths_compressor_;
+  std::shared_ptr<DataBuffer<char>> shared_lengths_data_;
 };
 
 }  // namespace pax

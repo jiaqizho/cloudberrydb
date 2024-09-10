@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "comm/pax_memory.h"
+
 namespace pax {
 
 namespace fs {
@@ -65,17 +67,17 @@ class FileSystem {
   virtual ~FileSystem() = default;
 
   // operate with path
-  virtual File *Open(const std::string &file_path, int flags,
-                     FileSystemOptions *options = nullptr) = 0;
+  virtual std::shared_ptr<File> Open(const std::string &file_path, int flags,
+                     const std::shared_ptr<FileSystemOptions> &options = nullptr) = 0;
   virtual std::vector<std::string> ListDirectory(
-      const std::string &path, FileSystemOptions *options = nullptr) const = 0;
+      const std::string &path, const std::shared_ptr<FileSystemOptions> &options = nullptr) const = 0;
 
   virtual int CreateDirectory(const std::string &path,
-                              FileSystemOptions *options = nullptr) const = 0;
+                              const std::shared_ptr<FileSystemOptions> &options = nullptr) const = 0;
   virtual void DeleteDirectory(const std::string &path, bool delete_topleveldir,
-                               FileSystemOptions *options = nullptr) const = 0;
+                               const std::shared_ptr<FileSystemOptions> &options = nullptr) const = 0;
   virtual void Delete(const std::string &file_path,
-                      FileSystemOptions *options = nullptr) const = 0;
+                      const std::shared_ptr<FileSystemOptions> &options = nullptr) const = 0;
   // operate with file
   virtual std::string BuildPath(const File *file) const = 0;
   virtual int CopyFile(const File *src_file, File *dst_file) = 0;

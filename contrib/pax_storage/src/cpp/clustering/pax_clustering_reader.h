@@ -4,6 +4,7 @@
 
 #include "clustering/clustering_reader.h"
 #include "comm/iterator.h"
+#include "comm/pax_memory.h"
 #include "storage/file_system.h"
 #include "storage/micro_partition.h"
 #include "storage/micro_partition_metadata.h"
@@ -22,9 +23,9 @@ class PaxClusteringReader final : public ClusteringDataReader {
  private:
   Relation relation_ = nullptr;
   std::unique_ptr<IteratorBase<MicroPartitionMetadata>> iter_;
-  MicroPartitionReader *reader_ = nullptr;
+  std::unique_ptr<MicroPartitionReader> reader_ = nullptr;
   FileSystem *file_system_ = nullptr;
-  FileSystemOptions *file_system_options_ = nullptr;
+  std::shared_ptr<FileSystemOptions> file_system_options_ = nullptr;
 };
 }  // namespace clustering
 }  // namespace pax

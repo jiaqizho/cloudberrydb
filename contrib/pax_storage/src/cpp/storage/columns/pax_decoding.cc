@@ -8,15 +8,15 @@
 namespace pax {
 
 template <typename T>
-PaxDecoder *PaxDecoder::CreateDecoder(const DecodingOption &decoder_options) {
-  PaxDecoder *decoder = nullptr;
+std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder(const DecodingOption &decoder_options) {
+  std::shared_ptr<PaxDecoder> decoder;
   switch (decoder_options.column_encode_type) {
     case ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED: {
       // do nothing
       break;
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_RLE_V2: {
-      decoder = PAX_NEW<PaxOrcDecoder<T>>(decoder_options);
+      decoder = std::make_shared<PaxOrcDecoder<T>>(decoder_options);
       break;
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_DIRECT_DELTA: {
@@ -24,7 +24,7 @@ PaxDecoder *PaxDecoder::CreateDecoder(const DecodingOption &decoder_options) {
       break;
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_DICTIONARY: {
-      decoder = PAX_NEW<PaxDictDecoder>(decoder_options);
+      decoder = std::make_shared<PaxDictDecoder>(decoder_options);
       break;
     }
     case ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED: {
@@ -42,10 +42,10 @@ PaxDecoder *PaxDecoder::CreateDecoder(const DecodingOption &decoder_options) {
   return decoder;
 }
 
-template PaxDecoder *PaxDecoder::CreateDecoder<int64>(const DecodingOption &);
-template PaxDecoder *PaxDecoder::CreateDecoder<int32>(const DecodingOption &);
-template PaxDecoder *PaxDecoder::CreateDecoder<int16>(const DecodingOption &);
-template PaxDecoder *PaxDecoder::CreateDecoder<int8>(const DecodingOption &);
+template std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder<int64>(const DecodingOption &);
+template std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder<int32>(const DecodingOption &);
+template std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder<int16>(const DecodingOption &);
+template std::shared_ptr<PaxDecoder> PaxDecoder::CreateDecoder<int8>(const DecodingOption &);
 
 PaxDecoder::PaxDecoder(const DecodingOption &decoder_options)
     : decoder_options_(decoder_options) {}

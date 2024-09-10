@@ -115,7 +115,7 @@ TableWriter::TableWriter(Relation relation)
 
   if (is_dfs_table_space_) {
     file_system_options_ =
-        PAX_NEW<RemoteFileSystemOptions>(relation_->rd_rel->reltablespace);
+        std::make_shared<RemoteFileSystemOptions>(relation_->rd_rel->reltablespace);
     file_system_ = Singleton<RemoteFileSystem>::GetInstance();
   } else {
     file_system_ = Singleton<LocalFileSystem>::GetInstance();
@@ -143,23 +143,17 @@ TableWriter *TableWriter::SetWriteSummaryCallback(
 }
 
 TableWriter *TableWriter::SetFileSplitStrategy(
-    const FileSplitStrategy *strategy) {
+    std::unique_ptr<FileSplitStrategy> &&strategy) {
   Assert(!strategy_);
-  strategy_ = strategy;
+  strategy_ = std::move(strategy);
   return this;
 }
 
 TableWriter::~TableWriter() {
-  // must call close before delete table writer
-  Assert(writer_ == nullptr);
-
-  PAX_DELETE(strategy_);
-  PAX_DELETE(mp_stats_);
-  PAX_DELETE(file_system_options_);
 }
 
 const FileSplitStrategy *TableWriter::GetFileSplitStrategy() const {
-  return strategy_;
+  return strategy_.get();
 }
 
 std::string TableWriter::GenFilePath(const std::string &block_id) {
@@ -210,15 +204,14 @@ TableWriter::GetRelEncodingOptions() {
   return encoding_opts;
 }
 
-MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
-    MicroPartitionStats *mp_stats, bool write_only) {
+std::unique_ptr<MicroPartitionWriter> TableWriter::CreateMicroPartitionWriter(
+    std::shared_ptr<MicroPartitionStats> mp_stats, bool write_only) {
   MicroPartitionWriter::WriterOptions options;
   std::string file_path;
   std::string toast_file_path;
   std::string block_id;
-  File *file;
-  File *toast_file = nullptr;
-  MicroPartitionWriter *mp_writer;
+  std::shared_ptr<File> file;
+  std::shared_ptr<File> toast_file;
   int open_flags;
 
   Assert(relation_);
@@ -234,7 +227,7 @@ MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
   options.rel_tuple_desc = relation_->rd_att;
   options.block_id = std::move(block_id);
   options.file_name = std::move(file_path);
-  options.encoding_opts = std::move(GetRelEncodingOptions());
+  options.encoding_opts = GetRelEncodingOptions();
   options.storage_format = GetStorageFormat();
   options.lengths_encoding_opts = std::make_pair(
       PAX_LENGTHS_DEFAULT_COMPRESSTYPE, PAX_LENGTHS_DEFAULT_COMPRESSLEVEL);
@@ -261,9 +254,10 @@ MicroPartitionWriter *TableWriter::CreateMicroPartitionWriter(
         file_system_->Open(toast_file_path, open_flags, file_system_options_);
   }
 
-  mp_writer = MicroPartitionFileFactory::CreateMicroPartitionWriter(
+  auto mp_writer = MicroPartitionFileFactory::CreateMicroPartitionWriter(
       std::move(options), file, toast_file);
 
+  Assert(mp_writer);
   mp_writer->SetWriteSummaryCallback(summary_callback_)
       ->SetStatsCollector(mp_stats);
   return mp_writer;
@@ -276,7 +270,7 @@ void TableWriter::Open() {
   // Exception may be thrown causing writer_ to be nullptr
 
   if (!mp_stats_) {
-    mp_stats_ = PAX_NEW<MicroPartitionStats>(RelationGetDescr(relation_));
+    mp_stats_ = std::make_shared<MicroPartitionStats>(RelationGetDescr(relation_));
     mp_stats_->Initialize(GetMinMaxColumnIndexes());
   } else {
     mp_stats_->Reset();
@@ -296,7 +290,7 @@ void TableWriter::WriteTuple(TupleTableSlot *slot) {
   // otherwise, may got a empty file in the disk
   if (strategy_->ShouldSplit(writer_->PhysicalSize(), num_tuples_)) {
     writer_->Close();
-    PAX_DELETE(writer_);
+    writer_ = nullptr;
     Open();
   }
 
@@ -308,7 +302,6 @@ void TableWriter::WriteTuple(TupleTableSlot *slot) {
 void TableWriter::Close() {
   if (writer_) {
     writer_->Close();
-    PAX_DELETE(writer_);
     writer_ = nullptr;
   }
   num_tuples_ = 0;
@@ -327,20 +320,13 @@ TableReader::TableReader(
   if (is_dfs_table_space_) {
     file_system_ = Singleton<RemoteFileSystem>::GetInstance();
     file_system_options_ =
-        PAX_NEW<RemoteFileSystemOptions>(reader_options_.table_space_id);
+        std::make_shared<RemoteFileSystemOptions>(reader_options_.table_space_id);
   } else {
     file_system_ = Singleton<LocalFileSystem>::GetInstance();
   }
 }
 
-TableReader::~TableReader() {
-  if (reader_) {
-    reader_->Close();
-    PAX_DELETE(reader_);
-    reader_ = nullptr;
-  }
-  PAX_DELETE(file_system_options_);
-}
+TableReader::~TableReader() { }
 
 void TableReader::Open() {
   if (!iterator_->HasNext()) {
@@ -358,14 +344,11 @@ void TableReader::ReOpen() {
 }
 
 void TableReader::Close() {
-  if (is_empty_) {
-    return;
-  }
-
   if (reader_) {
     reader_->Close();
     reader_ = nullptr;
   }
+  iterator_->Release();
 }
 
 bool TableReader::ReadTuple(TupleTableSlot *slot) {
@@ -377,6 +360,7 @@ bool TableReader::ReadTuple(TupleTableSlot *slot) {
   SetBlockNumber(&slot->tts_tid, current_block_number_);
   while (!reader_->ReadTuple(slot)) {
     reader_->Close();
+    reader_ = nullptr;
     if (!iterator_->HasNext()) {
       is_empty_ = true;
       return false;
@@ -398,7 +382,7 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
   size_t row_index = current_block_row_index_;
   size_t max_row_index;
   size_t remaining_offset = offset;
-  File *toast_file = nullptr;
+  std::shared_ptr<File> toast_file;
   bool ok;
 
   Assert(direction == ForwardScanDirection);
@@ -452,7 +436,6 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
   // close old reader
   if (reader_) {
     reader_->Close();
-    PAX_DELETE(reader_);
   }
 
   options.filter = reader_options_.filter;
@@ -494,10 +477,11 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
 
 void TableReader::OpenFile() {
   Assert(iterator_->HasNext());
+
   auto it = iterator_->Next();
   current_block_metadata_ = it;
   MicroPartitionReader::ReaderOptions options;
-  File *toast_file = nullptr;
+  std::shared_ptr<File> toast_file;
   int32 reader_flags = FLAGS_EMPTY;
 
   micro_partition_id_ = it.GetMicroPartitionId();
@@ -506,7 +490,6 @@ void TableReader::OpenFile() {
   options.filter = reader_options_.filter;
   options.reused_buffer = reader_options_.reused_buffer;
 
-  PAX_DELETE(reader_);
 
   // load visibility map
   std::string visibility_bitmap_file = it.GetVisibilityBitmapFile();
@@ -519,6 +502,7 @@ void TableReader::OpenFile() {
     options.visibility_bitmap = bm;
     file->Close();
   }
+
 #ifdef VEC_BUILD
   options.tuple_desc = reader_options_.tuple_desc;
   if (reader_options_.is_vec) {
@@ -544,48 +528,26 @@ void TableReader::OpenFile() {
 
 TableDeleter::TableDeleter(
     Relation rel,
-    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
     std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap, Snapshot snapshot)
     : rel_(rel),
-      iterator_(std::move(iterator)),
-      delete_bitmap_(delete_bitmap),
       snapshot_(snapshot),
-      reader_(nullptr),
-      writer_(nullptr) {
+      delete_bitmap_(delete_bitmap) {
   if (cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace)) {
     file_system_options_ =
-        PAX_NEW<RemoteFileSystemOptions>(rel_->rd_rel->reltablespace);
+        std::make_shared<RemoteFileSystemOptions>(rel_->rd_rel->reltablespace);
     file_system_ = Singleton<RemoteFileSystem>::GetInstance();
   } else {
     file_system_ = Singleton<LocalFileSystem>::GetInstance();
   }
 }
 
-TableDeleter::~TableDeleter() {
-  if (reader_) {
-    reader_->Close();
-    PAX_DELETE(reader_);
-    reader_ = nullptr;
-  }
-
-  if (writer_) {
-    writer_->Close();
-    PAX_DELETE(writer_);
-    writer_ = nullptr;
-  }
-
-  PAX_DELETE(file_system_options_);
-}
-
 void TableDeleter::UpdateStatsInAuxTable(
     Oid aux_oid, const pax::MicroPartitionMetadata &meta,
     std::shared_ptr<Bitmap8> visi_bitmap,
-    const std::vector<int> &min_max_col_idxs, PaxFilter *filter) {
+    const std::vector<int> &min_max_col_idxs, std::shared_ptr<PaxFilter> filter) {
   MicroPartitionReader::ReaderOptions options;
-  MicroPartitionReader *mp_reader;
-  File *toast_file = nullptr;
+  std::shared_ptr<File> toast_file;
   int32 reader_flags = FLAGS_EMPTY;
-  MicroPartitionStats *updated_stats;
   TupleTableSlot *slot;
 
   options.filter = filter;
@@ -599,14 +561,14 @@ void TableDeleter::UpdateStatsInAuxTable(
                                     fs::kReadMode, file_system_options_);
   }
 
-  mp_reader = MicroPartitionFileFactory::CreateMicroPartitionReader(
+  auto mp_reader = MicroPartitionFileFactory::CreateMicroPartitionReader(
       std::move(options), reader_flags,
       file_system_->Open(meta.GetFileName(), fs::kReadMode,
                          file_system_options_),
       toast_file);
 
   slot = MakeTupleTableSlot(rel_->rd_att, &TTSOpsVirtual);
-  updated_stats = MicroPartitionStatsUpdater(mp_reader, visi_bitmap)
+  auto updated_stats = MicroPartitionStatsUpdater(mp_reader.get(), visi_bitmap)
                       .Update(slot, min_max_col_idxs);
 
   // update the statistics in aux table
@@ -614,10 +576,8 @@ void TableDeleter::UpdateStatsInAuxTable(
                          updated_stats->Serialize());
 
   mp_reader->Close();
-  PAX_DELETE(mp_reader);
 
   ExecDropSingleTupleTableSlot(slot);
-  PAX_DELETE(updated_stats);
 }
 
 // The pattern of file name of the visimap file is:
@@ -629,23 +589,26 @@ void TableDeleter::UpdateStatsInAuxTable(
 //      visimap file is generated, but was canceled later, the visimap
 //      file may be not deleted in time. Then, the next delete will
 //      use the same file name for visimap file.
-void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
-  if (!iterator_->HasNext()) {
+void TableDeleter::DeleteWithVisibilityMap(
+    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
+    TransactionId delete_xid) {
+  if (!iterator->HasNext()) {
     return;
   }
   std::vector<int> min_max_col_idxs;
-  PaxFilter stats_updater_projection;
-  Bitmap8 *visi_bitmap = nullptr;
+  auto stats_updater_projection = std::make_shared<PaxFilter>();
+
+  std::unique_ptr<Bitmap8> visi_bitmap;
   auto aux_oid = cbdb::GetPaxAuxRelid(RelationGetRelid(rel_));
   auto rel_path = cbdb::BuildPaxDirectoryPath(
       rel_->rd_node, rel_->rd_backend,
       cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace));
 
   min_max_col_idxs = cbdb::GetMinMaxColumnsIndex(rel_);
-  stats_updater_projection.SetColumnProjection(min_max_col_idxs,
+  stats_updater_projection->SetColumnProjection(min_max_col_idxs,
                                                rel_->rd_att->natts);
   do {
-    auto it = iterator_->Next();
+    auto it = iterator->Next();
 
     auto block_id = it.GetMicroPartitionId();
     auto micro_partition_metadata =
@@ -673,9 +636,7 @@ void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
             Bitmap8(BitmapRaw<uint8>(buffer->data(), buffer->size()),
                     Bitmap8::ReadOnlyOwnBitmap);
         visi_bitmap =
-            Bitmap8::Union(&visibility_file_bitmap, delete_visi_bitmap);
-
-        PAX_DELETE<Bitmap8>(delete_visi_bitmap);
+            Bitmap8::Union(&visibility_file_bitmap, delete_visi_bitmap.get());
 
         rc = sscanf(visibility_map_filename.c_str(), "%d_%x_%x.visimap",
                     &blocknum, &generate, &xid);
@@ -685,7 +646,7 @@ void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
                    fmt("Fail to sscanf [rc=%d, filename=%s, rel_path=%s]", rc,
                        visibility_map_filename.c_str(), rel_path.c_str()));
       } else {
-        visi_bitmap = delete_visi_bitmap;
+        visi_bitmap = std::move(delete_visi_bitmap);
       }
 
       // generate new file name for visimap
@@ -710,23 +671,20 @@ void TableDeleter::DeleteWithVisibilityMap(TransactionId delete_xid) {
     UpdateStatsInAuxTable(aux_oid, micro_partition_metadata,
                           std::make_shared<Bitmap8>(visi_bitmap->Raw(),
                                                     Bitmap8::ReadOnlyOwnBitmap),
-                          min_max_col_idxs, &stats_updater_projection);
+                          min_max_col_idxs, stats_updater_projection);
 
-    // Replace PAX_DELETE by smart pointer
-    PAX_DELETE<Bitmap8>(visi_bitmap);
-    visi_bitmap = nullptr;
 
     // write pg_pax_blocks_oid
     cbdb::UpdateVisimap(aux_oid, block_id, visimap_file_name);
-  } while (iterator_->HasNext());
+  } while (iterator->HasNext());
 }
 
-void TableDeleter::Delete() {
-  if (!iterator_->HasNext()) {
+void TableDeleter::Delete(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator) {
+  if (!iterator->HasNext()) {
     return;
   }
-  OpenReader();
-  OpenWriter();
+  auto reader = OpenReader(std::move(iterator));
+  auto writer = OpenWriter();
   pax::IndexUpdater index_updater;
 
   index_updater.Begin(rel_);
@@ -737,15 +695,15 @@ void TableDeleter::Delete() {
   // TODO(gongxun): because bulk insert as AO/HEAP does with tuples iteration
   // not implemented. we should implement bulk insert firstly. and then we can
   // use ReadTupleN and WriteTupleN to delete tuples in batch.
-  while (reader_->ReadTuple(slot)) {
-    auto block_id = reader_->GetCurrentMicroPartitionId();
+  while (reader->ReadTuple(slot)) {
+    auto block_id = reader->GetCurrentMicroPartitionId();
     auto it = delete_bitmap_.find(block_id);
     Assert(it != delete_bitmap_.end());
 
     auto bitmap = it->second.get();
     if (bitmap->Test(pax::GetTupleOffset(slot->tts_tid))) continue;
 
-    writer_->WriteTuple(slot);
+    writer->WriteTuple(slot);
     if (index_updater.HasIndex()) {
       // Already store the ctid after WriteTuple
       Assert(!TTS_EMPTY(slot));
@@ -754,20 +712,26 @@ void TableDeleter::Delete() {
     }
   }
   index_updater.End();
+
+  writer->Close();
+  reader->Close();
 }
 
-void TableDeleter::OpenWriter() {
-  writer_ = PAX_NEW<TableWriter>(rel_);
-  writer_->SetWriteSummaryCallback(&cbdb::InsertOrUpdateMicroPartitionEntry)
-      ->SetFileSplitStrategy(PAX_NEW<PaxDefaultSplitStrategy>())
+std::unique_ptr<TableWriter> TableDeleter::OpenWriter() {
+  auto writer = std::make_unique<TableWriter>(rel_);
+  writer->SetWriteSummaryCallback(&cbdb::InsertOrUpdateMicroPartitionEntry)
+      ->SetFileSplitStrategy(std::make_unique<PaxDefaultSplitStrategy>())
       ->Open();
+  return writer;
 }
 
-void TableDeleter::OpenReader() {
+std::unique_ptr<TableReader> TableDeleter::OpenReader(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator) {
   TableReader::ReaderOptions reader_options{};
+
   reader_options.table_space_id = rel_->rd_rel->reltablespace;
-  reader_ = PAX_NEW<TableReader>(std::move(iterator_), reader_options);
-  reader_->Open();
+  auto reader = std::make_unique<TableReader>(std::move(iterator), reader_options);
+  reader->Open();
+  return reader;
 }
 
 }  // namespace pax

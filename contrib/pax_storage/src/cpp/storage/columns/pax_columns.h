@@ -23,17 +23,17 @@ class PaxColumns : public PaxColumn {
   // columns1: c1   null c3
   // columns2: null c2   null
   // after merge: c1 c2 c3
-  void Merge(PaxColumns *columns);
+  void Merge(std::shared_ptr<PaxColumns> columns);
 
-  PaxColumn *operator[](uint64 i);
+  std::shared_ptr<PaxColumn> operator[](uint64 i);
 
-  void Append(PaxColumn *column);
+  void Append(std::shared_ptr<PaxColumn> column);
 
   void Append(char *buffer, size_t size) override;
 
   void AppendToast(char *buffer, size_t size) override;
 
-  void Set(DataBuffer<char> *data);
+  void Set(std::shared_ptr<DataBuffer<char>> data);
 
   void SetStorageFormat(PaxStorageFormat format);
 
@@ -54,11 +54,11 @@ class PaxColumns : public PaxColumn {
   size_t ToastCounts() override;
 
   // Set the external toast buffer
-  void SetExternalToastDataBuffer(DataBuffer<char> *external_toast_data,
+  void SetExternalToastDataBuffer(std::shared_ptr<DataBuffer<char>> external_toast_data,
                                   const std::vector<size_t> &column_sizes);
 
   // Get the external toast data buffer
-  DataBuffer<char> *GetExternalToastDataBuffer() override;
+  std::shared_ptr<DataBuffer<char>> GetExternalToastDataBuffer() override;
 
   // verify the external toast buffer
   void VerifyAllExternalToasts(const std::vector<uint64> &ext_toast_lens);
@@ -84,7 +84,7 @@ class PaxColumns : public PaxColumn {
   // Get the combined data buffer of all columns
   // TODO(jiaqizho): consider add a new api which support split IO from
   // different column
-  virtual DataBuffer<char> *GetDataBuffer(
+  virtual std::shared_ptr<DataBuffer<char>> GetDataBuffer(
       const ColumnStreamsFunc &column_streams_func,
       const ColumnEncodingFunc &column_encoding_func);
 
@@ -104,9 +104,9 @@ class PaxColumns : public PaxColumn {
   void CombineVecDataBuffer();
 
  protected:
-  std::vector<PaxColumn *> columns_;
-  std::vector<DataBuffer<char> *> data_holder_;
-  DataBuffer<char> *data_;
+  std::vector<std::shared_ptr<PaxColumn>> columns_;
+  std::vector<std::shared_ptr<DataBuffer<char>>> data_holder_;
+  std::shared_ptr<DataBuffer<char>> data_;
   size_t row_nums_;
 
   PaxStorageFormat storage_format_;

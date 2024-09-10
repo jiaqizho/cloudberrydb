@@ -11,10 +11,10 @@
 namespace pax {
 
 template <typename T>
-static std::pair<bool, size_t> ColumnTransMemory(PaxColumn *column) {
+static std::pair<bool, size_t> ColumnTransMemory(const std::shared_ptr<PaxColumn> &column) {
   Assert(column->GetStorageFormat() == PaxStorageFormat::kTypeStoragePorcVec);
 
-  auto vec_column = dynamic_cast<T *>(column);
+  auto vec_column = std::static_pointer_cast<T>(column);
   auto data_buffer = vec_column->GetDataBuffer();
   auto data_cap = data_buffer->Capacity();
 
@@ -28,12 +28,13 @@ static std::pair<bool, size_t> ColumnTransMemory(PaxColumn *column) {
   return {false, 0};
 }
 
-static void CopyNonFixedBuffer(PaxVecNonFixedColumn *column,
+static void CopyNonFixedBuffer(std::shared_ptr<PaxVecNonFixedColumn> pcolumn,
                                std::shared_ptr<Bitmap8> visibility_map_bitset,
                                size_t group_base_offset, size_t invisible_rows,
                                size_t total_rows,
                                DataBuffer<int32> *out_offset_buffer,
                                DataBuffer<char> *out_data_buffer) {
+  PaxVecNonFixedColumn *column = pcolumn.get();
   char *buffer;
   size_t buffer_len;
   char *offset_buffer = nullptr;
@@ -76,11 +77,12 @@ static void CopyNonFixedBuffer(PaxVecNonFixedColumn *column,
   }
 }
 
-static void CopyFixedBuffer(PaxColumn *column,
+static void CopyFixedBuffer(std::shared_ptr<PaxColumn> pcolumn,
                             std::shared_ptr<Bitmap8> visibility_map_bitset,
                             size_t group_base_offset, size_t invisible_rows,
                             size_t total_rows,
                             DataBuffer<char> *out_data_buffer) {
+  PaxColumn *column = pcolumn.get();
   char *buffer;
   size_t pg_attribute_unused() buffer_len;
   Assert(invisible_rows > 0);
@@ -102,8 +104,7 @@ static void CopyFixedBuffer(PaxColumn *column,
   }
 }
 
-std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(PaxColumns *columns) {
-  PaxColumn *column;
+std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxColumns> columns) {
   size_t invisible_rows;
   size_t total_rows;
 
@@ -124,7 +125,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(PaxColumns *columns) {
     DataBuffer<int32> *offset_buffer =
         &(vec_cache_buffer_[index].offset_buffer);
 
-    column = (*columns)[index];
+    auto column = (*columns)[index];
     Assert(index < (size_t)vec_cache_buffer_lens_ && vec_cache_buffer_);
 
     char *buffer = nullptr;
@@ -149,7 +150,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(PaxColumns *columns) {
 
         // no need try transfer memory buffer
         if (invisible_rows != 0) {
-          CopyNonFixedBuffer(dynamic_cast<PaxVecNonFixedColumn *>(column),
+          CopyNonFixedBuffer(std::static_pointer_cast<PaxVecNonFixedColumn>(column),
                              micro_partition_visibility_bitmap_,
                              group_base_offset_, invisible_rows, total_rows,
                              offset_buffer, vec_buffer);
@@ -173,8 +174,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(PaxColumns *columns) {
         }
 
         std::tie(buffer, buffer_len) =
-            dynamic_cast<PaxVecNonFixedColumn *>(column)->GetOffsetBuffer(
-                false);
+            std::static_pointer_cast<PaxVecNonFixedColumn>(column)->GetOffsetBuffer(false);
         // TODO(jiaqizho): this buffer can also be transferred
         offset_buffer->Set(BlockBuffer::Alloc<char *>(
                                TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),
@@ -201,7 +201,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(PaxColumns *columns) {
           vec_buffer->BrushAll();
         } else {
           vec_buffer->Set(
-              (char *)cbdb::Palloc0(TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),
+              (char *)BlockBuffer::Alloc0(TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),
               TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len));
           vec_buffer->Write(buffer, buffer_len);
           vec_buffer->BrushAll();

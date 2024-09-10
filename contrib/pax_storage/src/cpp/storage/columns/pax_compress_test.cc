@@ -4,6 +4,7 @@
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/gtest_wrappers.h"
+#include "comm/pax_memory.h"
 #include "exceptions/CException.h"
 #include "pax_gtest_helper.h"
 #include "storage/columns/pax_encoding_utils.h"
@@ -18,20 +19,18 @@ TEST_P(PaxCompressTest, TestCompressAndDecompress) {
   ColumnEncoding_Kind type = ::testing::get<0>(GetParam());
   uint32 data_len = ::testing::get<1>(GetParam());
   size_t dst_len = 0;
-  PaxCompressor *compressor;
 
-  char *data = reinterpret_cast<char *>(cbdb::Palloc(data_len));
-  char *result_data = reinterpret_cast<char *>(cbdb::Palloc(data_len));
+  char *data = pax::PAX_ALLOC<char *>(data_len);
+  char *result_data;
   for (size_t i = 0; i < data_len; ++i) {
     data[i] = i;
   }
 
-  compressor = PaxCompressor::CreateBlockCompressor(type);
+  auto compressor = PaxCompressor::CreateBlockCompressor(type);
 
   size_t bound_size = compressor->GetCompressBound(data_len);  // NOLINT
   ASSERT_GT(bound_size, 0UL);
-  result_data =
-      reinterpret_cast<char *>(cbdb::RePalloc(result_data, bound_size));
+  result_data = pax::PAX_ALLOC<char *>(bound_size);
   dst_len = bound_size;
   dst_len = compressor->Compress(result_data, dst_len, data, data_len, 1);
   ASSERT_FALSE(compressor->IsError(dst_len));
@@ -50,9 +49,8 @@ TEST_P(PaxCompressTest, TestCompressAndDecompress) {
     ASSERT_EQ(data[i], (char)i);
   }
 
-  delete compressor;
-  delete data;
-  delete result_data;
+  pax::PAX_FREE(data);
+  pax::PAX_FREE(result_data);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -72,16 +70,15 @@ TEST_F(PaxCompressTest2, TestPgLZCompress) {
   // too small may cause compress failed
   uint32 data_len = 512;
 
-  char *data = reinterpret_cast<char *>(cbdb::Palloc(data_len));
-  char *result_data = reinterpret_cast<char *>(cbdb::Palloc(data_len));
+  char *data = pax::PAX_ALLOC<char *>(data_len);
+  char *result_data;
   for (size_t i = 0; i < data_len; ++i) {
     data[i] = i;
   }
 
   size_t bound_size = compressor->GetCompressBound(data_len);  // NOLINT
   ASSERT_GT(bound_size, 0UL);
-  result_data =
-      reinterpret_cast<char *>(cbdb::RePalloc(result_data, bound_size));
+  result_data = pax::PAX_ALLOC<char *>(bound_size);
   dst_len = bound_size;
   dst_len = compressor->Compress(result_data, dst_len, data, data_len, 1);
   ASSERT_FALSE(compressor->IsError(dst_len));
@@ -101,8 +98,8 @@ TEST_F(PaxCompressTest2, TestPgLZCompress) {
   }
 
   delete compressor;
-  delete data;
-  delete result_data;
+  pax::PAX_FREE(data);
+  pax::PAX_FREE(result_data);
 }
 
 #ifdef USE_LZ4
@@ -111,16 +108,15 @@ TEST_F(PaxCompressTest2, TestLZ4Compress) {
   PaxCompressor *compressor = new PaxLZ4Compressor();
   uint32 data_len = 100;
 
-  char *data = reinterpret_cast<char *>(cbdb::Palloc(data_len));
-  char *result_data = reinterpret_cast<char *>(cbdb::Palloc(data_len));
+  char *data = pax::PAX_ALLOC<char *>(data_len);
+  char *result_data;
   for (size_t i = 0; i < data_len; ++i) {
     data[i] = i;
   }
 
   size_t bound_size = compressor->GetCompressBound(data_len);  // NOLINT
   ASSERT_GT(bound_size, 0UL);
-  result_data =
-      reinterpret_cast<char *>(cbdb::RePalloc(result_data, bound_size));
+  result_data = pax::PAX_ALLOC<char *>(bound_size);
   dst_len = bound_size;
   dst_len = compressor->Compress(result_data, dst_len, data, data_len, 1);
   ASSERT_FALSE(compressor->IsError(dst_len));
@@ -140,8 +136,8 @@ TEST_F(PaxCompressTest2, TestLZ4Compress) {
   }
 
   delete compressor;
-  delete data;
-  delete result_data;
+  pax::PAX_FREE(data);
+  pax::PAX_FREE(result_data);
 }
 #endif
 

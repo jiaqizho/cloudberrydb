@@ -13,9 +13,22 @@ namespace pax {
 #ifndef RUN_GTEST
 void WriteLongs(DataBuffer<char> *data_buffer, const int64 *input,
                 uint32 offset, size_t len, uint32 bits);
+
+static inline void WriteLongs(const std::shared_ptr<DataBuffer<char>> &data_buffer, const int64 *input,
+                uint32 offset, size_t len, uint32 bits) {
+  WriteLongs(data_buffer.get(), input, offset, len, bits);
+}
 #endif
 void WriteUnsignedLong(DataBuffer<char> *data_buffer, int64 val);
 void WriteSignedLong(DataBuffer<char> *data_buffer, int64 val);
+
+static inline void WriteUnsignedLong(const std::shared_ptr<DataBuffer<char>> &data_buffer, int64 val) {
+  WriteUnsignedLong(data_buffer.get(), val);
+}
+
+static inline void WriteSignedLong(const std::shared_ptr<DataBuffer<char>> &data_buffer, int64 val) {
+  WriteSignedLong(data_buffer.get(), val);
+}
 
 void WriteUnsignedLong(DataBuffer<char> *data_buffer, int64 val) {
   while (true) {
@@ -155,9 +168,8 @@ struct PaxOrcEncoder::EncoderContext::PatchBaseContext {
 
 PaxOrcEncoder::EncoderContext::EncoderContext()
     : is_sign(true), fixed_len(0), var_len(0), prev_delta(0), current_delta(0) {
-  internal_buffer_ = reinterpret_cast<char *>(
-      cbdb::Palloc0(sizeof(struct DeltaContext) + sizeof(struct DirectContext) +
-                    sizeof(struct PatchBaseContext)));
+  auto size = sizeof(struct DeltaContext) + sizeof(struct DirectContext) + sizeof(struct PatchBaseContext);
+  internal_buffer_ = pax::PAX_ALLOC0<char *>(size);
 
   delta_ctx = reinterpret_cast<struct DeltaContext *>(internal_buffer_);
   direct_ctx = reinterpret_cast<struct DirectContext *>(
@@ -168,7 +180,7 @@ PaxOrcEncoder::EncoderContext::EncoderContext()
 }
 
 PaxOrcEncoder::EncoderContext::~EncoderContext() {
-  cbdb::Pfree(internal_buffer_);
+  pax::PAX_FREE(internal_buffer_);
 }
 
 void PaxOrcEncoder::EncoderContext::ResetDirectCtx() const {
@@ -198,16 +210,13 @@ void PaxOrcEncoder::EncoderContext::ResetPbCtx() const {
 
 PaxOrcEncoder::PaxOrcEncoder(const EncodingOption &encoder_options)
     : PaxEncoder(encoder_options),
-      data_buffer_(PAX_NEW<UntreatedDataBuffer<int64>>(1024)),
-      zigzag_buffer_(PAX_NEW<DataBuffer<int64>>(128)),
+      data_buffer_(std::make_shared<UntreatedDataBuffer<int64>>(1024)),
+      zigzag_buffer_(std::make_shared<DataBuffer<int64>>(128)),
       status_(EncoderStatus::kInit) {
   encoder_context_.is_sign = encoder_options_.is_sign;
 }
 
-PaxOrcEncoder::~PaxOrcEncoder() {
-  PAX_DELETE(data_buffer_);
-  PAX_DELETE(zigzag_buffer_);
-}
+PaxOrcEncoder::~PaxOrcEncoder() { }
 
 void PaxOrcEncoder::Append(char *data, size_t len) {
   Assert(len <= 8);
@@ -701,6 +710,7 @@ void PaxOrcEncoder::TreatDirect() {
   size_t data_lens = data_buffer_->UnTreated() / sizeof(int64);
   auto direct_ctx = encoder_context_.direct_ctx;
   int64 *data_write = nullptr;
+  auto result_buffer = result_buffer_.get();
 
   if (!direct_ctx->zz_bits_100_p_inited) {
     auto pb_ctx = encoder_context_.pb_ctx;
@@ -731,17 +741,17 @@ void PaxOrcEncoder::TreatDirect() {
       static_cast<char>((encoder_context_.var_len - 1) & 0xff);
 
   // worst case: will write (3 bytes header + untreated buffer)
-  while (result_buffer_->Available() <
+  while (result_buffer->Available() <
          static_cast<size_t>((3) + data_buffer_->UnTreated())) {
-    result_buffer_->ReSize(result_buffer_->Capacity() * 2);
+    result_buffer->ReSize(result_buffer->Capacity() * 2);
   }
 
-  result_buffer_->Write(first_byte);
-  result_buffer_->Brush(1);
-  result_buffer_->Write(second_byte);
-  result_buffer_->Brush(1);
+  result_buffer->Write(first_byte);
+  result_buffer->Brush(1);
+  result_buffer->Write(second_byte);
+  result_buffer->Brush(1);
 
-  WriteLongs(result_buffer_, data_write, 0, data_lens, fb);
+  WriteLongs(result_buffer, data_write, 0, data_lens, fb);
 
   encoder_context_.ResetDirectCtx();
 }
@@ -912,41 +922,42 @@ void PaxOrcEncoder::TreatPatchedBase() {
   const char fourth_byte =
       static_cast<char>((pb_ctx->patch_gap_width - 1) << 5 | pb_ctx->patch_len);
 
+  auto result_buffer = result_buffer_.get();
   // In fact, Worst case will not write more than header(4) + UnTreated()
   // But the bytes of writes is not easy to estimate
-  while (result_buffer_->Available() <
+  while (result_buffer->Available() <
          static_cast<size_t>((4) + data_buffer_->UnTreated())) {
-    result_buffer_->ReSize(result_buffer_->Capacity() * 2);
+    result_buffer->ReSize(result_buffer->Capacity() * 2);
   }
 
   // write header
-  result_buffer_->Write(first_byte);
-  result_buffer_->Brush(1);
-  result_buffer_->Write(second_byte);
-  result_buffer_->Brush(1);
-  result_buffer_->Write(third_byte);
-  result_buffer_->Brush(1);
-  result_buffer_->Write(fourth_byte);
-  result_buffer_->Brush(1);
+  result_buffer->Write(first_byte);
+  result_buffer->Brush(1);
+  result_buffer->Write(second_byte);
+  result_buffer->Brush(1);
+  result_buffer->Write(third_byte);
+  result_buffer->Brush(1);
+  result_buffer->Write(fourth_byte);
+  result_buffer->Brush(1);
 
   // write the base value using fixed bytes in big endian order
   for (auto i = static_cast<int32>(base_bytes - 1); i >= 0; i--) {
     char b = static_cast<char>(((pb_ctx->min >> (i * 8)) & 0xff));
-    result_buffer_->Write(b);
+    result_buffer->Write(b);
     // TODO(jiaqizho): brush out loop
-    result_buffer_->Brush(1);
+    result_buffer->Brush(1);
   }
 
   // base reduced literals are bit packed
   uint32 closest_bits = GetClosestBits(pb_ctx->hist_bits_95_p);
 
-  WriteLongs(result_buffer_, pb_ctx->base_patch_buffer, 0, data_lens,
+  WriteLongs(result_buffer, pb_ctx->base_patch_buffer, 0, data_lens,
              closest_bits);
 
   // write patch list
   closest_bits = GetClosestBits(pb_ctx->patch_gap_width + pb_ctx->patch_width);
 
-  WriteLongs(result_buffer_, pb_ctx->gap_sign_patch_list, 0, pb_ctx->patch_len,
+  WriteLongs(result_buffer, pb_ctx->gap_sign_patch_list, 0, pb_ctx->patch_len,
              closest_bits);
 }
 
@@ -991,35 +1002,36 @@ bool PaxOrcEncoder::TreatDelta() {
   // second byte of the header stores the remaining 8 bits of runlength
   const char second_byte = static_cast<char>(len & 0xff);
 
+  auto result_buffer = result_buffer_.get();
   // In fact, Worst case will not write more than header(2) + UnTreated()
   // But the bytes of writes is not easy to estimate
-  while (result_buffer_->Available() <
+  while (result_buffer->Available() <
          static_cast<size_t>((2) + data_buffer_->UnTreated())) {
-    result_buffer_->ReSize(result_buffer_->Capacity() * 2);
+    result_buffer->ReSize(result_buffer->Capacity() * 2);
   }
 
-  result_buffer_->Write(first_byte);
-  result_buffer_->Brush(1);
-  result_buffer_->Write(second_byte);
-  result_buffer_->Brush(1);
+  result_buffer->Write(first_byte);
+  result_buffer->Brush(1);
+  result_buffer->Write(second_byte);
+  result_buffer->Brush(1);
 
   if (encoder_context_.is_sign) {
-    WriteSignedLong(result_buffer_, (*data_buffer_)[0]);
+    WriteSignedLong(result_buffer, (*data_buffer_)[0]);
   } else {
-    WriteUnsignedLong(result_buffer_, (*data_buffer_)[0]);
+    WriteUnsignedLong(result_buffer, (*data_buffer_)[0]);
   }
 
   if (delta_ctx->is_fixed_delta) {
-    WriteSignedLong(result_buffer_, delta_ctx->fixed_delta_val);
+    WriteSignedLong(result_buffer, delta_ctx->fixed_delta_val);
   } else {
     // store the first value as delta value using zigzag encoding
-    WriteSignedLong(result_buffer_, delta_ctx->adj_deltas[0]);
+    WriteSignedLong(result_buffer, delta_ctx->adj_deltas[0]);
 
     // adjacent delta values are bit packed. The length of adj_deltas array is
     // always one less than the number of literals (delta difference for n
     // elements is n-1). We have already written one element, write the
     // remaining data_lens - 2 elements here
-    WriteLongs(result_buffer_, delta_ctx->adj_deltas, 1, data_lens - 2, fb);
+    WriteLongs(result_buffer, delta_ctx->adj_deltas, 1, data_lens - 2, fb);
   }
 
   return reset_fix;

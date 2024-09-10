@@ -10,7 +10,7 @@
 
 namespace pax {
 extern std::shared_ptr<std::vector<uint8>> LoadVisimap(
-    FileSystem *fs, FileSystemOptions *options,
+    FileSystem *fs, const std::shared_ptr<FileSystemOptions> &options,
     const std::string &visimap_file_path);
 extern bool TestVisimap(Relation rel, const char *visimap_name, int offset);
 

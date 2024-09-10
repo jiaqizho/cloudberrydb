@@ -337,41 +337,34 @@ bool BuildExecutionFilterForColumns(Relation rel, PlanState *ps,
 PaxFilter::PaxFilter(bool allow_fallback_to_pg)
     : allow_fallback_to_pg_(allow_fallback_to_pg) {}
 
-PaxFilter::~PaxFilter() { PAX_DELETE_ARRAY(proj_); }
+PaxFilter::~PaxFilter() { }
 
-std::pair<bool *, size_t> PaxFilter::GetColumnProjection() {
-  return std::make_pair(proj_, proj_len_);
-}
 
-static bool ProjShouldReadAll(const bool *const proj_map, size_t proj_len) {
-  if (!proj_map) {
-    return true;
-  }
+static bool ProjShouldReadAll(const std::vector<bool> &cols) {
+  if (cols.empty()) return true;
 
-  for (size_t i = 0; i < proj_len; i++) {
-    if (!proj_map[i]) {
+  for (size_t i = 0; i < cols.size(); i++) {
+    if (!cols[i]) {
       return false;
     }
   }
   return true;
 }
 
-void PaxFilter::SetColumnProjection(bool *proj, size_t proj_len) {
-  if (ProjShouldReadAll(proj, proj_len)) {
-    proj_ = nullptr;
-    proj_len_ = 0;
-    proj_column_index_.clear();
+void PaxFilter::SetColumnProjection(std::vector<bool> &&cols) {
+  proj_column_index_.clear();
+  if (ProjShouldReadAll(cols)) {
+    proj_.clear();
   } else {
-    Assert(!proj_);
-    proj_ = proj;
-    proj_len_ = proj_len;
-    proj_column_index_.clear();
-    for (size_t i = 0; i < proj_len_; i++) {
+    Assert(proj_.empty());
+    proj_ = std::move(cols);
+    for (size_t i = 0; i < proj_.size(); i++) {
       if (proj_[i]) proj_column_index_.emplace_back(i);
     }
   }
 }
 
+#if 1
 void PaxFilter::SetColumnProjection(const std::vector<int> &cols, int natts) {
   bool all_proj = (cols.size() == (size_t)natts);
 
@@ -385,19 +378,17 @@ void PaxFilter::SetColumnProjection(const std::vector<int> &cols, int natts) {
 #endif
 
   if (all_proj) {
-    proj_ = nullptr;
-    proj_len_ = 0;
+    proj_.clear();
     proj_column_index_.clear();
   } else {
-    proj_ = PAX_NEW_ARRAY<bool>(natts);
-    proj_len_ = natts;
-    memset(proj_, false, natts);
+    proj_ = std::vector<bool>(natts, false);
     for (int i = 0; (size_t)i < cols.size(); i++) {
       proj_[cols[i]] = true;
       proj_column_index_.emplace_back(cols[i]);
     }
   }
 }
+#endif
 
 void PaxFilter::SetScanKeys(ScanKey scan_keys, int num_scan_keys) {
   Assert(num_scan_keys_ == 0);
@@ -667,11 +658,14 @@ bool PaxFilter::TestScanInternal(const ColumnStatsProvider &provider,
 
 void PaxFilter::FillRemainingColumns(Relation rel) {
   int natts = RelationGetNumberOfAttributes(rel);
-  bool *atts = PAX_NEW_ARRAY<bool>(natts);
-  if (proj_len_ > 0) {
-    Assert(natts >= 0 && static_cast<size_t>(natts) >= proj_len_);
-    memcpy(atts, proj_, sizeof(bool) * proj_len_);
-    for (auto i = static_cast<int>(proj_len_); i < natts; i++) atts[i] = false;
+  auto proj_len = proj_.size();
+  std::vector<bool> atts(natts);
+  if (proj_len > 0) {
+    Assert(natts >= 0 && static_cast<size_t>(natts) >= proj_len);
+    for (size_t i = 0; i < proj_len; i++)
+      atts[i] = proj_[i];
+    for (auto i = static_cast<int>(proj_len); i < natts; i++)
+      atts[i] = false;
   } else {
     for (int i = 0; i < natts; i++) atts[i] = true;
   }
@@ -684,7 +678,19 @@ void PaxFilter::FillRemainingColumns(Relation rel) {
   for (AttrNumber attno = 1; attno <= (AttrNumber)natts; attno++) {
     if (atts[attno - 1]) remaining_attnos_.emplace_back(attno);
   }
-  PAX_DELETE_ARRAY(atts);
+}
+
+static const char *filter_kind_desc[] = {"file", "group"};
+void PaxFilter::LogStatistics() {
+  auto N = sizeof(filter_kind_desc) / sizeof(char *);
+  for (size_t i = 0; i < N; i++) {
+    if (this->totals_[i] == 0) {
+      PAX_LOG("kind %s, no filter. ", filter_kind_desc[i]);
+    } else {
+      PAX_LOG("kind %s, filter rate: %d / %d", filter_kind_desc[i], hits_[i],
+              this->totals_[i]);
+    }
+  }
 }
 
 }  // namespace pax

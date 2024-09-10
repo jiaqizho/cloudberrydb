@@ -58,7 +58,7 @@ void PaxNonFixedEncodingColumn::InitDecoder() {
 
   decoder_ = PaxDecoder::CreateDecoder<int8>(decoder_options_);
   if (decoder_) {
-    shared_data_ = PAX_NEW<DataBuffer<char>>(*PaxNonFixedColumn::data_);
+    shared_data_ = std::make_shared<DataBuffer<char>>(*PaxNonFixedColumn::data_);
     decoder_->SetDataBuffer(shared_data_);
     return;
   }
@@ -99,17 +99,10 @@ PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
   InitLengthStreamDecompressor();
 }
 
-PaxNonFixedEncodingColumn::~PaxNonFixedEncodingColumn() {
-  PAX_DELETE(encoder_);
-  PAX_DELETE(decoder_);
-  PAX_DELETE(compressor_);
-  PAX_DELETE(shared_data_);
-  PAX_DELETE(lengths_compressor_);
-  PAX_DELETE(shared_lengths_data_);
-}
+PaxNonFixedEncodingColumn::~PaxNonFixedEncodingColumn() { }
 
-void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
-                                    DataBuffer<int32> *lengths,
+void PaxNonFixedEncodingColumn::Set(std::shared_ptr<DataBuffer<char>> data,
+                                    std::shared_ptr<DataBuffer<int32>> lengths,
                                     size_t total_size) {
   bool exist_decoder;
   Assert(data && lengths);
@@ -119,7 +112,6 @@ void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
     Assert(bool(compressor_) != bool(decoder_));
 
     if (data->Used() == 0) {
-      PAX_DELETE(data);
       return;
     }
 
@@ -133,7 +125,6 @@ void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
             fmt("Decompress failed, %s", compressor_->ErrorName(d_size)));
       }
       PaxNonFixedColumn::data_->Brush(d_size);
-      PAX_DELETE(data);
     }
 
     if (decoder_) {
@@ -143,7 +134,6 @@ void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
 
       // `data_` have the same buffer with `shared_data_`
       PaxNonFixedColumn::data_->Brush(shared_data_->Used());
-      PAX_DELETE(shared_data_);
       // no delete the origin data
       shared_data_ = data;
     }
@@ -166,8 +156,6 @@ void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
       PaxNonFixedColumn::lengths_->Brush(d_size);
     }
 
-    PAX_DELETE(lengths);
-
     BuildOffsets();
   };
 
@@ -181,13 +169,11 @@ void PaxNonFixedEncodingColumn::Set(DataBuffer<char> *data,
   } else if (exist_decoder && !lengths_compressor_) {
     data_decompress();
 
-    PAX_DELETE(lengths_);
     lengths_ = lengths;
     BuildOffsets();
 
     estimated_size_ = total_size;
   } else if (!exist_decoder && lengths_compressor_) {
-    PAX_DELETE(data_);
     data_ = data;
 
     lengths_decompress();
@@ -218,7 +204,7 @@ std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetBuffer() {
     if (compressor_) {
       size_t bound_size =
           compressor_->GetCompressBound(PaxNonFixedColumn::data_->Used());
-      shared_data_ = PAX_NEW<DataBuffer<char>>(bound_size);
+      shared_data_ = std::make_shared<DataBuffer<char>>(bound_size);
 
       auto c_size = compressor_->Compress(
           shared_data_->Start(), shared_data_->Capacity(),
@@ -237,7 +223,7 @@ std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetBuffer() {
 
     if (encoder_) {
       shared_data_ =
-          PAX_NEW<DataBuffer<char>>(PaxNonFixedColumn::data_->Used());
+          std::make_shared<DataBuffer<char>>(PaxNonFixedColumn::data_->Used());
       encoder_->SetDataBuffer(shared_data_);
       Assert(offsets_.size() == lengths_->GetSize());
 
@@ -271,7 +257,7 @@ std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetLengthBuffer() {
 
     size_t bound_size = lengths_compressor_->GetCompressBound(
         PaxNonFixedColumn::lengths_->Used());
-    shared_lengths_data_ = PAX_NEW<DataBuffer<char>>(bound_size);
+    shared_lengths_data_ = std::make_shared<DataBuffer<char>>(bound_size);
 
     auto c_size = lengths_compressor_->Compress(
         shared_lengths_data_->Start(), shared_lengths_data_->Capacity(),

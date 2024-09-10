@@ -1,19 +1,57 @@
 #pragma once
 #include "comm/cbdb_api.h"
 #include <memory>
-
-//#include "memory_allocator.h"
-
-// override the default new/delete to use current memory context
-extern void *operator new(std::size_t size);
-extern void *operator new[](std::size_t size);
-extern void operator delete(void *ptr);
-extern void operator delete[](void *ptr);
+#include <type_traits>
 
 namespace pax {
 
+// class tag for object that needs to release its memory resource
+// in the destructor function.
+class MemoryObject {
+public:
+ virtual ~MemoryObject() = default;
+};
+
+template <typename T=void*>
+static inline T PAX_ALLOC(size_t size) {
+  static_assert(std::is_pointer<T>(), "template type must be a pointer");
+
+  auto p = malloc(size);
+  if (!p) throw std::bad_alloc{};
+
+  return reinterpret_cast<T>(p);
+}
+
+template <typename T=void*>
+static inline T PAX_ALLOC0(size_t size) {
+  auto p = PAX_ALLOC<T>(size);
+  memset(reinterpret_cast<void *>(p), 0, size);
+  return p;
+}
+
+template <typename T=void*>
+static inline T PAX_REALLOC(void *ptr, size_t new_size) {
+  static_assert(std::is_pointer<T>(), "template type must be a pointer");
+
+  auto p = realloc(ptr, new_size);
+  if (!p) throw std::bad_alloc{};
+
+  return reinterpret_cast<T>(p);
+}
+
+template <typename T=void>
+static inline void PAX_FREE(const T *ptr) {
+  T *p = const_cast<T *>(ptr);
+  if (p) free(reinterpret_cast<void*>(p));
+}
+
 template <typename T, typename... Args>
 static inline T* PAX_NEW(Args&&... args) {
+  return new T(std::forward<Args>(args)...);
+}
+
+template <typename T, typename... Args>
+static inline T* PAX_NEW_NULL(Args&&... args) {
   return new T(std::forward<Args>(args)...);
 }
 
@@ -23,38 +61,32 @@ static inline T* PAX_NEW_ARRAY(size_t N) {
 }
 
 template <typename T>
-static inline void PAX_DELETE(T *&obj) {
+static inline void PAX_DELETE(T *obj) {
   delete obj;
-  obj = nullptr;
 }
 
 template <typename T>
-static inline void PAX_DELETE_ARRAY(T *&obj) {
+static inline void PAX_DELETE(const T *obj) {
+  delete obj;
+}
+
+template <typename T>
+static inline void PAX_DELETE_ARRAY(const T *obj) {
+  delete[] obj;
+}
+
+template <typename T>
+static inline void PAX_DELETE_ARRAY(T * const &obj) {
   delete []obj;
-  obj = nullptr;
 }
 
-struct PaxMemoryDeleter {
-  template <typename T>
-  inline void operator()(T* p) const {
-    delete p;
-  }
-};
-
 template <typename T>
-using pax_unique_ptr = std::unique_ptr<T>;
+static inline void ReleaseTopObject(Datum arg) {
+  auto obj = reinterpret_cast<T *>(DatumGetPointer(arg));
+  Assert(obj);
 
-template <typename T>
-using pax_shared_ptr = std::shared_ptr<T>;
-
-//template <typename T>
-//using pax_unique_ptr = std::unique_ptr<T, PaxMemoryDeleter>;
-
-//template <typename T>
-//using pax_shared_ptr = std::shared_ptr<T, PaxMemoryDeleter>;
+  PAX_DELETE(obj);
+}
 
 }
 
-// specify memory context for this allocation without switching memory context
-extern void *operator new(std::size_t size, MemoryContext ctx);
-extern void *operator new[](std::size_t size, MemoryContext ctx);

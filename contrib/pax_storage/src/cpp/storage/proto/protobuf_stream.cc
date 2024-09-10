@@ -7,7 +7,7 @@ namespace pax {
 BufferedOutputStream::BufferedOutputStream(uint64 block_size)
     : data_buffer_(nullptr), block_size_(block_size) {}
 
-void BufferedOutputStream::Set(DataBuffer<char> *data_buffer) {
+void BufferedOutputStream::Set(std::shared_ptr<DataBuffer<char>> data_buffer) {
   Assert(data_buffer && !data_buffer_);
   data_buffer_ = data_buffer;
 }
@@ -65,7 +65,7 @@ uint64 BufferedOutputStream::GetSize() const {
   return data_buffer_->Used();
 }
 
-DataBuffer<char> *BufferedOutputStream::GetDataBuffer() const {
+std::shared_ptr<DataBuffer<char>> BufferedOutputStream::GetDataBuffer() const {
   return data_buffer_;
 }
 

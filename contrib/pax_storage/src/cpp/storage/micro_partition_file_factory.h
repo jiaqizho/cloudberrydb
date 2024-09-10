@@ -23,13 +23,15 @@ enum ReaderFlags {
 
 class MicroPartitionFileFactory final {
  public:
-  static MicroPartitionWriter *CreateMicroPartitionWriter(
-      const MicroPartitionWriter::WriterOptions &options, File *file,
-      File *toast_file = nullptr);
+  static std::unique_ptr<MicroPartitionWriter> CreateMicroPartitionWriter(
+      const MicroPartitionWriter::WriterOptions &options,
+      std::shared_ptr<File> file,
+      std::shared_ptr<File> toast_file = nullptr);
 
-  static MicroPartitionReader *CreateMicroPartitionReader(
+  static std::unique_ptr<MicroPartitionReader> CreateMicroPartitionReader(
       const MicroPartitionReader::ReaderOptions &options, int32 flags,
-      File *file, File *toast_file = nullptr);
+      std::shared_ptr<File> file,
+      std::shared_ptr<File> toast_file = nullptr);
 };
 
 }  // namespace pax
