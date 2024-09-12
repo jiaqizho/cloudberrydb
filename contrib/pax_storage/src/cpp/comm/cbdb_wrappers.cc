@@ -369,14 +369,21 @@ bool cbdb::ExtractcolumnsFromNode(Node *expr, std::vector<bool> &col_bits) {
   CBDB_WRAP_END;
 }
 
-bool cbdb::MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *opfamily,
-                                     FmgrInfo *finfo,
-                                     StrategyNumber strategynum) {
+bool cbdb::PGGetOperator(const char *operatorName, Oid operatorNamespace,
+                         Oid leftObjectId, Oid rightObjectId, Oid *opno,
+                         FmgrInfo *finfo) {
   CBDB_WRAP_START;
   {
-    return paxc::MinMaxGetStrategyProcinfo(atttypid, subtype, opfamily, finfo,
-                                           strategynum);
+    return paxc::PGGetOperator(operatorName, operatorNamespace, leftObjectId,
+                               rightObjectId, opno, finfo);
   }
+  CBDB_WRAP_END;
+}
+
+bool cbdb::PGOperatorProcinfo(Oid opno, NameData *oprname, Oid *oprleft,
+                              Oid *oprright, FmgrInfo *finfo) {
+  CBDB_WRAP_START;
+  { return paxc::PGOperatorProcinfo(opno, oprname, oprleft, oprright, finfo); }
   CBDB_WRAP_END;
 }
 
