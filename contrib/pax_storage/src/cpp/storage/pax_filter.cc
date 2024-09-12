@@ -4,76 +4,82 @@
 
 #include "comm/cbdb_wrappers.h"
 #include "comm/fmt.h"
+#include "comm/guc.h"
 #include "comm/pax_memory.h"
+#include "comm/paxc_wrappers.h"
 #include "storage/micro_partition_stats.h"
 #include "storage/proto/proto_wrappers.h"
 
 namespace paxc {
 
 static bool BuildScanKeyOpExpr(ScanKey this_scan_key, Expr *clause,
-                               const Oid *opfamilies, bool isorderby,
-                               int indnkeyatts);
+                               bool isorderby, int indnkeyatts);
 static bool BuildScanKeyNullTest(ScanKey this_scan_key, Expr *clause);
 
 static bool BuildScanKeyOpExpr(ScanKey this_scan_key, Expr *clause,
-                               const Oid *opfamilies, bool isorderby,
-                               int indnkeyatts) {
+                               bool isorderby, int indnkeyatts) {
   /* indexkey op const or indexkey op expression */
   int flags = 0;
-  Datum scanvalue;
+  Datum scanvalue = 0;
 
-  Oid opno;              /* operator's OID */
-  RegProcedure opfuncid; /* operator proc id used in scan */
-  Oid opfamily;          /* opfamily of index column */
-  int op_strategy;       /* operator's strategy number */
-  Oid op_lefttype;       /* operator's declared input types */
+  Oid opno;                   /* operator's OID */
+  RegProcedure opfuncid;      /* operator proc id used in scan */
+  NameData op_name;           /* operator's name */
+  StrategyNumber op_strategy; /* operator's strategy number */
+  Oid op_lefttype;            /* operator's declared input types */
   Oid op_righttype;
   Expr *leftop;        /* expr on lhs of operator */
   Expr *rightop;       /* expr on rhs ... */
   AttrNumber varattno; /* att number used in scan */
+  bool ok = false;
 
   opno = ((OpExpr *)clause)->opno;
   opfuncid = ((OpExpr *)clause)->opfuncid;
 
-  /*
-   * leftop should be the index key Var, possibly relabeled
-   */
-  leftop = (Expr *)get_leftop(clause);
+  ok = paxc::PGOperatorProcinfo(opno, &op_name, &op_lefttype, &op_righttype,
+                                NULL);
 
-  if (leftop && IsA(leftop, RelabelType)) leftop = ((RelabelType *)leftop)->arg;
+  if (!ok) {
+    goto ignore_clause;
+  }
+
+  op_strategy = OpernameToStrategy(NameStr(op_name));
+  if (op_strategy == InvalidStrategy) {
+    goto ignore_clause;
+  }
+
+  // leftop should be the index key Var, possibly relabeled
+  leftop = (Expr *)get_leftop(clause);
+  if (leftop && IsA(leftop, RelabelType)) {
+    leftop = ((RelabelType *)leftop)->arg;
+  }
 
   Assert(leftop != NULL);
 
-  if (!IsA(leftop, Var)) goto ignore_clause;
+  if (!IsA(leftop, Var)) {
+    goto ignore_clause;
+  }
 
   varattno = ((Var *)leftop)->varattno;
-  if (varattno < 1 || varattno > indnkeyatts) goto ignore_clause;
-
-  /*
-   * We have to look up the operator's strategy number.  This
-   * provides a cross-check that the operator does match the index.
-   */
-  opfamily = opfamilies[varattno - 1];
-  if (!OidIsValid(opfamily) || !op_in_opfamily(opno, opfamily))
+  if (varattno < 1 || varattno > indnkeyatts) {
     goto ignore_clause;
+  }
 
-  get_op_opfamily_properties(opno, opfamily, isorderby, &op_strategy,
-                             &op_lefttype, &op_righttype);
+  if (isorderby) {
+    flags |= SK_ORDER_BY;
+  }
 
-  if (isorderby) flags |= SK_ORDER_BY;
-
-  /*
-   * rightop is the constant or variable comparison value
-   */
+  // rightop is the constant or variable comparison value
   rightop = (Expr *)get_rightop(clause);
 
-  if (rightop && IsA(rightop, RelabelType))
+  if (!rightop) {
+    goto ignore_clause;
+  }
+
+  if (IsA(rightop, RelabelType))
     rightop = ((RelabelType *)rightop)->arg;
-
-  Assert(rightop != NULL);
-
-  if (IsA(rightop, Const)) {
-    /* OK, simple constant comparison value */
+  else if (IsA(rightop, Const)) {
+    // OK, simple constant comparison value
     scanvalue = ((Const *)rightop)->constvalue;
     if (((Const *)rightop)->constisnull) flags |= SK_ISNULL;
   } else {
@@ -81,9 +87,7 @@ static bool BuildScanKeyOpExpr(ScanKey this_scan_key, Expr *clause,
     goto ignore_clause;
   }
 
-  /*
-   * initialize the scan key's fields appropriately
-   */
+  // initialize the scan key's fields appropriately
   ScanKeyEntryInitialize(this_scan_key, flags,
                          varattno,     /* attribute number to scan */
                          op_strategy,  /* op's strategy */
@@ -151,7 +155,6 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
   ScanKey scan_keys;
   int n_scan_keys;
   int index_of_scan_key;
-  TupleDesc desc;
 
   foreach (qual_cell, quals) {
     Expr *clause = (Expr *)lfirst(qual_cell);
@@ -170,24 +173,9 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
     }
   }
 
-  /* Allocate array for ScanKey structs: one per qual */
+  // Allocate array for ScanKey structs: one per qual
   n_scan_keys = list_length(flat_quals);
   scan_keys = (ScanKey)palloc(n_scan_keys * sizeof(ScanKeyData));
-  desc = rel->rd_att;
-  Oid *opfamilies = (Oid *)palloc(sizeof(Oid) * desc->natts);
-  for (auto i = 0; i < desc->natts; i++) {
-    auto attr = &desc->attrs[i];
-    if (attr->attisdropped) {
-      opfamilies[i] = 0;
-      continue;
-    }
-    Oid opclass = GetDefaultOpClass(attr->atttypid, BRIN_AM_OID);
-    if (!OidIsValid(opclass)) {
-      opfamilies[i] = 0;
-      continue;
-    }
-    opfamilies[i] = get_opclass_family(opclass);
-  }
 
   index_of_scan_key = 0;
   foreach (qual_cell, flat_quals) {
@@ -198,13 +186,22 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
     indnkeyatts = RelationGetNumberOfAttributes(rel);
 
     if (IsA(clause, OpExpr)) {
-      /* indexkey op const or indexkey op expression */
-      if (BuildScanKeyOpExpr(this_scan_key, clause, opfamilies, isorderby,
-                             indnkeyatts)) {
+      // indexkey op const or indexkey op expression
+      if (BuildScanKeyOpExpr(this_scan_key, clause, isorderby, indnkeyatts)) {
         index_of_scan_key++;
+        PAX_LOG_IF(pax::pax_enable_debug,
+                   "scan key build success. flags: %d, attno: %d, strategy: "
+                   "%d, subtype: %u, collation: %u",
+                   this_scan_key->sk_flags, this_scan_key->sk_attno,
+                   this_scan_key->sk_strategy, this_scan_key->sk_subtype,
+                   this_scan_key->sk_collation);
+      } else {
+        PAX_LOG_IF(pax::pax_enable_debug,
+                   "scan key build failed. attr index: %d build failed.",
+                   indnkeyatts);
       }
     } else if (IsA(clause, NullTest)) {
-      /* indexkey IS NULL or indexkey IS NOT NULL */
+      // indexkey IS NULL or indexkey IS NOT NULL
       Assert(!isorderby);
       if (BuildScanKeyNullTest(this_scan_key, clause)) {
         index_of_scan_key++;
@@ -213,7 +210,6 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
       // not support other qual types yet
     }
   }
-  pfree(opfamilies);
   list_free(flat_quals);
 
   /*
@@ -421,17 +417,11 @@ static inline bool CheckNullKey(ScanKey scan_key, bool allnull, bool hasnull) {
   return true;
 }
 
-static inline bool CheckOpfamily(const ::pax::stats::ColumnBasicInfo &info,
-                                 Oid opfamily) {
-  return info.opfamily() == opfamily;
-}
-
 static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
                               const ::pax::stats::ColumnDataStats &data_stats,
                               const int column_index, ScanKey scan_key,
                               Form_pg_attribute attr,
                               bool allow_fallback_to_pg) {
-  Oid opfamily;
   FmgrInfo finfo;
   Datum datum;
   Datum matches = true;
@@ -464,10 +454,9 @@ static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
 
         matches = lfunc(&datum, &value, collation);
       } else if (allow_fallback_to_pg) {
-        ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype,
-                                             &opfamily, &finfo,
-                                             scan_key->sk_strategy);
-        if (!ok || !CheckOpfamily(minmax, opfamily)) break;
+        ok = MinMaxGetPgStrategyProcinfo(typid, scan_key->sk_subtype, &finfo,
+                                         scan_key->sk_strategy);
+        if (!ok) break;
         datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(),
                                                     typlen, typbyval, &ok);
         CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
@@ -506,10 +495,9 @@ static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
         matches = lfunc2(&datum, &value, collation);
 
       } else if (allow_fallback_to_pg) {
-        ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype,
-                                             &opfamily, &finfo,
-                                             BTLessEqualStrategyNumber);
-        if (!ok || !CheckOpfamily(minmax, opfamily)) break;
+        ok = MinMaxGetPgStrategyProcinfo(typid, scan_key->sk_subtype, &finfo,
+                                         BTLessEqualStrategyNumber);
+        if (!ok) break;
         datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(),
                                                     typlen, typbyval, &ok);
         CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
@@ -523,10 +511,9 @@ static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
           // not (min <= value) --> min > value
           break;
 
-        ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype,
-                                             &opfamily, &finfo,
-                                             BTGreaterEqualStrategyNumber);
-        if (!ok || !CheckOpfamily(minmax, opfamily)) break;
+        ok = MinMaxGetPgStrategyProcinfo(typid, scan_key->sk_subtype, &finfo,
+                                         BTGreaterEqualStrategyNumber);
+        if (!ok) break;
         datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(),
                                                     typlen, typbyval, &ok);
         CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
@@ -552,10 +539,9 @@ static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
 
         matches = lfunc(&datum, &value, collation);
       } else if (allow_fallback_to_pg) {
-        ok = cbdb::MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype,
-                                             &opfamily, &finfo,
-                                             scan_key->sk_strategy);
-        if (!ok || !CheckOpfamily(minmax, opfamily)) break;
+        ok = MinMaxGetPgStrategyProcinfo(typid, scan_key->sk_subtype, &finfo,
+                                         scan_key->sk_strategy);
+        if (!ok) break;
 
         datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(),
                                                     typlen, typbyval, &ok);

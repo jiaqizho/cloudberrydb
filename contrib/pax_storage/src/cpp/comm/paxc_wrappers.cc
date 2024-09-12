@@ -140,34 +140,53 @@ static void DeletePaxDirectoryPathRecursive(
   }
 }
 
-bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *opfamily,
-                               FmgrInfo *finfo, StrategyNumber strategynum) {
+bool PGGetOperator(const char *operatorName, Oid operatorNamespace,
+                   Oid leftObjectId, Oid rightObjectId, Oid *opno,
+                   FmgrInfo *finfo) {
+  HeapTuple tup;
   FmgrInfo dummy;
-  HeapTuple tuple;
-  Oid opclass;
-  Oid oprid;
-  RegProcedure opcode;
-  bool isNull;
 
-  opclass = GetDefaultOpClass(atttypid, BRIN_AM_OID);
-  if (!OidIsValid(opclass)) return false;
+  if (!operatorName) {
+    goto failed;
+  }
 
-  *opfamily = get_opclass_family(opclass);
-  tuple = SearchSysCache4(AMOPSTRATEGY, ObjectIdGetDatum(*opfamily),
-                          ObjectIdGetDatum(atttypid), ObjectIdGetDatum(subtype),
-                          Int16GetDatum(strategynum));
+  tup = SearchSysCache4(OPERNAMENSP, PointerGetDatum(operatorName),
+                        ObjectIdGetDatum(leftObjectId),
+                        ObjectIdGetDatum(rightObjectId),
+                        ObjectIdGetDatum(operatorNamespace));
+  if (HeapTupleIsValid(tup)) {
+    Form_pg_operator oprform = (Form_pg_operator)GETSTRUCT(tup);
 
-  if (!HeapTupleIsValid(tuple)) return false;  // not found operator
+    *opno = oprform->oid;
+    fmgr_info_cxt(oprform->oprcode, finfo ? finfo : &dummy,
+                  CurrentMemoryContext);
+    ReleaseSysCache(tup);
+    return true;
+  }
 
-  oprid = DatumGetObjectId(
-      SysCacheGetAttr(AMOPSTRATEGY, tuple, Anum_pg_amop_amopopr, &isNull));
-  ReleaseSysCache(tuple);
-  Assert(!isNull && RegProcedureIsValid(oprid));
+failed:
+  *opno = InvalidOid;
+  return false;
+}
 
-  opcode = get_opcode(oprid);
-  if (!RegProcedureIsValid(opcode)) return false;
+bool PGOperatorProcinfo(Oid opno, NameData *oprname, Oid *oprleft,
+                        Oid *oprright, FmgrInfo *finfo) {
+  HeapTuple tup;
+  Form_pg_operator op;
+  FmgrInfo dummy;
 
-  fmgr_info_cxt(opcode, finfo ? finfo : &dummy, CurrentMemoryContext);
+  tup = SearchSysCache1(OPEROID, ObjectIdGetDatum(opno));
+  // should not happen
+  if (!HeapTupleIsValid(tup))
+    elog(ERROR, "cache lookup failed for operator %u", opno);
+  op = (Form_pg_operator)GETSTRUCT(tup);
+  *oprname = op->oprname;
+  *oprleft = op->oprleft;
+  *oprright = op->oprright;
+
+  fmgr_info_cxt(op->oprcode, finfo ? finfo : &dummy, CurrentMemoryContext);
+  ReleaseSysCache(tup);
+
   return true;
 }
 
