@@ -65,7 +65,6 @@ class MicroPartitionStats final {
   AggState *agg_state_;
   ExprContext expr_context_;
 
-  std::vector<Oid> opfamilies_;
   // less: pair[0], greater: pair[1]
   std::vector<std::pair<FmgrInfo, FmgrInfo>> finfos_;
   std::vector<std::pair<OperMinMaxFunc, OperMinMaxFunc>> local_funcs_;
