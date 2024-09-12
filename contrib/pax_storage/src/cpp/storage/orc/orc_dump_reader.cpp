@@ -225,7 +225,6 @@ std::string OrcDumpReader::DumpSchema() {
   tabulate::Table::Row_t desc_table_types{"Type kind"};
   tabulate::Table::Row_t desc_table_typeids{"PG typeid"};
   tabulate::Table::Row_t desc_table_collation{"PG collation"};
-  tabulate::Table::Row_t desc_table_opfamilys{"PG opfamily"};
 
   int64 column_start, column_end;
   bool succ;
@@ -246,15 +245,12 @@ std::string OrcDumpReader::DumpSchema() {
     desc_table_typeids.emplace_back(std::to_string((*col_infos)[j].typid()));
     desc_table_collation.emplace_back(
         std::to_string((*col_infos)[j].collation()));
-    desc_table_opfamilys.emplace_back(
-        std::to_string((*col_infos)[j].opfamily()));
   }
 
   desc_table.add_row(desc_table_header);
   desc_table.add_row(desc_table_types);
   desc_table.add_row(desc_table_typeids);
   desc_table.add_row(desc_table_collation);
-  desc_table.add_row(desc_table_opfamilys);
 
   schema_table.add_row(tabulate::Table::Row_t{"Schema description"});
   schema_table[0].format().font_align(tabulate::FontAlign::center);

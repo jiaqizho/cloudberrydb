@@ -127,7 +127,6 @@ static bool PrepareStatisticsInfoCombine(
 
     auto attr = TupleDescAttr(desc, i);
     auto collation = attr->attcollation;
-    Oid op_family;
     FmgrInfo finfo;
     bool get_pg_oper_succ = false;
 
@@ -154,7 +153,7 @@ static bool PrepareStatisticsInfoCombine(
     }
 
     // the column_stats.info() can be null, if current column is allnull
-    // So don't assert typeoid/opfamily/collation here
+    // So don't assert typeoid/collation here
     if (right_column_data_stats.has_minimal() &&
         left_column_data_stats.has_minimal()) {
       Assert(right_column_data_stats.has_maximum() &&
@@ -163,8 +162,8 @@ static bool PrepareStatisticsInfoCombine(
       GetStrategyProcinfo(attr->atttypid, attr->atttypid, funcs[i]);
       if (allow_fallback_to_pg) {
         finfos[i] = {finfo, finfo};
-        get_pg_oper_succ = GetStrategyProcinfo(attr->atttypid, attr->atttypid,
-                                               &op_family, finfos[i]);
+        get_pg_oper_succ =
+            GetStrategyProcinfo(attr->atttypid, attr->atttypid, finfos[i]);
       }
 
       // if current min/max from pg_oper, but now allow_fallback_to_pg is false
@@ -335,8 +334,7 @@ static void SumStatisticsInfoCombine(
 
       if (!sumtypbyval &&
           cbdb::DatumToPointer(newval) != cbdb::DatumToPointer(left_sum)) {
-        if (newval)
-          cbdb::Pfree(cbdb::DatumToPointer(newval));
+        if (newval) cbdb::Pfree(cbdb::DatumToPointer(newval));
       }
 
     } else {
@@ -426,7 +424,6 @@ MicroPartitionStats::MicroPartitionStats(TupleDesc desc,
 
   memset(&finfo, 0, sizeof(finfo));
   memset(&expr_context_, 0, sizeof(expr_context_));
-  opfamilies_.clear();
   finfos_.clear();
   local_funcs_.clear();
   status_.clear();
@@ -434,7 +431,6 @@ MicroPartitionStats::MicroPartitionStats(TupleDesc desc,
   sum_stats_.clear();
 
   for (int i = 0; i < natts; i++) {
-    opfamilies_.emplace_back(InvalidOid);
     finfos_.emplace_back(std::pair<FmgrInfo, FmgrInfo>({finfo, finfo}));
     local_funcs_.emplace_back(
         std::pair<OperMinMaxFunc, OperMinMaxFunc>({nullptr, nullptr}));
@@ -445,8 +441,7 @@ MicroPartitionStats::MicroPartitionStats(TupleDesc desc,
   }
 }
 
-MicroPartitionStats::~MicroPartitionStats() {
-}
+MicroPartitionStats::~MicroPartitionStats() {}
 
 ::pax::stats::MicroPartitionStatisticsInfo *MicroPartitionStats::Serialize() {
   auto n = tuple_desc_->natts;
@@ -549,8 +544,8 @@ void MicroPartitionStats::AddRow(TupleTableSlot *slot) {
       AddNullColumn(i);
     else
       AddNonNullColumn(i, slot->tts_values[i]);
-      //AddNonNullColumn(i, slot->tts_values[i],
-      //                 detoast_vals.empty() ? 0 : detoast_vals[i]);
+    // AddNonNullColumn(i, slot->tts_values[i],
+    //                  detoast_vals.empty() ? 0 : detoast_vals[i]);
   }
 }
 
@@ -595,7 +590,6 @@ void MicroPartitionStats::MergeRawInfo(
           stats_->GetColumnBasicInfo(column_index);
 
       Assert(col_basic_stats->typid() == col_basic_stats_merge->typid());
-      Assert(col_basic_stats->opfamily() == col_basic_stats_merge->opfamily());
       Assert(col_basic_stats->collation() ==
              col_basic_stats_merge->collation());
       Assert(col_basic_stats->collation() == collation);
@@ -651,10 +645,9 @@ void MicroPartitionStats::MergeRawInfo(
                     typlen, typbyval, &ok);
       Datum newval = cbdb::FunctionCall2Coll(&sum_stat->add_func, InvalidOid,
                                              sum_stat->result, sum_result);
-      if (!sum_stat->rettypbyval &&
-          newval != sum_stat->result &&
+      if (!sum_stat->rettypbyval && newval != sum_stat->result &&
           sum_stat->result) {
-          cbdb::Pfree(cbdb::DatumToPointer(sum_stat->result));
+        cbdb::Pfree(cbdb::DatumToPointer(sum_stat->result));
       }
       sum_stat->result =
           cbdb::datumCopy(newval, sum_stat->rettyplen, sum_stat->rettypbyval);
@@ -724,8 +717,6 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
             stats_->GetColumnBasicInfo(column_index);
 
         Assert(col_basic_stats->typid() == col_basic_stats_merge->typid());
-        Assert(col_basic_stats->opfamily() ==
-               col_basic_stats_merge->opfamily());
         Assert(col_basic_stats->collation() ==
                col_basic_stats_merge->collation());
         Assert(col_basic_stats->collation() == collation);
@@ -780,8 +771,7 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
       auto newval = cbdb::FunctionCall1Coll(&right_sum_stat->final_func,
                                             InvalidOid, right_sum_stat->result);
 
-      if (!left_sum_stat->transtypbyval &&
-          newval != right_sum_stat->result) {
+      if (!left_sum_stat->transtypbyval && newval != right_sum_stat->result) {
         if (right_sum_stat->result)
           cbdb::Pfree(cbdb::DatumToPointer(right_sum_stat->result));
         right_sum_stat->result = cbdb::datumCopy(
@@ -800,10 +790,9 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
       Datum newval = cbdb::FunctionCall2Coll(&left_sum_stat->add_func,
                                              InvalidOid, left_sum_stat->result,
                                              right_sum_stat->result);
-      if (!left_sum_stat->rettypbyval &&
-          newval != left_sum_stat->result &&
+      if (!left_sum_stat->rettypbyval && newval != left_sum_stat->result &&
           left_sum_stat->result) {
-          cbdb::Pfree(cbdb::DatumToPointer(left_sum_stat->result));
+        cbdb::Pfree(cbdb::DatumToPointer(left_sum_stat->result));
       }
       left_sum_stat->result = cbdb::datumCopy(newval, left_sum_stat->rettyplen,
                                               left_sum_stat->rettypbyval);
@@ -820,14 +809,14 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
 
 void MicroPartitionStats::AddNullColumn(int column_index) {
   Assert(column_index >= 0);
-  Assert(column_index < static_cast<int>(opfamilies_.size()));
+  Assert(column_index < static_cast<int>(status_.size()));
 
   stats_->SetHasNull(column_index, true);
 }
 
 void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value) {
   Assert(column_index >= 0);
-  Assert(column_index < static_cast<int>(opfamilies_.size()));
+  Assert(column_index < static_cast<int>(status_.size()));
 
   auto att = TupleDescAttr(tuple_desc_, column_index);
   auto collation = att->attcollation;
@@ -844,18 +833,14 @@ void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value) {
       break;
     case STATUS_NEED_UPDATE:
       Assert(info->has_typid());
-      Assert(info->has_opfamily());
       Assert(info->typid() == att->atttypid);
       Assert(info->collation() == collation);
-      Assert(info->opfamily() == opfamilies_[column_index]);
 
       UpdateMinMaxValue(column_index, value, collation, typlen, typbyval);
       break;
     case STATUS_MISSING_INIT_VAL: {
       AssertImply(info->has_typid(), info->typid() == att->atttypid);
       AssertImply(info->has_collation(), info->collation() == collation);
-      AssertImply(info->has_opfamily(),
-                  info->opfamily() == opfamilies_[column_index]);
 
       CopyDatum(value, &min_in_mem_[column_index], typlen, typbyval);
       CopyDatum(value, &max_in_mem_[column_index], typlen, typbyval);
@@ -997,7 +982,6 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns) {
   int num_minmax_columns;
 
   Assert(natts == static_cast<int>(status_.size()));
-  Assert(status_.size() == opfamilies_.size());
   Assert(status_.size() == finfos_.size());
 
   if (initialized_) {
@@ -1040,20 +1024,17 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns) {
 
       info->set_typid(att->atttypid);
       info->set_collation(att->attcollation);
-      info->set_opfamily(opfamilies_[i]);
       goto init_sum_status;
     }
 
     if (!allow_fallback_to_pg_ ||
-        !GetStrategyProcinfo(att->atttypid, att->atttypid, &opfamilies_[i],
-                             finfos_[i])) {
+        !GetStrategyProcinfo(att->atttypid, att->atttypid, finfos_[i])) {
       status_[i] = STATUS_NOT_SUPPORT;
       goto init_sum_status;
     }
 
     info->set_typid(att->atttypid);
     info->set_collation(att->attcollation);
-    info->set_opfamily(opfamilies_[i]);
 
     status_[i] = STATUS_MISSING_INIT_VAL;
   init_sum_status:

@@ -8,8 +8,11 @@ void DeletePaxDirectoryPath(const char *dirname, bool delete_topleveldir);
 void MakedirRecursive(const char *path);
 char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend,
                             bool is_dfs_path);
-bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *opfamily,
-                               FmgrInfo *finfo, StrategyNumber strategynum);
+bool PGOperatorProcinfo(Oid opno, NameData *oprname, Oid *oprleft,
+                        Oid *oprright, FmgrInfo *finfo);
+bool PGGetOperator(const char *operatorName, Oid operatorNamespace,
+                   Oid leftObjectId, Oid rightObjectId, Oid *opno,
+                   FmgrInfo *finfo);
 bool AddGetProcinfo(Oid atttypid, Oid subtype, Oid namespc, Oid *resulttype,
                     FmgrInfo *finfo);
 bool SumAGGGetProcinfo(Oid atttypid, Oid *prorettype, Oid *transtype,

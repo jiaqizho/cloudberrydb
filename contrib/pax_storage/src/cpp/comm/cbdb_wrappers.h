@@ -12,9 +12,7 @@ struct PaxcExtractcolumnContext {
   // If cols set and call ExtractcolumnsFromNode with
   // `target list`. Then the cols will fill with projection mask.
   PaxcExtractcolumnContext(std::vector<bool> &col_bitmap)
-    : col_bits(col_bitmap) {
-    
-  }
+      : col_bits(col_bitmap) {}
   std::vector<bool> &col_bits;
   bool found = false;
 
@@ -99,7 +97,9 @@ static inline void *DatumToPointer(Datum d) noexcept {
   return DatumGetPointer(d);
 }
 
-static inline Datum PointerToDatum(void *p) noexcept { return PointerGetDatum(p); }
+static inline Datum PointerToDatum(void *p) noexcept {
+  return PointerGetDatum(p);
+}
 
 static inline int8 DatumToInt8(Datum d) noexcept { return DatumGetInt8(d); }
 
@@ -192,9 +192,11 @@ bool IsSystemAttrNumExist(struct PaxcExtractcolumnContext *context,
                           AttrNumber number);
 
 bool ExtractcolumnsFromNode(Node *expr, std::vector<bool> &col_bits);
-
-bool MinMaxGetStrategyProcinfo(Oid atttypid, Oid subtype, Oid *opfamily,
-                               FmgrInfo *finfo, StrategyNumber strategynum);
+bool PGGetOperator(const char *operatorName, Oid operatorNamespace,
+                   Oid leftObjectId, Oid rightObjectId, Oid *opno,
+                   FmgrInfo *finfo);
+bool PGOperatorProcinfo(Oid opno, NameData *oprname, Oid *oprleft,
+                        Oid *oprright, FmgrInfo *finfo);
 bool AddGetProcinfo(Oid atttypid, Oid subtype, Oid namespc, Oid *resulttype,
                     FmgrInfo *finfo);
 bool SumAGGGetProcinfo(Oid atttypid, Oid *prorettype, Oid *transtype,
