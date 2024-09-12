@@ -4,6 +4,7 @@
 #include "catalog/pax_aux_table.h"
 #include "catalog/pax_fastsequence.h"
 #include "comm/cbdb_wrappers.h"
+#include "storage/oper/pax_stats.h"
 #include "stub.h"
 
 bool MockMinMaxGetStrategyProcinfo(Oid, Oid, Oid *, FmgrInfo *,
@@ -38,7 +39,7 @@ std::vector<int> MockGetMinMaxColumnsIndex(Relation rel) {
 
 // Mock global method which is not link from another libarays
 void GlobalMock(Stub *stub) {
-  stub->set(cbdb::MinMaxGetStrategyProcinfo, MockMinMaxGetStrategyProcinfo);
+  stub->set(pax::MinMaxGetPgStrategyProcinfo, MockMinMaxGetStrategyProcinfo);
   stub->set(paxc::CPaxGetFastSequences, MockGetFastSequences);
   stub->set(cbdb::BuildPaxDirectoryPath, MockBuildPaxDirectoryPath);
   stub->set(cbdb::InsertMicroPartitionPlaceHolder,

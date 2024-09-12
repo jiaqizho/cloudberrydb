@@ -100,28 +100,24 @@ TEST_F(MicroPartitionStatsTest, MicroPartitionStatsInfoCombine) {
 
   // fill ColumnBasicInfo
   col_stats1_1->mutable_info()->set_typid(tuple_desc->attrs[0].atttypid);
-  col_stats1_1->mutable_info()->set_opfamily(0);
   col_stats1_1->mutable_info()->set_collation(
       tuple_desc->attrs[0].attcollation);
 
   col_stats2_1->mutable_info()->CopyFrom(col_stats1_1->info());
 
   col_stats1_2->mutable_info()->set_typid(tuple_desc->attrs[1].atttypid);
-  col_stats1_2->mutable_info()->set_opfamily(0);
   col_stats1_2->mutable_info()->set_collation(
       tuple_desc->attrs[1].attcollation);
 
   col_stats2_2->mutable_info()->CopyFrom(col_stats1_2->info());
 
   col_stats1_3->mutable_info()->set_typid(tuple_desc->attrs[2].atttypid);
-  col_stats1_3->mutable_info()->set_opfamily(0);
   col_stats1_3->mutable_info()->set_collation(
       tuple_desc->attrs[2].attcollation);
 
   col_stats2_3->mutable_info()->CopyFrom(col_stats1_3->info());
 
   col_stats1_4->mutable_info()->set_typid(tuple_desc->attrs[3].atttypid);
-  col_stats1_4->mutable_info()->set_opfamily(0);
   col_stats1_4->mutable_info()->set_collation(
       tuple_desc->attrs[3].attcollation);
 
@@ -198,25 +194,21 @@ TEST_F(MicroPartitionStatsTest, MicroPartitionStatsInfoCombine) {
   // verify ColumnBasicInfo have not been updated
   ASSERT_EQ(col_stats1_1->mutable_info()->typid(),
             tuple_desc->attrs[0].atttypid);
-  ASSERT_EQ(col_stats1_1->mutable_info()->opfamily(), (uint32)0);
   ASSERT_EQ(col_stats1_1->mutable_info()->collation(),
             tuple_desc->attrs[0].attcollation);
 
   ASSERT_EQ(col_stats1_2->mutable_info()->typid(),
             tuple_desc->attrs[1].atttypid);
-  ASSERT_EQ(col_stats1_2->mutable_info()->opfamily(), (uint32)0);
   ASSERT_EQ(col_stats1_2->mutable_info()->collation(),
             tuple_desc->attrs[1].attcollation);
 
   ASSERT_EQ(col_stats1_3->mutable_info()->typid(),
             tuple_desc->attrs[2].atttypid);
-  ASSERT_EQ(col_stats1_3->mutable_info()->opfamily(), (uint32)0);
   ASSERT_EQ(col_stats1_3->mutable_info()->collation(),
             tuple_desc->attrs[2].attcollation);
 
   ASSERT_EQ(col_stats1_4->mutable_info()->typid(),
             tuple_desc->attrs[3].atttypid);
-  ASSERT_EQ(col_stats1_4->mutable_info()->opfamily(), (uint32)0);
   ASSERT_EQ(col_stats1_4->mutable_info()->collation(),
             tuple_desc->attrs[3].attcollation);
 
