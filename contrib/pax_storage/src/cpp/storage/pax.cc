@@ -114,8 +114,8 @@ TableWriter::TableWriter(Relation relation)
       cbdb::IsDfsTablespaceById(relation_->rd_rel->reltablespace);
 
   if (is_dfs_table_space_) {
-    file_system_options_ =
-        std::make_shared<RemoteFileSystemOptions>(relation_->rd_rel->reltablespace);
+    file_system_options_ = std::make_shared<RemoteFileSystemOptions>(
+        relation_->rd_rel->reltablespace);
     file_system_ = Singleton<RemoteFileSystem>::GetInstance();
   } else {
     file_system_ = Singleton<LocalFileSystem>::GetInstance();
@@ -149,8 +149,7 @@ TableWriter *TableWriter::SetFileSplitStrategy(
   return this;
 }
 
-TableWriter::~TableWriter() {
-}
+TableWriter::~TableWriter() {}
 
 const FileSplitStrategy *TableWriter::GetFileSplitStrategy() const {
   return strategy_.get();
@@ -171,6 +170,15 @@ std::vector<int> TableWriter::GetMinMaxColumnIndexes() {
   }
 
   return min_max_col_idx_;
+}
+
+std::vector<int> TableWriter::GetBloomFilterColumnIndexes() {
+  if (!already_get_bf_col_idx_) {
+    bf_col_idx_ = cbdb::GetBloomFilterColumnsIndex(relation_);
+    already_get_bf_col_idx_ = true;
+  }
+
+  return bf_col_idx_;
 }
 
 std::vector<std::tuple<ColumnEncoding_Kind, int>>
@@ -232,6 +240,7 @@ std::unique_ptr<MicroPartitionWriter> TableWriter::CreateMicroPartitionWriter(
   options.lengths_encoding_opts = std::make_pair(
       PAX_LENGTHS_DEFAULT_COMPRESSTYPE, PAX_LENGTHS_DEFAULT_COMPRESSLEVEL);
   options.enable_min_max_col_idxs = GetMinMaxColumnIndexes();
+  options.enable_bf_col_idxs = GetBloomFilterColumnIndexes();
 
   // FIXME(gongxun): Non-partition writers do not need to read and merge, so we
   // open them in write-only mode. Write-only writer can work on object storage.
@@ -270,8 +279,10 @@ void TableWriter::Open() {
   // Exception may be thrown causing writer_ to be nullptr
 
   if (!mp_stats_) {
-    mp_stats_ = std::make_shared<MicroPartitionStats>(RelationGetDescr(relation_));
-    mp_stats_->Initialize(GetMinMaxColumnIndexes());
+    mp_stats_ =
+        std::make_shared<MicroPartitionStats>(RelationGetDescr(relation_));
+    mp_stats_->Initialize(GetMinMaxColumnIndexes(),
+                          GetBloomFilterColumnIndexes());
   } else {
     mp_stats_->Reset();
   }
@@ -319,14 +330,14 @@ TableReader::TableReader(
 
   if (is_dfs_table_space_) {
     file_system_ = Singleton<RemoteFileSystem>::GetInstance();
-    file_system_options_ =
-        std::make_shared<RemoteFileSystemOptions>(reader_options_.table_space_id);
+    file_system_options_ = std::make_shared<RemoteFileSystemOptions>(
+        reader_options_.table_space_id);
   } else {
     file_system_ = Singleton<LocalFileSystem>::GetInstance();
   }
 }
 
-TableReader::~TableReader() { }
+TableReader::~TableReader() {}
 
 void TableReader::Open() {
   if (!iterator_->HasNext()) {
@@ -485,11 +496,10 @@ void TableReader::OpenFile() {
   int32 reader_flags = FLAGS_EMPTY;
 
   micro_partition_id_ = it.GetMicroPartitionId();
-  current_block_number_ = micro_partition_id_; 
+  current_block_number_ = micro_partition_id_;
 
   options.filter = reader_options_.filter;
   options.reused_buffer = reader_options_.reused_buffer;
-
 
   // load visibility map
   std::string visibility_bitmap_file = it.GetVisibilityBitmapFile();
@@ -527,11 +537,9 @@ void TableReader::OpenFile() {
 }
 
 TableDeleter::TableDeleter(
-    Relation rel,
-    std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap, Snapshot snapshot)
-    : rel_(rel),
-      snapshot_(snapshot),
-      delete_bitmap_(delete_bitmap) {
+    Relation rel, std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap,
+    Snapshot snapshot)
+    : rel_(rel), snapshot_(snapshot), delete_bitmap_(delete_bitmap) {
   if (cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace)) {
     file_system_options_ =
         std::make_shared<RemoteFileSystemOptions>(rel_->rd_rel->reltablespace);
@@ -544,7 +552,8 @@ TableDeleter::TableDeleter(
 void TableDeleter::UpdateStatsInAuxTable(
     Oid aux_oid, const pax::MicroPartitionMetadata &meta,
     std::shared_ptr<Bitmap8> visi_bitmap,
-    const std::vector<int> &min_max_col_idxs, std::shared_ptr<PaxFilter> filter) {
+    const std::vector<int> &min_max_col_idxs,
+    const std::vector<int> &bf_col_idxs, std::shared_ptr<PaxFilter> filter) {
   MicroPartitionReader::ReaderOptions options;
   std::shared_ptr<File> toast_file;
   int32 reader_flags = FLAGS_EMPTY;
@@ -569,7 +578,7 @@ void TableDeleter::UpdateStatsInAuxTable(
 
   slot = MakeTupleTableSlot(rel_->rd_att, &TTSOpsVirtual);
   auto updated_stats = MicroPartitionStatsUpdater(mp_reader.get(), visi_bitmap)
-                      .Update(slot, min_max_col_idxs);
+                           .Update(slot, min_max_col_idxs, bf_col_idxs);
 
   // update the statistics in aux table
   cbdb::UpdateStatistics(aux_oid, meta.GetMicroPartitionId(),
@@ -606,7 +615,7 @@ void TableDeleter::DeleteWithVisibilityMap(
 
   min_max_col_idxs = cbdb::GetMinMaxColumnsIndex(rel_);
   stats_updater_projection->SetColumnProjection(min_max_col_idxs,
-                                               rel_->rd_att->natts);
+                                                rel_->rd_att->natts);
   do {
     auto it = iterator->Next();
 
@@ -671,15 +680,17 @@ void TableDeleter::DeleteWithVisibilityMap(
     UpdateStatsInAuxTable(aux_oid, micro_partition_metadata,
                           std::make_shared<Bitmap8>(visi_bitmap->Raw(),
                                                     Bitmap8::ReadOnlyOwnBitmap),
-                          min_max_col_idxs, stats_updater_projection);
-
+                          min_max_col_idxs,
+                          cbdb::GetBloomFilterColumnsIndex(rel_),
+                          stats_updater_projection);
 
     // write pg_pax_blocks_oid
     cbdb::UpdateVisimap(aux_oid, block_id, visimap_file_name);
   } while (iterator->HasNext());
 }
 
-void TableDeleter::Delete(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator) {
+void TableDeleter::Delete(
+    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator) {
   if (!iterator->HasNext()) {
     return;
   }
@@ -725,11 +736,13 @@ std::unique_ptr<TableWriter> TableDeleter::OpenWriter() {
   return writer;
 }
 
-std::unique_ptr<TableReader> TableDeleter::OpenReader(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator) {
+std::unique_ptr<TableReader> TableDeleter::OpenReader(
+    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator) {
   TableReader::ReaderOptions reader_options{};
 
   reader_options.table_space_id = rel_->rd_rel->reltablespace;
-  auto reader = std::make_unique<TableReader>(std::move(iterator), reader_options);
+  auto reader =
+      std::make_unique<TableReader>(std::move(iterator), reader_options);
   reader->Open();
   return reader;
 }

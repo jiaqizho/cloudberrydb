@@ -161,9 +161,9 @@ cluster t_both_zorder_and_index_cluster;
 create table t_zorder_unsupport_type(c1 int, c2 numeric(10,2),c3 varchar(128), c4 timestamp, c5 bpchar(64) ) using pax with(minmax_columns='c1,c2');
 -- error, because numeric is unsupport type
 alter table t_zorder_unsupport_type set(cluster_columns='c1,c2');
-ERROR:  the type of column c2 does not support zorder cluster (paxc_rel_options.cc:312)
+ERROR:  the type of column c2 does not support zorder cluster (pax_access_handle.cc:1329)
 alter table t_zorder_unsupport_type set(cluster_columns='c1,c3');
 -- error, because timestamp is unsupport type
 alter table t_zorder_unsupport_type set(cluster_columns='c1,c4');
-ERROR:  the type of column c4 does not support zorder cluster (paxc_rel_options.cc:312)
+ERROR:  the type of column c4 does not support zorder cluster (pax_access_handle.cc:1329)
 alter table t_zorder_unsupport_type set(cluster_columns='c1,c5');

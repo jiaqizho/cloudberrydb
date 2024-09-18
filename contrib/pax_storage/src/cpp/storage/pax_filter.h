@@ -40,6 +40,11 @@ class ColumnStatsProvider {
       int column_index) const = 0;
   virtual const ::pax::stats::ColumnDataStats &DataStats(
       int column_index) const = 0;
+
+  virtual bool HasBloomFilter(int column_index) const = 0;
+  virtual const ::pax::stats::BloomFilterBasicInfo &BloomFilterBasicInfo(
+      int column_index) const = 0;
+  virtual std::string GetBloomFilter(int column_index) const = 0;
 };
 
 class PaxFilter final {
@@ -56,9 +61,7 @@ class PaxFilter final {
 
   void SetColumnProjection(std::vector<bool> &&proj_cols);
 
-  const std::vector<bool> &GetColumnProjection() const {
-     return proj_;
-  }
+  const std::vector<bool> &GetColumnProjection() const { return proj_; }
   void SetColumnProjection(const std::vector<int> &cols, int natts);
 
   void SetScanKeys(ScanKey scan_keys, int num_scan_keys);

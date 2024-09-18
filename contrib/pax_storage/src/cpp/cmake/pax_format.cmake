@@ -2,6 +2,7 @@
 
 set(pax_comm_src
     comm/bitmap.cc
+    comm/bloomfilter.cc
     comm/byte_buffer.cc
     comm/guc.cc
     comm/paxc_wrappers.cc

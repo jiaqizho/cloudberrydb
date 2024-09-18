@@ -72,6 +72,8 @@ static const relopt_parse_elt kSelfReloptTab[] = {
      offsetof(PaxOptions, partition_ranges_offset)},
     {PAX_SOPT_MINMAX_COLUMNS, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, minmax_columns_offset)},
+    {PAX_SOPT_BLOOMFILTER_COLUMNS, RELOPT_TYPE_STRING,
+     offsetof(PaxOptions, bloomfilter_columns_offset)},
     {PAX_SOPT_CLUSTER_COLUMNS, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, cluster_columns_offset)},
 };
@@ -235,7 +237,9 @@ List *paxc_transform_column_encoding_clauses(List *encoding_opts, bool validate,
   return ret_list;
 }
 
-Bitmapset *paxc_get_minmax_columns_index(Relation rel, bool validate) {
+Bitmapset *paxc_get_columns_index_by_options(
+    Relation rel, const char *columns_options,
+    void (*check_attr)(Form_pg_attribute), bool validate) {
   Assert(rel->rd_rel->relam == PAX_AM_OID);
 
   List *list = NIL;
@@ -244,60 +248,11 @@ Bitmapset *paxc_get_minmax_columns_index(Relation rel, bool validate) {
   auto natts = RelationGetNumberOfAttributes(rel);
   Bitmapset *bms = nullptr;
 
-  auto options = reinterpret_cast<paxc::PaxOptions *>(rel->rd_options);
-  if (!options || !options->minmax_columns()) return nullptr;
+  if (!columns_options) return nullptr;
 
-  auto value = pstrdup(options->minmax_columns());
+  auto value = pstrdup(columns_options);
   if (!SplitDirectoriesString(value, ',', &list))
-    elog(ERROR, "invalid minmax_columns: '%s' '%s'", value,
-         options->minmax_columns());
-
-  pfree(value);
-  foreach (lc, list) {
-    auto s = (char *)lfirst(lc);
-    int i;
-    bool dropped_column = false;
-    bool valid_column;
-
-    for (i = 0; i < natts; i++) {
-      auto attr = TupleDescAttr(tupdesc, i);
-      if (strcmp(s, NameStr(attr->attname)) == 0) {
-        if (!attr->attisdropped) break;
-
-        if (validate) elog(ERROR, "pax: can't use dropped column");
-        dropped_column = true;
-        break;
-      }
-    }
-    valid_column = !dropped_column && i < natts;
-    if (validate) {
-      if (i == natts) elog(ERROR, "invalid column name '%s'", s);
-
-      if (bms_is_member(i, bms)) elog(ERROR, "duplicated column name '%s'", s);
-    }
-
-    if (valid_column) bms = bms_add_member(bms, i);
-  }
-  list_free_deep(list);
-  return bms;
-}
-
-Bitmapset *paxc_get_cluster_columns_index(Relation rel, bool validate) {
-  Assert(rel->rd_rel->relam == PAX_AM_OID);
-
-  List *list = NIL;
-  ListCell *lc;
-  auto tupdesc = RelationGetDescr(rel);
-  auto natts = RelationGetNumberOfAttributes(rel);
-  Bitmapset *bms = nullptr;
-
-  auto options = reinterpret_cast<paxc::PaxOptions *>(rel->rd_options);
-  if (!options || !options->cluster_columns()) return nullptr;
-
-  auto value = pstrdup(options->cluster_columns());
-  if (!SplitDirectoriesString(value, ',', &list))
-    elog(ERROR, "invalid cluster_columns: '%s' '%s'", value,
-         options->cluster_columns());
+    elog(ERROR, "invalid columns: '%s' '%s'", value, columns_options);
 
   pfree(value);
   foreach (lc, list) {
@@ -310,11 +265,7 @@ Bitmapset *paxc_get_cluster_columns_index(Relation rel, bool validate) {
       auto attr = TupleDescAttr(tupdesc, i);
       if (strcmp(s, NameStr(attr->attname)) == 0) {
         if (!attr->attisdropped) {
-          // check if the column support zorder-clustering
-          if (!support_zorder_type(attr->atttypid)) {
-            elog(ERROR, "the type of column %s does not support zorder cluster",
-                 attr->attname.data);
-          }
+          if (check_attr) check_attr(attr);
           break;
         }
 
@@ -361,6 +312,8 @@ void paxc_reg_rel_options() {
                        "partition ranges", NULL, NULL, AccessExclusiveLock);
   add_string_reloption(self_relopt_kind, PAX_SOPT_MINMAX_COLUMNS,
                        "minmax columns", NULL, NULL, AccessExclusiveLock);
+  add_string_reloption(self_relopt_kind, PAX_SOPT_BLOOMFILTER_COLUMNS,
+                       "minmax columns", NULL, NULL, AccessExclusiveLock);
   add_string_reloption(self_relopt_kind, PAX_SOPT_CLUSTER_COLUMNS,
                        "cluster columns", NULL, NULL, AccessExclusiveLock);
 }
@@ -396,16 +349,22 @@ PaxStorageFormat StorageFormatKeyToPaxStorageFormat(
 
 }  // namespace pax
 
-std::vector<int> cbdb::GetMinMaxColumnsIndex(Relation rel) {
+static std::vector<int> GetColumnsIndexByOptions(
+    Relation rel, char *options, void (*check_attr)(Form_pg_attribute)) {
   std::vector<int> indexes;
-  Bitmapset *bms;
+  Bitmapset *bms = nullptr;
   int idx;
 
-  {
-    CBDB_WRAP_START;
-    { bms = paxc::paxc_get_minmax_columns_index(rel, false); }
-    CBDB_WRAP_END;
+  if (!options) {
+    return indexes;
   }
+
+  CBDB_WRAP_START;
+  {
+    bms = paxc::paxc_get_columns_index_by_options(rel, options, check_attr,
+                                                  false);
+  }
+  CBDB_WRAP_END;
 
   idx = -1;
   while ((idx = bms_next_member(bms, idx)) >= 0) {
@@ -421,27 +380,27 @@ std::vector<int> cbdb::GetMinMaxColumnsIndex(Relation rel) {
   return indexes;
 }
 
+std::vector<int> cbdb::GetMinMaxColumnsIndex(Relation rel) {
+  auto options = (paxc::PaxOptions *)rel->rd_options;
+  return GetColumnsIndexByOptions(
+      rel, options ? options->minmax_columns() : nullptr, nullptr);
+}
+
+std::vector<int> cbdb::GetBloomFilterColumnsIndex(Relation rel) {
+  auto options = (paxc::PaxOptions *)rel->rd_options;
+  return GetColumnsIndexByOptions(
+      rel, options ? options->bloomfilter_columns() : nullptr, nullptr);
+}
+
 std::vector<int> cbdb::GetClusterColumnsIndex(Relation rel) {
-  std::vector<int> indexes;
-  Bitmapset *bms;
-  int idx;
-
-  {
-    CBDB_WRAP_START;
-    { bms = paxc::paxc_get_cluster_columns_index(rel, false); }
-    CBDB_WRAP_END;
-  }
-
-  idx = -1;
-  while ((idx = bms_next_member(bms, idx)) >= 0) {
-    indexes.push_back(idx);
-  }
-
-  {
-    CBDB_WRAP_START;
-    { bms_free(bms); }
-    CBDB_WRAP_END;
-  }
-
-  return indexes;
+  auto options = (paxc::PaxOptions *)rel->rd_options;
+  return GetColumnsIndexByOptions(
+      rel, options ? options->cluster_columns() : nullptr,
+      [](Form_pg_attribute attr) {
+        // this callback in the paxc env
+        if (!paxc::support_zorder_type(attr->atttypid)) {
+          elog(ERROR, "the type of column %s does not support zorder cluster",
+               attr->attname.data);
+        }
+      });
 }

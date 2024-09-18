@@ -43,7 +43,8 @@ class TableWriter {
 
   TableWriter *SetWriteSummaryCallback(WriteSummaryCallback callback);
 
-  TableWriter *SetFileSplitStrategy(std::unique_ptr<FileSplitStrategy> &&strategy);
+  TableWriter *SetFileSplitStrategy(
+      std::unique_ptr<FileSplitStrategy> &&strategy);
 
   BlockNumber GetBlockNumber() const { return current_blockno_; }
 
@@ -56,6 +57,8 @@ class TableWriter {
   GetRelEncodingOptions();
 
   std::vector<int> GetMinMaxColumnIndexes();
+
+  std::vector<int> GetBloomFilterColumnIndexes();
 
   std::unique_ptr<MicroPartitionWriter> CreateMicroPartitionWriter(
       std::shared_ptr<MicroPartitionStats> mp_stats, bool write_only = true);
@@ -76,6 +79,8 @@ class TableWriter {
   PaxStorageFormat storage_format_ = PaxStorageFormat::kTypeStoragePorcNonVec;
   bool already_get_min_max_col_idx_ = false;
   std::vector<int> min_max_col_idx_;
+  bool already_get_bf_col_idx_ = false;
+  std::vector<int> bf_col_idx_;
   bool is_dfs_table_space_;
 };
 
@@ -148,20 +153,21 @@ class TableDeleter final {
   void Delete(std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator);
 
   void DeleteWithVisibilityMap(
-    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
-    TransactionId delete_xid);
+      std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator,
+      TransactionId delete_xid);
 
  private:
   void UpdateStatsInAuxTable(TransactionId delete_xid,
                              const pax::MicroPartitionMetadata &meta,
                              std::shared_ptr<Bitmap8> visi_bitmap,
                              const std::vector<int> &min_max_col_idxs,
+                             const std::vector<int> &bf_col_idxs,
                              std::shared_ptr<PaxFilter> filter);
 
   std::unique_ptr<TableWriter> OpenWriter();
 
   std::unique_ptr<TableReader> OpenReader(
-    std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator);
+      std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator);
 
  private:
   Relation rel_;
