@@ -31,7 +31,8 @@ MicroPartitionStatsUpdater::MicroPartitionStatsUpdater(
 }
 
 std::shared_ptr<MicroPartitionStats> MicroPartitionStatsUpdater::Update(
-    TupleTableSlot *slot, const std::vector<int> &minmax_columns) {
+    TupleTableSlot *slot, const std::vector<int> &minmax_columns,
+    const std::vector<int> &bf_columns) {
   TupleDesc desc;
   std::shared_ptr<MicroPartitionStats> mp_stats;
   std::shared_ptr<MicroPartitionStats> group_stats;
@@ -39,7 +40,7 @@ std::shared_ptr<MicroPartitionStats> MicroPartitionStatsUpdater::Update(
   Assert(slot);
   desc = slot->tts_tupleDescriptor;
   mp_stats = std::make_shared<MicroPartitionStats>(desc);
-  mp_stats->Initialize(minmax_columns);
+  mp_stats->Initialize(minmax_columns, bf_columns);
 
   Assert(exist_invisible_tuples_.size() == reader_->GetGroupNums());
 
@@ -48,7 +49,7 @@ std::shared_ptr<MicroPartitionStats> MicroPartitionStatsUpdater::Update(
     if (exist_invisible_tuples_[group_index]) {
       if (!group_stats) {
         group_stats = std::make_shared<MicroPartitionStats>(desc);
-        group_stats->Initialize(minmax_columns);
+        group_stats->Initialize(minmax_columns, bf_columns);
       }
 
       // already setup the visible map
@@ -78,7 +79,8 @@ std::shared_ptr<MicroPartitionStats> MicroPartitionStatsUpdater::Update(
             column_group_stats->DataStats(column_index));
         new_col_stats->set_allnull(column_group_stats->AllNull(column_index));
         new_col_stats->set_hasnull(column_group_stats->HasNull(column_index));
-        new_col_stats->set_nonnullrows(column_group_stats->NonNullRows(column_index));
+        new_col_stats->set_nonnullrows(
+            column_group_stats->NonNullRows(column_index));
         new_col_stats->mutable_info()->CopyFrom(
             column_group_stats->ColumnInfo(column_index));
       }

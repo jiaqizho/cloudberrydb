@@ -50,12 +50,32 @@ class OrcGroupStatsProvider final : public ColumnStatsProvider {
         .coldatastats();
   }
 
+  bool HasBloomFilter(int column_index) const override {
+    return format_reader_.file_footer_.stripes(group_index_)
+        .colstats(column_index)
+        .has_columnbfstats();
+  }
+
+  const ::pax::stats::BloomFilterBasicInfo &BloomFilterBasicInfo(
+      int column_index) const override {
+    return format_reader_.file_footer_.stripes(group_index_)
+        .colstats(column_index)
+        .bloomfilterinfo();
+  }
+
+  std::string GetBloomFilter(int column_index) const override {
+    return format_reader_.file_footer_.stripes(group_index_)
+        .colstats(column_index)
+        .columnbfstats();
+  }
+
  private:
   const OrcFormatReader &format_reader_;
   size_t group_index_;
 };
 
-OrcReader::OrcReader(std::shared_ptr<File> file, std::shared_ptr<File> toast_file)
+OrcReader::OrcReader(std::shared_ptr<File> file,
+                     std::shared_ptr<File> toast_file)
     : working_group_(nullptr),
       cached_group_(nullptr),
       current_group_index_(0),
@@ -67,12 +87,15 @@ std::unique_ptr<ColumnStatsProvider> OrcReader::GetGroupStatsInfo(
   return std::make_unique<OrcGroupStatsProvider>(format_reader_, group_index);
 }
 
-std::unique_ptr<MicroPartitionReader::Group> OrcReader::ReadGroup(size_t group_index) {
+std::unique_ptr<MicroPartitionReader::Group> OrcReader::ReadGroup(
+    size_t group_index) {
   std::unique_ptr<PaxColumns> pax_columns;
 
   Assert(group_index < GetGroupNums());
 
-  pax_columns = format_reader_.ReadStripe(group_index, filter_ ? filter_->GetColumnProjection() : std::vector<bool>{});
+  pax_columns = format_reader_.ReadStripe(
+      group_index,
+      filter_ ? filter_->GetColumnProjection() : std::vector<bool>{});
 
 #ifdef ENABLE_DEBUG
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
@@ -91,11 +114,14 @@ std::unique_ptr<MicroPartitionReader::Group> OrcReader::ReadGroup(size_t group_i
 
   std::unique_ptr<MicroPartitionReader::Group> group;
   size_t group_offset = format_reader_.GetStripeOffset(group_index);
-  const std::vector<int> *proj_column_index = filter_ ? &filter_->GetColumnProjectionIndex() : nullptr;
+  const std::vector<int> *proj_column_index =
+      filter_ ? &filter_->GetColumnProjectionIndex() : nullptr;
   if (COLUMN_STORAGE_FORMAT_IS_VEC(pax_columns))
-    group = std::make_unique<OrcVecGroup>(std::move(pax_columns), group_offset, proj_column_index);
+    group = std::make_unique<OrcVecGroup>(std::move(pax_columns), group_offset,
+                                          proj_column_index);
   else
-    group = std::make_unique<OrcGroup>(std::move(pax_columns), group_offset, proj_column_index);
+    group = std::make_unique<OrcGroup>(std::move(pax_columns), group_offset,
+                                       proj_column_index);
 
   group->SetVisibilityMap(visibility_bitmap_);
   return group;

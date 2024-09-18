@@ -27,6 +27,10 @@ namespace pax {
 #define PAX_MAX_SIZE_MAKE_COMPRESSED_TOAST (1U << VARLENA_EXTSIZE_BITS)
 #define PAX_MIN_SIZE_MAKE_EXTERNAL_TOAST (10 * 1024 * 1024)
 
+#define PAX_BLOOM_FILTER_WORK_MEMORY_BYTES (10 * 1024)
+#define PAX_MIN_BLOOM_FILTER_WORK_MEMORY_BYTES (1 * 1024)
+#define PAX_MAX_BLOOM_FILTER_WORK_MEMORY_BYTES (INT_MAX)
+
 bool pax_enable_debug = true;
 bool pax_enable_filter = true;
 int pax_scan_reuse_buffer_size = 0;
@@ -38,6 +42,7 @@ bool pax_enable_toast = true;
 int pax_min_size_of_compress_toast = PAX_MIN_SIZE_MAKE_COMPRESSED_TOAST;
 int pax_min_size_of_external_toast = PAX_MIN_SIZE_MAKE_EXTERNAL_TOAST;
 char *pax_default_storage_format = nullptr;
+int pax_bloom_filter_work_memory_bytes = PAX_BLOOM_FILTER_WORK_MEMORY_BYTES;
 
 }  // namespace pax
 
@@ -149,6 +154,14 @@ void DefineGUCs() {
       "pax_default_storage_format", "the default storage format", NULL,
       &pax::pax_default_storage_format, STORAGE_FORMAT_TYPE_DEFAULT,
       PGC_USERSET, GUC_GPDB_NEED_SYNC, CheckDefaultStorageFormat, NULL, NULL);
+
+  DefineCustomIntVariable("pax_bloom_filter_work_memory_bytes",
+                          "the bloom filter work memory(only used on write)",
+                          NULL, &pax::pax_bloom_filter_work_memory_bytes,
+                          PAX_BLOOM_FILTER_WORK_MEMORY_BYTES,
+                          PAX_MIN_BLOOM_FILTER_WORK_MEMORY_BYTES,
+                          PAX_MAX_BLOOM_FILTER_WORK_MEMORY_BYTES, PGC_USERSET,
+                          0, NULL, NULL, NULL);
 }
 
 }  // namespace paxc

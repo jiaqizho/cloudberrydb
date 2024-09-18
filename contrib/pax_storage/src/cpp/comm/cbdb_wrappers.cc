@@ -167,6 +167,40 @@ Numeric cbdb::DatumToNumeric(Datum d) {
   return nullptr;
 }
 
+ArrayType *cbdb::DatumToArrayTypeP(Datum d) {
+  CBDB_WRAP_START;
+  { return DatumGetArrayTypeP(d); }
+  CBDB_WRAP_END;
+}
+
+int cbdb::ArrayGetN(int ndim, const int *dims) {
+  CBDB_WRAP_START;
+  { return ArrayGetNItems(ndim, dims); }
+  CBDB_WRAP_END;
+  return 0;
+}
+
+ArrayIterator cbdb::ArrayCreateIterator(ArrayType *arr, int slice_ndim,
+                                        ArrayMetaState *mstate) {
+  CBDB_WRAP_START;
+  { return array_create_iterator(arr, slice_ndim, mstate); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
+bool cbdb::ArrayIterate(ArrayIterator iterator, Datum *value, bool *isnull) {
+  CBDB_WRAP_START;
+  { return array_iterate(iterator, value, isnull); }
+  CBDB_WRAP_END;
+  return false;
+}
+
+void cbdb::ArrayFreeIterator(ArrayIterator iterator) {
+  CBDB_WRAP_START;
+  { return array_free_iterator(iterator); }
+  CBDB_WRAP_END;
+}
+
 struct varlena *cbdb::PgDeToastDatum(struct varlena *datum) {
   CBDB_WRAP_START;
   { return detoast_attr(datum); }

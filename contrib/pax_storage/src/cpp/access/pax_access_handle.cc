@@ -12,6 +12,7 @@
 #include "catalog/pax_aux_table.h"
 #include "catalog/pax_fastsequence.h"
 #include "catalog/pg_pax_tables.h"
+#include "clustering/zorder_utils.h"
 #include "comm/guc.h"
 #include "comm/pax_memory.h"
 #include "comm/pax_resource.h"
@@ -98,8 +99,8 @@ struct IndexFetchTableData *CCPaxAccessMethod::IndexFetchBegin(Relation rel) {
   {
     Assert(RELATION_IS_PAX(rel));
     auto desc = PAX_NEW<PaxIndexScanDesc>(rel);
-    pax::common::RememberResourceCallback(pax::ReleaseTopObject<PaxIndexScanDesc>,
-                                          PointerGetDatum(desc));
+    pax::common::RememberResourceCallback(
+        pax::ReleaseTopObject<PaxIndexScanDesc>, PointerGetDatum(desc));
     return desc->ToBase();
   }
   CBDB_CATCH_DEFAULT();
@@ -338,7 +339,6 @@ bool CCPaxAccessMethod::ScanGetNextSlot(TableScanDesc scan,
 void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
                                     CommandId cid, int options,
                                     BulkInsertState bistate) {
-
   CBDB_TRY();
   {
     MemoryContext old_ctx;
@@ -491,7 +491,6 @@ bool CCPaxAccessMethod::ScanSampleNextTuple(TableScanDesc scan,
 void CCPaxAccessMethod::MultiInsert(Relation relation, TupleTableSlot **slots,
                                     int ntuples, CommandId cid, int options,
                                     BulkInsertState bistate) {
-  
   CBDB_TRY();
   {
     MemoryContext old_ctx;
@@ -1136,7 +1135,18 @@ static object_access_hook_type prev_object_access_hook = NULL;
 static ProcessUtility_hook_type prev_ProcessUtilit_hook = NULL;
 
 static bool relation_has_zorder_clustered_options(Relation rel) {
-  Bitmapset *bms = paxc::paxc_get_cluster_columns_index(rel, false);
+  auto *options = (paxc::PaxOptions *)(rel->rd_options);
+  Bitmapset *bms = paxc::paxc_get_columns_index_by_options(
+      rel, options ? options->cluster_columns() : nullptr,
+      [](Form_pg_attribute attr) {
+        // this callback in the paxc env
+        if (!paxc::support_zorder_type(attr->atttypid)) {
+          elog(ERROR, "the type of column %s does not support zorder cluster",
+               attr->attname.data);
+        }
+      },
+      false);
+
   if (bms) {
     bms_free(bms);
   }
@@ -1284,7 +1294,18 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
 static void PaxCheckMinMaxColumns(Relation rel, const char *minmax_columns) {
   if (!minmax_columns) return;
 
-  auto bms = paxc::paxc_get_minmax_columns_index(rel, true);
+  // already check the options exists
+  auto bms = paxc::paxc_get_columns_index_by_options(rel, minmax_columns,
+                                                     nullptr, true);
+  bms_free(bms);
+}
+
+static void PaxCheckBloomFilterColumns(Relation rel, const char *bf_columns) {
+  if (!bf_columns) return;
+
+  // already check the options exists
+  auto bms =
+      paxc::paxc_get_columns_index_by_options(rel, bf_columns, nullptr, true);
   bms_free(bms);
 }
 
@@ -1302,7 +1323,16 @@ static void PaxCheckClusterColumns(Relation rel, const char *cluster_columns) {
     }
   }
 
-  auto bms = paxc::paxc_get_cluster_columns_index(rel, true);
+  auto bms = paxc::paxc_get_columns_index_by_options(
+      rel, cluster_columns,
+      [](Form_pg_attribute attr) {
+        // this callback in the paxc env
+        if (!paxc::support_zorder_type(attr->atttypid)) {
+          elog(ERROR, "the type of column %s does not support zorder cluster",
+               attr->attname.data);
+        }
+      },
+      true);
   bms_free(bms);
 }
 
@@ -1411,6 +1441,7 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id,
       PaxCheckParitionOptions(rel, options->partition_by(),
                               options->partition_ranges());
       PaxCheckMinMaxColumns(rel, options->minmax_columns());
+      PaxCheckBloomFilterColumns(rel, options->bloomfilter_columns());
       PaxCheckClusterColumns(rel, options->cluster_columns());
       PaxCheckNumericOption(rel, options->storage_format);
     } break;
@@ -1591,6 +1622,5 @@ void _PG_init(void) {  // NOLINT
   pax::common::InitResourceCallback();
 
   paxc::paxc_reg_rel_options();
-
 }
 }  // extern "C"

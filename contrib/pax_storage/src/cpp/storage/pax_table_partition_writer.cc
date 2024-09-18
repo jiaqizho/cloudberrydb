@@ -9,10 +9,9 @@
 #include "storage/micro_partition_stats.h"
 
 namespace pax {
-TableParitionWriter::TableParitionWriter(Relation relation,
-                                         std::unique_ptr<PartitionObject> &&part_obj)
-    : TableWriter(relation),
-      part_obj_(std::move(part_obj)) {}
+TableParitionWriter::TableParitionWriter(
+    Relation relation, std::unique_ptr<PartitionObject> &&part_obj)
+    : TableWriter(relation), part_obj_(std::move(part_obj)) {}
 
 TableParitionWriter::~TableParitionWriter() {}
 
@@ -27,9 +26,12 @@ void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
 
   if (!writers_[part_index]) {
     Assert(!mp_stats_array_[part_index]);
-    mp_stats_array_[part_index] = std::make_shared<MicroPartitionStats>(RelationGetDescr(relation_));
-    mp_stats_array_[part_index]->Initialize(GetMinMaxColumnIndexes());
-    writers_[part_index] = CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
+    mp_stats_array_[part_index] =
+        std::make_shared<MicroPartitionStats>(RelationGetDescr(relation_));
+    mp_stats_array_[part_index]->Initialize(GetMinMaxColumnIndexes(),
+                                            GetBloomFilterColumnIndexes());
+    writers_[part_index] =
+        CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
 
     // insert tuple into the aux table before inserting any tuples.
     current_blocknos_[part_index] = current_blockno_;
@@ -38,7 +40,8 @@ void TableParitionWriter::WriteTuple(TupleTableSlot *slot) {
   } else if (strategy_->ShouldSplit(writers_[part_index]->PhysicalSize(),
                                     num_tuples_[part_index])) {
     writers_[part_index]->Close();
-    writers_[part_index] = CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
+    writers_[part_index] =
+        CreateMicroPartitionWriter(mp_stats_array_[part_index], false);
     num_tuples_[part_index] = 0;
 
     // insert tuple into the aux table before inserting any tuples.
@@ -70,7 +73,8 @@ void TableParitionWriter::Open() {
 
 static inline bool PartIndexIsNear(const std::vector<int> &inverted_indexes,
                                    int l, int r) {
-  int part_counts pg_attribute_unused() = static_cast<int>(inverted_indexes.size());
+  int part_counts pg_attribute_unused() =
+      static_cast<int>(inverted_indexes.size());
 
   Assert(l < part_counts && r < part_counts);
   if (inverted_indexes[l] == -1 || inverted_indexes[r] == -1) {
@@ -82,8 +86,7 @@ static inline bool PartIndexIsNear(const std::vector<int> &inverted_indexes,
 
 static void BuildInvertedPartIndex(
     const std::pair<int *, size_t> &merge_list_info,
-    std::vector<int> &inverted_indexes,
-    int part_counts) {
+    std::vector<int> &inverted_indexes, int part_counts) {
   int *part_range = nullptr;
   size_t part_range_size = 0;
   std::tie(part_range, part_range_size) = merge_list_info;

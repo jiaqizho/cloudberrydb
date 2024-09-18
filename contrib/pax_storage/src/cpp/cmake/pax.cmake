@@ -15,6 +15,7 @@ bison_target(paxc_gram access/paxc_gram.y ${CMAKE_CURRENT_BINARY_DIR}/paxc_gram.
 
 set(pax_comm_src
     comm/bitmap.cc
+    comm/bloomfilter.cc
     comm/byte_buffer.cc
     comm/guc.cc
     comm/paxc_wrappers.cc

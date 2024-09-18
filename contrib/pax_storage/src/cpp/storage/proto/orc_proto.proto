@@ -35,6 +35,10 @@ message ColumnStatistics {
   // although it is same to the column field in message stream
   // it is more convenient to use in ColumnStatistics
   optional uint32 nonNullRows = 5 [default=0];
+  // The bloom filter basic info 
+  optional pax.stats.BloomFilterBasicInfo bloomFilterInfo = 6; 
+  // bloom filter stored by single column.
+  optional bytes columnBFStats = 7;         
 }
 
 // `Stream` desc a part of buffer, a column consists of 1 or more streams

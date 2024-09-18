@@ -34,6 +34,7 @@ namespace paxc {
 #define PAX_SOPT_PARTITION_BY "partition_by"
 #define PAX_SOPT_PARTITION_RANGES "partition_ranges"
 #define PAX_SOPT_MINMAX_COLUMNS "minmax_columns"
+#define PAX_SOPT_BLOOMFILTER_COLUMNS "bloomfilter_columns"
 #define PAX_SOPT_CLUSTER_COLUMNS "cluster_columns"
 #define PAX_SOPT_PARALLEL_WORKERS "parallel_workers"
 
@@ -49,6 +50,7 @@ struct PaxOptions {
   int partition_by_offset = 0;
   int partition_ranges_offset = 0;
   int minmax_columns_offset = 0;
+  int bloomfilter_columns_offset = 0;
   int cluster_columns_offset = 0;
 
   char *partition_by() {
@@ -66,6 +68,13 @@ struct PaxOptions {
                ? NULL
                : reinterpret_cast<char *>(this) + minmax_columns_offset;
   }
+
+  char *bloomfilter_columns() {
+    return bloomfilter_columns_offset == 0
+               ? NULL
+               : reinterpret_cast<char *>(this) + bloomfilter_columns_offset;
+  }
+
   char *cluster_columns() {
     return cluster_columns_offset == 0
                ? NULL
@@ -116,9 +125,9 @@ void paxc_validate_column_encoding_clauses(List *encoding_opts);
 List *paxc_transform_column_encoding_clauses(List *encoding_opts, bool validate,
                                              bool fromType);
 
-Bitmapset *paxc_get_minmax_columns_index(Relation rel, bool validate);
-
-Bitmapset *paxc_get_cluster_columns_index(Relation rel, bool validate);
+Bitmapset *paxc_get_columns_index_by_options(
+    Relation rel, const char *columns_options,
+    void (*check_attr)(Form_pg_attribute), bool validate);
 
 }  // namespace paxc
 
@@ -135,5 +144,6 @@ extern PaxStorageFormat StorageFormatKeyToPaxStorageFormat(
 
 namespace cbdb {
 std::vector<int> GetMinMaxColumnsIndex(Relation rel);
+std::vector<int> GetBloomFilterColumnsIndex(Relation rel);
 std::vector<int> GetClusterColumnsIndex(Relation rel);
 }  // namespace cbdb

@@ -30,6 +30,7 @@ class MicroPartitionWriter {
     std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
     std::pair<ColumnEncoding_Kind, int> lengths_encoding_opts;
     std::vector<int> enable_min_max_col_idxs;
+    std::vector<int> enable_bf_col_idxs;
 
     size_t group_limit = pax_max_tuples_per_group;
     PaxStorageFormat storage_format = PaxStorageFormat::kTypeStoragePorcNonVec;
@@ -43,6 +44,7 @@ class MicroPartitionWriter {
           rel_oid(wo.rel_oid),
           encoding_opts(std::move(wo.encoding_opts)),
           enable_min_max_col_idxs(std::move(wo.enable_min_max_col_idxs)),
+          enable_bf_col_idxs(std::move(wo.enable_bf_col_idxs)),
           group_limit(wo.group_limit) {}
 
     WriterOptions &operator=(WriterOptions &&wo) {
@@ -52,6 +54,7 @@ class MicroPartitionWriter {
       rel_oid = wo.rel_oid;
       encoding_opts = std::move(wo.encoding_opts);
       enable_min_max_col_idxs = std::move(wo.enable_min_max_col_idxs);
+      enable_bf_col_idxs = std::move(wo.enable_bf_col_idxs);
       group_limit = wo.group_limit;
       return *this;
     }
@@ -92,7 +95,8 @@ class MicroPartitionWriter {
   virtual MicroPartitionWriter *SetWriteSummaryCallback(
       WriteSummaryCallback callback);
 
-  virtual MicroPartitionWriter *SetStatsCollector(std::shared_ptr<MicroPartitionStats> mpstats);
+  virtual MicroPartitionWriter *SetStatsCollector(
+      std::shared_ptr<MicroPartitionStats> mpstats);
 
  protected:
   WriteSummaryCallback summary_callback_;
