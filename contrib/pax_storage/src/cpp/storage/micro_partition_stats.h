@@ -18,15 +18,16 @@ class ColumnDataStats;
 }  // namespace stats
 class MicroPartitionStatsData;
 struct SumStatsInMem;
+class BloomFilter;
 
 class MicroPartitionStats final {
  public:
   MicroPartitionStats(TupleDesc desc, bool allow_fallback_to_pg = false);
   ~MicroPartitionStats();
 
-  void Initialize(const std::vector<int> &minmax_columns);
+  void Initialize(const std::vector<int> &minmax_columns,
+                  const std::vector<int> &bf_columns);
   void AddRow(TupleTableSlot *slot);
-  //void AddRow(TupleTableSlot *slot, const std::vector<Datum> &detoast_vals);
   MicroPartitionStats *Reset();
   ::pax::stats::MicroPartitionStatisticsInfo *Serialize();
 
@@ -49,7 +50,6 @@ class MicroPartitionStats final {
   void AddNonNullColumn(int column_index, Datum value);
   void UpdateMinMaxValue(int column_index, Datum datum, Oid collation,
                          int typlen, bool typbyval);
-  void UpdateSumValue(int column_index, SumStatsInMem *sum_stats);
   void CopyDatum(Datum src, Datum *dst, int typlen, bool typbyval);
 
  private:
@@ -64,6 +64,10 @@ class MicroPartitionStats final {
   std::vector<SumStatsInMem> sum_stats_;
   AggState *agg_state_;
   ExprContext expr_context_;
+
+  // the stats to desc bloom filter
+  std::vector<BloomFilter> bf_stats_;
+  std::vector<char> bf_status_;
 
   // less: pair[0], greater: pair[1]
   std::vector<std::pair<FmgrInfo, FmgrInfo>> finfos_;
@@ -88,6 +92,10 @@ class MicroPartitionStatsProvider final : public ColumnStatsProvider {
       int column_index) const override;
   const ::pax::stats::ColumnDataStats &DataStats(
       int column_index) const override;
+  bool HasBloomFilter(int column_index) const override;
+  const ::pax::stats::BloomFilterBasicInfo &BloomFilterBasicInfo(
+      int column_index) const override;
+  std::string GetBloomFilter(int column_index) const override;
 
  private:
   const ::pax::stats::MicroPartitionStatisticsInfo &stats_;

@@ -2,6 +2,7 @@
 
 #include "comm/cbdb_api.h"
 
+#include "comm/bloomfilter.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/fmt.h"
 #include "comm/guc.h"
@@ -15,7 +16,8 @@ namespace paxc {
 static bool BuildScanKeyOpExpr(ScanKey this_scan_key, Expr *clause,
                                bool isorderby, int indnkeyatts);
 static bool BuildScanKeyNullTest(ScanKey this_scan_key, Expr *clause);
-
+static bool BuildScanKeyScalarArray(ScanKey this_scan_key, Expr *clause,
+                                    int indnkeyatts);
 static bool BuildScanKeyOpExpr(ScanKey this_scan_key, Expr *clause,
                                bool isorderby, int indnkeyatts) {
   /* indexkey op const or indexkey op expression */
@@ -148,6 +150,65 @@ ignore_clause:
   return false;
 }
 
+static bool BuildScanKeyScalarArray(ScanKey this_scan_key, Expr *clause,
+                                    int indnkeyatts) {
+  ScalarArrayOpExpr *sa_expr;
+  Expr *leftop;        /* expr on lhs of operator */
+  Expr *rightop;       /* expr on rhs of operator */
+  AttrNumber varattno; /* att number used in scan */
+  ArrayType *array_val;
+  int flags;
+  if (!((ScalarArrayOpExpr *)clause)->useOr) {
+    goto ignore_clause;
+  }
+
+  sa_expr = (ScalarArrayOpExpr *)clause;
+  if (!sa_expr->args || list_length(sa_expr->args) != 2) {
+    goto ignore_clause;
+  }
+
+  leftop = (Expr *)linitial(sa_expr->args);
+  rightop = (Expr *)lsecond(sa_expr->args);
+
+  if (leftop && IsA(leftop, RelabelType)) leftop = ((RelabelType *)leftop)->arg;
+
+  Assert(leftop != NULL);
+  if (!IsA(leftop, Var)) goto ignore_clause;
+
+  varattno = ((Var *)leftop)->varattno;
+  if (varattno < 1 || varattno > indnkeyatts) goto ignore_clause;
+
+  if (rightop && IsA(rightop, RelabelType))
+    rightop = ((RelabelType *)rightop)->arg;
+
+  Assert(rightop != NULL);
+  if (!IsA(rightop, Const) ||
+      (IsA(rightop, Const) && ((Const *)rightop)->constisnull)) {
+    goto ignore_clause;
+  }
+
+  // the `array_val` must be a ArrayType when expr is the ScalarArrayOpExpr
+  array_val = cbdb::DatumToArrayTypeP(((Const *)rightop)->constvalue);
+  if (!array_val ||
+      cbdb::ArrayGetN(ARR_NDIM(array_val), ARR_DIMS(array_val)) <= 0) {
+    goto ignore_clause;
+  }
+
+  flags = SK_SEARCHARRAY | SK_SEARCHNOTNULL;
+
+  ScanKeyEntryInitialize(this_scan_key, flags,
+                         varattno,        /* attribute number to scan */
+                         InvalidStrategy, /* no strategy */
+                         InvalidOid,      /* no strategy subtype */
+                         InvalidOid,      /* no collation */
+                         InvalidOid,      /* no reg proc for this */
+                         ((Const *)rightop)->constvalue); /* constant */
+
+  return true;
+ignore_clause:
+  return false;
+}
+
 static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
                           ScanKey *p_scan_keys, int *p_num_scan_keys) {
   List *flat_quals = NIL;
@@ -204,6 +265,10 @@ static bool BuildScanKeys(Relation rel, List *quals, bool isorderby,
       // indexkey IS NULL or indexkey IS NOT NULL
       Assert(!isorderby);
       if (BuildScanKeyNullTest(this_scan_key, clause)) {
+        index_of_scan_key++;
+      }
+    } else if (IsA(clause, ScalarArrayOpExpr)) {
+      if (BuildScanKeyScalarArray(this_scan_key, clause, indnkeyatts)) {
         index_of_scan_key++;
       }
     } else {
@@ -333,8 +398,7 @@ bool BuildExecutionFilterForColumns(Relation rel, PlanState *ps,
 PaxFilter::PaxFilter(bool allow_fallback_to_pg)
     : allow_fallback_to_pg_(allow_fallback_to_pg) {}
 
-PaxFilter::~PaxFilter() { }
-
+PaxFilter::~PaxFilter() {}
 
 static bool ProjShouldReadAll(const std::vector<bool> &cols) {
   if (cols.empty()) return true;
@@ -591,6 +655,104 @@ static bool CheckNullKeys(const TupleDesc desc, ScanKey scan_key,
   return true;
 }
 
+static bool CheckScalarArray(const TupleDesc desc, ScanKey scan_key,
+                             const ColumnStatsProvider &provider) {
+  BloomFilter bf;
+  auto attno = scan_key->sk_attno;
+  Datum array_datum;
+  ArrayType *arr;
+  ArrayIterator arr_it;
+
+  Assert(attno > 0);
+  Assert(scan_key->sk_argument != 0);
+  Assert(!TupleDescAttr(desc, attno - 1)->attisdropped);
+
+  array_datum = scan_key->sk_argument;
+
+  // current column missing values
+  // caused by add new column
+  if ((attno - 1) >= provider.ColumnSize()) {
+    return true;
+  }
+
+  if (!provider.HasBloomFilter(attno - 1)) {
+    return true;
+  }
+
+  auto attr = &desc->attrs[attno - 1];
+  auto basic_info = provider.BloomFilterBasicInfo(attno - 1);
+  auto bf_str = provider.GetBloomFilter(attno - 1);
+  Assert(basic_info.bf_hash_funcs() != 0);
+  Assert(basic_info.bf_m() != 0);
+  Assert(bf_str.length() != 0);
+  bf.Create(bf_str.c_str(), basic_info.bf_m(), basic_info.bf_seed(),
+            basic_info.bf_hash_funcs());
+
+  arr = cbdb::DatumToArrayTypeP(array_datum);
+
+  Datum value;
+  bool is_null = false;
+  auto typlen = attr->attlen;
+  auto typbyval = attr->attbyval;
+  bool not_in_bf = true;
+
+  arr_it = cbdb::ArrayCreateIterator(arr, 0, NULL);
+  while (cbdb::ArrayIterate(arr_it, &value, &is_null)) {
+    if (is_null) {
+      // TODO(jiaqizho): not support null datum yet
+      not_in_bf = false;
+      break;
+    }
+
+    if (typbyval) {
+      switch (typlen) {
+        case 1: {
+          auto val_no_ptr = cbdb::DatumToInt8(value);
+          not_in_bf = bf.Test((unsigned char *)&val_no_ptr, typlen);
+          break;
+        }
+        case 2: {
+          auto val_no_ptr = cbdb::DatumToInt16(value);
+          not_in_bf = bf.Test((unsigned char *)&val_no_ptr, typlen);
+          break;
+        }
+        case 4: {
+          auto val_no_ptr = cbdb::DatumToInt32(value);
+          not_in_bf = bf.Test((unsigned char *)&val_no_ptr, typlen);
+          break;
+        }
+        case 8: {
+          auto val_no_ptr = cbdb::DatumToInt64(value);
+          not_in_bf = bf.Test((unsigned char *)&val_no_ptr, typlen);
+          break;
+        }
+        default:
+          Assert(false);
+      }
+    } else if (typlen == -1) {
+      auto val_ptr =
+          reinterpret_cast<struct varlena *>(cbdb::DatumToPointer(value));
+      // safe to direct call, cause no toast here
+      not_in_bf = bf.Test((unsigned char *)VARDATA_ANY(val_ptr),
+                          VARSIZE_ANY_EXHDR(val_ptr));
+    } else {
+      auto val_ptr = (unsigned char *)cbdb::DatumToPointer(value);
+      Size real_size;
+      // Pass by reference, but not varlena, so not toasted
+      real_size = datumGetSize(value, typbyval, typlen);
+      not_in_bf = bf.Test(val_ptr, real_size);
+    }
+
+    if (!not_in_bf) {
+      // in bloom filter, can't filter
+      break;
+    }
+  }
+
+  cbdb::ArrayFreeIterator(arr_it);
+  return !not_in_bf;
+}
+
 // returns true: if the micro partition needs to scan
 // returns false: the micro partition could be ignored
 bool PaxFilter::TestScanInternal(const ColumnStatsProvider &provider,
@@ -605,6 +767,13 @@ bool PaxFilter::TestScanInternal(const ColumnStatsProvider &provider,
     // Only Null test support sk_attno = 0.
     if (scan_key->sk_flags & SK_ISNULL) {
       if (!CheckNullKeys(desc, scan_key, provider)) return false;
+
+      continue;
+    }
+
+    // Only ScalarArray support SK_SEARCHARRAY
+    if (scan_key->sk_flags & SK_SEARCHARRAY) {
+      if (!CheckScalarArray(desc, scan_key, provider)) return false;
 
       continue;
     }
@@ -648,10 +817,8 @@ void PaxFilter::FillRemainingColumns(Relation rel) {
   std::vector<bool> atts(natts);
   if (proj_len > 0) {
     Assert(natts >= 0 && static_cast<size_t>(natts) >= proj_len);
-    for (size_t i = 0; i < proj_len; i++)
-      atts[i] = proj_[i];
-    for (auto i = static_cast<int>(proj_len); i < natts; i++)
-      atts[i] = false;
+    for (size_t i = 0; i < proj_len; i++) atts[i] = proj_[i];
+    for (auto i = static_cast<int>(proj_len); i < natts; i++) atts[i] = false;
   } else {
     for (int i = 0; i < natts; i++) atts[i] = true;
   }

@@ -28,53 +28,47 @@ std::vector<pax::porc::proto::Type_Kind> OrcWriter::BuildSchema(TupleDesc desc,
   return type_kinds;
 }
 
-static std::shared_ptr<PaxColumn> CreateDecimalColumn(bool is_vec,
-                                      const PaxEncoder::EncodingOption &opts) {
+static std::shared_ptr<PaxColumn> CreateDecimalColumn(
+    bool is_vec, const PaxEncoder::EncodingOption &opts) {
   if (is_vec) {
-    return
-        traits::ColumnOptCreateTraits2<PaxShortNumericColumn>::create_encoding(
-            DEFAULT_CAPACITY, opts);
+    return traits::ColumnOptCreateTraits2<
+        PaxShortNumericColumn>::create_encoding(DEFAULT_CAPACITY, opts);
   } else {
-    return
-        traits::ColumnOptCreateTraits2<PaxPgNumericColumn>::create_encoding(
-            DEFAULT_CAPACITY, DEFAULT_CAPACITY, opts);
+    return traits::ColumnOptCreateTraits2<PaxPgNumericColumn>::create_encoding(
+        DEFAULT_CAPACITY, DEFAULT_CAPACITY, opts);
   }
 }
 
-static std::shared_ptr<PaxColumn> CreateBpCharColumn(bool is_vec,
-                                     const PaxEncoder::EncodingOption &opts) {
+static std::shared_ptr<PaxColumn> CreateBpCharColumn(
+    bool is_vec, const PaxEncoder::EncodingOption &opts) {
   if (is_vec)
-    return traits::ColumnOptCreateTraits2<
-                   PaxVecBpCharColumn>::create_encoding(DEFAULT_CAPACITY,
-                                                        DEFAULT_CAPACITY, opts);
-  
-  return traits::ColumnOptCreateTraits2<
-                   PaxBpCharColumn>::create_encoding(DEFAULT_CAPACITY,
-                                                     DEFAULT_CAPACITY, opts);
+    return traits::ColumnOptCreateTraits2<PaxVecBpCharColumn>::create_encoding(
+        DEFAULT_CAPACITY, DEFAULT_CAPACITY, opts);
+
+  return traits::ColumnOptCreateTraits2<PaxBpCharColumn>::create_encoding(
+      DEFAULT_CAPACITY, DEFAULT_CAPACITY, opts);
 }
 
 static std::shared_ptr<PaxColumn> CreateBitPackedColumn(
     bool is_vec, const PaxEncoder::EncodingOption &opts) {
   if (is_vec)
     return traits::ColumnOptCreateTraits2<
-                   PaxVecBitPackedColumn>::create_encoding(DEFAULT_CAPACITY,
-                                                           opts);
- 
-  return traits::ColumnOptCreateTraits2<
-                   PaxBitPackedColumn>::create_encoding(DEFAULT_CAPACITY, opts);
+        PaxVecBitPackedColumn>::create_encoding(DEFAULT_CAPACITY, opts);
+
+  return traits::ColumnOptCreateTraits2<PaxBitPackedColumn>::create_encoding(
+      DEFAULT_CAPACITY, opts);
 }
 
 template <typename N>
-static std::shared_ptr<PaxColumn> CreateCommColumn(bool is_vec,
-                                   const PaxEncoder::EncodingOption &opts) {
+static std::shared_ptr<PaxColumn> CreateCommColumn(
+    bool is_vec, const PaxEncoder::EncodingOption &opts) {
   if (is_vec)
-    return traits::ColumnOptCreateTraits<
-                   PaxVecEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
+    return traits::ColumnOptCreateTraits<PaxVecEncodingColumn,
+                                         N>::create_encoding(DEFAULT_CAPACITY,
                                                              opts);
 
-  return traits::ColumnOptCreateTraits<
-                   PaxEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
-                                                          opts);
+  return traits::ColumnOptCreateTraits<PaxEncodingColumn, N>::create_encoding(
+      DEFAULT_CAPACITY, opts);
 }
 
 static std::unique_ptr<PaxColumns> BuildColumns(
@@ -111,15 +105,15 @@ static std::unique_ptr<PaxColumns> BuildColumns(
       case (pax::porc::proto::Type_Kind::Type_Kind_STRING): {
         encoding_option.is_sign = false;
         if (is_vec) {
-          columns->Append(traits::ColumnOptCreateTraits2<
-                         PaxVecNonFixedEncodingColumn>::
-                         create_encoding(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
-                                         std::move(encoding_option)));
+          columns->Append(
+              traits::ColumnOptCreateTraits2<PaxVecNonFixedEncodingColumn>::
+                  create_encoding(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
+                                  std::move(encoding_option)));
         } else {
-          columns->Append(traits::ColumnOptCreateTraits2<
-                         PaxNonFixedEncodingColumn>::
-                         create_encoding(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
-                                         std::move(encoding_option)));
+          columns->Append(
+              traits::ColumnOptCreateTraits2<PaxNonFixedEncodingColumn>::
+                  create_encoding(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
+                                  std::move(encoding_option)));
         }
 
         break;
@@ -180,8 +174,7 @@ static std::unique_ptr<PaxColumns> BuildColumns(
 OrcWriter::OrcWriter(
     const MicroPartitionWriter::WriterOptions &writer_options,
     const std::vector<pax::porc::proto::Type_Kind> &column_types,
-    std::shared_ptr<File> file,
-    std::shared_ptr<File> toast_file)
+    std::shared_ptr<File> file, std::shared_ptr<File> toast_file)
     : MicroPartitionWriter(writer_options),
       is_closed_(false),
       column_types_(column_types),
@@ -243,10 +236,11 @@ OrcWriter::OrcWriter(
   post_script_.set_writer(PORC_WRITER_ID);
   post_script_.set_magic(PORC_MAGIC_ID);
 
-  group_stats_.Initialize(writer_options.enable_min_max_col_idxs);
+  group_stats_.Initialize(writer_options.enable_min_max_col_idxs,
+                          writer_options.enable_bf_col_idxs);
 }
 
-OrcWriter::~OrcWriter() { }
+OrcWriter::~OrcWriter() {}
 
 void OrcWriter::Flush() {
   BufferedOutputStream buffer_mem_stream(2048);
@@ -286,7 +280,8 @@ void OrcWriter::Flush() {
   }
 }
 
-std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(TupleTableSlot *table_slot) {
+std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(
+    TupleTableSlot *table_slot) {
   TupleDesc tuple_desc;
   int16 type_len;
   bool type_by_val;
@@ -323,8 +318,7 @@ std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(TupleTableSlot *
           VARDATA_COMPRESSED_GET_EXTSIZE(tts_value_vl);
 
       if (type_storage != TYPSTORAGE_PLAIN &&
-          !VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST_BY_SIZE(
-              compress_toast_extsize) &&
+          !VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST_BY_SIZE(compress_toast_extsize) &&
           VARATT_CAN_MAKE_PAX_COMPRESSED_TOAST_BY_SIZE(
               compress_toast_extsize)) {
         continue;
@@ -340,7 +334,8 @@ std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(TupleTableSlot *
       table_slot->tts_values[i] = PointerGetDatum(detoast_vl);
       detoast_memory_holder_.emplace_back(detoast_vl);
       save_origin_datum = true;
-      detoast_map.emplace_back(std::pair<int, Datum>{i, PointerGetDatum(detoast_vl)});
+      detoast_map.emplace_back(
+          std::pair<int, Datum>{i, PointerGetDatum(detoast_vl)});
     }
 
     // only make toast here
@@ -368,7 +363,7 @@ void OrcWriter::WriteTuple(TupleTableSlot *table_slot) {
   bool is_null;
   Datum tts_value;
   struct varlena *tts_value_vl = nullptr;
-  
+
   auto detoast_map = PerpareWriteTuple(table_slot);
 
   // The reason why
@@ -653,8 +648,8 @@ void OrcWriter::DeleteUnstateFile() {
 
 bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
                             DataBuffer<char> *toast_mem) {
-  return WriteStripe(buffer_mem_stream, toast_mem, pax_columns_.get(), &group_stats_,
-                     mp_stats_.get());
+  return WriteStripe(buffer_mem_stream, toast_mem, pax_columns_.get(),
+                     &group_stats_, mp_stats_.get());
 }
 
 bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
@@ -745,6 +740,10 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
     pb_stats->set_hasnull(col_stats.hasnull());
     pb_stats->set_allnull(col_stats.allnull());
     pb_stats->set_nonnullrows(col_stats.nonnullrows());
+    if (col_stats.has_bloomfilterinfo())
+      *pb_stats->mutable_bloomfilterinfo() = col_stats.bloomfilterinfo();
+    if (col_stats.has_columnbfstats())
+      *pb_stats->mutable_columnbfstats() = col_stats.columnbfstats();
     *pb_stats->mutable_coldatastats() = col_stats.datastats();
     PAX_LOG_IF(pax_enable_debug,
                "write group[%lu](allnull=%s, hasnull=%s, nonnullrows=%lu, "
