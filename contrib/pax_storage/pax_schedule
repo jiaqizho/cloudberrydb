@@ -5,6 +5,7 @@ test: alter_distributed
 test: toast detoast ddl numeric types filter
 test: update
 test: statistics
+test: statistics_bloom_filter
 
 test: visimap_vec_compact
 test: visimap_vec_storage

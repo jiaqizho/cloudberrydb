@@ -139,6 +139,13 @@ static inline float8 DatumToFloat8(Datum d) noexcept {
 
 Numeric DatumToNumeric(Datum d);
 
+ArrayType *DatumToArrayTypeP(Datum d);
+int ArrayGetN(int ndim, const int *dims);
+ArrayIterator ArrayCreateIterator(ArrayType *arr, int slice_ndim,
+                                  ArrayMetaState *mstate);
+bool ArrayIterate(ArrayIterator iterator, Datum *value, bool *isnull);
+void ArrayFreeIterator(ArrayIterator iterator);
+
 void *PointerAndLenFromDatum(Datum d, int *len);
 
 void SlotGetMissingAttrs(TupleTableSlot *slot, int start_attno, int last_attno);

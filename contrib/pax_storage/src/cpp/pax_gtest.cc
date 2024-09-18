@@ -37,6 +37,10 @@ std::vector<int> MockGetMinMaxColumnsIndex(Relation rel) {
   return std::vector<int>();
 }
 
+std::vector<int> MockBloomFilterColumnsIndex(Relation rel) {
+  return std::vector<int>();
+}
+
 // Mock global method which is not link from another libarays
 void GlobalMock(Stub *stub) {
   stub->set(pax::MinMaxGetPgStrategyProcinfo, MockMinMaxGetStrategyProcinfo);
@@ -46,6 +50,7 @@ void GlobalMock(Stub *stub) {
             MockInsertMicroPartitionPlaceHolder);
   stub->set(cbdb::DeleteMicroPartitionEntry, MockDeleteMicroPartitionEntry);
   stub->set(cbdb::GetMinMaxColumnsIndex, MockGetMinMaxColumnsIndex);
+  stub->set(cbdb::GetBloomFilterColumnsIndex, MockBloomFilterColumnsIndex);
   stub->set(ExecStoreVirtualTuple, MockExecStoreVirtualTuple);
 }
 

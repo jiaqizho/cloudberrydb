@@ -6,6 +6,7 @@ message ColumnDataStats {
   optional bytes maximum = 2;             // Maximum value stored as Datum.
   optional bytes sum = 3;                 // sum(c1) value. Invalid after existence of visable map
 }
+
 message ColumnBasicInfo {
   optional uint32 typid = 1;              // type oid of the column
   optional uint32 collation = 2;          // collation oid of the column
@@ -14,9 +15,15 @@ message ColumnBasicInfo {
   optional uint32 prorettype = 4;         // the sum(c1) return type
 }
 
+message BloomFilterBasicInfo {
+  optional int32  bf_hash_funcs = 1;      // the number of hash functions
+  optional uint64 bf_seed = 2;            // the seed of bloom filter
+  optional uint64 bf_m = 3;               // the bits of bit sets in the bloom filter
+}
+
 message MicroPartitionStatisticsInfo
 {
-  repeated ColumnStats columnStats = 1;  // Statistics info stored by single column.
+  repeated ColumnStats columnStats = 1;         // Statistics info stored by single column.
 }
 
 message ColumnStats {
@@ -25,5 +32,8 @@ message ColumnStats {
   optional ColumnBasicInfo info = 3;
   optional ColumnDataStats  dataStats = 4;      // minimal/maximum value stats.
   optional uint64 nonNullRows = 5 [default=0];  // count(c1) value. Invalid after existence of visable map
+  optional BloomFilterBasicInfo bloomFilterInfo = 6; // The bloom filter basic info 
+  optional bytes columnBFStats = 7;         // bloom filter stored by single column.
 }
+
 
