@@ -14,6 +14,7 @@ extern int pax_min_size_of_compress_toast;
 extern int pax_min_size_of_external_toast;
 
 extern char *pax_default_storage_format;
+extern int pax_bloom_filter_work_memory_bytes;
 
 #ifdef VEC_BUILD
 // The guc define in vectorization(contrib/vectorization/main.c:L31)

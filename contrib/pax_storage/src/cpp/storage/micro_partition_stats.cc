@@ -2,6 +2,7 @@
 
 #include "comm/cbdb_api.h"
 
+#include "comm/bloomfilter.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/fmt.h"
 #include "comm/pax_memory.h"
@@ -60,6 +61,24 @@ class MicroPartitionStatsData final {
 
   inline ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) {
     return info_.mutable_columnstats(column_index)->mutable_info();
+  }
+
+  inline ::pax::stats::BloomFilterBasicInfo *GetBloomFilterBasicInfo(
+      int column_index) {
+    return info_.mutable_columnstats(column_index)->mutable_bloomfilterinfo();
+  }
+
+  inline bool HasBloomFilterBasicInfo(int column_index) {
+    return info_.mutable_columnstats(column_index)->has_bloomfilterinfo();
+  }
+
+  inline std::string *GetColumnBloomFilterStats(int column_index) {
+    return info_.mutable_columnstats(column_index)->mutable_columnbfstats();
+  }
+
+  inline void SetColumnBloomFilterStats(int column_index,
+                                        const std::string &bfstats) {
+    info_.mutable_columnstats(column_index)->set_columnbfstats(bfstats);
   }
 
   inline ::pax::stats::ColumnDataStats *GetColumnDataStats(int column_index) {
@@ -378,6 +397,20 @@ bool MicroPartitionStats::MicroPartitionStatisticsInfoCombine(
                              right_column_stats, left_column_data_stats,
                              right_column_data_stats);
   }
+
+  // There is no need to perform bloom filtering in segmainfest
+  // the effect may be very poor
+  // Just must sure the bloom filter been cleared if current min/max
+  // combined success.
+  for (int i = 0; i < left->columnstats_size(); i++) {
+    auto left_column_stats = left->mutable_columnstats(i);
+
+    if (left_column_stats->has_bloomfilterinfo()) {
+      left_column_stats->clear_bloomfilterinfo();
+      left_column_stats->clear_columnbfstats();
+    }
+  }
+
   return true;
 }
 
@@ -438,6 +471,8 @@ MicroPartitionStats::MicroPartitionStats(TupleDesc desc,
     min_in_mem_.emplace_back(0);
     max_in_mem_.emplace_back(0);
     sum_stats_.emplace_back(std::move(SumStatsInMem()));
+    bf_status_.emplace_back(STATUS_UNINITIALIZED);
+    bf_stats_.emplace_back(std::move(BloomFilter()));
   }
 }
 
@@ -508,6 +543,25 @@ MicroPartitionStats::~MicroPartitionStats() {}
     }
   }
 
+  // Serialize the bloom filter
+  for (auto column_index = 0; column_index < n; column_index++) {
+    switch (bf_status_[column_index]) {
+      case STATUS_NOT_SUPPORT:
+      case STATUS_MISSING_INIT_VAL:
+        break;
+      case STATUS_NEED_UPDATE: {
+        unsigned char *bf;
+        uint64 bf_bits;
+        std::tie(bf, bf_bits) = bf_stats_[column_index].GetBitSet();
+        // TODO(jiaqizho): compress the bloom filter data
+        // safe to call the BITS_TO_BYTES
+        stats_->SetColumnBloomFilterStats(
+            column_index, std::string((char *)bf, BITS_TO_BYTES(bf_bits)));
+        break;
+      }
+    }
+  }
+
   return stats_->GetStatsInfoRef();
 }
 
@@ -527,6 +581,14 @@ MicroPartitionStats *MicroPartitionStats::Reset() {
     sum_stat.Reset();
   }
 
+  for (size_t i = 0; i < bf_status_.size(); i++) {
+    if (bf_status_[i] == STATUS_NEED_UPDATE ||
+        bf_status_[i] == STATUS_MISSING_INIT_VAL) {
+      bf_stats_[i].Reset();
+      bf_status_[i] = STATUS_MISSING_INIT_VAL;
+    }
+  }
+
   stats_->Reset();
   return this;
 }
@@ -544,8 +606,6 @@ void MicroPartitionStats::AddRow(TupleTableSlot *slot) {
       AddNullColumn(i);
     else
       AddNonNullColumn(i, slot->tts_values[i]);
-    // AddNonNullColumn(i, slot->tts_values[i],
-    //                  detoast_vals.empty() ? 0 : detoast_vals[i]);
   }
 }
 
@@ -660,6 +720,40 @@ void MicroPartitionStats::MergeRawInfo(
       sum_stat->status = STATUS_NEED_UPDATE;
     } else {
       Assert(false);
+    }
+  }
+
+  for (size_t column_index = 0; column_index < bf_status_.size();
+       column_index++) {
+    if (!stats_info->mutable_columnstats(column_index)->has_bloomfilterinfo()) {
+      continue;
+    }
+
+    auto right_bf_basic_info =
+        stats_info->mutable_columnstats(column_index)->bloomfilterinfo();
+
+    if (!stats_->HasBloomFilterBasicInfo(column_index)) {
+      stats_->GetBloomFilterBasicInfo(column_index)
+          ->CopyFrom(right_bf_basic_info);
+    } else {
+      Assert(stats_->GetBloomFilterBasicInfo(column_index)->bf_hash_funcs() ==
+             right_bf_basic_info.bf_hash_funcs());
+      Assert(stats_->GetBloomFilterBasicInfo(column_index)->bf_m() ==
+             right_bf_basic_info.bf_m());
+      Assert(stats_->GetBloomFilterBasicInfo(column_index)->bf_seed() ==
+             right_bf_basic_info.bf_seed());
+    }
+
+    if ((bf_status_[column_index] == STATUS_MISSING_INIT_VAL ||
+         bf_status_[column_index] == STATUS_NEED_UPDATE) &&
+        !stats_info->mutable_columnstats(column_index)->has_columnbfstats()) {
+      auto right_bf = BloomFilter();
+      right_bf.Create(stats_info->mutable_columnstats(column_index)
+                          ->columnbfstats()
+                          .c_str(),
+                      right_bf_basic_info.bf_m(), right_bf_basic_info.bf_seed(),
+                      right_bf_basic_info.bf_hash_funcs());
+      bf_stats_[column_index].MergeFrom(&right_bf);
     }
   }
 }
@@ -805,6 +899,21 @@ void MicroPartitionStats::MergeTo(MicroPartitionStats *stats) {
       Assert(false);
     }
   }
+
+  // merge the bloom filter
+  Assert(bf_status_.size() == stats->bf_status_.size());
+  for (size_t column_index = 0; column_index < bf_status_.size();
+       column_index++) {
+    auto left_bf_status = bf_status_[column_index];
+    auto right_bf_status = stats->bf_status_[column_index];
+
+    if ((left_bf_status == STATUS_MISSING_INIT_VAL ||
+         left_bf_status == STATUS_NEED_UPDATE) &&
+        right_bf_status == STATUS_NEED_UPDATE) {
+      bf_stats_[column_index].MergeFrom(&stats->bf_stats_[column_index]);
+      bf_status_[column_index] = STATUS_NEED_UPDATE;
+    }
+  }
 }
 
 void MicroPartitionStats::AddNullColumn(int column_index) {
@@ -899,6 +1008,58 @@ void MicroPartitionStats::AddNonNullColumn(int column_index, Datum value) {
     default:
       Assert(false);
   }
+
+  // update bloomfilter
+  switch (bf_status_[column_index]) {
+    case STATUS_NOT_SUPPORT:
+      break;
+    case STATUS_MISSING_INIT_VAL:
+    case STATUS_NEED_UPDATE: {
+      if (typbyval) {
+        switch (typlen) {
+          case 1: {
+            auto val_no_ptr = cbdb::DatumToInt8(value);
+            bf_stats_[column_index].Add((unsigned char *)&val_no_ptr, typlen);
+            break;
+          }
+          case 2: {
+            auto val_no_ptr = cbdb::DatumToInt16(value);
+            bf_stats_[column_index].Add((unsigned char *)&val_no_ptr, typlen);
+            break;
+          }
+          case 4: {
+            auto val_no_ptr = cbdb::DatumToInt32(value);
+            bf_stats_[column_index].Add((unsigned char *)&val_no_ptr, typlen);
+            break;
+          }
+          case 8: {
+            auto val_no_ptr = cbdb::DatumToInt64(value);
+            bf_stats_[column_index].Add((unsigned char *)&val_no_ptr, typlen);
+            break;
+          }
+          default:
+            Assert(false);
+        }
+      } else if (typlen == -1) {
+        auto val_ptr =
+            reinterpret_cast<struct varlena *>(cbdb::DatumToPointer(value));
+        // safe to direct call, cause no toast here
+        bf_stats_[column_index].Add((unsigned char *)VARDATA_ANY(val_ptr),
+                                    VARSIZE_ANY_EXHDR(val_ptr));
+      } else {
+        auto val_ptr = (unsigned char *)cbdb::DatumToPointer(value);
+        Size real_size;
+
+        // Pass by reference, but not varlena, so not toasted
+        real_size = datumGetSize(value, typbyval, typlen);
+        bf_stats_[column_index].Add(val_ptr, real_size);
+      }
+      bf_status_[column_index] = STATUS_NEED_UPDATE;
+      break;
+    }
+    default:
+      Assert(false);
+  }
 }
 
 void MicroPartitionStats::UpdateMinMaxValue(int column_index, Datum datum,
@@ -938,9 +1099,6 @@ void MicroPartitionStats::UpdateMinMaxValue(int column_index, Datum datum,
   if (umax) CopyDatum(datum, &max_in_mem_[column_index], typlen, typbyval);
 }
 
-void MicroPartitionStats::UpdateSumValue(int column_index,
-                                         SumStatsInMem *sum_stats) {}
-
 void MicroPartitionStats::CopyDatum(Datum src, Datum *dst, int typlen,
                                     bool typbyval) {
   if (typbyval) {
@@ -977,9 +1135,10 @@ void MicroPartitionStats::CopyDatum(Datum src, Datum *dst, int typlen,
   }
 }
 
-void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns) {
+void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns,
+                                     const std::vector<int> &bf_columns) {
   auto natts = tuple_desc_->natts;
-  int num_minmax_columns;
+  int num_minmax_columns, num_bf_columns;
 
   Assert(natts == static_cast<int>(status_.size()));
   Assert(status_.size() == finfos_.size());
@@ -990,6 +1149,9 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns) {
 
   num_minmax_columns = static_cast<int>(minmax_columns.size());
   Assert(num_minmax_columns <= natts);
+
+  num_bf_columns = static_cast<int>(bf_columns.size());
+  Assert(num_bf_columns <= natts);
 
 #ifdef USE_ASSERT_CHECKING
   // minmax_columns should be sorted
@@ -1052,6 +1214,34 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns) {
     } else {
       sum_stats_[i].status = STATUS_NOT_SUPPORT;
     }
+  }
+
+  // init the bloom filter stats
+  for (int i = 0, j = 0; i < natts; i++) {
+    auto att = TupleDescAttr(tuple_desc_, i);
+
+    if (att->attisdropped) {
+      bf_status_[i] = STATUS_NOT_SUPPORT;
+      continue;
+    }
+
+    while (j < num_bf_columns && bf_columns[j] < i) {
+      j++;
+    }
+
+    if (j >= num_bf_columns || bf_columns[j] != i) {
+      bf_status_[i] = STATUS_NOT_SUPPORT;
+      continue;
+    }
+    j++;
+
+    bf_stats_[i].CreateFixed();
+    bf_status_[i] = STATUS_MISSING_INIT_VAL;
+
+    auto bf_info = stats_->GetBloomFilterBasicInfo(i);
+    bf_info->set_bf_hash_funcs(bf_stats_[i].GetKHashFuncs());
+    bf_info->set_bf_seed(bf_stats_[i].GetSeed());
+    bf_info->set_bf_m(bf_stats_[i].GetM());
   }
 
   agg_state_ = makeNode(AggState);
@@ -1167,6 +1357,20 @@ const ::pax::stats::ColumnBasicInfo &MicroPartitionStatsProvider::ColumnInfo(
 const ::pax::stats::ColumnDataStats &MicroPartitionStatsProvider::DataStats(
     int column_index) const {
   return stats_.columnstats(column_index).datastats();
+}
+
+bool MicroPartitionStatsProvider::HasBloomFilter(int column_index) const {
+  return stats_.columnstats(column_index).has_columnbfstats();
+}
+
+const ::pax::stats::BloomFilterBasicInfo &
+MicroPartitionStatsProvider::BloomFilterBasicInfo(int column_index) const {
+  return stats_.columnstats(column_index).bloomfilterinfo();
+}
+
+std::string MicroPartitionStatsProvider::GetBloomFilter(
+    int column_index) const {
+  return stats_.columnstats(column_index).columnbfstats();
 }
 
 }  // namespace pax
