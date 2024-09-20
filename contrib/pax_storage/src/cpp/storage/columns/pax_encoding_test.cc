@@ -307,7 +307,7 @@ TEST_P(PaxEncodingDeltaRangeTest, TestOrcDeltaEncoding) {
 
   encoder->SetDataBuffer(shared_data);
 
-  data = pax::PAX_ALLOC<int64 *>(sizeof(int64));
+  data = pax::PAX_ALLOC<int64>(sizeof(int64));
   *data = sign ? -10 : 1;
   for (size_t i = 0; i < delta_len; i++) {
     encoder->Append((char *)data, sizeof(int64));
@@ -417,7 +417,7 @@ TEST_P(PaxEncodingDeltaIncDecRangeTest, TestOrcIncDeltaEncoding) {
 
   encoder->SetDataBuffer(shared_data);
 
-  data = pax::PAX_ALLOC<int64 *>(delta_len * sizeof(int64));
+  data = pax::PAX_ALLOC<int64>(delta_len * sizeof(int64));
   for (size_t i = 0; i < delta_len; i++) {
     data[i] = i * delta_inc;
   }
@@ -1037,7 +1037,7 @@ TEST_F(PaxEncodingTest, TestOrcShortRepeatWithNULL) {
 
   encoder->SetDataBuffer(shared_data);
 
-  data = pax::PAX_ALLOC<int64 *>(sizeof(int64));
+  data = pax::PAX_ALLOC<int64>(sizeof(int64));
   *data = 2;
   for (size_t i = 0; i < sr_len; i++) {
     encoder->Append((char *)data, sizeof(int64));

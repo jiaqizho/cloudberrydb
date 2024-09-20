@@ -169,7 +169,7 @@ struct PaxOrcEncoder::EncoderContext::PatchBaseContext {
 PaxOrcEncoder::EncoderContext::EncoderContext()
     : is_sign(true), fixed_len(0), var_len(0), prev_delta(0), current_delta(0) {
   auto size = sizeof(struct DeltaContext) + sizeof(struct DirectContext) + sizeof(struct PatchBaseContext);
-  internal_buffer_ = pax::PAX_ALLOC0<char *>(size);
+  internal_buffer_ = pax::PAX_ALLOC0<char>(size);
 
   delta_ctx = reinterpret_cast<struct DeltaContext *>(internal_buffer_);
   direct_ctx = reinterpret_cast<struct DirectContext *>(

@@ -44,12 +44,12 @@ class PaxIndexScanDesc final {
 class PaxScanDesc {
  public:
   PaxScanDesc() = default;
-  static TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
-                                 int nkeys, struct ScanKeyData *key,
-                                 ParallelTableScanDesc pscan, uint32 flags,
-                                 std::shared_ptr<PaxFilter> &&pax_filter, bool build_bitmap);
+  TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
+                          int nkeys, struct ScanKeyData *key,
+                          ParallelTableScanDesc pscan, uint32 flags,
+                          std::shared_ptr<PaxFilter> &&pax_filter, bool build_bitmap);
 
-  static TableScanDesc BeginScanExtractColumns(
+  TableScanDesc BeginScanExtractColumns(
       Relation rel, Snapshot snapshot, int nkeys, struct ScanKeyData *key,
       ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags);
 

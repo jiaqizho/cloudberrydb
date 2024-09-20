@@ -13,6 +13,7 @@ PaxVecReader::PaxVecReader(std::unique_ptr<MicroPartitionReader> &&reader,
                            std::shared_ptr<PaxFilter> filter)
     : adapter_(std::move(adapter)),
       current_group_index_(0),
+      ctid_offset_(0),
       filter_(std::move(filter)) {
   Assert(reader && adapter_);
   SetReader(std::move(reader));
@@ -29,6 +30,43 @@ void PaxVecReader::Open(const ReaderOptions &options) {
 void PaxVecReader::Close() { reader_->Close(); }
 
 PaxVecReader::~PaxVecReader() { }
+
+std::shared_ptr<arrow::RecordBatch> PaxVecReader::ReadBatch(PaxFragmentInterface *frag) {
+  auto desc = adapter_->GetRelationTupleDesc();
+  std::shared_ptr<arrow::RecordBatch> result;
+  size_t flush_nums_of_rows = 0;
+
+retry_next_group:
+  if (!working_group_) {
+    if (current_group_index_ >= reader_->GetGroupNums()) {
+      return nullptr;
+    }
+    auto group_index = current_group_index_++;
+    auto info = reader_->GetGroupStatsInfo(group_index);
+    if (filter_ &&
+        !filter_->TestScan(*info, desc, PaxFilterStatisticsKind::kGroup)) {
+      goto retry_next_group;
+    }
+
+    working_group_ = reader_->ReadGroup(group_index);
+    adapter_->SetDataSource(working_group_->GetAllColumns(), working_group_->GetRowOffset());
+  }
+
+  if (!adapter_->AppendToVecBuffer()) {
+    working_group_ = nullptr;
+    goto retry_next_group;
+  }
+
+  result = adapter_->FlushVecBuffer(ctid_offset_, frag, flush_nums_of_rows);
+  ctid_offset_ += flush_nums_of_rows;
+  if (!result) {
+    working_group_ = nullptr;
+    goto retry_next_group;
+  }
+
+  Assert(flush_nums_of_rows > 0);
+  return result;
+}
 
 bool PaxVecReader::ReadTuple(TupleTableSlot *slot) {
   auto desc = adapter_->GetRelationTupleDesc();

@@ -395,7 +395,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
           PaxDictDecoder::GetRawDictionary(undecoded_data_buffer);
       undecoded_buffer = (char *)index_buffer->GetBuffer();
       undecoded_buffer_len = index_buffer->Used();
-      vec_buffer->Set(BlockBuffer::Alloc<char *>(out_data_buffer_len),
+      vec_buffer->Set(BlockBuffer::Alloc<char>(out_data_buffer_len),
                       out_data_buffer_len);
 
       vec_cache_buffer_[index].is_dict = true;
@@ -429,7 +429,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
         auto desc_offset_buffer_len =
             TYPEALIGN(MEMORY_ALIGN_SIZE, desc_buffer->Used() + sizeof(int32));
         desc_offset_buffer->Set(
-            BlockBuffer::Alloc<char *>(desc_offset_buffer_len),
+            BlockBuffer::Alloc<char>(desc_offset_buffer_len),
             desc_offset_buffer_len);
 
         if (!expect_hdr) {
@@ -445,7 +445,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
 
           auto entry_buffer_len =
               TYPEALIGN(MEMORY_ALIGN_SIZE, entry_buffer->Used());
-          desc_entry_buffer->Set(BlockBuffer::Alloc<char *>(entry_buffer_len),
+          desc_entry_buffer->Set(BlockBuffer::Alloc<char>(entry_buffer_len),
                                  entry_buffer_len);
 
           desc_entry_buffer->Write(entry_buffer->GetBuffer(),
@@ -454,7 +454,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
         } else {
           auto entry_buffer_len =
               TYPEALIGN(MEMORY_ALIGN_SIZE, entry_buffer->Used());
-          desc_entry_buffer->Set(BlockBuffer::Alloc<char *>(entry_buffer_len),
+          desc_entry_buffer->Set(BlockBuffer::Alloc<char>(entry_buffer_len),
                                  entry_buffer_len);
 
           size_t dst_offset = 0;
@@ -491,7 +491,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
                       (out_range_lens * VEC_SHORT_NUMERIC_STORE_BYTES));
         Assert(!vec_buffer->GetBuffer());
 
-        vec_buffer->Set(BlockBuffer::Alloc<char *>(align_size), align_size);
+        vec_buffer->Set(BlockBuffer::Alloc<char>(align_size), align_size);
 
         CopyDecimalBuffer(column, micro_partition_visibility_bitmap_,
                           range_begin + group_base_offset_, range_begin,
@@ -507,9 +507,9 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
             TYPEALIGN(MEMORY_ALIGN_SIZE, (out_range_lens + 1) * sizeof(int32));
 
         Assert(!vec_buffer->GetBuffer() && !offset_buffer->GetBuffer());
-        vec_buffer->Set(BlockBuffer::Alloc<char *>(data_align_size),
+        vec_buffer->Set(BlockBuffer::Alloc<char>(data_align_size),
                         data_align_size);
-        offset_buffer->Set(BlockBuffer::Alloc<char *>(offset_align_bytes),
+        offset_buffer->Set(BlockBuffer::Alloc<char>(offset_align_bytes),
                            offset_align_bytes);
 
         CopyNonFixedBuffer(column, micro_partition_visibility_bitmap_,
@@ -526,7 +526,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
                                     (out_range_lens * column->GetTypeLength()));
         Assert(!vec_buffer->GetBuffer());
 
-        vec_buffer->Set(BlockBuffer::Alloc<char *>(align_size), align_size);
+        vec_buffer->Set(BlockBuffer::Alloc<char>(align_size), align_size);
         CopyFixedBuffer(column, micro_partition_visibility_bitmap_,
                         range_begin + group_base_offset_, range_begin,
                         range_lens, data_index_begin, num_of_not_nulls,
@@ -541,7 +541,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
         // the boolean_buffer is bitpacked-layout, we must use Alloc0 to fill it
         // with zeros. then we can only set the bit according to the index of
         // true value.
-        auto boolean_buffer = BlockBuffer::Alloc0<char *>(align_size);
+        auto boolean_buffer = BlockBuffer::Alloc0<char>(align_size);
         vec_buffer->Set(boolean_buffer, align_size);
 
         Bitmap8 vec_bool_bitmap(

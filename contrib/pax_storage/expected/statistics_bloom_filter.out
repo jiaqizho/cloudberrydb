@@ -13,20 +13,14 @@ set pax_bloom_filter_work_memory_bytes = 102400; -- 100kb
 -- create pax table with bloom filter reloptions 
 create table t1(v1 int, v2 text, v3 varchar, v4 varchar(100), v5 bit, v6 float, v7 numeric, v8 numeric(20,10)) 
     with (bloomfilter_columns='v1,v2,v3,v4,v5,v6,v7,v8');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'v1' as the Cloudberry Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table t2(v1 int, v2 text, v3 varchar, v4 varchar(100), v5 bit, v6 float, v7 numeric, v8 numeric(20,10)) 
     with (minmax_columns='v1,v2,v3,v4,v5,v6,v7,v8', bloomfilter_columns='v1,v2,v3,v4,v5,v6,v7,v8');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'v1' as the Cloudberry Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 drop table t1;
 drop table t2;
 -- test bloom filter(only work on IN case)
 set pax_enable_filter to on;
 -- the fixed length and type by value type
 create table t1(single_seg int, v1 int, v2 int) with (bloomfilter_columns='v1,v2');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'single_seg' as the Cloudberry Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t1 values(1, generate_series(1, 100), generate_series(101, 200));
 insert into t1 values(1, generate_series(1, 100), generate_series(101, 200));
 set client_min_messages to log;
@@ -138,8 +132,6 @@ reset client_min_messages;
 set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t1 where v1 in (12, 55, 77); -- different group
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
-LOG:  kind group, filter rate: 14 / 20  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -151,8 +143,6 @@ LOG:  kind group, filter rate: 14 / 20  (seg1 slice1 10.13.9.100:7003 pid=28983)
 (6 rows)
 
 select * from t1 where v1 in (12, 55, 77) and v2 > 100;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
-LOG:  kind group, filter rate: 14 / 20  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -249,8 +239,6 @@ reset client_min_messages;
 set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t2 where v1 in ('12', '55', '77'); -- different group
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
-LOG:  kind group, filter rate: 14 / 20  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -262,8 +250,6 @@ LOG:  kind group, filter rate: 14 / 20  (seg1 slice1 10.13.9.100:7003 pid=28983)
 (6 rows)
 
 select * from t2 where v1 in ('12', '55', '77') and v2 > '100';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
-LOG:  kind group, filter rate: 14 / 20  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -359,7 +345,7 @@ LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
 (0 rows)
 
 select * from t3 where v2 > 300 and v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aaa', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aab');
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
+LOG:  kind file, filter rate: 2 / 2
  single_seg | v1 | v2 
 ------------+----+----
 (0 rows)
@@ -368,7 +354,7 @@ reset client_min_messages;
 set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t3 where v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a29'); -- different group
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
+LOG:  kind file, filter rate: 0 / 2
  single_seg |                  v1                  | v2 
 ------------+--------------------------------------+----
           1 | a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11 | 31

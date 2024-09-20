@@ -38,13 +38,14 @@ class PaxVecReader : public MicroPartitionReaderProxy {
 
   std::unique_ptr<MicroPartitionReader::Group> ReadGroup(size_t index) override;
 
-  std::shared_ptr<arrow::RecordBatch> ReadBatch();
+  std::shared_ptr<arrow::RecordBatch> ReadBatch(PaxFragmentInterface *frag);
 
  private:
   std::shared_ptr<VecAdapter> adapter_;
 
   std::unique_ptr<MicroPartitionReader::Group> working_group_;
   size_t current_group_index_;
+  size_t ctid_offset_;
   std::shared_ptr<PaxFilter> filter_;
 
 };

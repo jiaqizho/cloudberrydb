@@ -52,13 +52,12 @@ static void CopyNonFixedBuffer(std::shared_ptr<PaxVecNonFixedColumn> pcolumn,
   auto offset_array = reinterpret_cast<int32 *>(offset_buffer);
 
   visible_len = TYPEALIGN(MEMORY_ALIGN_SIZE, visible_len);
-  out_offset_buffer->Set(BlockBuffer::Alloc<char *>(visible_len), visible_len);
+  out_offset_buffer->Set(BlockBuffer::Alloc<char>(visible_len), visible_len);
   for (size_t i = 0; i < total_rows; i++) {
     if (!visibility_map_bitset->Test(group_base_offset + i)) {
       out_offset_buffer->Write(&adjust_offset, typlen);
       adjust_offset += offset_array[i + 1] - offset_array[i];
       out_offset_buffer->Brush(typlen);
-      data_len += offset_array[i + 1] - offset_array[i];
     }
   }
 
@@ -66,8 +65,8 @@ static void CopyNonFixedBuffer(std::shared_ptr<PaxVecNonFixedColumn> pcolumn,
   out_offset_buffer->Brush(typlen);
 
   // append data buffer
-  data_len = TYPEALIGN(MEMORY_ALIGN_SIZE, data_len);
-  out_data_buffer->Set(BlockBuffer::Alloc<char *>(data_len), data_len);
+  data_len = TYPEALIGN(MEMORY_ALIGN_SIZE, adjust_offset);
+  out_data_buffer->Set(BlockBuffer::Alloc<char>(data_len), data_len);
   for (size_t i = 0; i < total_rows; i++) {
     auto value_size = offset_array[i + 1] - offset_array[i];
     if (value_size > 0 && !visibility_map_bitset->Test(group_base_offset + i)) {
@@ -93,7 +92,7 @@ static void CopyFixedBuffer(std::shared_ptr<PaxColumn> pcolumn,
   const auto typlen = column->GetTypeLength();
   auto visible_len = (total_rows - invisible_rows) * typlen;
   visible_len = TYPEALIGN(MEMORY_ALIGN_SIZE, visible_len);
-  out_data_buffer->Set(BlockBuffer::Alloc<char *>(visible_len), visible_len);
+  out_data_buffer->Set(BlockBuffer::Alloc<char>(visible_len), visible_len);
 
   for (size_t i = 0; i < total_rows; i++) {
     if (!visibility_map_bitset->Test(group_base_offset + i)) {
@@ -166,7 +165,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxCol
           vec_buffer->Set(buffer, cap_len);
           vec_buffer->BrushAll();
         } else {
-          vec_buffer->Set(BlockBuffer::Alloc<char *>(
+          vec_buffer->Set(BlockBuffer::Alloc<char>(
                               TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),
                           TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len));
           vec_buffer->Write(buffer, buffer_len);
@@ -176,7 +175,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxCol
         std::tie(buffer, buffer_len) =
             std::static_pointer_cast<PaxVecNonFixedColumn>(column)->GetOffsetBuffer(false);
         // TODO(jiaqizho): this buffer can also be transferred
-        offset_buffer->Set(BlockBuffer::Alloc<char *>(
+        offset_buffer->Set(BlockBuffer::Alloc<char>(
                                TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),
                            TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len));
         offset_buffer->Write((int *)buffer, buffer_len);
@@ -248,7 +247,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxCol
         } else {
           auto align_size = TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len);
 
-          vec_buffer->Set(BlockBuffer::Alloc<char *>(align_size), align_size);
+          vec_buffer->Set(BlockBuffer::Alloc<char>(align_size), align_size);
           if (column->GetPaxColumnTypeInMem() ==
               PaxColumnTypeInMem::kTypeVecBitPacked) {
             memset(vec_buffer->Start(), 0, align_size);

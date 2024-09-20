@@ -20,7 +20,7 @@ TEST_P(PaxCompressTest, TestCompressAndDecompress) {
   uint32 data_len = ::testing::get<1>(GetParam());
   size_t dst_len = 0;
 
-  char *data = pax::PAX_ALLOC<char *>(data_len);
+  char *data = pax::PAX_ALLOC<char>(data_len);
   char *result_data;
   for (size_t i = 0; i < data_len; ++i) {
     data[i] = i;
@@ -30,7 +30,7 @@ TEST_P(PaxCompressTest, TestCompressAndDecompress) {
 
   size_t bound_size = compressor->GetCompressBound(data_len);  // NOLINT
   ASSERT_GT(bound_size, 0UL);
-  result_data = pax::PAX_ALLOC<char *>(bound_size);
+  result_data = pax::PAX_ALLOC<char>(bound_size);
   dst_len = bound_size;
   dst_len = compressor->Compress(result_data, dst_len, data, data_len, 1);
   ASSERT_FALSE(compressor->IsError(dst_len));
@@ -70,7 +70,7 @@ TEST_F(PaxCompressTest2, TestPgLZCompress) {
   // too small may cause compress failed
   uint32 data_len = 512;
 
-  char *data = pax::PAX_ALLOC<char *>(data_len);
+  char *data = pax::PAX_ALLOC<char>(data_len);
   char *result_data;
   for (size_t i = 0; i < data_len; ++i) {
     data[i] = i;
@@ -78,7 +78,7 @@ TEST_F(PaxCompressTest2, TestPgLZCompress) {
 
   size_t bound_size = compressor->GetCompressBound(data_len);  // NOLINT
   ASSERT_GT(bound_size, 0UL);
-  result_data = pax::PAX_ALLOC<char *>(bound_size);
+  result_data = pax::PAX_ALLOC<char>(bound_size);
   dst_len = bound_size;
   dst_len = compressor->Compress(result_data, dst_len, data, data_len, 1);
   ASSERT_FALSE(compressor->IsError(dst_len));
@@ -108,7 +108,7 @@ TEST_F(PaxCompressTest2, TestLZ4Compress) {
   PaxCompressor *compressor = new PaxLZ4Compressor();
   uint32 data_len = 100;
 
-  char *data = pax::PAX_ALLOC<char *>(data_len);
+  char *data = pax::PAX_ALLOC<char>(data_len);
   char *result_data;
   for (size_t i = 0; i < data_len; ++i) {
     data[i] = i;
@@ -116,7 +116,7 @@ TEST_F(PaxCompressTest2, TestLZ4Compress) {
 
   size_t bound_size = compressor->GetCompressBound(data_len);  // NOLINT
   ASSERT_GT(bound_size, 0UL);
-  result_data = pax::PAX_ALLOC<char *>(bound_size);
+  result_data = pax::PAX_ALLOC<char>(bound_size);
   dst_len = bound_size;
   dst_len = compressor->Compress(result_data, dst_len, data, data_len, 1);
   ASSERT_FALSE(compressor->IsError(dst_len));
