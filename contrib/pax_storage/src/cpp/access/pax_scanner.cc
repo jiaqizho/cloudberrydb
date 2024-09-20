@@ -242,7 +242,6 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
                                      int nkeys, struct ScanKeyData * /*key*/,
                                      ParallelTableScanDesc pscan, uint32 flags,
                                      std::shared_ptr<PaxFilter> &&pax_filter, bool build_bitmap) {
-  std::unique_ptr<PaxScanDesc> desc;
   MemoryContext old_ctx;
   std::shared_ptr<PaxFilter> filter;
   TableReader::ReaderOptions reader_options{};
@@ -251,7 +250,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
       offsetof(PaxScanDesc, rs_base_) == 0,
       "rs_base should be the first field and aligned to the object address");
 
-  desc = std::make_unique<PaxScanDesc>();
+  auto desc = this;
 
   desc->memory_context_ = cbdb::AllocSetCtxCreate(
       CurrentMemoryContext, "Pax Storage", PAX_ALLOCSET_DEFAULT_SIZES);
@@ -306,7 +305,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
                                      PaxFilterStatisticsKind::kFile);
           return ok;
         });
-    iter = std::unique_ptr<IteratorBase<MicroPartitionMetadata>>(wrap.release());
+    iter = std::move(wrap);
   }
   desc->reader_ = std::make_unique<TableReader>(std::move(iter), reader_options);
   desc->reader_->Open();
@@ -314,11 +313,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   MemoryContextSwitchTo(old_ctx);
   pgstat_count_heap_scan(relation);
 
-  // TODO:(wuhao) register the scanner desc, if the transaction/statement fails, the scanner
-  // desc and all children must be freed.
-  auto self = desc.release();
-  pax::common::RememberResourceCallback(pax::ReleaseTopObject<PaxScanDesc>, cbdb::PointerToDatum(self));
-  return &self->rs_base_;
+  return &desc->rs_base_;
 }
 
 PaxScanDesc::~PaxScanDesc() { }
@@ -331,6 +326,7 @@ void PaxScanDesc::EndScan() {
   Assert(memory_context_);
   Assert(reader_);
   reader_->Close();
+  reader_ = nullptr;
   
   // optional index_scan should close internal file
   if (index_desc_)
@@ -339,8 +335,6 @@ void PaxScanDesc::EndScan() {
   if (rs_base_.rs_flags & SO_TEMP_SNAPSHOT)
     UnregisterSnapshot(rs_base_.rs_snapshot);
 
-  pax::common::ForgetResourceCallback(pax::ReleaseTopObject<PaxScanDesc>, cbdb::PointerToDatum(this));
-  PAX_DELETE(this);
   cbdb::MemoryCtxDelete(memory_context);
 }
 
@@ -348,7 +342,6 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
     Relation rel, Snapshot snapshot, int /*nkeys*/,
     struct ScanKeyData * /*key*/, ParallelTableScanDesc parallel_scan,
     struct PlanState *ps, uint32 flags) {
-  TableScanDesc paxscan;
   std::shared_ptr<PaxFilter> filter;
   List *targetlist = ps->plan->targetlist;
   List *qual = ps->plan->qual;
@@ -399,10 +392,8 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
       filter->BuildExecutionFilterForColumns(rel, ps);
 #endif
   }
-  paxscan = BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, std::move(filter),
-                      build_bitmap);
-
-  return paxscan;
+  return BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, std::move(filter),
+                   build_bitmap);
 }
 
 // FIXME: shall we take these parameters into account?

@@ -501,8 +501,8 @@ static inline int VarstrCmp(const char *arg1, int len1, const char *arg2,
     char *a1p, *a2p;
     if (len1 == len2 && memcmp(arg1, arg2, len1) == 0) return 0;
 
-    a1p = (len1 >= TEXTBUFLEN) ? ::pax::PAX_ALLOC<char *>(len1 + 1) : a1buf;
-    a2p = (len2 >= TEXTBUFLEN) ? ::pax::PAX_ALLOC<char *>(len2 + 1) : a2buf;
+    a1p = (len1 >= TEXTBUFLEN) ? ::pax::PAX_ALLOC<char>(len1 + 1) : a1buf;
+    a2p = (len2 >= TEXTBUFLEN) ? ::pax::PAX_ALLOC<char>(len2 + 1) : a2buf;
 
     memcpy(a1p, arg1, len1);
     a1p[len1] = '\0';
