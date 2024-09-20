@@ -35,18 +35,18 @@ struct BlockBuffer {
     std::swap(end_offset_, other.end_offset_);
   }
 
-  template <typename T=char *>
-  static inline T Alloc(size_t size) { return PAX_ALLOC<T>(size); }
+  template <typename T=char>
+  static inline T* Alloc(size_t size) { return PAX_ALLOC<T>(size); }
 
-  template <typename T=char *>
-  static inline T Alloc0(size_t size) { return PAX_ALLOC0<T>(size); }
+  template <typename T=char>
+  static inline T* Alloc0(size_t size) { return PAX_ALLOC0<T>(size); }
 
-  template <typename T=char *>
-  static inline T Realloc(void *ptr, size_t new_size) {
+  template <typename T=char>
+  static inline T* Realloc(void *ptr, size_t new_size) {
     return PAX_REALLOC<T>(ptr, new_size);
   }
   template <typename T>
-  static inline void Free(T ptr) { PAX_FREE(ptr); }
+  static inline void Free(T *ptr) { PAX_FREE(ptr); }
 
  private:
   char *begin_offset_;

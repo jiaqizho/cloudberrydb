@@ -114,6 +114,7 @@ set(pax_vec_src
   storage/vec/pax_vec_adapter.cc
   storage/vec/pax_vec_comm.cc
   storage/vec/pax_vec_reader.cc
+  storage/pax_parallel.cc
 )
 
 # add tabulate which used in the UDF
@@ -148,7 +149,7 @@ if (VEC_BUILD)
       ${INSTALL_HOME}/lib)
   set(pax_target_link_libs
       ${pax_target_link_libs}
-      arrow)
+      arrow arrow_dataset)
 endif(VEC_BUILD)
 
 target_include_directories(pax PUBLIC ${pax_target_include})
@@ -198,7 +199,7 @@ if(BUILD_GBENCH)
     target_link_directories(bench_main PUBLIC ${pax_target_link_directories})
     target_link_libraries(bench_main PUBLIC ${pax_target_link_libs} gtest gmock benchmark postgres)
     if (VEC_BUILD)
-      target_link_libraries(bench_main PRIVATE arrow)
+      target_link_libraries(bench_main PRIVATE arrow arrow_dataset)
     endif(VEC_BUILD)
 endif(BUILD_GBENCH)
 

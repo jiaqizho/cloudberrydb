@@ -76,7 +76,7 @@ void BloomFilter::Create(size_t total_elems, int bloom_work_mem, uint64 seed) {
   PAX_LOG_IF(pax_enable_debug, "Build a writable bloom filter [bytes=%lu]",
              bitset_bytes);
 
-  bitset_ = PAX_ALLOC0<unsigned char *>(bitset_bytes);
+  bitset_ = PAX_ALLOC0<unsigned char>(bitset_bytes);
   k_hash_funcs_ = optimal_k(bitset_bits, total_elems);
   seed_ = seed;
   m_ = bitset_bits;
@@ -97,7 +97,7 @@ void BloomFilter::Create(const char *bs, uint64 bits, uint64 seed,
   PAX_LOG_IF(pax_enable_debug, "Build a readable bloom filter [bytes=%lu]",
              bits / BITS_PER_BYTE);
 
-  bitset_ = PAX_ALLOC<unsigned char *>(bitset_bytes);
+  bitset_ = PAX_ALLOC<unsigned char>(bitset_bytes);
   memcpy(bitset_, bs, bitset_bytes);
   readonly_ = true;
 }
