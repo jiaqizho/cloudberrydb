@@ -12,46 +12,37 @@ public:
  virtual ~MemoryObject() = default;
 };
 
-template <typename T=void*>
-static inline T PAX_ALLOC(size_t size) {
-  static_assert(std::is_pointer<T>(), "template type must be a pointer");
-
+template <typename T=void>
+static inline T* PAX_ALLOC(size_t size) {
   auto p = malloc(size);
   if (!p) throw std::bad_alloc{};
 
-  return reinterpret_cast<T>(p);
+  return reinterpret_cast<T *>(p);
 }
 
-template <typename T=void*>
-static inline T PAX_ALLOC0(size_t size) {
+template <typename T=void>
+static inline T* PAX_ALLOC0(size_t size) {
   auto p = PAX_ALLOC<T>(size);
   memset(reinterpret_cast<void *>(p), 0, size);
   return p;
 }
 
-template <typename T=void*>
-static inline T PAX_REALLOC(void *ptr, size_t new_size) {
-  static_assert(std::is_pointer<T>(), "template type must be a pointer");
-
-  auto p = realloc(ptr, new_size);
+template <typename T=void>
+static inline T* PAX_REALLOC(void *ptr, size_t new_size) {
+  auto p = realloc(reinterpret_cast<void *>(ptr), new_size);
   if (!p) throw std::bad_alloc{};
 
-  return reinterpret_cast<T>(p);
+  return reinterpret_cast<T *>(p);
 }
 
 template <typename T=void>
 static inline void PAX_FREE(const T *ptr) {
   T *p = const_cast<T *>(ptr);
-  if (p) free(reinterpret_cast<void*>(p));
+  if (p) free(reinterpret_cast<void *>(p));
 }
 
 template <typename T, typename... Args>
 static inline T* PAX_NEW(Args&&... args) {
-  return new T(std::forward<Args>(args)...);
-}
-
-template <typename T, typename... Args>
-static inline T* PAX_NEW_NULL(Args&&... args) {
   return new T(std::forward<Args>(args)...);
 }
 

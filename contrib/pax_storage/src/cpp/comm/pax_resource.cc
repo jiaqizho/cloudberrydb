@@ -77,7 +77,8 @@ namespace paxc {
 void ReleaseResourceCallback(ResourceReleasePhase phase, bool is_commit,
                              bool /* is_top_level */,
                              void * /*arg*/) {
-  if (phase != RESOURCE_RELEASE_AFTER_LOCKS) return;
+  if (phase != RESOURCE_RELEASE_AFTER_LOCKS || proc_exit_inprogress)
+    return;
 
   dlist_mutable_iter iter;
   std::lock_guard<std::mutex> lock(pax::common::resource_list_lock);

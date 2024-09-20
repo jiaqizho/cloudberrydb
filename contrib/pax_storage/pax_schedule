@@ -9,6 +9,8 @@ test: statistics_bloom_filter
 
 test: visimap_vec_compact
 test: visimap_vec_storage
+test: default_value
+test: dictionary_encoding
 
 test: zorder_cluster
 
