@@ -22,6 +22,10 @@ class LruCache {
   typedef typename std::list<key_value_pair_t>::iterator list_iterator_t;
 
   LruCache(size_t max_size) : max_size_(max_size) {}
+  ~LruCache() {
+    cache_items_map_.clear();
+    cache_items_list_.clear();
+  }
 
   void Put(const K &key, const V &value) {
     auto it = cache_items_map_.find(key);

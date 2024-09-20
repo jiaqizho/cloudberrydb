@@ -6,8 +6,14 @@
 #include "storage/micro_partition.h"
 #include "storage/pax_defined.h"
 
+namespace arrow {
+  class RecordBatch;
+  class Buffer;
+}
+
 namespace pax {
 
+class PaxFragmentInterface;
 class VecAdapter final {
  public:
   struct VecBatchBuffer {
@@ -28,8 +34,7 @@ class VecAdapter final {
     void SetMemoryTakeOver(bool take);
   };
 
-  VecAdapter(TupleDesc tuple_desc, const int max_batch_size,
-             bool build_ctid = false);
+  VecAdapter(TupleDesc tuple_desc, size_t /* max_batch_size */, bool build_ctid);
 
   ~VecAdapter();
 
@@ -46,12 +51,27 @@ class VecAdapter final {
 
   size_t FlushVecBuffer(TupleTableSlot *slot);
 
+  std::shared_ptr<arrow::RecordBatch> FlushVecBuffer(int ctid_offset, PaxFragmentInterface *frag, size_t &num_rows);
+
   TupleDesc GetRelationTupleDesc() const;
 
   bool ShouldBuildCtid() const;
 
   inline void SetVisibitilyMapInfo(std::shared_ptr<Bitmap8> visibility_bitmap) {
     micro_partition_visibility_bitmap_ = std::move(visibility_bitmap);
+  }
+
+  inline void Reset() {
+    // keep some fields unchanged
+    // rel_tuple_desc_ build_ctid_
+
+    cached_batch_lens_ = 0;
+    //vec_cache_buffer_ = nullptr;
+    //vec_cache_buffer_lens_ = 0;
+    process_columns_ = nullptr;
+    current_index_ = 0;
+    group_base_offset_ = 0;
+    micro_partition_visibility_bitmap_ = nullptr;
   }
 
   static int GetMaxBatchSizeFromStr(char *max_batch_size_str,
@@ -80,9 +100,12 @@ class VecAdapter final {
 
   void BuildCtidOffset(size_t range_begin, size_t range_lengs);
 
+  std::shared_ptr<arrow::Buffer> FullWithCTID2(int block_num, int offset);
+  void FullWithNulls(VecBatchBuffer *batch_buffer);
+
+
  private:
   TupleDesc rel_tuple_desc_;
-  const int max_batch_size_;
   size_t cached_batch_lens_;
   VecBatchBuffer *vec_cache_buffer_;
   int vec_cache_buffer_lens_;
@@ -92,6 +115,9 @@ class VecAdapter final {
   bool build_ctid_;
 
   int group_base_offset_;
+
+  // current block number
+  int32 block_no_;
   // only referenced
   std::shared_ptr<Bitmap8> micro_partition_visibility_bitmap_ = nullptr;
 
@@ -100,4 +126,4 @@ class VecAdapter final {
 };
 }  // namespace pax
 
-#endif  // #ifdef VEC_BUILD
+#endif  // VEC_BUILD

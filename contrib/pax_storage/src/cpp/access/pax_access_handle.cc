@@ -20,6 +20,10 @@
 #include "comm/vec_numeric.h"
 #include "exceptions/CException.h"
 #include "storage/local_file_system.h"
+#ifdef VEC_BUILD
+#include "storage/pax_parallel.h"
+#endif
+
 
 #define NOT_IMPLEMENTED_YET                        \
   ereport(ERROR,                                   \
@@ -42,8 +46,12 @@ TableScanDesc CCPaxAccessMethod::ScanBegin(Relation relation, Snapshot snapshot,
                                            uint32 flags) {
   CBDB_TRY();
   {
-    return PaxScanDesc::BeginScan(relation, snapshot, nkeys, key, pscan, flags,
-                                  nullptr, true);
+    auto desc = PAX_NEW<PaxScanDesc>();
+    pax::common::RememberResourceCallback(pax::ReleaseTopObject<PaxScanDesc>,
+                                          cbdb::PointerToDatum(desc));
+
+    return desc->BeginScan(relation, snapshot, nkeys, key, pscan, flags,
+                           nullptr, true);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_END_TRY();
@@ -56,6 +64,10 @@ void CCPaxAccessMethod::ScanEnd(TableScanDesc scan) {
   {
     auto desc = PaxScanDesc::ToDesc(scan);
     desc->EndScan();
+
+    pax::common::ForgetResourceCallback(pax::ReleaseTopObject<PaxScanDesc>,
+                                        cbdb::PointerToDatum(desc));
+    PAX_DELETE<PaxScanDesc>(desc);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
@@ -67,8 +79,12 @@ TableScanDesc CCPaxAccessMethod::ScanExtractColumns(
     ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags) {
   CBDB_TRY();
   {
-    return pax::PaxScanDesc::BeginScanExtractColumns(rel, snapshot, nkeys, key,
-                                                     parallel_scan, ps, flags);
+    auto desc = PAX_NEW<PaxScanDesc>();
+    pax::common::RememberResourceCallback(pax::ReleaseTopObject<PaxScanDesc>,
+                                          cbdb::PointerToDatum(desc));
+
+    return desc->BeginScanExtractColumns(rel, snapshot, nkeys, key,
+                                         parallel_scan, ps, flags);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
@@ -1721,5 +1737,12 @@ void _PG_init(void) {  // NOLINT
   pax::common::InitResourceCallback();
 
   paxc::paxc_reg_rel_options();
+
+#ifdef VEC_BUILD
+  // register parallel scan to arrow
+  auto ds_registry = arrow::dataset::DatasetRegistry::GetDatasetRegistry();
+  ds_registry->AddDatasetImpl(PAX_TABLE_AM_OID, pax::PaxDatasetInterface::New);
+#endif
+
 }
 }  // extern "C"
