@@ -197,18 +197,17 @@ SELECT * FROM strtest s1 INNER JOIN strtest s2 ON s1.n >= s2.n;', false);
 -- Ensure we get 3 hits and 3 misses
 SELECT explain_memoize('
 SELECT * FROM strtest s1 INNER JOIN strtest s2 ON s1.t >= s2.t;', false);
-                                    explain_memoize                                    
----------------------------------------------------------------------------------------
+                                 explain_memoize                                 
+---------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=24 loops=N)
    ->  Nested Loop (actual rows=16 loops=N)
          Join Filter: (strtest_1.t >= strtest.t)
          Rows Removed by Join Filter: 8
-         ->  Seq Scan on strtest strtest_1 (actual rows=4 loops=N)
-         ->  Materialize (actual rows=5 loops=N)
-               ->  Broadcast Motion 3:3  (slice2; segments: 3) (actual rows=6 loops=N)
-                     ->  Seq Scan on strtest (actual rows=4 loops=N)
+         ->  Broadcast Motion 3:3  (slice2; segments: 3) (actual rows=6 loops=N)
+               ->  Seq Scan on strtest strtest_1 (actual rows=4 loops=N)
+         ->  Seq Scan on strtest (actual rows=4 loops=N)
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(8 rows)
 
 DROP TABLE strtest;
 -- Exercise Memoize code that flushes the cache when a parameter changes which
