@@ -3,6 +3,7 @@
 -- m/no filter/
 -- m/scan key build success/
 -- m/Build a readable bloom filter/
+-- m/^LOG:  Missing statistics for column: .*/
 -- end_matchignore
 set default_table_access_method = pax;
 
