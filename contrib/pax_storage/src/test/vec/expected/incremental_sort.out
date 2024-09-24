@@ -1,3 +1,7 @@
+-- TODO: incremental sort is turned off by default, because it may have
+-- wrong result for some core case. Turn it on to run the existing tests
+-- and minimize the difference from upstream.
+set enable_incremental_sort=on;
 -- GPDB_13_MERGE_FIXME: gporca doesn't support incremental_sort at the moment.
 -- When we have to sort the entire table, incremental sort will
 -- be slower than plain sort, so it should not be used.
@@ -1697,8 +1701,8 @@ from tenk1 t1
 join tenk1 t2 on t1.unique1 = t2.unique2
 join tenk1 t3 on t2.unique1 = t3.unique1
 order by count(*);
-                                        QUERY PLAN                                        
-------------------------------------------------------------------------------------------
+                                         QUERY PLAN                                         
+--------------------------------------------------------------------------------------------
  Sort
    Sort Key: (count(*))
    ->  Finalize Aggregate
@@ -1710,8 +1714,7 @@ order by count(*);
                                  Hash Key: t2.unique2
                                  ->  Hash Join
                                        Hash Cond: (t2.unique1 = t3.unique1)
-                                       ->  Bitmap Heap Scan on tenk1 t2
-                                             ->  Bitmap Index Scan on tenk1_unique2
+                                       ->  Index Scan using tenk1_unique2 on tenk1 t2
                                        ->  Hash
                                              ->  Bitmap Heap Scan on tenk1 t3
                                                    ->  Bitmap Index Scan on tenk1_unique1
@@ -1719,7 +1722,7 @@ order by count(*);
                                  ->  Bitmap Heap Scan on tenk1 t1
                                        ->  Bitmap Index Scan on tenk1_unique1
  Optimizer: Postgres query optimizer
-(20 rows)
+(19 rows)
 
 -- Parallel sort but with expression (correlated subquery) that
 -- is prohibited in parallel plans.
@@ -1727,8 +1730,8 @@ explain (costs off) select distinct
   unique1,
   (select t.unique1 from tenk1 where tenk1.unique1 = t.unique1)
 from tenk1 t, generate_series(1, 1000);
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: t.unique1, ((SubPlan 1))
    ->  Unique
@@ -1753,8 +1756,8 @@ explain (costs off) select
   (select t.unique1 from tenk1 where tenk1.unique1 = t.unique1)
 from tenk1 t, generate_series(1, 1000)
 order by 1, 2;
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: t.unique1, ((SubPlan 1))
    ->  Sort
@@ -1806,8 +1809,8 @@ order by 1, 2;
 
 -- Disallow pushing down sort when pathkey is an SRF.
 explain (costs off) select unique1 from tenk1 order by unnest('{1,2}'::int[]);
-                         QUERY PLAN                         
-------------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: (unnest('{1,2}'::anyarray))
    ->  Sort
