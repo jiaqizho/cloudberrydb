@@ -1981,24 +1981,32 @@ ERROR:  WITHIN GROUP is required for ordered-set aggregate percentile_cont
 LINE 1: select p, percentile_cont(p,p)  
                   ^
 select percentile_cont(0.5) within group (order by b) from aggtest;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  percentile_cont  
 ------------------
  53.4485001564026
 (1 row)
 
 select percentile_cont(0.5) within group (order by b), sum(b) from aggtest;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  percentile_cont  |   sum   
 ------------------+---------
  53.4485001564026 | 431.773
 (1 row)
 
 select percentile_cont(0.5) within group (order by thousand) from tenk1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  percentile_cont 
 -----------------
            499.5
 (1 row)
 
 select percentile_disc(0.5) within group (order by thousand) from tenk1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  percentile_disc 
 -----------------
              499
@@ -2103,6 +2111,8 @@ from (values (1),(1),(2),(2),(3),(3),(4)) v(x);
 (1 row)
 
 select test_percentile_disc(0.5) within group (order by thousand) from tenk1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  test_percentile_disc 
 ----------------------
                   499
@@ -2195,7 +2205,7 @@ SET optimizer_trace_fallback to on;
 -- end_ignore
 select * from aggordview1 order by ten;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+DETAIL:  Feature not supported: Aggregate functions with FILTER
  ten | p50 | px  | rank 
 -----+-----+-----+------
    0 | 490 |     |  101
@@ -2462,24 +2472,32 @@ ERROR:  WITHIN GROUP is required for ordered-set aggregate percentile_cont
 LINE 1: select p, percentile_cont(p,p)  
                   ^
 select percentile_cont(0.5) within group (order by b) from aggtest;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  percentile_cont  
 ------------------
  53.4485001564026
 (1 row)
 
 select percentile_cont(0.5) within group (order by b), sum(b) from aggtest;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  percentile_cont  |   sum   
 ------------------+---------
  53.4485001564026 | 431.773
 (1 row)
 
 select percentile_cont(0.5) within group (order by thousand) from tenk1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  percentile_cont 
 -----------------
            499.5
 (1 row)
 
 select percentile_disc(0.5) within group (order by thousand) from tenk1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  percentile_disc 
 -----------------
              499
@@ -2584,6 +2602,8 @@ from (values (1),(1),(2),(2),(3),(3),(4)) v(x);
 (1 row)
 
 select test_percentile_disc(0.5) within group (order by thousand) from tenk1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: System column in target list found for AO table
  test_percentile_disc 
 ----------------------
                   499
@@ -2676,7 +2696,7 @@ SET optimizer_trace_fallback to on;
 -- end_ignore
 select * from aggordview1 order by ten;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+DETAIL:  Feature not supported: Aggregate functions with FILTER
  ten | p50 | px  | rank 
 -----+-----+-----+------
    0 | 490 |     |  101
@@ -3467,7 +3487,7 @@ drop table agg_hash_4;
 set enable_indexonlyscan = off;
 explain analyze select count(*) from pg_class,  (select count(*) >0 from  (select count(*) from pg_class where relname like 't%')x)y;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+DETAIL:  Feature not supported: Queries on master-only tables
                                                       QUERY PLAN                                                       
 -----------------------------------------------------------------------------------------------------------------------
  Aggregate  (cost=10000000017.74..10000000017.75 rows=1 width=8) (actual time=0.142..0.142 rows=1 loops=1)
