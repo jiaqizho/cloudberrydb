@@ -741,14 +741,13 @@ SELECT * FROM foo ORDER BY f1 DESC NULLS LAST;
 SET enable_seqscan TO off;
 explain (costs off)
 select * from onek2 where unique2 = 11 and stringu1 = 'ATAAAA';
-                  QUERY PLAN                   
------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Scan using onek2_u2_prtl on onek2
-         Index Cond: (unique2 = 11)
-         Filter: (stringu1 = 'ATAAAA'::name)
- Optimizer: Postgres query optimizer
-(5 rows)
+   ->  Seq Scan on onek2
+         Filter: ((unique2 = 11) AND (stringu1 = 'ATAAAA'::name))
+ Optimizer: Pivotal Optimizer (GPORCA)
+(4 rows)
 
 select * from onek2 where unique2 = 11 and stringu1 = 'ATAAAA';
  unique1 | unique2 | two | four | ten | twenty | hundred | thousand | twothousand | fivethous | tenthous | odd | even | stringu1 | stringu2 | string4 
@@ -756,28 +755,15 @@ select * from onek2 where unique2 = 11 and stringu1 = 'ATAAAA';
      494 |      11 |   0 |    2 |   4 |     14 |       4 |       94 |          94 |       494 |      494 |   8 |    9 | ATAAAA   | LAAAAA   | VVVVxx
 (1 row)
 
--- actually run the query with an analyze to use the partial index
-explain (costs off, analyze on, timing off, summary off)
-select * from onek2 where unique2 = 11 and stringu1 = 'ATAAAA';
-                              QUERY PLAN                               
------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3) (actual rows=1 loops=1)
-   ->  Index Scan using onek2_u2_prtl on onek2 (actual rows=1 loops=1)
-         Index Cond: (unique2 = 11)
-         Filter: (stringu1 = 'ATAAAA'::name)
- Optimizer: Postgres query optimizer
-(5 rows)
-
 explain (costs off)
 select unique2 from onek2 where unique2 = 11 and stringu1 = 'ATAAAA';
-                  QUERY PLAN                   
------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Scan using onek2_u2_prtl on onek2
-         Index Cond: (unique2 = 11)
-         Filter: (stringu1 = 'ATAAAA'::name)
- Optimizer: Postgres query optimizer
-(5 rows)
+   ->  Seq Scan on onek2
+         Filter: ((unique2 = 11) AND (stringu1 = 'ATAAAA'::name))
+ Optimizer: Pivotal Optimizer (GPORCA)
+(4 rows)
 
 select unique2 from onek2 where unique2 = 11 and stringu1 = 'ATAAAA';
  unique2 
@@ -788,12 +774,12 @@ select unique2 from onek2 where unique2 = 11 and stringu1 = 'ATAAAA';
 -- partial index predicate implies clause, so no need for retest
 explain (costs off)
 select * from onek2 where unique2 = 11 and stringu1 < 'B';
-                  QUERY PLAN                   
------------------------------------------------
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Scan using onek2_u2_prtl on onek2
-         Index Cond: (unique2 = 11)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on onek2
+         Filter: ((unique2 = 11) AND (stringu1 < 'B'::name))
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 select * from onek2 where unique2 = 11 and stringu1 < 'B';
@@ -804,12 +790,12 @@ select * from onek2 where unique2 = 11 and stringu1 < 'B';
 
 explain (costs off)
 select unique2 from onek2 where unique2 = 11 and stringu1 < 'B';
-                     QUERY PLAN                     
-----------------------------------------------------
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Only Scan using onek2_u2_prtl on onek2
-         Index Cond: (unique2 = 11)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on onek2
+         Filter: ((unique2 = 11) AND (stringu1 < 'B'::name))
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 select unique2 from onek2 where unique2 = 11 and stringu1 < 'B';
@@ -821,14 +807,13 @@ select unique2 from onek2 where unique2 = 11 and stringu1 < 'B';
 -- but if it's an update target, must retest anyway
 explain (costs off)
 select unique2 from onek2 where unique2 = 11 and stringu1 < 'B' for update;
-                  QUERY PLAN                   
------------------------------------------------
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Scan using onek2_u2_prtl on onek2
-         Index Cond: (unique2 = 11)
-         Filter: (stringu1 < 'B'::name)
- Optimizer: Postgres query optimizer
-(5 rows)
+   ->  Seq Scan on onek2
+         Filter: ((unique2 = 11) AND (stringu1 < 'B'::name))
+ Optimizer: Pivotal Optimizer (GPORCA)
+(4 rows)
 
 select unique2 from onek2 where unique2 = 11 and stringu1 < 'B' for update;
  unique2 
@@ -843,8 +828,8 @@ select unique2 from onek2 where unique2 = 11 and stringu1 < 'C';
 -------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on onek2
-         Filter: ((stringu1 < 'C'::name) AND (unique2 = 11))
- Optimizer: Postgres query optimizer
+         Filter: ((unique2 = 11) AND (stringu1 < 'C'::name))
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 select unique2 from onek2 where unique2 = 11 and stringu1 < 'C';
@@ -857,15 +842,13 @@ select unique2 from onek2 where unique2 = 11 and stringu1 < 'C';
 SET enable_indexscan TO off;
 explain (costs off)
 select unique2 from onek2 where unique2 = 11 and stringu1 < 'B';
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Bitmap Heap Scan on onek2
-         Recheck Cond: ((unique2 = 11) AND (stringu1 < 'B'::name))
-         ->  Bitmap Index Scan on onek2_u2_prtl
-               Index Cond: (unique2 = 11)
- Optimizer: Postgres query optimizer
-(6 rows)
+   ->  Seq Scan on onek2
+         Filter: ((unique2 = 11) AND (stringu1 < 'B'::name))
+ Optimizer: Pivotal Optimizer (GPORCA)
+(4 rows)
 
 select unique2 from onek2 where unique2 = 11 and stringu1 < 'B';
  unique2 
@@ -878,19 +861,13 @@ RESET enable_indexscan;
 explain (costs off)
 select unique1, unique2 from onek2
   where (unique2 = 11 or unique1 = 0) and stringu1 < 'B';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Bitmap Heap Scan on onek2
-         Recheck Cond: (((unique2 = 11) AND (stringu1 < 'B'::name)) OR (unique1 = 0))
-         Filter: (stringu1 < 'B'::name)
-         ->  BitmapOr
-               ->  Bitmap Index Scan on onek2_u2_prtl
-                     Index Cond: (unique2 = 11)
-               ->  Bitmap Index Scan on onek2_u1_prtl
-                     Index Cond: (unique1 = 0)
- Optimizer: Postgres query optimizer
-(10 rows)
+   ->  Seq Scan on onek2
+         Filter: (((unique2 = 11) OR (unique1 = 0)) AND (stringu1 < 'B'::name))
+ Optimizer: Pivotal Optimizer (GPORCA)
+(4 rows)
 
 select unique1, unique2 from onek2
   where (unique2 = 11 or unique1 = 0) and stringu1 < 'B';
@@ -903,18 +880,13 @@ select unique1, unique2 from onek2
 explain (costs off)
 select unique1, unique2 from onek2
   where (unique2 = 11 and stringu1 < 'B') or unique1 = 0;
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Bitmap Heap Scan on onek2
-         Recheck Cond: (((unique2 = 11) AND (stringu1 < 'B'::name)) OR (unique1 = 0))
-         ->  BitmapOr
-               ->  Bitmap Index Scan on onek2_u2_prtl
-                     Index Cond: (unique2 = 11)
-               ->  Bitmap Index Scan on onek2_u1_prtl
-                     Index Cond: (unique1 = 0)
- Optimizer: Postgres query optimizer
-(9 rows)
+   ->  Seq Scan on onek2
+         Filter: (((unique2 = 11) AND (stringu1 < 'B'::name)) OR (unique1 = 0))
+ Optimizer: Pivotal Optimizer (GPORCA)
+(4 rows)
 
 select unique1, unique2 from onek2
   where (unique2 = 11 and stringu1 < 'B') or unique1 = 0;
