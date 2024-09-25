@@ -4279,18 +4279,13 @@ explain (costs off) delete from inh_lp where a = 1;
 -- Ensure we don't exclude normal relations when we only expect to exclude
 -- inheritance children
 explain (costs off) update inh_lp1 set value = 10 where a = 2;
-                       QUERY PLAN                       
---------------------------------------------------------
+             QUERY PLAN              
+-------------------------------------
  Update on inh_lp1
-   ->  Result
-         One-Time Filter: true
-         ->  Result
-               ->  Result
-                     ->  Split
-                           ->  Result
-                                 One-Time Filter: false
- Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+   ->  Seq Scan on inh_lp1
+         Filter: (a = 2)
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 drop table inh_lp cascade;
 NOTICE:  drop cascades to 2 other objects
@@ -4478,19 +4473,15 @@ explain (costs off) select * from listp1 where a = 2;
 (4 rows)
 
 explain (costs off) update listp1 set a = 1 where a = 2;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Update on listp1
-   ->  Result
-         One-Time Filter: true
-         ->  Result
-               ->  Redistribute Motion 3:3  (slice1; segments: 3)
-                     Hash Key: listp1_1.a
-                     ->  Split
-                           ->  Seq Scan on listp1 listp1_1
-                                 Filter: (a = 2)
- Optimizer: Pivotal Optimizer (GPORCA)
-(10 rows)
+   ->  Explicit Redistribute Motion 1:3  (slice1; segments: 1)
+         ->  Split
+               ->  Seq Scan on listp1
+                     Filter: (a = 2)
+ Optimizer: Postgres query optimizer
+(6 rows)
 
 -- constraint exclusion enabled
 set constraint_exclusion to 'on';
@@ -4504,19 +4495,13 @@ explain (costs off) select * from listp1 where a = 2;
 (4 rows)
 
 explain (costs off) update listp1 set a = 1 where a = 2;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+             QUERY PLAN              
+-------------------------------------
  Update on listp1
    ->  Result
-         One-Time Filter: true
-         ->  Result
-               ->  Redistribute Motion 3:3  (slice1; segments: 3)
-                     Hash Key: listp1_1.a
-                     ->  Split
-                           ->  Seq Scan on listp1 listp1_1
-                                 Filter: (a = 2)
- Optimizer: Pivotal Optimizer (GPORCA)
-(10 rows)
+         One-Time Filter: false
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 reset constraint_exclusion;
 reset enable_partition_pruning;
