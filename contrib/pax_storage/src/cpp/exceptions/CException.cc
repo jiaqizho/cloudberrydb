@@ -269,6 +269,7 @@ static const char *exception_names[] = {
     "Toast lz4 got error",
     "Invalid external toast",
     "Invalid index type",
+    "Value overflow",
 };
 
 // don't forge regsiter the description of the exception

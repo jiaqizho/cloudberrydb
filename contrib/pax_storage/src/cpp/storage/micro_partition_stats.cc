@@ -1132,6 +1132,22 @@ void MicroPartitionStats::CopyDatum(Datum src, Datum *dst, int typlen,
         alloc_new_datum(val, len, dst);
       }
     }
+  } else {
+    /* Pass by reference, but not varlena, so not toasted */
+    Size real_size;
+    char *resultptr;
+
+    real_size = datumGetSize(src, typbyval, typlen);
+    resultptr = (char *)PAX_NEW_ARRAY<char>(real_size);
+    memcpy(resultptr, DatumGetPointer(src), real_size);
+
+    if (*dst == 0) {
+      *dst = PointerGetDatum(resultptr);
+    } else {
+      auto old_datum = (char *)cbdb::DatumToPointer(*dst);
+      PAX_DELETE(old_datum);
+      *dst = PointerGetDatum(resultptr);
+    }
   }
 }
 
@@ -1325,6 +1341,7 @@ std::string MicroPartitionStats::ToValue(Datum datum, int typlen,
   }
   // byref but fixed size
   Assert(typlen > 0);
+  Assert(datum);
   return std::string(reinterpret_cast<char *>(cbdb::DatumToPointer(datum)),
                      typlen);
 }

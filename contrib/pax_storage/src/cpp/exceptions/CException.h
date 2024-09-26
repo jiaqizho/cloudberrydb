@@ -123,6 +123,7 @@ class CException {
     kExTypeToastLZ4Error,
     kExTypeInvalidExternalToast,
     kExTypeInvalidIndexType,
+    kExTypeValueOverflow,
     kExTypeEnd,
   };
 
