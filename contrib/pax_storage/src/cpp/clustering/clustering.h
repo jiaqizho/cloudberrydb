@@ -13,6 +13,7 @@ class DataClustering {
   enum ClusterType {
     kClusterTypeZOrder,
     kClusterTypeIndex,
+    kClusterTypeLexical,
   };
 
   struct DataClusteringOptions {
@@ -22,7 +23,8 @@ class DataClustering {
  public:
   DataClustering() = default;
   virtual ~DataClustering() = default;
-  virtual void Clustering(ClusteringDataReader *reader, ClusteringDataWriter *writer,
+  virtual void Clustering(ClusteringDataReader *reader,
+                          ClusteringDataWriter *writer,
                           const DataClusteringOptions *options) = 0;
   static DataClustering *CreateDataClustering(const ClusterType type);
 };
