@@ -1150,18 +1150,23 @@ static object_access_hook_type prev_object_access_hook = NULL;
 
 static ProcessUtility_hook_type prev_ProcessUtilit_hook = NULL;
 
-static bool relation_has_zorder_clustered_options(Relation rel) {
+static bool relation_has_cluster_columns_options(Relation rel) {
   auto *options = (paxc::PaxOptions *)(rel->rd_options);
+
+  if (options == nullptr) {
+    return false;
+  }
+
+  // if not zorder and lexical cluster type, return false
+  if (strcasecmp(options->cluster_type, PAX_LEXICAL_CLUSTER_TYPE) != 0 &&
+      strcasecmp(options->cluster_type, PAX_ZORDER_CLUSTER_TYPE) != 0) {
+    return false;
+  }
+
+  // no need to check zorder cluster type, because it has been checked in
+  // PaxObjectAccessHook
   Bitmapset *bms = paxc::paxc_get_columns_index_by_options(
-      rel, options ? options->cluster_columns() : nullptr,
-      [](Form_pg_attribute attr) {
-        // this callback in the paxc env
-        if (!paxc::support_zorder_type(attr->atttypid)) {
-          elog(ERROR, "the type of column %s does not support zorder cluster",
-               attr->attname.data);
-        }
-      },
-      false);
+      rel, options->cluster_columns(), nullptr, false);
 
   if (bms) {
     bms_free(bms);
@@ -1182,15 +1187,14 @@ static bool relation_has_clustered_index(Relation rel) {
 }
 
 static bool table_can_be_clustered(Relation rel) {
-  return relation_has_zorder_clustered_options(rel) ||
+  return relation_has_cluster_columns_options(rel) ||
          relation_has_clustered_index(rel);
 }
 
-static void zorder_cluster_pax_rel(ClusterStmt *stmt, Relation rel,
-                                   Snapshot snapshot) {
-  // TODO(gongxun): is_incremental_cluster should get from stmt
+static void cluster_pax_rel(ClusterStmt *stmt, Relation rel,
+                            Snapshot snapshot) {
   CBDB_TRY();
-  { pax::ZOrderCluster(rel, snapshot, true); }
+  { pax::Cluster(rel, snapshot, false); }
   CBDB_CATCH_DEFAULT();
   CBDB_END_TRY();
 }
@@ -1305,7 +1309,7 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
       if (stmt->relation) {
         Relation rel = table_openrv(stmt->relation, AccessShareLock);
         if (RelationIsPAX(rel)) {
-          bool is_zorder_cluster;
+          bool has_cluster_columns;
           if (stmt->indexname == NULL && !table_can_be_clustered(rel)) {
             ereport(ERROR,
                     (errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -1314,24 +1318,24 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
                             stmt->relation->relname)));
           }
 
-          is_zorder_cluster = relation_has_zorder_clustered_options(rel);
+          has_cluster_columns = relation_has_cluster_columns_options(rel);
 
           // cluster table using indexname,we should check if
           // relation_has_zorder_clusted
-          if (stmt->indexname && is_zorder_cluster) {
+          if (stmt->indexname && has_cluster_columns) {
             elog(ERROR,
                  "cannot using index to cluster table which has "
                  "cluster-columns ");
           }
 
-          if (is_zorder_cluster) {
+          if (has_cluster_columns) {
             if (Gp_role == GP_ROLE_DISPATCH) {
               CdbDispatchUtilityStatement(
                   (Node *)stmt,
                   DF_CANCEL_ON_ERROR | DF_WITH_SNAPSHOT | DF_NEED_TWO_PHASE,
                   GetAssignedOidsForDispatch(), NULL);
             } else if (Gp_role == GP_ROLE_EXECUTE) {
-              zorder_cluster_pax_rel(stmt, rel, GetActiveSnapshot());
+              cluster_pax_rel(stmt, rel, GetActiveSnapshot());
             }
 
             table_close(rel, NoLock);
@@ -1373,7 +1377,7 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
             Oid pax_rel_id = Oid(lfirst_oid(lc));
 
             Relation rel = table_open(pax_rel_id, RowExclusiveLock);
-            if (relation_has_zorder_clustered_options(rel)) {
+            if (relation_has_cluster_columns_options(rel)) {
               stmt->relation = makeNode(RangeVar);
               stmt->relation->schemaname =
                   get_namespace_name(rel->rd_rel->relnamespace);
@@ -1433,8 +1437,8 @@ static void PaxCheckClusterColumns(Relation rel, const char *cluster_columns) {
     indexOid = lfirst_oid(index);
     if (get_index_isclustered(indexOid)) {
       elog(ERROR,
-           "pax table has previously clustered index, can't set zorder "
-           "cluster reloptions");
+           "pax table has previously clustered index, can't set "
+           "cluster_columns reloptions");
     }
   }
 
