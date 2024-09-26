@@ -82,6 +82,7 @@ set(pax_clustering_src
   clustering/sorter_index.cc
   clustering/zorder_clustering.cc
   clustering/index_clustering.cc
+  clustering/lexical_clustering.cc
   clustering/pax_clustering_reader.cc
   clustering/pax_clustering_writer.cc
   clustering/zorder_utils.cc

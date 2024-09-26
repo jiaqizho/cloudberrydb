@@ -53,6 +53,11 @@ static const char *kSelfColumnEncodingClauseWhiteList[] = {
     PAX_SOPT_COMPLEVEL,
 };
 
+static const char *kSelfClusterTypeWhiteList[] = {
+    PAX_ZORDER_CLUSTER_TYPE,
+    PAX_LEXICAL_CLUSTER_TYPE,
+};
+
 static const relopt_parse_elt kSelfReloptTab[] = {
     // relation->rd_options has stored PaxOptions, but when call
     // RelationGetParallelWorkers() outsize of extension, kernel not know about
@@ -65,6 +70,8 @@ static const relopt_parse_elt kSelfReloptTab[] = {
     // allow with encoding
     {PAX_SOPT_COMPTYPE, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, compress_type)},
+    {PAX_SOPT_CLUSTER_TYPE, RELOPT_TYPE_STRING,
+     offsetof(PaxOptions, cluster_type)},
     {PAX_SOPT_COMPLEVEL, RELOPT_TYPE_INT, offsetof(PaxOptions, compress_level)},
     {PAX_SOPT_PARTITION_BY, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, partition_by_offset)},
@@ -76,6 +83,7 @@ static const relopt_parse_elt kSelfReloptTab[] = {
      offsetof(PaxOptions, bloomfilter_columns_offset)},
     {PAX_SOPT_CLUSTER_COLUMNS, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, cluster_columns_offset)},
+
 };
 
 static void paxc_validate_rel_options_storage_format(const char *value) {
@@ -112,6 +120,17 @@ static void paxc_validate_rel_option(PaxOptions *options) {
   }
 }
 
+static void paxc_validate_rel_options_cluster_type(const char *value) {
+  size_t i;
+
+  for (i = 0; i < lengthof(kSelfClusterTypeWhiteList); i++) {
+    if (strcmp(value, kSelfClusterTypeWhiteList[i]) == 0) return;
+  }
+  ereport(ERROR,
+          (errmsg("unsupported cluster type: '%s', only support %s and %s",
+                  value, PAX_ZORDER_CLUSTER_TYPE, PAX_LEXICAL_CLUSTER_TYPE)));
+}
+
 bytea *paxc_default_rel_options(Datum reloptions, char /*relkind*/,
                                 bool validate) {
   Assert(self_relopt_kind != 0);
@@ -121,6 +140,7 @@ bytea *paxc_default_rel_options(Datum reloptions, char /*relkind*/,
 
   PAX_COPY_STR_OPT(rdopts, storage_format);
   PAX_COPY_STR_OPT(rdopts, compress_type);
+  PAX_COPY_STR_OPT(rdopts, cluster_type);
   return rdopts;
 }
 
@@ -316,6 +336,10 @@ void paxc_reg_rel_options() {
                        "minmax columns", NULL, NULL, AccessExclusiveLock);
   add_string_reloption(self_relopt_kind, PAX_SOPT_CLUSTER_COLUMNS,
                        "cluster columns", NULL, NULL, AccessExclusiveLock);
+  add_string_reloption(self_relopt_kind, PAX_SOPT_CLUSTER_TYPE, "cluster type",
+                       PAX_CLUSTER_TYPE_DEFAULT,
+                       paxc_validate_rel_options_cluster_type,
+                       AccessExclusiveLock);
 }
 
 }  // namespace paxc
