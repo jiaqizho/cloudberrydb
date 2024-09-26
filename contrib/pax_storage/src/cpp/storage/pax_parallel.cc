@@ -2,6 +2,7 @@
 
 #include "access/pax_visimap.h"
 #include "comm/paxc_wrappers.h"
+#include "comm/vec_numeric.h"
 #include "catalog/pax_aux_table.h"
 #include "catalog/pg_pax_tables.h"
 #include "storage/file_system.h"
@@ -14,6 +15,28 @@
 
 #ifdef VEC_BUILD
 
+namespace cbdb {
+static BpChar *BpcharInput(const char *s, size_t len, int32 atttypmod) {
+  CBDB_WRAP_START;
+  { return bpchar_input(s, len, atttypmod); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
+static VarChar *VarcharInput(const char *s, size_t len, int32 atttypmod) {
+  CBDB_WRAP_START;
+  { return varchar_input(s, len, atttypmod); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
+static text *CstringToText(const char *s, size_t len) {
+  CBDB_WRAP_START;
+  { return cstring_to_text_with_len(s, len); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+}
 namespace pax {
 
 class PaxRecordBatchGenerator {
@@ -226,83 +249,95 @@ inline auto ToScalarValue(const arrow::Scalar *scalar) {
   return derived->value;
 }
 
-static Datum ArrowScalarToDatum(const std::shared_ptr<arrow::Scalar> &p_scalar, Oid *oid) {
+static std::pair<Datum, bool> ArrowScalarToDatum(const std::shared_ptr<arrow::Scalar> &p_scalar,
+                                                 Form_pg_attribute attr) {
   auto scalar = p_scalar.get();
 
-  *oid = InvalidOid;
   switch (scalar->type->id()) {
     case arrow::Type::BOOL:
     {
       auto v = ToScalarValue<arrow::BooleanScalar>(scalar);
-      *oid = BOOLOID;
-      return BoolGetDatum(v);
-    }
-    case arrow::Type::UINT8:
-    {
-      auto v = ToScalarValue<arrow::UInt8Scalar>(scalar);
-      return UInt8GetDatum(v);
+      return {BoolGetDatum(v), true};
     }
     case arrow::Type::INT8:
     {
       auto v = ToScalarValue<arrow::Int8Scalar>(scalar);
-      *oid = CHAROID;
-      return Int8GetDatum(v);
-    }
-    case arrow::Type::UINT16:
-    {
-      auto v = ToScalarValue<arrow::UInt16Scalar>(scalar);
-      return UInt16GetDatum(v);
+      return {Int8GetDatum(v), true};
     }
     case arrow::Type::INT16:
     {
       auto v = ToScalarValue<arrow::Int16Scalar>(scalar);
-      *oid = INT2OID;
-      return Int16GetDatum(v);
-    }
-    case arrow::Type::UINT32:
-    {
-      auto v = ToScalarValue<arrow::UInt32Scalar>(scalar);
-      return UInt32GetDatum(v);
+      return {Int16GetDatum(v), true};
     }
     case arrow::Type::INT32:
     {
       // candicate: int4, xid, oid
       auto v = ToScalarValue<arrow::Int32Scalar>(scalar);
-      *oid = INT4OID;
-      return Int32GetDatum(v);
-    }
-    case arrow::Type::UINT64:
-    {
-      auto v = ToScalarValue<arrow::UInt64Scalar>(scalar);
-      return UInt64GetDatum(v);
+      return {Int32GetDatum(v), true};
     }
     case arrow::Type::INT64:
     {
       auto v = ToScalarValue<arrow::Int64Scalar>(scalar);
-      *oid = INT8OID;
-      return Int64GetDatum(v);
+      return {Int64GetDatum(v), true};
     }
     case arrow::Type::FLOAT:
     {
       auto v = ToScalarValue<arrow::FloatScalar>(scalar);
-      *oid = FLOAT4OID;
-      return Float4GetDatum(v);
+      return {Float4GetDatum(v), true};
     }
     case arrow::Type::DOUBLE:
     {
       auto v = ToScalarValue<arrow::DoubleScalar>(scalar);
-      *oid = FLOAT8OID;
-      return Float8GetDatum(v);
+      return {Float8GetDatum(v), true};
     }
     case arrow::Type::DATE32:
     {
       auto v = ToScalarValue<arrow::Date32Scalar>(scalar);
-      *oid = DATEOID;
-      return Int32GetDatum(v);
+      return {Int32GetDatum(v), true};
+    }
+    case arrow::Type::NUMERIC128:
+    {
+      auto const v = ToScalarValue<arrow::Numeric128Scalar>(scalar);
+      auto high = static_cast<int64>(v.high_bits());
+      auto low = static_cast<int64>(v.low_bits());
+      auto datum = vec_short_numeric_to_datum(&low, &high);
+      return {datum, true};
+    }
+    case arrow::Type::TIMESTAMP:
+    {
+      auto v = ToScalarValue<arrow::TimestampScalar>(scalar);
+      switch (attr->atttypid)
+      {
+      case TIMEOID:
+      case TIMESTAMPOID:
+      case TIMESTAMPTZOID:
+        return {Int64GetDatum(v), true};
+      default:
+        return {0, false};
+      }
+      break;
+    }
+    case arrow::Type::STRING:
+    {
+      auto v = ToScalarValue<arrow::StringScalar>(scalar);
+      const char *s = reinterpret_cast<const char *>(v->data());
+      auto len = static_cast<size_t>(v->size());
+      switch (attr->atttypid) {
+        case TEXTOID:
+          return {PointerGetDatum(cbdb::CstringToText(s, len)), true};
+        case VARCHAROID:
+          // trailing spaces will be removed
+          return {PointerGetDatum(cbdb::VarcharInput(s, len, attr->atttypmod)), true};
+        case BPCHAROID:
+          // stripped spaces will be added
+          return {PointerGetDatum(cbdb::BpcharInput(s, len, attr->atttypmod)), true};
+        default: break;
+      }
+      return {0, false};
     }
     default: break;
   }
-  return 0;
+  return {0, false};
 }
 
 static bool InitializeScanKey(ScanKey key, int flags, AttrNumber attno, StrategyNumber strategy, Oid subtype, Oid collation, Datum argument) {
@@ -330,11 +365,10 @@ static inline Oid adjustRValueType(Oid ltype, Oid candicate_rtype) {
 }
 
 static bool InitializeScanKey(ScanKey key, Form_pg_attribute attr, StrategyNumber strategy, const arrow::Datum *argument) {
-  Oid oid;
-  auto value = ArrowScalarToDatum(argument->scalar(), &oid);
-  if (OidIsValid(oid)) {
-    oid = adjustRValueType(attr->atttypid, oid);
-    return OidIsValid(oid) && InitializeScanKey(key, 0, attr->attnum, strategy, oid, attr->attcollation, value);
+  auto value = ArrowScalarToDatum(argument->scalar(), attr);
+  if (value.second) {
+    auto oid = attr->atttypid;
+    return InitializeScanKey(key, 0, attr->attnum, strategy, oid, attr->attcollation, value.first);
   }
   return false;
 }
@@ -459,6 +493,9 @@ arrow::Status ParallelScanDesc::Initialize(uint32_t tableoid, const std::shared_
 void ParallelScanDesc::Release() {
   Assert(relation_);
 
+  if (pax_enable_debug && pax_filter_) {
+    pax_filter_->LogStatistics();
+  }
   cbdb::TableClose(relation_, NoLock);
   relation_ = nullptr;
   iterator_ = nullptr;
