@@ -10,9 +10,9 @@ class TupleSorter final : public Sorter {
     TupleSorterOptions base;
     TupleDesc tup_desc;
     AttrNumber *attr;
+    Oid *sortOperators;
+    Oid *sortCollations;
     int nkeys;
-    Oid sortOperators;
-    Oid sortCollations;
     bool nulls_first_flags;
     int work_mem;
     HeapTupleSorterOptions() { base.type = kTupleSorterTypeHeap; }

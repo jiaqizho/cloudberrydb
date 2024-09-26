@@ -1,9 +1,14 @@
 #include "access/pax_table_cluster.h"
 
+#include "comm/cbdb_api.h"
+
+#include <map>
+
 #include "access/paxc_rel_options.h"
 #include "catalog/pax_aux_table.h"
 #include "clustering/clustering.h"
 #include "clustering/index_clustering.h"
+#include "clustering/lexical_clustering.h"
 #include "clustering/pax_clustering_reader.h"
 #include "clustering/pax_clustering_writer.h"
 #include "clustering/zorder_clustering.h"
@@ -11,6 +16,8 @@
 #include "storage/micro_partition_metadata.h"
 
 #define CLUSTER_SORT_MEMORY 128000
+
+static const char *pg_less_operator = "<";
 
 namespace pax {
 void DeleteClusteringFiles(
@@ -24,11 +31,87 @@ void DeleteClusteringFiles(
   // TODO(gongxun): mark files deleted or delete files directly?
 }
 
-void ZOrderCluster(Relation rel, Snapshot snapshot,
-                   bool is_incremental_cluster) {
-  auto columns = cbdb::GetClusterColumnsIndex(rel);
+// TODO(gongxun): should check more operators
+static Oid OperatorGetCast(const char *operatorName, Oid operatorNamespace,
+                           Oid leftObjectId, Oid rightObjectId) {
+  static const std::map<Oid, Oid> cast_oids = {{VARCHAROID, TEXTOID}};
 
+  Assert(leftObjectId == rightObjectId);
+
+  auto it = cast_oids.find(leftObjectId);
+  if (it != cast_oids.end()) {
+    leftObjectId = it->second;
+    rightObjectId = it->second;
+  }
+
+  Oid opno;
+  FmgrInfo finfo;
+  CBDB_CHECK(cbdb::PGGetOperator(operatorName, operatorNamespace, leftObjectId,
+                                 rightObjectId, &opno, &finfo),
+             cbdb::CException::kExTypeInvalid, "Failed to get sort operator");
+  return opno;
+}
+
+static std::unique_ptr<clustering::DataClustering::DataClusteringOptions>
+CreateDataClusteringOptions(const clustering::DataClustering::ClusterType type,
+                            Relation rel) {
+  auto columns = cbdb::GetClusterColumnsIndex(rel);
+  CBDB_CHECK(!columns.empty(), cbdb::CException::kExTypeInvalid,
+             "No columns to cluster");
+  switch (type) {
+    case clustering::DataClustering::ClusterType::kClusterTypeZOrder: {
+      auto options = std::make_unique<
+          clustering::ZOrderClustering::ZOrderClusteringOptions>(
+          rel->rd_att, columns.size(), false, maintenance_work_mem);
+      for (int i = 0; i < options->nkeys; i++) {
+        // AttrNumer is columns_index + 1
+        options->attr[i] = columns[i] + 1;
+      }
+      return options;
+    }
+    case clustering::DataClustering::ClusterType::kClusterTypeLexical: {
+      auto options = std::make_unique<
+          clustering::LexicalClustering::LexicalClusteringOptions>(
+          rel->rd_att, columns.size(), false, maintenance_work_mem);
+
+      for (int i = 0; i < options->nkeys; i++) {
+        // AttrNumer is columns_index + 1
+        options->attr[i] = columns[i] + 1;
+        options->sortCollations[i] =
+            rel->rd_att->attrs[columns[i]].attcollation;
+        Oid type_id = rel->rd_att->attrs[columns[i]].atttypid;
+
+        Oid op_oid = OperatorGetCast(pg_less_operator, PG_CATALOG_NAMESPACE,
+                                     type_id, type_id);
+        CBDB_CHECK(
+            OidIsValid(op_oid), cbdb::CException::kExTypeInvalid,
+            pax::fmt("Failed to get sort operator for type %u", type_id));
+        options->sortOperators[i] = op_oid;
+      }
+      return options;
+    }
+    default:
+      CBDB_RAISE(cbdb::CException::kExTypeInvalid, "Unsupported cluster type");
+  }
+}
+
+clustering::DataClustering::ClusterType GetClusterType(Relation rel) {
+  paxc::PaxOptions *pax_options = (paxc::PaxOptions *)rel->rd_options;
+
+  if (strcasecmp(pax_options->cluster_type, PAX_LEXICAL_CLUSTER_TYPE) == 0) {
+    return clustering::DataClustering::ClusterType::kClusterTypeLexical;
+  } else if (strcasecmp(pax_options->cluster_type, PAX_ZORDER_CLUSTER_TYPE) ==
+             0) {
+    return clustering::DataClustering::ClusterType::kClusterTypeZOrder;
+  }
+  CBDB_RAISE(cbdb::CException::kExTypeInvalid, "Unsupported cluster type");
+}
+
+void Cluster(Relation rel, Snapshot snapshot, bool is_incremental_cluster) {
+  auto columns = cbdb::GetClusterColumnsIndex(rel);
   CBDB_CHECK(!columns.empty(), cbdb::CException::kExTypeInvalid);
+
+  clustering::DataClustering::ClusterType cluster_type = GetClusterType(rel);
 
   std::vector<MicroPartitionMetadata> delete_files;
   auto iter = MicroPartitionInfoIterator::New(rel, snapshot);
@@ -43,28 +126,16 @@ void ZOrderCluster(Relation rel, Snapshot snapshot,
         return true;
       });
 
-  auto reader = std::make_unique<clustering::PaxClusteringReader>(rel, std::move(wrap));
+  auto reader =
+      std::make_unique<clustering::PaxClusteringReader>(rel, std::move(wrap));
 
   auto writer = std::make_unique<clustering::PaxClusteringWriter>(rel);
 
-  // create cluster, singleton
-  auto cluster = clustering::DataClustering::CreateDataClustering(
-      clustering::DataClustering::kClusterTypeZOrder);
+  auto options = CreateDataClusteringOptions(cluster_type, rel);
 
-  clustering::ZOrderClustering::ZOrderClusteringOptions options;
-  options.nkeys = columns.size();
-  
-  AttrNumber attrs[options.nkeys];
-  for (int i = 0; i < options.nkeys; i++) {
-    // AttrNumer is columns_index + 1
-    attrs[i] = columns[i] + 1;
-  }
-  options.attr = attrs;
-  options.tup_desc = rel->rd_att;
-  options.nulls_first_flags = false;
-  options.work_mem = maintenance_work_mem;
+  auto cluster = clustering::DataClustering::CreateDataClustering(cluster_type);
 
-  cluster->Clustering(reader.get(), writer.get(), &options);
+  cluster->Clustering(reader.get(), writer.get(), options.get());
 
   writer->Close();
   reader->Close();
@@ -79,8 +150,8 @@ void IndexCluster(Relation old_rel, Relation new_rel, Relation index,
                   Snapshot snapshot) {
   auto iter = MicroPartitionInfoIterator::New(old_rel, snapshot);
 
-  auto reader =
-      std::make_unique<clustering::PaxClusteringReader>(old_rel, std::move(iter));
+  auto reader = std::make_unique<clustering::PaxClusteringReader>(
+      old_rel, std::move(iter));
 
   auto writer = std::make_unique<clustering::PaxClusteringWriter>(new_rel);
 
