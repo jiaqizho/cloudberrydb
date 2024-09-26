@@ -4,8 +4,10 @@ test: cbdb_parallel
 test: alter_distributed 
 test: toast detoast ddl numeric types filter
 test: update
-test: statistics
 test: statistics_bloom_filter
+
+test: statistics/statistics 
+test: statistics/min_max_time_types statistics/min_max_text_types statistics/min_max_other_types statistics/min_max_net_types statistics/min_max_int_types statistics/min_max_geo_types statistics/min_max_float_types statistics/min_max_bit_byte_types
 
 test: visimap_vec_compact
 test: visimap_vec_storage
