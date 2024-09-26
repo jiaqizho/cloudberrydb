@@ -38,7 +38,6 @@ float randomFloat() {
 }
 
 int compareFloat(float a, float b) {
-  const float EPSILON = 1e-6;  // 1e-6 is a good choice for float comparison
   if (fabs(a - b) < EPSILON) {
     return 0;
   }
