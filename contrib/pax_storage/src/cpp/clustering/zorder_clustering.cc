@@ -28,6 +28,9 @@ void ZOrderClustering::Clustering(ClusteringDataReader *reader,
   TupleTableSlot *zorder_slot;
   TupleTableSlot *zorder_sorted_slot;
   TupleSorter::HeapTupleSorterOptions sorter_options;
+  AttrNumber attr_number[1];
+  Oid zorder_default_collation = DEFAULT_COLLATION_OID;
+  Oid zorder_default_operator = ByteaLessOperator;
 
   int buffer_len = zorder_options->nkeys * N_BYTES;
   char column_datum_buffer[buffer_len];
@@ -51,12 +54,12 @@ void ZOrderClustering::Clustering(ClusteringDataReader *reader,
   sorter_options.nulls_first_flags = zorder_options->nulls_first_flags;
   sorter_options.work_mem = zorder_options->work_mem;
   sorter_options.nkeys = 1;
-  sorter_options.attr = (AttrNumber *)cbdb::Palloc(sizeof(AttrNumber));
+  sorter_options.attr = &attr_number[0];
   // zorder-value is the last column
   sorter_options.attr[0] = tup_desc->natts;
 
-  sorter_options.sortCollations = DEFAULT_COLLATION_OID;
-  sorter_options.sortOperators = ByteaLessOperator;
+  sorter_options.sortCollations = &zorder_default_collation;
+  sorter_options.sortOperators = &zorder_default_operator;
 
   // TODO(gongxun): use dependency injection to support different sorter
   // implementations

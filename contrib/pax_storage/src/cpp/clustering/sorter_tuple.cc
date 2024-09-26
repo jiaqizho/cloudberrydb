@@ -16,7 +16,7 @@ void TupleSorter::Init() {
   {
     sort_state_ = tuplesort_begin_heap(
         options_.tup_desc, options_.nkeys, options_.attr,
-        &options_.sortOperators, &options_.sortCollations,
+        options_.sortOperators, options_.sortCollations,
         &options_.nulls_first_flags, options_.work_mem, NULL, false);
   }
   CBDB_WRAP_END;
@@ -24,10 +24,7 @@ void TupleSorter::Init() {
 
 void TupleSorter::DeInit() {
   CBDB_WRAP_START;
-  {
-    pfree(options_.attr);
-    tuplesort_end(sort_state_);
-  }
+  { tuplesort_end(sort_state_); }
   CBDB_WRAP_END;
 }
 

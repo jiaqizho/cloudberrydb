@@ -691,3 +691,4 @@ void cbdb::ExecStoreVirtualTuple(TupleTableSlot *slot) {
   { ::ExecStoreVirtualTuple(slot); }
   CBDB_WRAP_END;
 }
+

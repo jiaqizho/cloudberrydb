@@ -64,6 +64,7 @@ set(pax_storage_src
    clustering/sorter_index.cc
    clustering/zorder_clustering.cc
    clustering/index_clustering.cc
+   clustering/lexical_clustering.cc
    clustering/zorder_utils.cc
  )
  
@@ -129,6 +130,9 @@ set(PAX_CLUSTERING_HEADERS
   clustering/clustering.h
   clustering/clustering_reader.h
   clustering/clustering_writer.h
+  clustering/index_clustering.h
+  clustering/lexical_clustering.h
+  clustering/zorder_clustering.h
   clustering/zorder_utils.h
 )
 

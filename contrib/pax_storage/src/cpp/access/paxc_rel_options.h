@@ -27,6 +27,9 @@ namespace paxc {
 #define PAX_MIN_PARALLEL_WORKERS 0
 #define PAX_MAX_PARALLEL_WORKERS 64
 #define PAX_DEFAULT_PARALLEL_WORKERS -1
+#define PAX_ZORDER_CLUSTER_TYPE "zorder"
+#define PAX_LEXICAL_CLUSTER_TYPE "lexical" 
+#define PAX_CLUSTER_TYPE_DEFAULT PAX_ZORDER_CLUSTER_TYPE
 
 #define PAX_SOPT_STORAGE_FORMAT "storage_format"
 #define PAX_SOPT_COMPTYPE SOPT_COMPTYPE
@@ -37,6 +40,7 @@ namespace paxc {
 #define PAX_SOPT_BLOOMFILTER_COLUMNS "bloomfilter_columns"
 #define PAX_SOPT_CLUSTER_COLUMNS "cluster_columns"
 #define PAX_SOPT_PARALLEL_WORKERS "parallel_workers"
+#define PAX_SOPT_CLUSTER_TYPE  "cluster_type"
 
 // plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
@@ -46,6 +50,7 @@ struct PaxOptions {
   StdRdOptions rd_options;
   char storage_format[16];
   char compress_type[16];
+  char cluster_type[16];
   int compress_level;
   int partition_by_offset = 0;
   int partition_ranges_offset = 0;

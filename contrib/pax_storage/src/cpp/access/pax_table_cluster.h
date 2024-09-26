@@ -8,7 +8,8 @@ namespace pax {
 void DeleteClusteringFiles(
     Relation rel, Snapshot snapshot,
     std::shared_ptr<IteratorBase<MicroPartitionMetadata>> iter);
-void ZOrderCluster(Relation rel, Snapshot snapshot, bool is_incremental_cluster);
+
+void Cluster(Relation rel, Snapshot snapshot, bool is_incremental_cluster);
 
 void IndexCluster(Relation old_rel, Relation new_rel, Relation index,
                   Snapshot snapshot);
