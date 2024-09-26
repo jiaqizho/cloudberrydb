@@ -133,6 +133,7 @@ reset client_min_messages;
 set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t1 where v1 in (12, 55, 77); -- different group
+LOG:  kind group, filter rate: 0 / 20
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -144,6 +145,8 @@ select * from t1 where v1 in (12, 55, 77); -- different group
 (6 rows)
 
 select * from t1 where v1 in (12, 55, 77) and v2 > 100;
+LOG:  kind file, filter rate: 0 / 2
+LOG:  kind group, filter rate: 0 / 20
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -240,6 +243,7 @@ reset client_min_messages;
 set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t2 where v1 in ('12', '55', '77'); -- different group
+LOG:  kind group, filter rate: 0 / 20
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -251,6 +255,8 @@ select * from t2 where v1 in ('12', '55', '77'); -- different group
 (6 rows)
 
 select * from t2 where v1 in ('12', '55', '77') and v2 > '100';
+LOG:  kind file, filter rate: 0 / 2
+LOG:  kind group, filter rate: 0 / 20
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
