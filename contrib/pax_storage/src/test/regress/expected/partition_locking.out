@@ -144,6 +144,10 @@ commit;
 -- drop
 begin;
 drop table partlockt;
+-- pax have different numbers of auxiliary tables, when dropping a table,
+-- it need to add more locks to the auxiliary table and the toast table 
+-- and index table associated with the auxiliary table, as well as the 
+-- toast table and index table associated with the auxiliary table.
 select * from locktest_master where coalesce not like 'gp_%' and coalesce not like 'pg_%';
    coalesce    |        mode         | locktype |  node  
 ---------------+---------------------+----------+--------
@@ -175,7 +179,25 @@ select * from locktest_master where coalesce not like 'gp_%' and coalesce not li
  dropped table | AccessExclusiveLock | relation | master
  dropped table | AccessExclusiveLock | relation | master
  dropped table | AccessExclusiveLock | relation | master
-(28 rows)
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+(46 rows)
 
 select * from locktest_segments where coalesce not like 'gp_%' and coalesce not like 'pg_%';
    coalesce    |        mode         | locktype |    node    
@@ -208,7 +230,25 @@ select * from locktest_segments where coalesce not like 'gp_%' and coalesce not 
  dropped table | AccessExclusiveLock | relation | n segments
  dropped table | AccessExclusiveLock | relation | n segments
  dropped table | AccessExclusiveLock | relation | n segments
-(28 rows)
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+(46 rows)
 
 commit;
 -- AO table (ao segments, block directory won't exist after create)
@@ -497,7 +537,25 @@ select * from locktest_master where coalesce not like 'gp_%' and coalesce not li
  dropped table | AccessExclusiveLock | relation | master
  dropped table | AccessExclusiveLock | relation | master
  dropped table | AccessExclusiveLock | relation | master
-(38 rows)
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+ dropped table | AccessExclusiveLock | relation | master
+(56 rows)
 
 select * from locktest_segments where coalesce not like 'gp_%' and coalesce not like 'pg_%';
    coalesce    |        mode         | locktype |    node    
@@ -540,7 +598,25 @@ select * from locktest_segments where coalesce not like 'gp_%' and coalesce not 
  dropped table | AccessExclusiveLock | relation | n segments
  dropped table | AccessExclusiveLock | relation | n segments
  dropped table | AccessExclusiveLock | relation | n segments
-(38 rows)
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+ dropped table | AccessExclusiveLock | relation | n segments
+(56 rows)
 
 commit;
 reset optimizer;

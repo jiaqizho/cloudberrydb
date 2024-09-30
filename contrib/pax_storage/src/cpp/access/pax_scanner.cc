@@ -210,6 +210,8 @@ bool PaxScanDesc::BitmapNextBlock(struct TBMIterateResult *tbmres) {
   return true;
 }
 
+// should skip invisible tuple, and fetch next tuple like
+// appendonly_scan_bitmap_next_tuple
 bool PaxScanDesc::BitmapNextTuple(struct TBMIterateResult *tbmres,
                                   TupleTableSlot *slot) {
   ItemPointerData tid;
@@ -220,7 +222,6 @@ bool PaxScanDesc::BitmapNextTuple(struct TBMIterateResult *tbmres,
 
     ItemPointerSet(&tid, tbmres->blockno, cindex_);
   }
-
   while (cindex_ < tbmres->ntuples) {
     // The maximum value of the last 16 bits in CTID is 0x7FFF + 1,
     // i.e. 0x8000. See layout of ItemPointerData in PAX
@@ -288,13 +289,19 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   reader_options.table_space_id = relation->rd_rel->reltablespace;
   reader_options.filter = filter;
 
+  // aux_snapshot is used to get the micro partition metadata
+  // from the micro partition files.
+  Snapshot aux_snapshot = (snapshot && snapshot->snapshot_type == SNAPSHOT_ANY)
+                              ? GetTransactionSnapshot()
+                              : snapshot;
   std::unique_ptr<pax::IteratorBase<pax::MicroPartitionMetadata>> iter;
   if (desc->rs_base_.rs_parallel) {
     ParallelBlockTableScanDesc pt_scan = (ParallelBlockTableScanDesc)pscan;
 
-    iter = MicroPartitionInfoParallelIterator::New(relation, snapshot, pt_scan);
+    iter = MicroPartitionInfoParallelIterator::New(relation, aux_snapshot,
+                                                   pt_scan);
   } else {
-    iter = MicroPartitionInfoIterator::New(relation, snapshot);
+    iter = MicroPartitionInfoIterator::New(relation, aux_snapshot);
   }
 
   if (filter->HasMicroPartitionFilter()) {

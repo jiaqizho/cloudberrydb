@@ -86,6 +86,10 @@ commit;
 -- drop
 begin;
 drop table partlockt;
+-- pax have different numbers of auxiliary tables, when dropping a table,
+-- it need to add more locks to the auxiliary table and the toast table 
+-- and index table associated with the auxiliary table, as well as the 
+-- toast table and index table associated with the auxiliary table.
 select * from locktest_master where coalesce not like 'gp_%' and coalesce not like 'pg_%';
 select * from locktest_segments where coalesce not like 'gp_%' and coalesce not like 'pg_%';
 commit;

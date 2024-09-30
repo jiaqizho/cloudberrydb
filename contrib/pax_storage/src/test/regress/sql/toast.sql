@@ -1,5 +1,5 @@
 
-CREATE TABLE toastable_heap(a text, b varchar, c int) distributed by (b);
+CREATE TABLE toastable_heap(a text, b varchar, c int) using heap distributed by (b);
 CREATE TABLE toastable_ao(a text, b varchar, c int) with(appendonly=true, compresslevel=1) distributed by (b);
 ALTER TABLE toastable_ao ALTER COLUMN a SET STORAGE EXTERNAL;
 
@@ -78,7 +78,7 @@ DROP TABLE toastable_ao;
 -- TODO: figure out a way to verify that the toast tables are dropped
 
 -- Test TOAST_MAX_CHUNK_SIZE changes for upgrade.
-CREATE TABLE toast_chunk_test (a bytea);
+CREATE TABLE toast_chunk_test (a bytea) using heap;
 ALTER TABLE toast_chunk_test ALTER COLUMN a SET STORAGE EXTERNAL;
 
 -- Alter our TOAST_MAX_CHUNK_SIZE and insert a value we know will be toasted.

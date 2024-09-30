@@ -151,25 +151,25 @@ vacuum heapsizetest;
 select pg_relation_size('heapsizetest') between 3000000 and 5000000; -- 3637248
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select pg_relation_size('heapsizetest', 'fsm') between 250000 and 350000; -- 294912
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select pg_table_size('heapsizetest') between 3000000 and 5000000; -- 4030464
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select pg_table_size('heapsizetest') > pg_relation_size('heapsizetest');
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select pg_indexes_size('heapsizetest');
@@ -181,7 +181,7 @@ select pg_indexes_size('heapsizetest');
 select pg_total_relation_size('heapsizetest') between 3000000 and 5000000; -- 4030464
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select pg_total_relation_size('heapsizetest') = pg_table_size('heapsizetest');
@@ -195,13 +195,13 @@ create index on heapsizetest(a);
 select pg_relation_size('heapsizetest') between 3000000 and 5000000; -- 3637248
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select pg_table_size('heapsizetest') between 3000000 and 5000000; -- 4030464
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select pg_indexes_size('heapsizetest') between 2000000 and 3000000; -- 2490368
@@ -213,7 +213,7 @@ select pg_indexes_size('heapsizetest') between 2000000 and 3000000; -- 2490368
 select pg_total_relation_size('heapsizetest') between 6000000 and 7000000; -- 6520832
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select pg_total_relation_size('heapsizetest') = pg_table_size('heapsizetest') + pg_indexes_size('heapsizetest');
@@ -310,6 +310,6 @@ select pg_total_relation_size('aocssizetest') = pg_table_size('aocssizetest');
 select pg_relation_size(oid) between 3000000 and 5000000 from pg_class where relname = 'heapsizetest'; -- 3637248
  ?column? 
 ----------
- t
+ f
 (1 row)
 
