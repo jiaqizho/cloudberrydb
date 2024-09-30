@@ -143,6 +143,7 @@ drop table ccddl_co, ccddl;
 -- only support CO tables
 create table ccddl (i int encoding (compresstype=RLE_TYPE));
 create table ccddl (i int encoding (compresstype=zlib));
+drop table ccddl;
 create table ccddl (i int encoding (compresstype=zlib))
 	with (appendonly = true);
 

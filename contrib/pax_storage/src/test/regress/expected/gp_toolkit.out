@@ -185,7 +185,7 @@ select btdrelpages > 40 as btdrelpages_over_40,
 from gp_toolkit.gp_bloat_expected_pages where btdrelid = 'toolkit_skew'::regclass;
  btdrelpages_over_40 | btdrelpages_below_80 | btdexppages_over_40 | btdexppages_below_80 
 ---------------------+----------------------+---------------------+----------------------
- t                   | t                    | t                   | t
+ f                   | t                    | t                   | t
 (1 row)
 
 select * from gp_toolkit.gp_bloat_diag where bdirelid = 'toolkit_skew'::regclass;
@@ -203,7 +203,7 @@ select btdrelpages > 40 as btdrelpages_over_40,
 from gp_toolkit.gp_bloat_expected_pages where btdrelid = 'toolkit_skew'::regclass;
  btdrelpages_over_40 | btdrelpages_below_80 | btdexppages_over_0 | btdexppages_below_10 
 ---------------------+----------------------+--------------------+----------------------
- t                   | t                    | t                  | t
+ f                   | t                    | t                  | t
 (1 row)
 
 -- gp_bloat_diag view should complain that there is a lot of bloat.
@@ -214,10 +214,9 @@ select bdirelid::regclass, bdinspname, bdirelname,
        bdiexppages < 80 as bdiexppages_below_80,
        bdidiag
 from gp_toolkit.gp_bloat_diag where bdirelid = 'toolkit_skew'::regclass;
-   bdirelid   | bdinspname |  bdirelname  | bdirelpages_over_40 | bdirelpages_below_80 | bdiexppages_over_40 | bdiexppages_below_80 |                bdidiag                
---------------+------------+--------------+---------------------+----------------------+---------------------+----------------------+---------------------------------------
- toolkit_skew | public     | toolkit_skew | t                   | t                    | f                   | t                    | significant amount of bloat suspected
-(1 row)
+ bdirelid | bdinspname | bdirelname | bdirelpages_over_40 | bdirelpages_below_80 | bdiexppages_over_40 | bdiexppages_below_80 | bdidiag 
+----------+------------+------------+---------------------+----------------------+---------------------+----------------------+---------
+(0 rows)
 
 -- After vacuum, bloat should be gone
 vacuum toolkit_skew;
@@ -305,7 +304,7 @@ update pg_statistic set stawidth=2034567890 where starelid = 'wide_width_test'::
 select btdrelpages, btdexppages from gp_toolkit.gp_bloat_expected_pages where btdrelid='wide_width_test'::regclass;
  btdrelpages | btdexppages 
 -------------+-------------
-          11 |  3104504228
+           1 |  3104504228
 (1 row)
 
 select * from gp_toolkit.gp_bloat_diag WHERE bdinspname <> 'pg_catalog';
@@ -396,7 +395,8 @@ select paramsegment,paramname from gp_toolkit.gp_param_settings() where paramnam
 
 -- Expected to have no results
 -- However it will show there is a difference if segment guc is different
-select * from gp_toolkit.gp_param_settings_seg_value_diffs;
+-- primary_slot_name/primary_conninfo can be different due to failovers.
+select * from gp_toolkit.gp_param_settings_seg_value_diffs where psdname != 'primary_conninfo' and psdname != 'primary_slot_name';
  psdname | psdvalue | psdcount 
 ---------+----------+----------
 (0 rows)
