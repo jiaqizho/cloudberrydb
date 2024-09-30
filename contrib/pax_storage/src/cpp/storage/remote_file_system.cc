@@ -100,14 +100,19 @@ void RemoteFile::Delete() {
 
 void RemoteFile::Close() {
   int ret;
+  const char *err_msg = "";
 
   Assert(ufile_);
   ret = cbdb::UFileClose(ufile_);
+  if (ret < 0) {
+    err_msg = UFileGetLastError(ufile_);
+  }
+  pfree(ufile_);
   ufile_ = nullptr;
-
+  
   CBDB_CHECK(ret >= 0, cbdb::CException::kExTypeIOError,
              fmt("Fail to delete [rc=%d], %s, %s", ret, DebugString().c_str(),
-                 UFileGetLastError(ufile_)));
+                 err_msg));
 }
 
 std::string RemoteFile::GetPath() const { return file_path_; }
