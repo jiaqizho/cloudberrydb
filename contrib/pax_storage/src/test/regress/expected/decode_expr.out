@@ -225,6 +225,9 @@ select * from decodecharao2 order by region, country_code;
  UK           | United States | Europe
 (6 rows)
 
+drop table regions;
+drop table decodecharao1;
+drop table decodecharao2;
 -- Test DECODE() with a varchar field
 begin;
 create table decodevarchar
@@ -1067,8 +1070,8 @@ View definition:
 select * from decode_view order by region, country_code;
       bus_name       | country_code |  region  
 ---------------------+--------------+----------
- Taing Consulting    | US           | Americas
  Test Solutions      | CN           | APJ
+ Taing Consulting    | US           | Americas
  Computers Unlimited | IL           | EMEA
  Parts Plus          | IT           | EMEA
  Kangaroos Inc.      | AU           | 

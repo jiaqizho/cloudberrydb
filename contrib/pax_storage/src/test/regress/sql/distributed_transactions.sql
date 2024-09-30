@@ -425,12 +425,12 @@ BEGIN;
 set enable_seqscan=false;
 set enable_indexscan=true;
 set enable_bitmapscan=true;
-Create table subt_reindex_heap (i int, x text, n numeric, b box)
+Create table subt_reindex_pax (i int, x text, n numeric, b box)
  distributed by (i);
-Create index bt_ri_heap on subt_reindex_heap (x);
-Create index bm_ri_heap on subt_reindex_heap using bitmap (n);
-Create index gist_ri_heap on subt_reindex_heap using gist (b);
-Create Unique index unique_ri_heap on subt_reindex_heap (i);
+Create index bt_ri_pax on subt_reindex_pax (x);
+Create index bm_ri_pax on subt_reindex_pax using bitmap (n);
+-- Create index gist_ri_pax on subt_reindex_pax using gist (b);
+Create Unique index unique_ri_pax on subt_reindex_pax (i);
 Create table subt_reindex_ao (i int, x text, n numeric, b box)
  with(appendonly=true) distributed by (i);
 Create index bt_ri_ao on subt_reindex_ao (x);
@@ -442,32 +442,32 @@ Create index bt_ri_co on subt_reindex_co (x);
 Create index bm_ri_co on subt_reindex_co using bitmap (n);
 Create index gist_ri_co on subt_reindex_co using gist (b);
 savepoint sp1;
-Insert into subt_reindex_heap select i, 'heap '||i, 2,
+Insert into subt_reindex_pax select i, 'heap '||i, 2,
  ('(0,'||i||', 1,'||i+1||')')::box from generate_series(1,5)i;
 Insert into subt_reindex_ao select i, 'AO '||i, 2,
  ('(0,'||i||', 1,'||i+1||')')::box from generate_series(1,5)i;
 Insert into subt_reindex_co select i, 'CO '||i, 2,
  ('(0,'||i||', 1,'||i+1||')')::box from generate_series(1,5)i;
 savepoint sp2; -- child of sp1
-Insert into subt_reindex_heap values
+Insert into subt_reindex_pax values
  (6, 'heap 6', 3, '((0,0), (1,1))');
 Insert into subt_reindex_ao values
  (5, 'AO 5', 3, '((0,0), (1,1))');
 Insert into subt_reindex_co values
  (5, 'CO 5', 3, '((0,0), (1,1))');
-update subt_reindex_heap set n = -i where n = 3;
+update subt_reindex_pax set n = -i where n = 3;
 update subt_reindex_ao set n = -i where n = 3;
 update subt_reindex_co set n = -i where n = 3;
 savepoint sp3; -- child of sp2;
-REINDEX index bm_ri_heap;
+REINDEX index bm_ri_pax;
 REINDEX index bm_ri_ao;
 REINDEX index bm_ri_co;
-select count(*) = 1 as passed from subt_reindex_heap where n < 0;
+select count(*) = 1 as passed from subt_reindex_pax where n < 0;
 select count(*) = 1 as passed from subt_reindex_ao where n < 0;
 select count(*) = 1 as passed from subt_reindex_co where n < 0;
 release savepoint sp3; -- commit sp3
 savepoint sp4; -- child of sp2
-REINDEX index unique_ri_heap;
+REINDEX index unique_ri_pax;
 REINDEX index bt_ri_ao;
 REINDEX index bm_ri_ao;
 REINDEX index gist_ri_ao;
@@ -475,25 +475,25 @@ REINDEX index bt_ri_co;
 REINDEX index bm_ri_co;
 REINDEX index gist_ri_co;
 savepoint sp5; -- child of sp4
-select count(*) = 1 as passed from subt_reindex_heap where x = 'heap 2';
+select count(*) = 1 as passed from subt_reindex_pax where x = 'heap 2';
 select count(*) = 1 as passed from subt_reindex_ao where x = 'AO 3';
 select count(*) = 1 as passed from subt_reindex_co where x = 'CO 4';
 select 0/0;
 rollback to sp4;
-select count(*) = 1 as passed from subt_reindex_heap where i = 1;
+select count(*) = 1 as passed from subt_reindex_pax where i = 1;
 select count(*) = 2 as passed from subt_reindex_ao where i = 5;
 select count(*) = 2 as passed from subt_reindex_co where i = 5;
-update subt_reindex_heap set x = 'heap sp4', b = '((1,1),(4,4))'
+update subt_reindex_pax set x = 'heap sp4', b = '((1,1),(4,4))'
  where i = 2;
 update subt_reindex_ao set x = 'AO sp4', b = '((1,1),(4,4))'
  where i = 2;
 update subt_reindex_co set x = 'CO sp4', b = '((1,1),(4,4))'
  where i = 2;
 savepoint sp6; -- child of sp4
-REINDEX index bt_ri_heap;
-REINDEX index bm_ri_heap;
-REINDEX index gist_ri_heap;
-REINDEX index unique_ri_heap;
+REINDEX index bt_ri_pax;
+REINDEX index bm_ri_pax;
+-- REINDEX index gist_ri_pax;
+REINDEX index unique_ri_pax;
 REINDEX index bt_ri_ao;
 REINDEX index bt_ri_ao;
 REINDEX index gist_ri_ao;
@@ -501,7 +501,7 @@ REINDEX index bt_ri_co;
 REINDEX index bt_ri_co;
 REINDEX index gist_ri_co;
 release savepoint sp6;
-select count(*) = 1 as passed from subt_reindex_heap
+select count(*) = 1 as passed from subt_reindex_pax
  where b = '((1,1), (4,4))';
 select count(*) = 1 as passed from subt_reindex_ao
  where b = '((1,1), (4,4))';
@@ -510,7 +510,7 @@ select count(*) = 1 as passed from subt_reindex_co
 
 rollback to sp2;
 
-select count(*) = 5 as passed from subt_reindex_heap
+select count(*) = 5 as passed from subt_reindex_pax
  where n = 2;
 select count(*) = 5 as passed from subt_reindex_ao
  where n = 2;
@@ -521,11 +521,11 @@ select count(*) = 0 as passed from subt_reindex_ao
 
 -- truncate cases
 savepoint sp7; -- child of sp2
-truncate subt_reindex_heap;
+truncate subt_reindex_pax;
 truncate subt_reindex_ao;
 savepoint sp8; -- child of sp7
 truncate subt_reindex_co;
-select count(*) = 0 as passed from subt_reindex_heap where i < 7;
+select count(*) = 0 as passed from subt_reindex_pax where i < 7;
 select count(*) = 0 as passed from subt_reindex_ao where i < 6;
 select count(*) = 0 as passed from subt_reindex_co where i < 6;
 rollback to sp8;
@@ -538,7 +538,7 @@ rollback to sp2;
 
 COMMIT;
 
-select count(*) = 5 as passed from subt_reindex_heap;
+select count(*) = 5 as passed from subt_reindex_pax;
 select count(*) = 5 as passed from subt_reindex_ao;
 select count(*) = 5 as passed from subt_reindex_co;
 

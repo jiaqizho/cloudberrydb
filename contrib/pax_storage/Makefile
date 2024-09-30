@@ -63,6 +63,7 @@ pax-test:
 .PHONY: icw_test
 icw_test: pax-test
 	@echo "Begin running pax regression tests"
+	make -C $(PAX_REGRESS_DIR) regress_link
 	@echo "Current PGOPTIONS=$(PGOPTIONS)"
 	make -C $(PAX_REGRESS_DIR) icw_test
 	@echo "Begin running pax+vector regression tests"

@@ -1,3 +1,7 @@
+-- start_matchignore
+-- m/WARNING:  tablespace location \".*"\ is too long for TAR
+-- m/DETAIL:  The location is used to create a symlink target from pg_tblspc. Symlink targets are truncated to 100 characters when sending a TAR \(e.g the BASE_BACKUP protocol response\).
+-- end_matchignore
 create tablespace some_temp_tablespace location '@testtablespace@_temp_tablespace';
 create tablespace some_default_tablespace location '@testtablespace@_default_tablespace';
 

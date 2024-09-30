@@ -9,7 +9,7 @@ CREATE TABLE t_ao_a (LIKE t_ao INCLUDING ALL);
 NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
 CREATE TABLE t_ao_b (LIKE t_ao INCLUDING STORAGE);
 NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
-CREATE TABLE t_ao_c (LIKE t_ao); -- Should create a heap table
+CREATE TABLE t_ao_c (LIKE t_ao); -- Should create a pax table
 NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
 CREATE TABLE t_ao_enc_a (LIKE t_ao_enc INCLUDING STORAGE);
 NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
@@ -36,7 +36,7 @@ WHERE
  t_ao_enc   | ao_column | t           |              |             0
  t_ao_a     | ao_column | t           |              |             0
  t_ao_b     | ao_column | t           |              |             0
- t_ao_c     | heap      |             |              |              
+ t_ao_c     | pax       |             |              |              
  t_ao_enc_a | ao_column | t           |              |             0
  t_ao_d     | ao_column | t           |              |             0
 (7 rows)

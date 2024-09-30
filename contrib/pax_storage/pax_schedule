@@ -15,5 +15,6 @@ test: default_value
 test: dictionary_encoding
 
 test: cluster
+test: db_size_functions
 
 test: teardown

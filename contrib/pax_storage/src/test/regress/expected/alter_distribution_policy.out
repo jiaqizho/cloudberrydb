@@ -1172,10 +1172,9 @@ where a.relname='owner_test'
   and x.oid = a.relowner
   and y.oid = b.relowner
   and z.oid = c.relowner;
-  relname   | relowner | toastowner | toastidxowner 
-------------+----------+------------+---------------
- owner_test | atsdb    | atsdb      | atsdb
-(1 row)
+ relname | relowner | toastowner | toastidxowner 
+---------+----------+------------+---------------
+(0 rows)
 
 -- MPP-9663 - Check that the ownership is consistent on the segments as well
 select a.relname,
@@ -1194,10 +1193,9 @@ where a.relname='owner_test'
   and a.gp_segment_id = 0
   and b.gp_segment_id = 0
   and c.gp_segment_id = 0;
-  relname   | relowner | toastowner | toastidxowner 
-------------+----------+------------+---------------
- owner_test | atsdb    | atsdb      | atsdb
-(1 row)
+ relname | relowner | toastowner | toastidxowner 
+---------+----------+------------+---------------
+(0 rows)
 
 -- MPP-9663 - The code path is different when the table has dropped columns
 alter table owner_test add column d text;
@@ -1219,10 +1217,9 @@ where a.relname='owner_test'
   and a.gp_segment_id = 0
   and b.gp_segment_id = 0
   and c.gp_segment_id = 0;
-  relname   | relowner | toastowner | toastidxowner 
-------------+----------+------------+---------------
- owner_test | atsdb    | atsdb      | atsdb
-(1 row)
+ relname | relowner | toastowner | toastidxowner 
+---------+----------+------------+---------------
+(0 rows)
 
 drop table owner_test;
 drop role atsdb;

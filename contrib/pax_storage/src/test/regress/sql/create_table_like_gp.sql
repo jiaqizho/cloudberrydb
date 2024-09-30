@@ -4,7 +4,7 @@ CREATE TABLE t_ao_enc (a integer, b text ENCODING (compresstype=zlib,compresslev
 
 CREATE TABLE t_ao_a (LIKE t_ao INCLUDING ALL);
 CREATE TABLE t_ao_b (LIKE t_ao INCLUDING STORAGE);
-CREATE TABLE t_ao_c (LIKE t_ao); -- Should create a heap table
+CREATE TABLE t_ao_c (LIKE t_ao); -- Should create a pax table
 
 CREATE TABLE t_ao_enc_a (LIKE t_ao_enc INCLUDING STORAGE);
 
