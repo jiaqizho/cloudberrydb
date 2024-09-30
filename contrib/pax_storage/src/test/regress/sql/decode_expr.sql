@@ -130,6 +130,10 @@ from regions;
 
 select * from decodecharao2 order by region, country_code;
 
+drop table regions;
+drop table decodecharao1;
+drop table decodecharao2;
+
 -- Test DECODE() with a varchar field
 begin;
 create table decodevarchar

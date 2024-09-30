@@ -26,6 +26,7 @@ inner join pg_namespace toastnsp on toastc.relnamespace = toastnsp.oid
 where c.oid = 'wmt_toast_issue_temp'::regclass;
 
 -- there should be exactly one temp table with that name.
+-- pax not create toast table for table wmt_toast_issue_temp
 select count(*) from temp_nspnames;
 
 

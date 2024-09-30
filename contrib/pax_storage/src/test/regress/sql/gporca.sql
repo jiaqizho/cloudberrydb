@@ -26,6 +26,7 @@ create schema orca;
 -- start_ignore
 GRANT ALL ON SCHEMA orca TO PUBLIC;
 SET search_path to orca, public;
+set pax_enable_debug = false;
 -- end_ignore
 
 create table orca.r();

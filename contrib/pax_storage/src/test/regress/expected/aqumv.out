@@ -806,7 +806,7 @@ select count(c1) + 1 from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL count(c1)
                ->  Seq Scan on public.aqumv_t2
-                     Output: c1, c2, c3
+                     Output: c1
                      Filter: (aqumv_t2.c1 > 90)
  Settings: enable_answer_query_using_materialized_views = 'off', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -830,7 +830,7 @@ select count(c1) + 1 from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL count(mc1)
                ->  Seq Scan on public.aqumv_mvt2_0
-                     Output: mc1, mc2, mc3
+                     Output: mc1
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (10 rows)
@@ -854,7 +854,7 @@ select sum(c2), sum(c2) filter (where c2 > 95) from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL sum(c2), PARTIAL sum(c2) FILTER (WHERE (c2 > 95))
                ->  Seq Scan on public.aqumv_t2
-                     Output: c1, c2, c3
+                     Output: c2
                      Filter: (aqumv_t2.c1 > 90)
  Settings: enable_answer_query_using_materialized_views = 'off', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -878,7 +878,7 @@ select sum(c2), sum(c2) filter (where c2 > 95) from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL sum(mc2), PARTIAL sum(mc2) FILTER (WHERE (mc2 > 95))
                ->  Seq Scan on public.aqumv_mvt2_0
-                     Output: mc1, mc2, mc3
+                     Output: mc2
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (10 rows)
@@ -902,7 +902,7 @@ select max(c1), min(c3), stddev(c2) from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL max(c1), PARTIAL min(c3), PARTIAL stddev(c2)
                ->  Seq Scan on public.aqumv_t2
-                     Output: c1, c2, c3
+                     Output: c1, c3, c2
                      Filter: (aqumv_t2.c1 > 90)
  Settings: enable_answer_query_using_materialized_views = 'off', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -926,7 +926,7 @@ select max(c1), min(c3), stddev(c2) from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL max(mc1), PARTIAL min(mc3), PARTIAL stddev(mc2)
                ->  Seq Scan on public.aqumv_mvt2_0
-                     Output: mc1, mc2, mc3
+                     Output: mc1, mc3, mc2
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (10 rows)
@@ -950,7 +950,7 @@ select count(c2), count(*) from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL count(c2), PARTIAL count(*)
                ->  Seq Scan on public.aqumv_t2
-                     Output: c1, c2, c3
+                     Output: c2
                      Filter: (aqumv_t2.c1 > 90)
  Settings: enable_answer_query_using_materialized_views = 'off', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -974,7 +974,7 @@ select count(c2), count(*) from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL count(mc2), PARTIAL count(*)
                ->  Seq Scan on public.aqumv_mvt2_0
-                     Output: mc1, mc2, mc3
+                     Output: mc2
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (10 rows)
@@ -1008,7 +1008,7 @@ select count(c3) from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL count(c3)
                ->  Seq Scan on public.aqumv_t2
-                     Output: c1, c2, c3
+                     Output: c3
                      Filter: (aqumv_t2.c1 > 90)
  Settings: enable_answer_query_using_materialized_views = 'off', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -1032,7 +1032,7 @@ select count(c3) from aqumv_t2 where c1 > 90;
          ->  Partial Aggregate
                Output: PARTIAL count(mc3)
                ->  Seq Scan on public.aqumv_mvt2_1
-                     Output: mc3, mc1
+                     Output: mc3
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (10 rows)
@@ -1071,7 +1071,7 @@ select c1, c3, count(c2) from aqumv_t3 where c1 > 90 group by c1, c3;
          Output: c1, c3, count(c2)
          Group Key: aqumv_t3.c1, aqumv_t3.c3
          ->  Seq Scan on public.aqumv_t3
-               Output: c1, c2, c3
+               Output: c1, c3, c2
                Filter: (aqumv_t3.c1 > 90)
  Settings: enable_answer_query_using_materialized_views = 'off', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -1104,7 +1104,7 @@ select c1, c3, count(c2) from aqumv_t3 where c1 > 90 group by c1, c3;
          Output: mc1, mc3, count(mc2)
          Group Key: aqumv_mvt3_0.mc1, aqumv_mvt3_0.mc3
          ->  Seq Scan on public.aqumv_mvt3_0
-               Output: mc1, mc2, mc3
+               Output: mc1, mc3, mc2
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (9 rows)
@@ -1488,7 +1488,7 @@ select c1, c3 from aqumv_t4 where c1 > 90 group by (c1, c3) having c3 > 97 ;
          Output: mc1, mc3
          Group Key: aqumv_mvt4_0.mc1, aqumv_mvt4_0.mc3
          ->  Seq Scan on public.aqumv_mvt4_0
-               Output: mc1, mc2, mc3
+               Output: mc1, mc3
                Filter: (aqumv_mvt4_0.mc3 > 97)
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -1517,7 +1517,7 @@ select c1, c3, avg(c2) from aqumv_t4 where c1 > 90 group by (c1, c3) having avg(
          Group Key: aqumv_t4.c1, aqumv_t4.c3
          Filter: (avg(aqumv_t4.c2) > '95'::numeric)
          ->  Seq Scan on public.aqumv_t4
-               Output: c1, c2, c3
+               Output: c1, c3, c2
                Filter: (aqumv_t4.c1 > 90)
  Settings: enable_answer_query_using_materialized_views = 'off', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -1546,7 +1546,7 @@ select c1, c3, avg(c2) from aqumv_t4 where c1 > 90 group by (c1, c3) having avg(
          Group Key: aqumv_mvt4_0.mc1, aqumv_mvt4_0.mc3
          Filter: (avg(aqumv_mvt4_0.mc2) > '95'::numeric)
          ->  Seq Scan on public.aqumv_mvt4_0
-               Output: mc1, mc2, mc3
+               Output: mc1, mc3, mc2
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (10 rows)
@@ -1573,7 +1573,7 @@ select c1, c3, avg(c2) from aqumv_t4 where c1 > 90 group by (c1, c3) having c1 >
          Output: mc1, mc3, avg(mc2)
          Group Key: aqumv_mvt4_0.mc1, aqumv_mvt4_0.mc3
          ->  Seq Scan on public.aqumv_mvt4_0
-               Output: mc1, mc2, mc3
+               Output: mc1, mc3, mc2
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (9 rows)
@@ -1811,7 +1811,7 @@ select c1, sum(c3) as sum_c3 from aqumv_t5 where c1 > 90 group by c1 order by su
                Output: c1, sum(c3)
                Group Key: aqumv_t5.c1
                ->  Seq Scan on public.aqumv_t5
-                     Output: c1, c2, c3
+                     Output: c1, c3
                      Filter: (aqumv_t5.c1 > 90)
  Settings: enable_answer_query_using_materialized_views = 'off', optimizer = 'off'
  Optimizer: Postgres query optimizer
@@ -1847,7 +1847,7 @@ select c1, sum(c3) as sum_c3 from aqumv_t5 where c1 > 90 group by c1 order by su
                Output: mc1, sum(mc3)
                Group Key: aqumv_mvt5_0.mc1
                ->  Seq Scan on public.aqumv_mvt5_0
-                     Output: mc1, mc2, mc3
+                     Output: mc1, mc3
  Settings: enable_answer_query_using_materialized_views = 'on', optimizer = 'off'
  Optimizer: Postgres query optimizer
 (13 rows)
