@@ -1,5 +1,6 @@
 #include <cstdio>
 #include "comm/gtest_wrappers.h"
+
 #include "access/paxc_rel_options.h"
 #include "catalog/pax_aux_table.h"
 #include "catalog/pax_fastsequence.h"
@@ -56,9 +57,12 @@ void GlobalMock(Stub *stub) {
 
 int main(int argc, char **argv) {
   Stub *stub_global;
+  MemoryContextInit();
   stub_global = new Stub();
+
   testing::InitGoogleTest(&argc, argv);
   GlobalMock(stub_global);
+  MemoryContextReset(TopMemoryContext);
 
   return RUN_ALL_TESTS();
 }
