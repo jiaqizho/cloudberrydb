@@ -41,11 +41,6 @@ void *MemCtxAlloc(MemoryContext ctx, size_t size) {
 void *Palloc(size_t size) {
   CBDB_WRAP_START;
   {
-#ifdef RUN_GTEST
-    if (TopMemoryContext == nullptr) {
-      MemoryContextInit();
-    }
-#endif
     { return palloc(size); }
   }
   CBDB_WRAP_END;
@@ -55,11 +50,6 @@ void *Palloc(size_t size) {
 void *Palloc0(size_t size) {
   CBDB_WRAP_START;
   {
-#ifdef RUN_GTEST
-    if (TopMemoryContext == nullptr) {
-      MemoryContextInit();
-    }
-#endif
     { return palloc0(size); }
   }
   CBDB_WRAP_END;
@@ -74,11 +64,6 @@ void *RePalloc(void *ptr, size_t size) {
 }
 
 void Pfree(void *ptr) {
-#ifdef RUN_GTEST
-  if (ptr == nullptr) {
-    return;
-  }
-#endif
   CBDB_WRAP_START;
   { pfree(ptr); }
   CBDB_WRAP_END;
@@ -691,4 +676,3 @@ void cbdb::ExecStoreVirtualTuple(TupleTableSlot *slot) {
   { ::ExecStoreVirtualTuple(slot); }
   CBDB_WRAP_END;
 }
-
