@@ -1739,8 +1739,7 @@ reset optimizer_segments;
 --SELECT COUNT(DISTINCT(a)) FROM dml_union_r;
 -- @description union_update_test31: Negative Tests  more than one row returned by a sub-query used as an expression
 UPDATE dml_union_r SET b = ( SELECT a FROM dml_union_r EXCEPT ALL SELECT a FROM dml_union_s);
-ERROR:  one or more assertions failed  (seg2 10.138.0.30:7004 pid=2878859)
-DETAIL:  Expected no more than one row to be returned by expression
+ERROR:  more than one row returned by a subquery used as an expression
 --
 -- Test mixing a set-returning function, which can be evaluated anywhere,
 -- (it has General locus) and a diststributed table, in an Append.
@@ -1858,15 +1857,16 @@ explain (costs off)
 select * from t_test_append_rep
 union all
 select * from t_test_append_hash;
-                       QUERY PLAN                        
----------------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on t_test_append_rep
-         ->  Broadcast Motion 3:1  (slice2; segments: 3)
-               ->  Seq Scan on t_test_append_hash
+         ->  Result
+               One-Time Filter: (gp_execution_segment() = 2)
+               ->  Seq Scan on t_test_append_rep
+         ->  Seq Scan on t_test_append_hash
  Optimizer: Pivotal Optimizer (GPORCA)
-(6 rows)
+(7 rows)
 
 select * from t_test_append_rep
 union all
@@ -1935,15 +1935,16 @@ insert into t1 select i, i+1 from generate_series(6, 9) i;
 insert into rt1 select i, i+1 from generate_series(1, 5) i;
 set local gp_enable_direct_dispatch = on;
 explain(costs off) select * from rt1 union all select * from t1;
-                       QUERY PLAN                        
----------------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on rt1
-         ->  Broadcast Motion 3:1  (slice2; segments: 3)
-               ->  Seq Scan on t1
+         ->  Result
+               One-Time Filter: (gp_execution_segment() = 0)
+               ->  Seq Scan on rt1
+         ->  Seq Scan on t1
  Optimizer: Pivotal Optimizer (GPORCA)
-(6 rows)
+(7 rows)
 
 select * from rt1 union all select * from t1;
  a | b  
