@@ -53,11 +53,11 @@ DETAIL:  Feature not supported: UPDATE with constraints
 
 set optimizer_enable_dml_constraints=on;
 explain update constr_tab set b = 10;
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Update on constr_tab  (cost=0.00..431.04 rows=1 width=1)
-   ->  Seq Scan on constr_tab constr_tab_1  (cost=0.00..431.00 rows=1 width=22)
- Optimizer: Pivotal Optimizer (GPORCA)
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
+ Update on constr_tab  (cost=0.00..271.00 rows=0 width=0)
+   ->  Seq Scan on constr_tab  (cost=0.00..271.00 rows=23700 width=54)
+ Optimizer: Postgres query optimizer
 (3 rows)
 
 -- Same, with NOT NULL constraint.
@@ -104,18 +104,14 @@ INSERT INTO constr_tab VALUES(1,5,3,4);
 INSERT INTO constr_tab VALUES(1,5,3,4);
 set optimizer_enable_dml_constraints=off;
 explain update constr_tab set a = 10;
-                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
- Update on constr_tab  (cost=0.00..431.09 rows=1 width=1)
-   ->  Result  (cost=0.00..0.00 rows=0 width=0)
-         One-Time Filter: true
-         ->  Result  (cost=0.00..431.00 rows=2 width=34)
-               ->  Redistribute Motion 3:3  (slice1; segments: 3)  (cost=0.00..431.00 rows=2 width=30)
-                     Hash Key: constr_tab_1.a
-                     ->  Split  (cost=0.00..431.00 rows=1 width=30)
-                           ->  Seq Scan on constr_tab constr_tab_1  (cost=0.00..431.00 rows=1 width=26)
- Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Update on constr_tab  (cost=0.00..1219.00 rows=0 width=0)
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)  (cost=0.00..1219.00 rows=47400 width=66)
+         ->  Split  (cost=0.00..271.00 rows=47400 width=66)
+               ->  Seq Scan on constr_tab  (cost=0.00..271.00 rows=23700 width=66)
+ Optimizer: Postgres query optimizer
+(5 rows)
 
 -- Test ORCA fallback on "FROM ONLY"
 CREATE TABLE homer (a int, b int, c int)
