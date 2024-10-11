@@ -40,8 +40,7 @@ test: instr_in_shmem_setup
 test: instr_in_shmem
 
 test: createdb
-# test: update_gp [Orca Unstable]
-test: gp_aggregates gp_aggregates_costs gp_metadata variadic_parameters default_parameters function_extensions spi gp_xml shared_scan triggers_gp returning_gp resource_queue_with_rule gp_types gp_index cluster_gp combocid_gp gp_sort
+test: gp_aggregates gp_aggregates_costs gp_metadata variadic_parameters default_parameters function_extensions spi gp_xml shared_scan update_gp triggers_gp returning_gp resource_queue_with_rule gp_types gp_index cluster_gp combocid_gp gp_sort
 test: spi_processed64bit
 test: gp_tablespace_with_faults
 # below test(s) inject faults so each of them need to be in a separate group
@@ -50,15 +49,12 @@ test: gp_tablespace
 test: temp_tablespaces
 test: default_tablespace
 
-# test: join_gp notin [Orca Unstable]
-test: leastsquares opr_sanity_gp decode_expr bitmapscan bitmapscan_ao case_gp limit_gp percentile union_gp gpcopy_encoding gp_create_table gp_create_view window_views replication_slots create_table_like_gp gp_constraints matview_ao gpcopy_dispatch
+test: leastsquares opr_sanity_gp decode_expr bitmapscan bitmapscan_ao case_gp limit_gp percentile union_gp join_gp notin gpcopy_encoding gp_create_table gp_create_view window_views replication_slots create_table_like_gp gp_constraints matview_ao gpcopy_dispatch
 # below test(s) inject faults so each of them need to be in a separate group
 test: gpcopy
 
-# test: orca_static_pruning [Orca Unstable]
-test: orca_groupingsets_fallbacks
-# test: explain_format [Orca Unstable]
-test: filter gpctas gpdist gpdist_opclasses gpdist_legacy_opclasses matrix sublink table_functions olap_setup complex opclass_ddl information_schema guc_env_var gp_explain distributed_transactions olap_plans misc_jiras gp_copy_dtx
+test: orca_groupingsets_fallbacks orca_static_pruning
+test: filter gpctas gpdist gpdist_opclasses gpdist_legacy_opclasses matrix sublink table_functions olap_setup complex opclass_ddl explain_format information_schema guc_env_var gp_explain distributed_transactions olap_plans misc_jiras gp_copy_dtx
 # below test(s) inject faults so each of them need to be in a separate group
 test: guc_gp
 # ignore_reason: pax toast is different from heap, the test case is already included in pax_schudule
@@ -74,8 +70,7 @@ test: gp_connections
 # bitmap_index triggers recovery, run it seperately
 # test: bitmap_index [Orca Unstable]
 test: gp_dump_query_oids analyze gp_owner_permission incremental_analyze truncate_gp
-# test: indexjoin dispatch_encoding [Orca Unstable]
-test: as_alias regex_gp gpparams with_clause transient_types gp_rules motion_gp
+test: as_alias regex_gp gpparams with_clause transient_types gp_rules motion_gp indexjoin dispatch_encoding
 
 # interconnect tests
 test: icudp/gp_interconnect_queue_depth icudp/gp_interconnect_queue_depth_longtime icudp/gp_interconnect_snd_queue_depth icudp/gp_interconnect_snd_queue_depth_longtime icudp/gp_interconnect_min_retries_before_timeout icudp/gp_interconnect_transmit_timeout icudp/gp_interconnect_cache_future_packets icudp/gp_interconnect_default_rtt icudp/gp_interconnect_fc_method icudp/gp_interconnect_min_rto icudp/gp_interconnect_timer_checking_period icudp/gp_interconnect_timer_period icudp/queue_depth_combination_loss icudp/queue_depth_combination_capacity
@@ -84,8 +79,7 @@ test: icudp/gp_interconnect_queue_depth icudp/gp_interconnect_queue_depth_longti
 test: event_trigger_gp
 
 # deadlock tests run separately - because we don't know which one gets stuck.
-test: deadlock
-# test: deadlock2 [Orca Unstable]
+test: deadlock deadlock2
 
 # test workfiles
 test: workfile/hashagg_spill workfile/hashjoin_spill workfile/materialize_spill workfile/sisc_mat_sort workfile/sisc_sort_spill workfile/sort_spill workfile/spilltodisk
@@ -103,8 +97,7 @@ test: cursor
 # so it needs to be in a group by itself
 test: query_finish_pending
 
-# test: co_nestloop_idxscan gp_array_agg[Orca Unstable]
-test: gpdiffcheck gptokencheck gp_hashagg sequence_gp tidscan_gp dml_in_udf gpdtm_plpgsql agg_pushdown
+test: gpdiffcheck gptokencheck gp_hashagg sequence_gp tidscan_gp dml_in_udf gpdtm_plpgsql agg_pushdown co_nestloop_idxscan gp_array_agg
 
 # The test must be run by itself as it injects a fault on QE to fail
 # at the 2nd phase of 2PC.
@@ -112,8 +105,7 @@ test: gpdiffcheck gptokencheck gp_hashagg sequence_gp tidscan_gp dml_in_udf gpdt
 
 # The appendonly test cannot be run concurrently with tests that have
 # serializable transactions (may conflict with AO vacuum operations).
-# test: subselect_gp olap_window_seq subselect_gp_indexes [Orca Unstable]
-test: rangefuncs_cdb gp_dqa subselect_gp2 gp_transactions olap_group sirv_functions appendonly create_table_distpol alter_distpol_dropped query_finish partial_table 
+test: rangefuncs_cdb gp_dqa subselect_gp2 gp_transactions olap_group sirv_functions appendonly create_table_distpol alter_distpol_dropped query_finish partial_table subselect_gp olap_window_seq subselect_gp_indexes
 
 # 'partition' runs for a long time, so try to keep it together with other
 # long-running tests.
@@ -142,8 +134,7 @@ test: gp_runtime_filter
 # ERROR:  parameter "gp_interconnect_type" cannot be set after connection start
 
 ignore: gp_portal_error
-# test: external_table_union_all eagerfree alter_distribution_policy[Orca Unstable]
-test: external_table external_table_create_privs external_table_persistent_error_log column_compression alter_table_aocs alter_table_aocs2 aoco_privileges
+test: external_table external_table_create_privs external_table_persistent_error_log column_compression alter_table_aocs alter_table_aocs2 aoco_privileges external_table_union_all eagerfree alter_distribution_policy
 test: alter_table_set alter_table_gp alter_table_ao subtransaction_visibility oid_consistency udf_exception_blocks
 # below test(s) inject faults so each of them need to be in a separate group
 test: aocs
@@ -175,15 +166,12 @@ test: wrkloadadmin
 
 # expand_table tests may affect the result of 'gp_explain', keep them below that
 # portals_updatable
-# test: partition_pruning [Orca Unstable]
-test: gp_toolkit_ao_funcs trig auth_constraint role plpgsql_cache timeseries pg_stat_last_operation pg_stat_last_shoperation gp_numeric_agg partindex_test runtime_stats expand_table expand_table_ao expand_table_aoco expand_table_regression
+test: partition_pruning gp_toolkit_ao_funcs trig auth_constraint role plpgsql_cache timeseries pg_stat_last_operation pg_stat_last_shoperation gp_numeric_agg partindex_test runtime_stats expand_table expand_table_ao expand_table_aoco expand_table_regression
 
 # direct dispatch tests
-# test: direct_dispatch [Orca Unstable]
-test: bfv_dd bfv_dd_multicolumn bfv_dd_types
+test: bfv_dd bfv_dd_multicolumn bfv_dd_types direct_dispatch
 
-# test:gporca bfv_index DML_over_joins [Orca Unstable]
-test: bfv_catalog bfv_olap bfv_aggregate bfv_partition_plans bfv_statistic nested_case_null sort bb_mpph aggregate_with_groupingsets
+test: bfv_catalog bfv_olap bfv_aggregate bfv_partition_plans bfv_statistic nested_case_null sort bb_mpph aggregate_with_groupingsets gporca bfv_index DML_over_joins
 # Run minirepro separately to avoid concurrent deletes erroring out the internal pg_dump call
 
 # gpsd and minirepro depends on the pg_dump, pg_dump not support pax storage, so ignore them
@@ -196,29 +184,27 @@ test: gporca_faults
 test: bb_memory_quota
 
 # Tests for replicated table
-# test: rpt [Orca Unstable]
-# test: rpt_returning [no support TupleFetchRowVersion]
-test: rpt_joins rpt_tpch
+# test: rpt_returning [unsupport TupleFetchRowVersion]
+test: rpt_joins rpt_tpch rpt
 
 # NOTE: The bfv_temp test assumes that there are no temporary tables in
 # other sessions. Therefore the other tests in this group mustn't create
 # temp tables
-# test: bfv_planner bfv_dml bfv_subquery [Orca Unstable]
-test: bfv_cte bfv_joins bfv_legacy bfv_temp
+# test: bfv_dml  [unsupport TupleFetchRowVersion/DELETE Trigger]
+test: bfv_cte bfv_joins bfv_legacy bfv_temp bfv_planner bfv_subquery
 
-#test: qp_dml_joins [Orca Unstable]
-test: qp_olap_mdqa qp_misc gp_recursive_cte
+test: qp_olap_mdqa qp_misc gp_recursive_cte qp_dml_joins
 
-# test: qp_misc_jiras qp_dropped_cols [Orca Unstable]
-test: qp_with_clause qp_executor qp_olap_windowerr qp_olap_window qp_derived_table qp_bitmapscan
+# test: qp_misc_jiras [not support TupleTidValid/DELETE Trigger]
+test: qp_with_clause qp_executor qp_olap_windowerr qp_olap_window qp_derived_table qp_bitmapscan qp_dropped_cols
 test: qp_with_functional_inlining qp_with_functional_noinlining
 test: qp_functions_in_contexts_setup
 # test: qp_misc_rio_join_small qp_misc_rio qp_correlated_query qp_targeted_dispatch qp_gist_indexes2 qp_gist_indexes3 qp_gist_indexes4 qp_query_execution qp_functions_in_from qp_functions_in_select qp_functions_in_subquery qp_functions_in_subquery_column qp_functions_in_subquery_constant qp_functions_in_with
-# test: qp_misc_rio qp_gist_indexes2 qp_gist_indexes3 qp_gist_indexes4 qp_query_execution qp_targeted_dispatch [Orca Unstable]
-test: qp_misc_rio_join_small qp_correlated_query qp_functions_in_from qp_functions_in_select qp_functions_in_subquery qp_functions_in_subquery_column qp_functions_in_with
+# test: qp_misc_rio [unsupport TupleFetchRowVersion]
+# test: qp_gist_indexes2 qp_gist_indexes3 qp_gist_indexes4 [unsupport gist index]
+test: qp_misc_rio_join_small qp_correlated_query qp_functions_in_from qp_functions_in_select qp_functions_in_subquery qp_functions_in_subquery_column qp_functions_in_with qp_query_execution qp_targeted_dispatch
 
-# test: qp_union_intersect qp_subquery qp_orca_fallback [Orca Unstable]
-test: dpe qp_dpe qp_left_anti_semi_join qp_functions qp_functions_idf qp_regexp qp_resource_queue
+test: dpe qp_dpe qp_left_anti_semi_join qp_functions qp_functions_idf qp_regexp qp_resource_queue qp_union_intersect qp_subquery qp_orca_fallback
 
 test: olap_setup
 test: qp_olap_group qp_olap_group2
