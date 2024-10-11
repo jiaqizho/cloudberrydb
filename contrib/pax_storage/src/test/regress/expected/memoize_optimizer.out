@@ -6,6 +6,12 @@
 -- machines.  Let's just replace the number with an 'N'.  In order to allow us
 -- to perform validation when the measure was zero, we replace a zero value
 -- with "Zero".  All other numbers are replaced with 'N'.
+-- start_ignore
+-- m/Extra Text: \(seg\d+\)/
+-- s/Extra Text: \(seg\d+\)/Extra Text: ###/
+-- m/Buckets: \d+/
+-- s/Buckets: \d+/Buckets: ###/
+-- end_ignore
 create function explain_memoize(query text, hide_hitmiss bool) returns setof text
 language plpgsql as
 $$
