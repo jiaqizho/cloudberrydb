@@ -216,4 +216,5 @@ endif(BUILD_TOOLS)
 
 ## install dynamic libraray
 install(TARGETS pax
-  LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+  LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/postgresql/
+  RENAME pax.so)

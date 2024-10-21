@@ -36,7 +36,8 @@ SRC = $(foreach dir, $(DIRS), $(wildcard $(dir)/*.cc))
 build: $(SRC)
 	@echo "build pax"
 	mkdir -p build
-	cd build && cmake .. -DCMAKE_INSTALL_PREFIX=$(DESTDIR)$(prefix) && make -j8 && cp src/cpp/libpax.so ../pax.so
+	cd build && cmake .. -DCMAKE_INSTALL_PREFIX=$(DESTDIR)$(prefix) && make -j8
+	@cp -f build/src/cpp/libpax.so pax.so
 
 pax-unit-test: 
 ifeq ($(enable_debug), yes)
@@ -44,13 +45,13 @@ ifeq ($(enable_debug), yes)
 endif
 
 install-data: build
+	@echo "install data"
 	$(INSTALL_DATA) pax-cdbinit--1.0.sql '$(DESTDIR)$(datadir)/cdb_init.d/pax-cdbinit--1.0.sql'
 
 .PHONY: install
 install: install-data
-	@echo "install data"
+	$(INSTALL_SHLIB) pax.so '$(DESTDIR)$(pkglibdir)/pax.so'
 	@if [ -f build/src/cpp/pax_dump ]; then $(INSTALL_PROGRAM) build/src/cpp/pax_dump '$(DESTDIR)$(bindir)/pax_dump'; fi;
-	make -C build install
 
 .PHONY: pax-test
 pax-test: 
