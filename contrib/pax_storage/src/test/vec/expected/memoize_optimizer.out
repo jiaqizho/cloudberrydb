@@ -42,18 +42,26 @@ WHERE t2.unique1 < 1000;', false);
                                               explain_memoize                                               
 ------------------------------------------------------------------------------------------------------------
  Vec Finalize Vec Aggregate (actual rows=1 loops=N)
+   Executor Memory: NkB  Segments: 1  Max: 1kB (segment -1)
    ->  Vec Gather Motion 3:1  (slice1; segments: 3) (actual rows=3 loops=N)
+         Executor Memory: NkB  Segments: 1  Max: 1kB (segment -1)
          ->  Vec Partial Vec Aggregate (actual rows=1 loops=N)
+               Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                ->  Vec Hash Join (actual rows=400 loops=N)
                      Hash Cond: (tenk1.unique1 = tenk1_1.twenty)
+                     Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                      ->  Vec Seq Scan on tenk1 (actual rows=3386 loops=N)
+                           Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                      ->  Vec Hash (actual rows=400 loops=N)
+                           Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                            ->  Vec Redistribute Motion 3:3  (slice2; segments: 3) (actual rows=400 loops=N)
                                  Hash Key: tenk1_1.twenty
+                                 Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                                  ->  Vec Seq Scan on tenk1 tenk1_1 (actual rows=340 loops=N)
                                        Filter: (unique1 < 1000)
+                                       Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
  Optimizer: Pivotal Optimizer (GPORCA)
-(12 rows)
+(20 rows)
 
 -- And check we get the expected results.
 SELECT COUNT(*),AVG(t1.unique1) FROM tenk1 t1
@@ -112,18 +120,26 @@ WHERE t2.unique1 < 1200;', true);
                                               explain_memoize                                               
 ------------------------------------------------------------------------------------------------------------
  Vec Finalize Vec Aggregate (actual rows=1 loops=N)
+   Executor Memory: NkB  Segments: 1  Max: 1kB (segment -1)
    ->  Vec Gather Motion 3:1  (slice1; segments: 3) (actual rows=3 loops=N)
+         Executor Memory: NkB  Segments: 1  Max: 1kB (segment -1)
          ->  Vec Partial Vec Aggregate (actual rows=1 loops=N)
+               Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                ->  Vec Hash Join (actual rows=407 loops=N)
                      Hash Cond: (tenk1.unique1 = tenk1_1.thousand)
+                     Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                      ->  Vec Seq Scan on tenk1 (actual rows=3386 loops=N)
+                           Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                      ->  Vec Hash (actual rows=407 loops=N)
+                           Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                            ->  Vec Redistribute Motion 3:3  (slice2; segments: 3) (actual rows=407 loops=N)
                                  Hash Key: tenk1_1.thousand
+                                 Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                                  ->  Vec Seq Scan on tenk1 tenk1_1 (actual rows=407 loops=N)
                                        Filter: (unique1 < 1200)
+                                       Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
  Optimizer: Pivotal Optimizer (GPORCA)
-(12 rows)
+(20 rows)
 
 CREATE TABLE flt (f float);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f' as the Cloudberry Database data distribution key for this table.
@@ -135,16 +151,21 @@ SET enable_seqscan TO off;
 -- Ensure memoize operates in logical mode
 SELECT explain_memoize('
 SELECT * FROM flt f1 INNER JOIN flt f2 ON f1.f = f2.f;', false);
-                           explain_memoize                            
-----------------------------------------------------------------------
+                               explain_memoize                               
+-----------------------------------------------------------------------------
  Vec Gather Motion 3:1  (slice1; segments: 3) (actual rows=2 loops=N)
+   Executor Memory: NkB  Segments: 1  Max: 1kB (segment -1)
    ->  Vec Hash Join (actual rows=2 loops=N)
          Hash Cond: (flt.f = flt_1.f)
+         Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
          ->  Vec Seq Scan on flt (actual rows=2 loops=N)
+               Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
          ->  Vec Hash (actual rows=2 loops=N)
+               Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                ->  Vec Seq Scan on flt flt_1 (actual rows=2 loops=N)
+                     Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
  Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+(12 rows)
 
 -- Ensure memoize operates in binary mode
 SELECT explain_memoize('
@@ -152,13 +173,18 @@ SELECT * FROM flt f1 INNER JOIN flt f2 ON f1.f >= f2.f;', false);
                                    explain_memoize                                   
 -------------------------------------------------------------------------------------
  Vec Gather Motion 3:1  (slice1; segments: 3) (actual rows=4 loops=N)
+   Executor Memory: NkB  Segments: 1  Max: 1kB (segment -1)
    ->  Vec Nested Loop (actual rows=4 loops=N)
          Join Filter: (flt_1.f >= flt.f)
+         Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
          ->  Vec Broadcast Motion 3:3  (slice2; segments: 3) (actual rows=2 loops=N)
+               Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
                ->  Vec Seq Scan on flt flt_1 (actual rows=2 loops=N)
+                     Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
          ->  Vec Seq Scan on flt (actual rows=2 loops=N)
+               Executor Memory: NkB  Segments: 3  Max: 1kB (segment 0)
  Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+(12 rows)
 
 DROP TABLE flt;
 -- Exercise Memoize in binary mode with a large fixed width type and a

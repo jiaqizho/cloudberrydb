@@ -7,6 +7,7 @@
 -- depending on random choice by the planner. Accept either plan.
 -- start_matchignore
 -- m/^.*Extra Text:.*/
+-- m/^ *Executor Memory: .* Segments: .*/
 -- end_matchignore
 -- start_matchsubs
 -- m/ Gather Motion [12]:1  \(slice1; segments: [12]\)/
@@ -487,6 +488,7 @@ $$
 declare
     ln text;
 begin
+    set local enable_parallel = off;
     for ln in
         execute format('explain (analyze, costs off, summary off, timing off) %s',
             $1)
@@ -496,6 +498,7 @@ begin
         ln := regexp_replace(ln, 'Rows Removed by Filter: \d+', 'Rows Removed by Filter: N');
         return next ln;
     end loop;
+    reset enable_parallel;
 end;
 $$;
 
@@ -1118,6 +1121,11 @@ create table listp (a int) partition by list(a);
 create table listp_12 partition of listp for values in(1,2) partition by list(a);
 create table listp_12_1 partition of listp_12 for values in(1);
 create table listp_12_2 partition of listp_12 for values in(2);
+
+-- Force the 2nd subnode of the Append to be non-parallel.  This results in
+-- a nested Append node because the mixed parallel / non-parallel paths cannot
+-- be pulled into the top-level Append.
+alter table listp_12_1 set (parallel_workers = 0);
 
 -- Ensure that listp_12_2 is not scanned.  (The nested Append is not seen in
 -- the plan as it's pulled in setref.c due to having just a single subnode).

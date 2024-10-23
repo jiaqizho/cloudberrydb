@@ -428,7 +428,7 @@ SELECT c, sum(a) FROM pagg_tab GROUP BY rollup(c) ORDER BY 1, 2;
 -- make any difference.
 EXPLAIN (COSTS OFF)
 SELECT c, sum(b order by a) FROM pagg_tab GROUP BY c ORDER BY 1, 2;
-ERROR:  doesn't support aggref args len != 1 (execMain.c:1932)
+ERROR:  doesn't support aggref args len != 1 (execMain.c:###)
 -- Since GROUP BY clause does not match with PARTITION KEY; we need to do
 -- partial aggregation. However, ORDERED SET are not partial safe and thus
 -- partitionwise aggregation plan is not generated.
@@ -1546,6 +1546,83 @@ SELECT y, sum(x), avg(x), count(*) FROM pagg_tab_para GROUP BY y HAVING avg(x) <
  10 | 15000 | 10.0000000000000000 |  1500
  11 | 16500 | 11.0000000000000000 |  1500
 (4 rows)
+
+-- Test when parent can produce parallel paths but not any (or some) of its children
+-- (Use one more aggregate to tilt the cost estimates for the plan we want)
+ALTER TABLE pagg_tab_para_p1 SET (parallel_workers = 0);
+ALTER TABLE pagg_tab_para_p3 SET (parallel_workers = 0);
+ANALYZE pagg_tab_para;
+EXPLAIN (COSTS OFF)
+SELECT x, sum(y), avg(y), sum(x+y), count(*) FROM pagg_tab_para GROUP BY x HAVING avg(y) < 7 ORDER BY 1, 2, 3;
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: pagg_tab_para.x, (sum(pagg_tab_para.y)), (avg(pagg_tab_para.y))
+   ->  Vec Sort
+         Sort Key: pagg_tab_para.x, (sum(pagg_tab_para.y)), (avg(pagg_tab_para.y))
+         ->  Vec Append
+               ->  Vec HashAggregate
+                     Group Key: pagg_tab_para.x
+                     Filter: (avg(pagg_tab_para.y) < '7'::numeric)
+                     ->  Vec Seq Scan on pagg_tab_para_p1 pagg_tab_para
+               ->  Vec HashAggregate
+                     Group Key: pagg_tab_para_1.x
+                     Filter: (avg(pagg_tab_para_1.y) < '7'::numeric)
+                     ->  Vec Seq Scan on pagg_tab_para_p2 pagg_tab_para_1
+               ->  Vec HashAggregate
+                     Group Key: pagg_tab_para_2.x
+                     Filter: (avg(pagg_tab_para_2.y) < '7'::numeric)
+                     ->  Vec Seq Scan on pagg_tab_para_p3 pagg_tab_para_2
+ Optimizer: Postgres query optimizer
+(18 rows)
+
+SELECT x, sum(y), avg(y), sum(x+y), count(*) FROM pagg_tab_para GROUP BY x HAVING avg(y) < 7 ORDER BY 1, 2, 3;
+ x  | sum  |        avg         |  sum  | count 
+----+------+--------------------+-------+-------
+  0 | 5000 | 5.0000000000000000 |  5000 |  1000
+  1 | 6000 | 6.0000000000000000 |  7000 |  1000
+ 10 | 5000 | 5.0000000000000000 | 15000 |  1000
+ 11 | 6000 | 6.0000000000000000 | 17000 |  1000
+ 20 | 5000 | 5.0000000000000000 | 25000 |  1000
+ 21 | 6000 | 6.0000000000000000 | 27000 |  1000
+(6 rows)
+
+ALTER TABLE pagg_tab_para_p2 SET (parallel_workers = 0);
+ANALYZE pagg_tab_para;
+EXPLAIN (COSTS OFF)
+SELECT x, sum(y), avg(y), sum(x+y), count(*) FROM pagg_tab_para GROUP BY x HAVING avg(y) < 7 ORDER BY 1, 2, 3;
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: pagg_tab_para.x, (sum(pagg_tab_para.y)), (avg(pagg_tab_para.y))
+   ->  Vec Sort
+         Sort Key: pagg_tab_para.x, (sum(pagg_tab_para.y)), (avg(pagg_tab_para.y))
+         ->  Vec Append
+               ->  Vec HashAggregate
+                     Group Key: pagg_tab_para.x
+                     Filter: (avg(pagg_tab_para.y) < '7'::numeric)
+                     ->  Vec Seq Scan on pagg_tab_para_p1 pagg_tab_para
+               ->  Vec HashAggregate
+                     Group Key: pagg_tab_para_1.x
+                     Filter: (avg(pagg_tab_para_1.y) < '7'::numeric)
+                     ->  Vec Seq Scan on pagg_tab_para_p2 pagg_tab_para_1
+               ->  Vec HashAggregate
+                     Group Key: pagg_tab_para_2.x
+                     Filter: (avg(pagg_tab_para_2.y) < '7'::numeric)
+                     ->  Vec Seq Scan on pagg_tab_para_p3 pagg_tab_para_2
+ Optimizer: Postgres query optimizer
+(18 rows)
+
+SELECT x, sum(y), avg(y), sum(x+y), count(*) FROM pagg_tab_para GROUP BY x HAVING avg(y) < 7 ORDER BY 1, 2, 3;
+ x  | sum  |        avg         |  sum  | count 
+----+------+--------------------+-------+-------
+  0 | 5000 | 5.0000000000000000 |  5000 |  1000
+  1 | 6000 | 6.0000000000000000 |  7000 |  1000
+ 10 | 5000 | 5.0000000000000000 | 15000 |  1000
+ 11 | 6000 | 6.0000000000000000 | 17000 |  1000
+ 20 | 5000 | 5.0000000000000000 | 25000 |  1000
+ 21 | 6000 | 6.0000000000000000 | 27000 |  1000
+(6 rows)
 
 -- Reset parallelism parameters to get partitionwise aggregation plan.
 RESET min_parallel_table_scan_size;
