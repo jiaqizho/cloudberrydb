@@ -547,8 +547,8 @@ select * from (select * from t order by a) s order by a, b limit 55;
 
 -- Test EXPLAIN ANALYZE with only a fullsort group.
 select explain_analyze_without_memory('select * from (select * from t order by a) s order by a, b limit 55');
-                        explain_analyze_without_memory                        
-------------------------------------------------------------------------------
+                           explain_analyze_without_memory                            
+-------------------------------------------------------------------------------------
  Vec Limit (actual rows=55 loops=1)
    ->  Vec Gather Motion 3:1  (slice1; segments: 3) (actual rows=165 loops=1)
          Merge Key: a, b
@@ -727,8 +727,8 @@ select * from t left join (select * from (select * from t order by a) v order by
 rollback;
 -- Test EXPLAIN ANALYZE with both fullsort and presorted groups.
 select explain_analyze_without_memory('select * from (select * from t order by a) s order by a, b limit 70');
-                       explain_analyze_without_memory                        
------------------------------------------------------------------------------
+                           explain_analyze_without_memory                            
+-------------------------------------------------------------------------------------
  Vec Limit (actual rows=70 loops=1)
    ->  Vec Gather Motion 3:1  (slice1; segments: 3) (actual rows=74 loops=1)
          Merge Key: a, b
