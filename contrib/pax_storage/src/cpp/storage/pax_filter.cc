@@ -666,6 +666,7 @@ static bool CheckScalarArray(const TupleDesc desc, ScanKey scan_key,
   Assert(attno > 0);
   Assert(scan_key->sk_argument != 0);
   Assert(!TupleDescAttr(desc, attno - 1)->attisdropped);
+  auto attr = &desc->attrs[attno - 1];
 
   array_datum = scan_key->sk_argument;
 
@@ -679,7 +680,21 @@ static bool CheckScalarArray(const TupleDesc desc, ScanKey scan_key,
     return true;
   }
 
-  auto attr = &desc->attrs[attno - 1];
+  // Bloom filter not support the numeric
+  // Because there is `n_header` field in numeric type,
+  // In PG, different `n_header` will be considered to be the same numeric type.
+  // for example:
+  //  1. create table t(v1 numeric(20, 10)) using pax
+  //  with(bloomfilter_columns='v1');
+  //  2. insert into t values(...);
+  //  3. select * from in_test_t where v1 in (2.0, 4.0);
+  // then the value `2.0` won't be numeric(20,10), but it will be the
+  // numeric(1,0) which have the different `n_header` with numeric(20,10), so we
+  // can't use the bloom filter in this case.
+  if (attr->atttypid == NUMERICOID) {
+    return true;
+  }
+
   auto basic_info = provider.BloomFilterBasicInfo(attno - 1);
   auto bf_str = provider.GetBloomFilter(attno - 1);
   Assert(basic_info.bf_hash_funcs() != 0);
