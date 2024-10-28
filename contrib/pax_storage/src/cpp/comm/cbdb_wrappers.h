@@ -209,11 +209,14 @@ bool ExtractcolumnsFromNode(Node *expr, std::vector<bool> &col_bits);
 bool PGGetOperator(const char *operatorName, Oid operatorNamespace,
                    Oid leftObjectId, Oid rightObjectId, Oid *opno,
                    FmgrInfo *finfo);
-bool PGGetOperatorNo(Oid opno, NameData *oprname, Oid *oprleft,
-                        Oid *oprright, FmgrInfo *finfo);
+bool PGGetOperatorNo(Oid opno, NameData *oprname, Oid *oprleft, Oid *oprright,
+                     FmgrInfo *finfo);
 bool PGGetAddOperator(Oid atttypid, Oid subtype, Oid namespc, Oid *resulttype,
-                    FmgrInfo *finfo);
+                      FmgrInfo *finfo);
 bool PGGetProc(Oid procoid, FmgrInfo *finfo);
+bool PGGetAggInfo(const char *procedure, Oid atttypid, Oid *prorettype,
+                  Oid *transtype, FmgrInfo *trans_finfo, FmgrInfo *final_finfo,
+                  bool *final_func_exist, bool *agginitval_isnull);
 bool SumAGGGetProcinfo(Oid atttypid, Oid *prorettype, Oid *transtype,
                        FmgrInfo *trans_finfo, FmgrInfo *final_finfo,
                        bool *final_func_exist, FmgrInfo *add_finfo);
