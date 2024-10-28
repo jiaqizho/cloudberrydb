@@ -36,6 +36,24 @@ static text *CstringToText(const char *s, size_t len) {
   CBDB_WRAP_END;
   return nullptr;
 }
+
+static ArrayType *ConstructMdArrayType(Datum *datums, bool *nulls,
+                                       int len, Oid atttypid, int attlen,
+                                       bool attbyval, char attalign) {
+  CBDB_WRAP_START;
+  {
+    int dims[1];
+    int lbs[1];
+
+    dims[0] = len;
+    lbs[0] = 1;
+    return construct_md_array(datums, nulls, 1, dims, lbs,
+                              atttypid, attlen, attbyval, attalign);
+  }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
 }
 namespace pax {
 
@@ -373,6 +391,170 @@ static bool InitializeScanKey(ScanKey key, Form_pg_attribute attr, StrategyNumbe
   return false;
 }
 
+static ArrayType *InitializeArray(Form_pg_attribute attr, const std::shared_ptr<arrow::ArrayData> &array) {
+  Datum *datums;
+  bool *nulls;
+  int len = array->length;
+
+  if (array->buffers.size() < 2) return nullptr;
+
+  auto &null_array = array->buffers[0];
+  auto &b1_array = array->buffers[1];
+  auto typid PG_USED_FOR_ASSERTS_ONLY = array->type->id();
+  auto data = b1_array->data(); // data for fixed-length types
+
+  datums = (Datum *)cbdb::Palloc(sizeof(Datum) * len);
+  nulls = (bool *)cbdb::Palloc(sizeof(bool) * len);
+
+  if (null_array) {
+    const uint8_t* bitmap = null_array->data();
+
+    for (int64_t i = 0; i < array->length; ++i) {
+      // null 0, non-null 1
+      nulls[i] = !arrow::bit_util::GetBit(bitmap, i);
+    }
+  } else {
+    // if no null_bitmap_data, there is no null value
+    std::memset(nulls, false, len);
+  }
+
+  switch (attr->atttypid) {
+    case BOOLOID: {
+      Assert(typid == arrow::Type::BOOL);
+      auto bitmap = reinterpret_cast<const uint8_t *>(data);
+
+      for (int i = 0; i < len; i++) {
+        datums[i] = BoolGetDatum(arrow::bit_util::GetBit(bitmap, i));
+      }
+      break;
+    }
+    case INT2OID: {
+      Assert(typid == arrow::Type::INT16);
+      const int16_t *p = reinterpret_cast<const int16_t *>(data);
+      for (int i = 0; i < len; i++) {
+        datums[i] = Int16GetDatum(p[i]);
+      }
+      break;
+    }
+
+    case DATEOID: // fallthrough
+    case INT4OID: {
+      Assert(attr->attlen == 4);
+      const int32_t *p = reinterpret_cast<const int32_t *>(data);
+      for (int i = 0; i < len; i++) {
+        datums[i] = Int32GetDatum(p[i]);
+      }
+      break;
+    }
+
+    case TIMEOID: // fallthrough
+    case TIMESTAMPOID: // fallthrough
+    case TIMESTAMPTZOID: // fallthrough
+    case INT8OID: {
+      Assert(attr->attlen == 8);
+      static_assert(sizeof(Datum) == sizeof(int64));
+      memcpy(&datums[0], data, sizeof(Datum) * len);
+      break;
+    }
+    case FLOAT4OID: {
+      Assert(typid == arrow::Type::FLOAT);
+      const float *p = reinterpret_cast<const float *>(data);
+      for (int i = 0; i < len; i++) {
+        datums[i] = Float4GetDatum(p[i]);
+      }
+      break;
+    }
+    case FLOAT8OID: {
+      Assert(typid == arrow::Type::DOUBLE);
+      auto p = reinterpret_cast<const double *>(data);
+      for (int i = 0; i < len; i++) {
+        datums[i] = Float8GetDatum(p[i]);
+      }
+      break;
+    }
+    case NUMERICOID: {
+      Assert(typid == arrow::Type::NUMERIC128);
+      auto p = reinterpret_cast<const int64_t *>(data);
+      for (int i = 0, k = 0; i < len; i++, k += 2) {
+        if (nulls[i]) continue;
+
+        datums[i] = vec_short_numeric_to_datum(&p[k], &p[k + 1]);
+      }
+      break;
+    }
+    case TEXTOID: {
+      data = array->buffers[2]->data();
+      auto p = reinterpret_cast<const char *>(data);
+      auto offsets = reinterpret_cast<const int32_t *>(b1_array->data());
+      Assert(offsets);
+
+      int32_t offset = offsets[0];
+      for (int i = 0; i < len; i++) {
+        int32_t offset2 = offsets[i + 1];
+        if (!nulls[i]) {
+          int32_t value_len = offset2 - offset;
+          Assert(value_len >= 0);
+
+          auto ptr = cbdb::CstringToText(p, static_cast<size_t>(value_len));
+          datums[i] = PointerGetDatum(ptr);
+          p += value_len;
+        }
+        offset = offset2;
+      }
+      break;
+    }
+    case VARCHAROID: {
+      data = array->buffers[2]->data();
+      auto p = reinterpret_cast<const char *>(data);
+      auto offsets = reinterpret_cast<const int32_t *>(b1_array->data());
+      Assert(offsets);
+
+      int32_t offset = offsets[0];
+      int typmod = attr->atttypmod;
+      for (int i = 0; i < len; i++) {
+        int32_t offset2 = offsets[i + 1];
+        if (!nulls[i]) {
+          int32_t value_len = offset2 - offset;
+          Assert(value_len >= 0);
+
+          auto ptr = cbdb::VarcharInput(p, static_cast<size_t>(value_len), typmod);
+          datums[i] = PointerGetDatum(ptr);
+          p += value_len;
+        }
+        offset = offset2;
+      }
+      break;
+    }
+    case BPCHAROID: {
+      data = array->buffers[2]->data();
+      auto p = reinterpret_cast<const char *>(data);
+      auto offsets = reinterpret_cast<const int32_t *>(b1_array->data());
+      Assert(offsets);
+
+      int32_t offset = offsets[0];
+      int typmod = attr->atttypmod;
+      for (int i = 0; i < len; i++) {
+        int32_t offset2 = offsets[i + 1];
+        if (!nulls[i]) {
+          int32_t value_len = offset2 - offset;
+          Assert(value_len >= 0);
+
+          auto ptr = cbdb::BpcharInput(p, static_cast<size_t>(value_len), typmod);
+          datums[i] = PointerGetDatum(ptr);
+          p += value_len;
+        }
+        offset = offset2;
+      }
+      break;
+    }
+    default:
+      return nullptr;
+  }
+
+  return cbdb::ConstructMdArrayType(datums, nulls, len, attr->atttypid,
+                                    attr->attlen, attr->attbyval, attr->attalign);
+}
+
 void ParallelScanDesc::TransformFilterExpression(const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options, const arrow::compute::Expression &expr, const std::vector<std::pair<const char *, size_t>> &table_names) {
   ScanKeyData key;
   StrategyNumber strategy;
@@ -411,15 +593,43 @@ void ParallelScanDesc::TransformFilterExpression(const std::shared_ptr<arrow::da
   Assert(index < tupdesc->natts);
   auto attr = TupleDescAttr(tupdesc, index);
 
-  if (call->function_name == "is_null") {
-    Assert(call->arguments.size() == 1);
+  if (nargs == 1) {
+    if (call->function_name == "is_null") {
 
-    int flags = SK_ISNULL;
-    flags |= invert_flag ? SK_SEARCHNOTNULL : SK_SEARCHNULL;
+      int flags = SK_ISNULL;
+      flags |= invert_flag ? SK_SEARCHNOTNULL : SK_SEARCHNULL;
 
-    ScanKeyData k{.sk_flags = flags, .sk_attno = (AttrNumber)(index + 1), };
-    filter_scan_keys_.emplace_back(k);
-    return;
+      ScanKeyData k{.sk_flags = flags, .sk_attno = (AttrNumber)(index + 1), };
+      filter_scan_keys_.emplace_back(k);
+      return;
+    } else if (call->function_name == "is_in") {
+      Assert(!invert_flag);
+
+      auto options = call->options;
+      auto lookup_options = std::dynamic_pointer_cast<arrow::compute::SetLookupOptions>(options);
+      if (!lookup_options) return;
+
+      // only filter if value_set is an array and skip nulls
+      if (!lookup_options->value_set.is_array() || !lookup_options->skip_nulls) return;
+
+      // const std::shared_ptr<ArrayData>
+      const auto array = lookup_options->value_set.array();
+      auto len = lookup_options->value_set.length();
+      if (len < 1) return;
+
+      auto pg_array = InitializeArray(attr, array);
+      if (!pg_array) return;
+
+      ScanKeyData k {
+        .sk_flags = SK_SEARCHARRAY,
+        .sk_attno = (AttrNumber)(index + 1),
+        .sk_argument = PointerGetDatum(pg_array),
+      };
+      filter_scan_keys_.emplace_back(k);
+      return;
+    } else {
+      return;
+    }
   }
 
   // assume invert only support `is_null`
