@@ -239,7 +239,6 @@ bool PGGetProc(Oid procoid, FmgrInfo *finfo) {
   prosrc_datum = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_prosrc, &is_null);
   if (is_null) return false;
   prosrc = TextDatumGetCString(prosrc_datum);
-
   func_oid = fmgr_internal_function(prosrc);
   if (func_oid == InvalidOid)
     ereport(ERROR,
@@ -249,6 +248,84 @@ bool PGGetProc(Oid procoid, FmgrInfo *finfo) {
   fmgr_info_cxt(func_oid, finfo ? finfo : &dummy, CurrentMemoryContext);
 
   ReleaseSysCache(tuple);
+
+  return true;
+}
+
+// Used to get the agg info
+// select * from pg_aggregate as a left join pg_proc as b on a.aggfnoid=b.oid
+// where b.proname='procedure' and b.proargtypes = 'atttypid';
+bool PGGetAggInfo(const char *procedure, Oid atttypid, Oid *prorettype,
+                  Oid *transtype, FmgrInfo *trans_finfo, FmgrInfo *final_finfo,
+                  bool *final_func_exist, bool *agginitval_isnull) {
+  Oid proc_oid;
+  HeapTuple tuple, agg_tuple;
+  Datum agg_transfn, agg_finalfn;
+  FmgrInfo dummy;
+  bool is_null;
+
+  auto oid_vec = buildoidvector(&atttypid, 1);
+
+  // 1. open the pg_proc get the `prorettype` and `funcid`
+  tuple = SearchSysCache3(PROCNAMEARGSNSP, PointerGetDatum(procedure),
+                          PointerGetDatum(oid_vec),
+                          ObjectIdGetDatum(PG_CATALOG_NAMESPACE));
+  pfree(oid_vec);
+
+  if (!HeapTupleIsValid(tuple)) {
+    // not found sum function in pg_proc
+    return false;
+  }
+
+  *prorettype = DatumGetObjectId(SysCacheGetAttr(
+      PROCNAMEARGSNSP, tuple, Anum_pg_proc_prorettype, &is_null));
+  Assert(!is_null && RegProcedureIsValid(*prorettype));
+
+  proc_oid = DatumGetObjectId(
+      SysCacheGetAttr(PROCNAMEARGSNSP, tuple, Anum_pg_proc_oid, &is_null));
+  Assert(!is_null && OidIsValid(proc_oid));
+
+  ReleaseSysCache(tuple);
+
+  // 2. open the pg_aggregate get the `agg_transfn`/`agg_finalfn`(if
+  // exist) and check the `init_val` is null
+  agg_tuple = SearchSysCache1(AGGFNOID, ObjectIdGetDatum(proc_oid));
+  if (unlikely(!HeapTupleIsValid(agg_tuple))) {
+    // catalog not macth, should not happend
+    Assert(false);
+    return false;
+  }
+
+  agg_transfn = SysCacheGetAttr(AGGFNOID, agg_tuple,
+                                Anum_pg_aggregate_aggtransfn, &is_null);
+  Assert(!is_null);
+  if (!RegProcedureIsValid(agg_transfn)) {
+    ReleaseSysCache(agg_tuple);
+    // found sum function but not found transfn in pg_agg
+    return false;
+  }
+
+  // final function may not exist
+  agg_finalfn = SysCacheGetAttr(AGGFNOID, agg_tuple,
+                                Anum_pg_aggregate_aggfinalfn, &is_null);
+  *final_func_exist = !is_null && RegProcedureIsValid(agg_finalfn);
+
+  *transtype = SysCacheGetAttr(AGGFNOID, agg_tuple,
+                               Anum_pg_aggregate_aggtranstype, &is_null);
+  Assert(!is_null && RegProcedureIsValid(*transtype));
+
+  SysCacheGetAttr(AGGFNOID, agg_tuple, Anum_pg_aggregate_agginitval, &is_null);
+  *agginitval_isnull = is_null;
+
+  ReleaseSysCache(agg_tuple);
+
+  // 3. create the `trans_finfo`/final_finfo(if exist)/`add_finfo`
+  fmgr_info_cxt(agg_transfn, trans_finfo ? trans_finfo : &dummy,
+                CurrentMemoryContext);
+  if (*final_func_exist) {
+    fmgr_info_cxt(agg_finalfn, final_finfo ? final_finfo : &dummy,
+                  CurrentMemoryContext);
+  }
 
   return true;
 }

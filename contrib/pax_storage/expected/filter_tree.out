@@ -446,77 +446,6 @@ LOG:  kind file, filter rate: 2 / 2
      0
 (1 row)
 
--- var + const, unsupport yet
-select count(*) from t1 where v1 - 10 > 100;
-LOG:  statement: select count(*) from t1 where v1 - 10 > 100;
- count 
--------
-   100
-(1 row)
-
-select count(*) from t1 where v1 + 10 > 100;
-LOG:  statement: select count(*) from t1 where v1 + 10 > 100;
- count 
--------
-   110
-(1 row)
-
-select count(*) from t1 where v1 - 10 > v2;
-LOG:  statement: select count(*) from t1 where v1 - 10 > v2;
- count 
--------
-     0
-(1 row)
-
-select count(*) from t1 where v1 + 10 > v2;
-LOG:  statement: select count(*) from t1 where v1 + 10 > v2;
- count 
--------
-     0
-(1 row)
-
-select count(*) from t1 where v1 - 10 > (v2 + 100) - 20;
-LOG:  statement: select count(*) from t1 where v1 - 10 > (v2 + 100) - 20;
- count 
--------
-     0
-(1 row)
-
-select count(*) from t1 where v1 + 10 > (v2 + 200) - 10;
-LOG:  statement: select count(*) from t1 where v1 + 10 > (v2 + 200) - 10;
- count 
--------
-     0
-(1 row)
-
-select count(*) from t1 where v1 + v2 > 1000;
-LOG:  statement: select count(*) from t1 where v1 + v2 > 1000;
- count 
--------
-    50
-(1 row)
-
-select count(*) from t1 where v1 + v2 < 1000;
-LOG:  statement: select count(*) from t1 where v1 + v2 < 1000;
- count 
--------
-   149
-(1 row)
-
-select count(*) from t1 where v1 + v2 < v3;
-LOG:  statement: select count(*) from t1 where v1 + v2 < v3;
- count 
--------
-    99
-(1 row)
-
-select count(*) from t1 where intrc(v1) + 10 > v2;
-LOG:  statement: select count(*) from t1 where intrc(v1) + 10 > v2;
- count 
--------
-     0
-(1 row)
-
 -- simply the filter tree
 set pax_log_filter_tree to on;
 LOG:  statement: set pax_log_filter_tree to on;
@@ -1029,7 +958,7 @@ LOG:  kind file, filter rate: 2 / 2
      0
 (1 row)
 
--- var + const, unsupport yet
+-- var +/-/* const
 select count(*) from t1 where v1 - 10 > 100;
 LOG:  statement: select count(*) from t1 where v1 - 10 > 100;
  count 

@@ -422,26 +422,25 @@ bool cbdb::PGGetOperator(const char *operatorName, Oid operatorNamespace,
 }
 
 bool cbdb::PGGetOperatorNo(Oid opno, NameData *oprname, Oid *oprleft,
-                              Oid *oprright, FmgrInfo *finfo) {
+                           Oid *oprright, FmgrInfo *finfo) {
   CBDB_WRAP_START;
   { return paxc::PGGetOperatorNo(opno, oprname, oprleft, oprright, finfo); }
   CBDB_WRAP_END;
 }
 
 bool cbdb::PGGetAddOperator(Oid atttypid, Oid subtype, Oid namespc,
-                          Oid *resulttype, FmgrInfo *finfo) {
+                            Oid *resulttype, FmgrInfo *finfo) {
   CBDB_WRAP_START;
   {
-    return paxc::PGGetAddOperator(atttypid, subtype, namespc, resulttype, finfo);
+    return paxc::PGGetAddOperator(atttypid, subtype, namespc, resulttype,
+                                  finfo);
   }
   CBDB_WRAP_END;
 }
 
 bool cbdb::PGGetProc(Oid procoid, FmgrInfo *finfo) {
   CBDB_WRAP_START;
-  {
-    return paxc::PGGetProc(procoid, finfo);
-  }
+  { return paxc::PGGetProc(procoid, finfo); }
   CBDB_WRAP_END;
 }
 
@@ -452,6 +451,19 @@ bool cbdb::SumAGGGetProcinfo(Oid atttypid, Oid *prorettype, Oid *transtype,
   {
     return paxc::SumAGGGetProcinfo(atttypid, prorettype, transtype, trans_finfo,
                                    final_finfo, final_func_exist, add_finfo);
+  }
+  CBDB_WRAP_END;
+}
+
+bool cbdb::PGGetAggInfo(const char *procedure, Oid atttypid, Oid *prorettype,
+                        Oid *transtype, FmgrInfo *trans_finfo,
+                        FmgrInfo *final_finfo, bool *final_func_exist,
+                        bool *agginitval_isnull) {
+  CBDB_WRAP_START;
+  {
+    return paxc::PGGetAggInfo(procedure, atttypid, prorettype, transtype,
+                              trans_finfo, final_finfo, final_func_exist,
+                              agginitval_isnull);
   }
   CBDB_WRAP_END;
 }
