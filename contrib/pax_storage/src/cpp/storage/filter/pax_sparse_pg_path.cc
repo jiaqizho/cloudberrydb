@@ -108,12 +108,13 @@ std::shared_ptr<PFTNode> PaxSparseFilter::ProcessOpExpr(Expr *clause) {
   StrategyNumber op_strategy;    /* operator's strategy number */
   Oid op_lefttype, op_righttype; /* operator's declared input types */
   Expr *leftop, *rightop;        /* clause on lhs,rhs of operator */
-  std::shared_ptr<OpNode> op_node = nullptr;
   bool ok = false;
   std::string ignore_reason;
+  std::shared_ptr<PFTNode> cur_node = nullptr;
   std::shared_ptr<PFTNode> left_node = nullptr;
   std::shared_ptr<PFTNode> right_node = nullptr;
   OpExpr *op_expr;
+  bool is_arithmetic;
 
   op_expr = castNode(OpExpr, clause);
 
@@ -131,7 +132,9 @@ std::shared_ptr<PFTNode> PaxSparseFilter::ProcessOpExpr(Expr *clause) {
     }
 
     op_strategy = OpernameToStrategy(NameStr(op_name));
-    if (op_strategy == InvalidStrategy) {
+    is_arithmetic = SupportedArithmeticOpername(NameStr(op_name));
+    // not the comparison operator or arithmetic operator
+    if (op_strategy == InvalidStrategy && !is_arithmetic) {
       ignore_reason = pax::fmt(
           "Invalid strategy in OpExpr, [opno=%d, name=%s, ltype=%d, rtype=%d]",
           opno, NameStr(op_name) ? NameStr(op_name) : "empty name", op_lefttype,
@@ -149,6 +152,29 @@ std::shared_ptr<PFTNode> PaxSparseFilter::ProcessOpExpr(Expr *clause) {
     goto ignore_clause;
   }
 
+  if (op_strategy != InvalidStrategy) {
+    auto op_node = std::make_shared<OpNode>();
+    op_node->opno = opno;
+    op_node->strategy = op_strategy;
+    op_node->collation = collid;
+    op_node->left_typid = op_lefttype;
+    op_node->right_typid = op_righttype;
+
+    cur_node = op_node;
+  } else {
+    Assert(is_arithmetic);
+    auto aop_node = std::make_shared<ArithmeticOpNode>();
+    aop_node->opfuncid = op_expr->opfuncid;
+    aop_node->op_name = std::string(NameStr(op_name));
+    aop_node->collation = collid;
+    aop_node->left_typid = op_lefttype;
+    aop_node->right_typid = op_righttype;
+
+    cur_node = aop_node;
+  }
+
+  Assert(cur_node);
+
   // Support these cases:
   //
   //  - (var, const)
@@ -157,20 +183,12 @@ std::shared_ptr<PFTNode> PaxSparseFilter::ProcessOpExpr(Expr *clause) {
   left_node = ExprWalker(leftop);
   right_node = ExprWalker(rightop);
 
-  op_node = std::make_shared<OpNode>();
-  op_node->opno = opno;
-  op_node->strategy = op_strategy;
-  op_node->collation = collid;
-  op_node->left_typid = op_lefttype;
-  op_node->right_typid = op_righttype;
+  PFTNode::AppendSubNode(cur_node, std::move(left_node));
+  PFTNode::AppendSubNode(cur_node, std::move(right_node));
 
-  PFTNode::AppendSubNode(op_node, std::move(left_node));
-  PFTNode::AppendSubNode(op_node, std::move(right_node));
-
-  return op_node;
-
+  return cur_node;
 ignore_clause:
-  Assert(!left_node && !right_node && !op_node);
+  Assert(!left_node && !right_node && !cur_node);
   Assert(!ignore_reason.empty());
   return std::make_shared<UnsupportedNode>(ignore_reason);
 }

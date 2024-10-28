@@ -133,9 +133,10 @@ class PaxSparseFilter final {
                   const std::shared_ptr<PFTNode> &node);
   bool ExecOpNode(PaxSparseExecContext *exec_ctx,
                   const std::shared_ptr<PFTNode> &node);
+  bool ExecArithmeticOpNode(PaxSparseExecContext *exec_ctx,
+                            const std::shared_ptr<PFTNode> &node);
   bool ExecCastNode(PaxSparseExecContext *exec_ctx,
                     const std::shared_ptr<PFTNode> &node);
-
   bool ExecConstNode(PaxSparseExecContext *exec_ctx,
                      const std::shared_ptr<PFTNode> &node);
   bool ExecVarNode(PaxSparseExecContext *exec_ctx,

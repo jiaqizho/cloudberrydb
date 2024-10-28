@@ -9,6 +9,7 @@ namespace pax {
 
 enum PFTNodeType {
   InvalidType = 0,
+  ArithmeticOpType,
   OpType,
   CastType,
   ConstType,
@@ -56,6 +57,24 @@ struct OpNode final : public PFTNode {
     return ::pax::fmt(
         "OpNode(opno=%d, strategy=%d, collation=%d, ltypid=%d, rtypid=%d)",
         opno, strategy, collation, left_typid, right_typid);
+  }
+};
+
+struct ArithmeticOpNode final : public PFTNode {
+  Oid opfuncid = InvalidOid;
+  std::string op_name;
+  Oid collation = InvalidOid;    // optional fields, can be InvalidOid
+  Oid left_typid = InvalidOid;   // optional fields, can be InvalidOid
+  Oid right_typid = InvalidOid;  // optional fields, can be InvalidOid
+
+  ArithmeticOpNode() : PFTNode(ArithmeticOpType) {}
+  ~ArithmeticOpNode() = default;
+
+  std::string DebugString() const override {
+    return ::pax::fmt(
+        "ArithmeticOpNode(opfuncid=%d, op_name=%s, collation=%d, ltypid=%d, "
+        "rtypid=%d)",
+        opfuncid, op_name.c_str(), collation, left_typid, right_typid);
   }
 };
 

@@ -46,6 +46,27 @@ StrategyNumber InvertStrategy(StrategyNumber strategy) {
   return InvalidStrategy;
 }
 
+static const char *supported_arithmetic_opname[] = {
+    ArithmeticAddStr,
+    ArithmeticSubStr,
+    ArithmeticMulStr,
+};
+
+bool SupportedArithmeticOpername(const char *opername) {
+  Assert(opername);
+  if (!opername) {
+    return false;
+  }
+
+  for (size_t i = 0; i < lengthof(supported_arithmetic_opname); i++) {
+    if (strcmp(opername, supported_arithmetic_opname[i]) == 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 StrategyNumber OpernameToStrategy(const char *opername) {
   Assert(opername);
   if (!opername) {
