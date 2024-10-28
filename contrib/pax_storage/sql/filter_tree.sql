@@ -112,22 +112,6 @@ select count(*) from t1 where v2 = v1;
 select count(*) from t1 where v1 < v1; -- stupid case, but still support
 select count(*) from t1 where v1 > v1; -- stupid case, but still support
 
--- var + const, unsupport yet
-select count(*) from t1 where v1 - 10 > 100;
-select count(*) from t1 where v1 + 10 > 100;
-
-select count(*) from t1 where v1 - 10 > v2;
-select count(*) from t1 where v1 + 10 > v2;
-
-select count(*) from t1 where v1 - 10 > (v2 + 100) - 20;
-select count(*) from t1 where v1 + 10 > (v2 + 200) - 10;
-
-select count(*) from t1 where v1 + v2 > 1000;
-select count(*) from t1 where v1 + v2 < 1000;
-select count(*) from t1 where v1 + v2 < v3;
-
-select count(*) from t1 where intrc(v1) + 10 > v2;
-
 -- simply the filter tree
 set pax_log_filter_tree to on;
 select count(*) from t1 where v1 > 10 or intrc(v2) < 120;
@@ -226,7 +210,7 @@ select count(*) from t1 where v2 = v1;
 select count(*) from t1 where v1 < v1; -- stupid case, but still support
 select count(*) from t1 where v1 > v1; -- stupid case, but still support
 
--- var + const, unsupport yet
+-- var +/-/* const
 select count(*) from t1 where v1 - 10 > 100;
 select count(*) from t1 where v1 + 10 > 100;
 
@@ -241,6 +225,7 @@ select count(*) from t1 where v1 + v2 < 1000;
 select count(*) from t1 where v1 + v2 < v3;
 
 select count(*) from t1 where intrc(v1) + 10 > v2;
+
 
 -- simply the filter tree
 set pax_log_filter_tree to on;

@@ -317,6 +317,251 @@ static Form_pg_attribute CheckAndGetAttr(AttrNumber column_index,
   return attr;
 }
 
+bool PaxSparseFilter::ExecArithmeticOpNode(
+    PaxSparseExecContext *exec_ctx, const std::shared_ptr<PFTNode> &node) {
+  bool no_filter = false;
+  PaxSparseExecContext lctx_copy(*exec_ctx), rctx_copy(*exec_ctx);
+  std::shared_ptr<ArithmeticOpNode> aop_node;
+  FmgrInfo finfo;
+  FmgrInfo min_finfo, max_finfo;
+  Oid coll;
+  Assert(node && IsNode(node, ArithmeticOpType) && node->sub_nodes.size() == 2);
+
+  aop_node = std::dynamic_pointer_cast<ArithmeticOpNode>(node);
+  no_filter |= ExecFilterTree(&lctx_copy, node->sub_nodes[0]);
+  no_filter |= ExecFilterTree(&rctx_copy, node->sub_nodes[1]);
+  if (no_filter) {
+    return no_filter;
+  }
+
+  auto ok = cbdb::PGGetProc(aop_node->opfuncid, &finfo);
+  if (!ok) {
+    return true;
+  }
+
+  coll = aop_node->collation;
+
+  auto init_min_max_funcs = [&](Oid typid) -> bool {
+    [[maybe_unused]] FmgrInfo finfo_dummy;
+    bool exist_final_finfo = false;
+    bool agginitval_isnull = false;
+    bool ok;
+    Oid prorettype, transtype;
+
+    ok = cbdb::PGGetAggInfo("min", lctx_copy.var_value.typid, &prorettype,
+                            &transtype, &min_finfo, &finfo_dummy,
+                            &exist_final_finfo, &agginitval_isnull);
+
+    if (!ok || exist_final_finfo || !agginitval_isnull || typid != prorettype) {
+      return false;
+    }
+
+    ok = cbdb::PGGetAggInfo("max", lctx_copy.var_value.typid, &prorettype,
+                            &transtype, &max_finfo, &finfo_dummy,
+                            &exist_final_finfo, &agginitval_isnull);
+
+    if (!ok || exist_final_finfo || !agginitval_isnull || typid != prorettype) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // FIXME(jiaqizho): support the "/" opname
+  if (lctx_copy.from_node == VarType && rctx_copy.from_node == ConstType) {
+    // check left min/max exist
+    if (!lctx_copy.var_value.exist_min_max) {
+      return true;
+    }
+
+    if (aop_node->op_name == ArithmeticAddStr ||
+        aop_node->op_name == ArithmeticSubStr) {
+      // min = lmin +- rconst
+      // max = lmax +- rconst
+      exec_ctx->var_value.min = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.var_value.min, rctx_copy.const_value.value);
+      exec_ctx->var_value.max = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.var_value.max, rctx_copy.const_value.value);
+    } else if (aop_node->op_name == ArithmeticMulStr) {
+      // 1. left = [pos, pos], right = [pos]
+      //    min = lmin * right, max = lmax * right
+      // 2. left = [pos, pos], right = [neg]
+      //    min = lmax * right, max = lmin * right
+      // 3. left = [neg, pos], right = [pos]
+      //    min = lmin * right, max = lmax * right
+      // 4. left = [neg, pos], right = [neg]
+      //    min = lmax * right, max = lmin * right
+      // 5. left = [neg, neg], right = [pos]
+      //    min = lmax * right, max = lmin * right
+      // 6. left = [neg, neg], right = [neg]
+      //    min = lmin * right, max = lmax * right
+      // so the result is:
+      //  min = min(lmin * right, lmax * right)
+      //  max = max(lmin * right, lmax * right)
+      Datum datum1;
+      Datum datum2;
+      if (!init_min_max_funcs(lctx_copy.var_value.typid)) {
+        return true;
+      }
+
+      datum1 = cbdb::FunctionCall2Coll(&finfo, coll, lctx_copy.var_value.min,
+                                       rctx_copy.const_value.value);
+      datum2 = cbdb::FunctionCall2Coll(&finfo, coll, lctx_copy.var_value.max,
+                                       rctx_copy.const_value.value);
+      exec_ctx->var_value.min =
+          cbdb::FunctionCall2Coll(&min_finfo, InvalidOid, datum1, datum2);
+      exec_ctx->var_value.max =
+          cbdb::FunctionCall2Coll(&max_finfo, InvalidOid, datum1, datum2);
+    } else {
+      Assert(false);
+    }
+
+    exec_ctx->var_value.attrno = lctx_copy.var_value.attrno;
+    exec_ctx->var_value.typid = lctx_copy.var_value.typid;
+    exec_ctx->var_value.exist_min_max = true;
+    exec_ctx->var_value.exist_bf = false;
+  } else if (lctx_copy.from_node == ConstType &&
+             rctx_copy.from_node == VarType) {
+    // check right min/max exist
+    if (!rctx_copy.var_value.exist_min_max) {
+      return true;
+    }
+
+    if (aop_node->op_name == ArithmeticAddStr) {
+      // min = lconst + rmin
+      // max = lconst + rmax
+      exec_ctx->var_value.min = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.const_value.value, rctx_copy.var_value.min);
+      exec_ctx->var_value.max = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.const_value.value, rctx_copy.var_value.max);
+    } else if (aop_node->op_name == ArithmeticSubStr) {
+      // min = lconst - rmax
+      // max = lconst - rmin
+      exec_ctx->var_value.min = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.const_value.value, rctx_copy.var_value.max);
+      exec_ctx->var_value.max = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.const_value.value, rctx_copy.var_value.min);
+    } else if (aop_node->op_name == ArithmeticMulStr) {
+      // same as the case in (VarType + ConstType && ArithmeticMulStr)
+      // This is because multiplication is interchangeable
+      // so the result is:
+      //  min = min(lmin * right, lmax * right)
+      //  max = max(lmin * right, lmax * right)
+      Datum datum1;
+      Datum datum2;
+      if (!init_min_max_funcs(rctx_copy.var_value.typid)) {
+        return true;
+      }
+
+      datum1 = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.const_value.value, rctx_copy.var_value.min);
+      datum2 = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.const_value.value, rctx_copy.var_value.max);
+      exec_ctx->var_value.min =
+          cbdb::FunctionCall2Coll(&min_finfo, InvalidOid, datum1, datum2);
+      exec_ctx->var_value.max =
+          cbdb::FunctionCall2Coll(&max_finfo, InvalidOid, datum1, datum2);
+    } else {
+      Assert(false);
+    }
+
+    exec_ctx->var_value.attrno = rctx_copy.var_value.attrno;
+    exec_ctx->var_value.typid = rctx_copy.var_value.typid;
+    exec_ctx->var_value.exist_min_max = true;
+    exec_ctx->var_value.exist_bf = false;
+  } else if (lctx_copy.from_node == VarType && rctx_copy.from_node == VarType) {
+    // check the left and right both exist min/max
+    if (!lctx_copy.var_value.exist_min_max ||
+        !rctx_copy.var_value.exist_min_max) {
+      return true;
+    }
+
+    // must match
+    if (lctx_copy.var_value.typid != rctx_copy.var_value.typid) {
+      return true;
+    }
+
+    if (aop_node->op_name == ArithmeticAddStr) {
+      // min = lmin + rmin
+      // max = lmax + rmax
+      exec_ctx->var_value.min = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.var_value.min, rctx_copy.var_value.min);
+      exec_ctx->var_value.max = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.var_value.max, rctx_copy.var_value.max);
+    } else if (aop_node->op_name == ArithmeticSubStr) {
+      // min = lmin - rmax
+      // max = lmax - rmin
+      exec_ctx->var_value.min = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.var_value.min, rctx_copy.var_value.max);
+      exec_ctx->var_value.max = cbdb::FunctionCall2Coll(
+          &finfo, coll, lctx_copy.var_value.max, rctx_copy.var_value.min);
+    } else if (aop_node->op_name == ArithmeticMulStr) {
+      // 1. left = [pos, pos] right = [pos, pos]
+      //   min = lmin * rmin, max = lmax * rmax
+      // 2. left = [pos, pos], right = [neg, pos]
+      //   min = lmax * rmin, max = lmax * rmax
+      // 3. left = [pos, pos], right = [neg, neg]
+      //   min = lmax * rmin, max = lmin * rmax
+      // 4. left = [neg, pos], right = [pos, pos]
+      //   min = lmin * rmax, max = lmax * rmax
+      // 5. left = [neg, pos], right = [neg, pos]
+      //   min = min(lmin * rmax, lmax * rmin), max = max(lmax * rmax, lmin *
+      //   rmin)
+      // 6. left = [neg, pos], right = [neg, neg]
+      //   min = lmax * rmin, max = lmin * rmin
+      // 7. left = [neg, neg], right = [pos, pos]
+      //   min = min(lmin * rmax, lmax * rmin), max = lmax * lmin
+      // 8. left = [neg, neg], right = [neg, pos]
+      //   min = lmin * rmax, max = lmin * rmin
+      // 9. left = [neg, neg], right = [neg, neg]
+      //   min = lmax * rmax, max = lmin * rmin
+      // so the result is:
+      //  min = min(lmin * rmin, lmin * rmax, lmax * rmin, lmax * rmax)
+      //  max = max(lmin * rmin, lmin * rmax, lmax * rmin, lmax * rmax)
+      Datum datum1;  // lmin * rmin
+      Datum datum2;  // lmin * rmax
+      Datum datum3;  // lmax * rmin
+      Datum datum4;  // lmax * rmax
+
+      if (!init_min_max_funcs(lctx_copy.var_value.typid)) {
+        return true;
+      }
+
+      datum1 = cbdb::FunctionCall2Coll(&finfo, coll, lctx_copy.var_value.min,
+                                       rctx_copy.var_value.min);
+      datum2 = cbdb::FunctionCall2Coll(&finfo, coll, lctx_copy.var_value.min,
+                                       rctx_copy.var_value.max);
+      datum3 = cbdb::FunctionCall2Coll(&finfo, coll, lctx_copy.var_value.max,
+                                       rctx_copy.var_value.min);
+      datum4 = cbdb::FunctionCall2Coll(&finfo, coll, lctx_copy.var_value.max,
+                                       rctx_copy.var_value.max);
+
+      exec_ctx->var_value.min =
+          cbdb::FunctionCall2Coll(&min_finfo, InvalidOid, datum1, datum2);
+      exec_ctx->var_value.min = cbdb::FunctionCall2Coll(
+          &min_finfo, InvalidOid, exec_ctx->var_value.min, datum3);
+      exec_ctx->var_value.min = cbdb::FunctionCall2Coll(
+          &min_finfo, InvalidOid, exec_ctx->var_value.min, datum4);
+
+      exec_ctx->var_value.max =
+          cbdb::FunctionCall2Coll(&max_finfo, InvalidOid, datum1, datum2);
+      exec_ctx->var_value.max = cbdb::FunctionCall2Coll(
+          &max_finfo, InvalidOid, exec_ctx->var_value.max, datum3);
+      exec_ctx->var_value.max = cbdb::FunctionCall2Coll(
+          &max_finfo, InvalidOid, exec_ctx->var_value.max, datum4);
+    } else {
+      Assert(false);
+    }
+
+    exec_ctx->var_value.attrno = lctx_copy.var_value.attrno;
+    exec_ctx->var_value.typid = lctx_copy.var_value.typid;
+    exec_ctx->var_value.exist_min_max = true;
+    exec_ctx->var_value.exist_bf = false;
+  }
+
+  return no_filter;
+}
+
 bool PaxSparseFilter::ExecOpNode(PaxSparseExecContext *exec_ctx,
                                  const std::shared_ptr<PFTNode> &node) {
   bool no_filter = false;
@@ -1053,6 +1298,11 @@ bool PaxSparseFilter::ExecFilterTree(PaxSparseExecContext *exec_ctx,
     case ConstType: {
       no_filter = ExecConstNode(exec_ctx, node);
       exec_ctx->from_node = ConstType;
+      break;
+    }
+    case ArithmeticOpType: {
+      no_filter = ExecArithmeticOpNode(exec_ctx, node);
+      exec_ctx->from_node = VarType;
       break;
     }
     case OpType: {

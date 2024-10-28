@@ -9,10 +9,15 @@
 #define GreaterEqualStrategyStr ">="
 #define GreaterStrategyStr ">"
 
+#define ArithmeticAddStr "+"
+#define ArithmeticSubStr "-"
+#define ArithmeticMulStr "*"
+#define ArithmeticDivStr "/"
+
 extern StrategyNumber OpernameToStrategy(const char *data);
 extern StrategyNumber InvertStrategy(StrategyNumber strategy);
 extern const char *StrategyToOpername(StrategyNumber number);
-
+extern bool SupportedArithmeticOpername(const char *opername);
 namespace pax {
 
 // Get the min/max oper from pax
