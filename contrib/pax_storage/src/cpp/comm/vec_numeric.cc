@@ -256,15 +256,9 @@ Datum vec_short_numeric_to_datum(const int64 *n_low, const int64 *n_high) {
       is_nan = true;
     }
   }
-  Datum result;
-  CBDB_WRAP_START;
-  {
-    result = NumericGetDatum(
+  return cbdb::NumericToDatum(
         int128_to_numeric(val, VEC_SHORT_NUMERIC_SHORT_DSCALE(n_high_val),
                           sign < 0, is_nan, is_inf, is_ninf));
-  }
-  CBDB_WRAP_END;
-  return result;
 #else
   Assert(false);
   return (Datum)0;

@@ -121,6 +121,8 @@ static inline bool DatumToBool(Datum d) noexcept { return DatumGetBool(d); }
 
 static inline Datum BoolToDatum(bool d) noexcept { return BoolGetDatum(d); }
 
+static inline Datum NumericToDatum(Numeric n) noexcept { return NumericGetDatum(n); }
+
 static inline Datum Float4ToDutum(float4 d) noexcept {
   return Float4GetDatum(d);
 }
