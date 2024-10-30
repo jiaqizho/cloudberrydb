@@ -215,7 +215,6 @@ TEST_F(MicroPartitionStatsTest, MicroPartitionStatsInfoCombine) {
   // verify ColumnDataStats have been updated
   Datum max_datum = 0;
   Datum min_datum = 0;
-  bool ok = false;
 
   struct varlena *vl, *tunpacked;
   int text_len;
@@ -232,19 +231,15 @@ TEST_F(MicroPartitionStatsTest, MicroPartitionStatsInfoCombine) {
 
   max_datum = MicroPartitionStats::FromValue(
       col_stats1_1->mutable_datastats()->maximum(), tuple_desc->attrs[0].attlen,
-      tuple_desc->attrs[0].attbyval, &ok);
-  ASSERT_TRUE(ok);
+      tuple_desc->attrs[0].attbyval, 0);
   ASSERT_EQ(max_datum, cbdb::Int32ToDatum(100));
   min_datum = MicroPartitionStats::FromValue(
       col_stats1_1->mutable_datastats()->minimal(), tuple_desc->attrs[0].attlen,
-      tuple_desc->attrs[0].attbyval, &ok);
-  ASSERT_TRUE(ok);
+      tuple_desc->attrs[0].attbyval, 0);
   ASSERT_EQ(min_datum, cbdb::Int32ToDatum(50));
-
   max_datum = MicroPartitionStats::FromValue(
       col_stats1_2->mutable_datastats()->maximum(), tuple_desc->attrs[1].attlen,
-      tuple_desc->attrs[1].attbyval, &ok);
-  ASSERT_TRUE(ok);
+      tuple_desc->attrs[1].attbyval, 0);
   vl = (struct varlena *)DatumGetPointer(max_datum);
   tunpacked = pg_detoast_datum_packed(vl);
   ASSERT_EQ((Pointer)vl, (Pointer)tunpacked);
@@ -252,11 +247,9 @@ TEST_F(MicroPartitionStatsTest, MicroPartitionStatsInfoCombine) {
   text_data = VARDATA_ANY(tunpacked);
   ASSERT_EQ(text_len, 3);
   ASSERT_EQ(memcmp(text_data, "444", 3), 0);
-
   min_datum = MicroPartitionStats::FromValue(
       col_stats1_2->mutable_datastats()->minimal(), tuple_desc->attrs[1].attlen,
-      tuple_desc->attrs[1].attbyval, &ok);
-  ASSERT_TRUE(ok);
+      tuple_desc->attrs[1].attbyval, 1);
   vl = (struct varlena *)DatumGetPointer(min_datum);
   tunpacked = pg_detoast_datum_packed(vl);
   ASSERT_EQ((Pointer)vl, (Pointer)tunpacked);
@@ -267,24 +260,20 @@ TEST_F(MicroPartitionStatsTest, MicroPartitionStatsInfoCombine) {
 
   max_datum = MicroPartitionStats::FromValue(
       col_stats1_3->mutable_datastats()->maximum(), tuple_desc->attrs[2].attlen,
-      tuple_desc->attrs[2].attbyval, &ok);
-  ASSERT_TRUE(ok);
+      tuple_desc->attrs[2].attbyval, 2);
   ASSERT_EQ(max_datum, cbdb::Int32ToDatum(100));
   min_datum = MicroPartitionStats::FromValue(
       col_stats1_3->mutable_datastats()->minimal(), tuple_desc->attrs[2].attlen,
-      tuple_desc->attrs[2].attbyval, &ok);
-  ASSERT_TRUE(ok);
+      tuple_desc->attrs[2].attbyval, 2);
   ASSERT_EQ(min_datum, cbdb::Int32ToDatum(10));
 
   max_datum = MicroPartitionStats::FromValue(
       col_stats1_4->mutable_datastats()->maximum(), tuple_desc->attrs[3].attlen,
-      tuple_desc->attrs[3].attbyval, &ok);
-  ASSERT_TRUE(ok);
+      tuple_desc->attrs[3].attbyval, 3);
   ASSERT_EQ(max_datum, cbdb::Int32ToDatum(100));
   min_datum = MicroPartitionStats::FromValue(
       col_stats1_4->mutable_datastats()->minimal(), tuple_desc->attrs[3].attlen,
-      tuple_desc->attrs[3].attbyval, &ok);
-  ASSERT_TRUE(ok);
+      tuple_desc->attrs[3].attbyval, 3);
   ASSERT_EQ(min_datum, cbdb::Int32ToDatum(50));
 }
 
