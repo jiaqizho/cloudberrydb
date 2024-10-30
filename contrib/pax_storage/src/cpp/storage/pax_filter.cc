@@ -508,25 +508,16 @@ static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
       if (MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, collation,
                                     lfunc, scan_key->sk_strategy)) {
         Assert(lfunc);
-        datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(),
-                                                    typlen, typbyval, &ok);
-
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MIN datum in pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, column_index));
+        datum = pax::MicroPartitionStats::FromValue(
+            data_stats.minimal(), typlen, typbyval, column_index);
 
         matches = lfunc(&datum, &value, collation);
       } else if (allow_fallback_to_pg) {
         ok = MinMaxGetPgStrategyProcinfo(typid, scan_key->sk_subtype, &finfo,
                                          scan_key->sk_strategy);
         if (!ok) break;
-        datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(),
-                                                    typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MIN datum in pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, column_index));
+        datum = pax::MicroPartitionStats::FromValue(
+            data_stats.minimal(), typlen, typbyval, column_index);
         matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
       }
 
@@ -539,36 +530,23 @@ static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
                                     lfunc2, BTGreaterEqualStrategyNumber)) {
         Assert(lfunc && lfunc2);
 
-        datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(),
-                                                    typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MIN datum in pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, column_index));
+        datum = pax::MicroPartitionStats::FromValue(
+            data_stats.minimal(), typlen, typbyval, column_index);
         matches = lfunc(&datum, &value, collation);
         if (!DatumGetBool(matches))
           // not (min <= value) --> min > value
           break;
 
-        datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(),
-                                                    typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MAX datum in pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, column_index));
+        datum = pax::MicroPartitionStats::FromValue(
+            data_stats.maximum(), typlen, typbyval, column_index);
         matches = lfunc2(&datum, &value, collation);
 
       } else if (allow_fallback_to_pg) {
         ok = MinMaxGetPgStrategyProcinfo(typid, scan_key->sk_subtype, &finfo,
                                          BTLessEqualStrategyNumber);
         if (!ok) break;
-        datum = pax::MicroPartitionStats::FromValue(data_stats.minimal(),
-                                                    typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MIN datum in pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, column_index));
-
+        datum = pax::MicroPartitionStats::FromValue(
+            data_stats.minimal(), typlen, typbyval, column_index);
         matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
 
         if (!DatumGetBool(matches))
@@ -578,12 +556,8 @@ static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
         ok = MinMaxGetPgStrategyProcinfo(typid, scan_key->sk_subtype, &finfo,
                                          BTGreaterEqualStrategyNumber);
         if (!ok) break;
-        datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(),
-                                                    typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MAX datum in pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, column_index));
+        datum = pax::MicroPartitionStats::FromValue(
+            data_stats.maximum(), typlen, typbyval, column_index);
 
         matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
       }
@@ -594,25 +568,16 @@ static bool CheckNonnullValue(const ::pax::stats::ColumnBasicInfo &minmax,
       if (MinMaxGetStrategyProcinfo(typid, scan_key->sk_subtype, collation,
                                     lfunc, scan_key->sk_strategy)) {
         Assert(lfunc);
-        datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(),
-                                                    typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MAX datum in pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, column_index));
-
+        datum = pax::MicroPartitionStats::FromValue(
+            data_stats.maximum(), typlen, typbyval, column_index);
         matches = lfunc(&datum, &value, collation);
       } else if (allow_fallback_to_pg) {
         ok = MinMaxGetPgStrategyProcinfo(typid, scan_key->sk_subtype, &finfo,
                                          scan_key->sk_strategy);
         if (!ok) break;
 
-        datum = pax::MicroPartitionStats::FromValue(data_stats.maximum(),
-                                                    typlen, typbyval, &ok);
-        CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to parse the MAX datum in pb [typbyval=%d, "
-                       "typlen=%d, column_index=%d]",
-                       typbyval, typlen, column_index));
+        datum = pax::MicroPartitionStats::FromValue(
+            data_stats.maximum(), typlen, typbyval, column_index);
         matches = cbdb::FunctionCall2Coll(&finfo, collation, datum, value);
       }
 
