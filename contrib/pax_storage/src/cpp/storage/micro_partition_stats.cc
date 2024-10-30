@@ -244,24 +244,14 @@ static void MinMaxStatisticsInfoCombine(
 
   auto typlen = attr->attlen;
   auto typbyval = attr->attbyval;
-  bool ok = false;
   auto collation = right_column_stats->info().collation();
 
   if (right_column_data_stats->has_minimal()) {
     if (left_column_data_stats->has_minimal()) {
       auto left_min_datum = MicroPartitionStats::FromValue(
-          left_column_data_stats->minimal(), typlen, typbyval, &ok);
-      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                 fmt("Fail to parse the MIN datum in LEFT pb [typbyval=%d, "
-                     "typlen=%d, column_index=%d]",
-                     typbyval, typlen, column_index));
-
+          left_column_data_stats->minimal(), typlen, typbyval, column_index);
       auto right_min_datum = MicroPartitionStats::FromValue(
-          right_column_data_stats->minimal(), typlen, typbyval, &ok);
-      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                 fmt("Fail to parse the MIN datum in RIGHT pb [typbyval=%d, "
-                     "typlen=%d, column_index=%d]",
-                     typbyval, typlen, column_index));
+          right_column_data_stats->minimal(), typlen, typbyval, column_index);
       bool min_rc = false;
 
       // can direct call the oper, no need check exist again
@@ -284,18 +274,9 @@ static void MinMaxStatisticsInfoCombine(
   if (right_column_data_stats->has_maximum()) {
     if (left_column_data_stats->has_maximum()) {
       auto left_max_datum = MicroPartitionStats::FromValue(
-          left_column_data_stats->maximum(), typlen, typbyval, &ok);
-      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                 fmt("Fail to parse the MAX datum in LEFT pb [typbyval=%d, "
-                     "typlen=%d, column_index=%d]",
-                     typbyval, typlen, column_index));
-
+          left_column_data_stats->maximum(), typlen, typbyval, column_index);
       auto right_max_datum = MicroPartitionStats::FromValue(
-          right_column_data_stats->maximum(), typlen, typbyval, &ok);
-      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                 fmt("Fail to parse the MAX datum in RIGHT pb [typbyval=%d, "
-                     "typlen=%d, column_index=%d]",
-                     typbyval, typlen, column_index));
+          right_column_data_stats->maximum(), typlen, typbyval, column_index);
       bool max_rc = false;
 
       if (funcs_pair.second != nullptr) {
@@ -323,28 +304,15 @@ static void SumStatisticsInfoCombine(
     ::pax::stats::ColumnStats *right_column_stats,
     ::pax::stats::ColumnDataStats *left_column_data_stats,
     ::pax::stats::ColumnDataStats *right_column_data_stats) {
-  bool ok = false;
-
   if (right_column_data_stats->has_sum()) {
     if (left_column_data_stats->has_sum()) {
       auto sumtyplen = cbdb::GetTyplen(left_column_stats->info().prorettype());
       auto sumtypbyval =
           cbdb::GetTypbyval(left_column_stats->info().prorettype());
-
       Datum left_sum = MicroPartitionStats::FromValue(
-          left_column_data_stats->sum(), sumtyplen, sumtypbyval, &ok);
-      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                 fmt("Fail to parse the SUM datum in LEFT pb [typbyval=%d, "
-                     "typlen=%d, column_index=%d]",
-                     sumtypbyval, sumtyplen, column_index));
-
+          left_column_data_stats->sum(), sumtyplen, sumtypbyval, column_index);
       Datum right_sum = MicroPartitionStats::FromValue(
-          right_column_data_stats->sum(), sumtyplen, sumtypbyval, &ok);
-      CBDB_CHECK(ok, cbdb::CException::kExTypeLogicError,
-                 fmt("Fail to parse the SUM datum in RIGHT pb [typbyval=%d, "
-                     "typlen=%d, column_index=%d]",
-                     sumtypbyval, sumtyplen, column_index));
-
+          right_column_data_stats->sum(), sumtyplen, sumtypbyval, column_index);
       Datum newval =
           cbdb::FunctionCall2Coll(&sum_finfo, InvalidOid, left_sum, right_sum);
 
@@ -630,7 +598,6 @@ void MicroPartitionStats::MergeRawInfo(
                                info->columnstats(column_index).nonnullrows());
   };
 
-  bool ok;
   Datum minimal, maximum, sum_result;
   for (size_t column_index = 0; column_index < status_.size(); column_index++) {
     auto att = TupleDescAttr(tuple_desc_, column_index);
@@ -658,12 +625,10 @@ void MicroPartitionStats::MergeRawInfo(
 
       minimal =
           FromValue(stats_info->columnstats(column_index).datastats().minimal(),
-                    typlen, typbyval, &ok);
-      Assert(ok);
+                    typlen, typbyval, column_index);
       maximum =
           FromValue(stats_info->columnstats(column_index).datastats().maximum(),
-                    typlen, typbyval, &ok);
-      Assert(ok);
+                    typlen, typbyval, column_index);
 
       UpdateMinMaxValue(column_index, minimal, collation, typlen, typbyval);
       UpdateMinMaxValue(column_index, maximum, collation, typlen, typbyval);
@@ -674,12 +639,10 @@ void MicroPartitionStats::MergeRawInfo(
 
       minimal =
           FromValue(stats_info->columnstats(column_index).datastats().minimal(),
-                    typlen, typbyval, &ok);
-      Assert(ok);
+                    typlen, typbyval, column_index);
       maximum =
           FromValue(stats_info->columnstats(column_index).datastats().maximum(),
-                    typlen, typbyval, &ok);
-      Assert(ok);
+                    typlen, typbyval, column_index);
 
       CopyDatum(minimal, &min_in_mem_[column_index], typlen, typbyval);
       CopyDatum(maximum, &max_in_mem_[column_index], typlen, typbyval);
@@ -702,7 +665,7 @@ void MicroPartitionStats::MergeRawInfo(
     } else if (sum_stat->status == STATUS_NEED_UPDATE) {
       sum_result =
           FromValue(stats_info->columnstats(column_index).datastats().sum(),
-                    typlen, typbyval, &ok);
+                    typlen, typbyval, column_index);
       Datum newval = cbdb::FunctionCall2Coll(&sum_stat->add_func, InvalidOid,
                                              sum_stat->result, sum_result);
       if (!sum_stat->rettypbyval && newval != sum_stat->result &&
@@ -714,7 +677,7 @@ void MicroPartitionStats::MergeRawInfo(
     } else if (sum_stat->status == STATUS_MISSING_INIT_VAL) {
       sum_result =
           FromValue(stats_info->columnstats(column_index).datastats().sum(),
-                    typlen, typbyval, &ok);
+                    typlen, typbyval, column_index);
       sum_stat->result = cbdb::datumCopy(sum_result, sum_stat->rettypbyval,
                                          sum_stat->rettyplen);
       sum_stat->status = STATUS_NEED_UPDATE;
@@ -1268,9 +1231,8 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns,
 }
 
 Datum MicroPartitionStats::FromValue(const std::string &s, int typlen,
-                                     bool typbyval, bool *ok) {
+                                     bool typbyval, int column_index) {
   const char *p = s.data();
-  *ok = true;
   if (typbyval) {
     Assert(typlen > 0);
     switch (typlen) {
@@ -1291,8 +1253,10 @@ Datum MicroPartitionStats::FromValue(const std::string &s, int typlen,
         return cbdb::Int64ToDatum(i);
       }
       default:
-        Assert(!"unexpected typbyval, len not in 1,2,4,8");
-        *ok = false;
+        CBDB_RAISE(cbdb::CException::kExTypeLogicError,
+                   fmt("Fail to parse the MIN/MAX datum in pb [typbyval=%d, "
+                       "typlen=%d, column_index=%d]",
+                       typbyval, typlen, column_index));
         break;
     }
     return 0;
@@ -1392,7 +1356,42 @@ std::string MicroPartitionStatsProvider::GetBloomFilter(
 
 }  // namespace pax
 
+namespace paxc {
+
 static inline const char *BoolToString(bool b) { return b ? "true" : "false"; }
+
+Datum FromValue(const char *p, int typlen, bool typbyval, int column_index) {
+  if (typbyval) {
+    Assert(typlen > 0);
+    switch (typlen) {
+      case 1: {
+        int8 i = *reinterpret_cast<const int8 *>(p);
+        return Int8GetDatum(i);
+      }
+      case 2: {
+        int16 i = *reinterpret_cast<const int16 *>(p);
+        return Int16GetDatum(i);
+      }
+      case 4: {
+        int32 i = *reinterpret_cast<const int32 *>(p);
+        return Int32GetDatum(i);
+      }
+      case 8: {
+        int64 i = *reinterpret_cast<const int64 *>(p);
+        return Int64GetDatum(i);
+      }
+      default:
+        elog(ERROR,
+             "Fail to parse the MIN/MAX datum in pb [typbyval=%d, typlen=%d, "
+             "column_index=%d]",
+             typbyval, typlen, column_index);
+    }
+    return 0;
+  }
+
+  Assert(typlen == -1 || typlen > 0);
+  return PointerGetDatum(p);
+}
 
 static char *TypeValueToCString(Oid typid, Oid collation,
                                 const std::string &value) {
@@ -1400,7 +1399,6 @@ static char *TypeValueToCString(Oid typid, Oid collation,
   HeapTuple tuple;
   Form_pg_type form;
   Datum datum;
-  bool ok;
 
   tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(typid));
   if (!HeapTupleIsValid(tuple))
@@ -1409,10 +1407,7 @@ static char *TypeValueToCString(Oid typid, Oid collation,
   form = (Form_pg_type)GETSTRUCT(tuple);
   Assert(OidIsValid(form->typoutput));
 
-  datum = pax::MicroPartitionStats::FromValue(value, form->typlen,
-                                              form->typbyval, &ok);
-  if (!ok) elog(ERROR, "unexpected typlen: %d\n", form->typlen);
-
+  datum = FromValue(value.c_str(), form->typlen, form->typbyval, -1);
   fmgr_info_cxt(form->typoutput, &finfo, CurrentMemoryContext);
   datum = FunctionCall1Coll(&finfo, collation, datum);
   ReleaseSysCache(tuple);
@@ -1420,21 +1415,7 @@ static char *TypeValueToCString(Oid typid, Oid collation,
   return DatumGetCString(datum);
 }
 
-// define stat type for custom output
-extern "C" {
-extern Datum MicroPartitionStatsInput(PG_FUNCTION_ARGS);
-extern Datum MicroPartitionStatsOutput(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(MicroPartitionStatsInput);
-PG_FUNCTION_INFO_V1(MicroPartitionStatsOutput);
-}
-
-Datum MicroPartitionStatsInput(PG_FUNCTION_ARGS) {
-  ereport(ERROR, (errmsg("unsupport MicroPartitionStatsInput")));
-  (void)fcinfo;
-  PG_RETURN_POINTER(NULL);
-}
-
-void paxc::MicroPartitionStatsToString(
+void MicroPartitionStatsToString(
     pax::stats::MicroPartitionStatisticsInfo *stats, StringInfoData *str) {
   initStringInfo(str);
   for (int i = 0, n = stats->columnstats_size(); i < n; i++) {
@@ -1489,6 +1470,22 @@ void paxc::MicroPartitionStatsToString(
     // tail
     appendStringInfoChar(str, ']');
   }
+}
+
+}  // namespace paxc
+
+// define stat type for custom output
+extern "C" {
+extern Datum MicroPartitionStatsInput(PG_FUNCTION_ARGS);
+extern Datum MicroPartitionStatsOutput(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(MicroPartitionStatsInput);
+PG_FUNCTION_INFO_V1(MicroPartitionStatsOutput);
+}
+
+Datum MicroPartitionStatsInput(PG_FUNCTION_ARGS) {
+  ereport(ERROR, (errmsg("unsupport MicroPartitionStatsInput")));
+  (void)fcinfo;
+  PG_RETURN_POINTER(NULL);
 }
 
 Datum MicroPartitionStatsOutput(PG_FUNCTION_ARGS) {
