@@ -38,7 +38,7 @@ class MicroPartitionStats final {
   // used to encode/decode datum
   static std::string ToValue(Datum datum, int typlen, bool typbyval);
   static Datum FromValue(const std::string &s, int typlen, bool typbyval,
-                         bool *ok);
+                         int column_index);
 
   static bool MicroPartitionStatisticsInfoCombine(
       stats::MicroPartitionStatisticsInfo *left,
