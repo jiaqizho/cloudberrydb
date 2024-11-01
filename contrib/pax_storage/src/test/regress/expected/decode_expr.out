@@ -1070,8 +1070,8 @@ View definition:
 select * from decode_view order by region, country_code;
       bus_name       | country_code |  region  
 ---------------------+--------------+----------
- Test Solutions      | CN           | APJ
  Taing Consulting    | US           | Americas
+ Test Solutions      | CN           | APJ
  Computers Unlimited | IL           | EMEA
  Parts Plus          | IT           | EMEA
  Kangaroos Inc.      | AU           | 
