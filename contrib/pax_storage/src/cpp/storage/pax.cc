@@ -323,7 +323,7 @@ TableReader::TableReader(
     ReaderOptions options)
     : iterator_(std::move(iterator)),
       reader_(nullptr),
-      is_empty_(true),
+      is_empty_(false),
       reader_options_(options) {
   is_dfs_table_space_ =
       cbdb::IsDfsTablespaceById(reader_options_.table_space_id);
@@ -363,8 +363,10 @@ void TableReader::Close() {
 }
 
 bool TableReader::ReadTuple(TupleTableSlot *slot) {
-  if (is_empty_) {
-    return false;
+  if (unlikely(!reader_)) {
+    Open();
+    if (is_empty_) return false;
+    Assert(reader_);
   }
 
   ExecClearTuple(slot);
@@ -372,11 +374,9 @@ bool TableReader::ReadTuple(TupleTableSlot *slot) {
   while (!reader_->ReadTuple(slot)) {
     reader_->Close();
     reader_ = nullptr;
-    if (!iterator_->HasNext()) {
-      is_empty_ = true;
-      return false;
-    }
-    OpenFile();
+    Open();
+    if (is_empty_) return false;
+    Assert(reader_);
     SetBlockNumber(&slot->tts_tid, current_block_number_);
   }
 
@@ -395,6 +395,11 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
   size_t remaining_offset = offset;
   std::shared_ptr<File> toast_file;
   bool ok;
+
+  if (!reader_) {
+    Open();
+    if (is_empty_) return false;
+  }
 
   Assert(direction == ForwardScanDirection);
   Assert(current_block_metadata_.GetTupleCount() >= 1);
