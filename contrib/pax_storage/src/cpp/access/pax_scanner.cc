@@ -315,7 +315,6 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
     iter = std::move(wrap);
   }
   desc->reader_ = std::make_unique<TableReader>(std::move(iter), reader_options);
-  desc->reader_->Open();
 
   MemoryContextSwitchTo(old_ctx);
   pgstat_count_heap_scan(relation);
