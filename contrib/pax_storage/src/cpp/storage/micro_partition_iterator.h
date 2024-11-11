@@ -53,7 +53,7 @@ class MicroPartitionInfoParallelIterator final
   bool HasNext() override;
   MicroPartitionMetadata Next() override;
   void Rewind() override;
-  void Release() override { End(true); }
+  void Release() override;
   ~MicroPartitionInfoParallelIterator() = default;
 
  private:
@@ -62,10 +62,6 @@ class MicroPartitionInfoParallelIterator final
   // paxc function
   void paxc_begin();
   void paxc_end(bool close_aux);
-
-  // pax function, wrap paxc_xxx in c++
-  void Begin();
-  void End(bool close_aux);
 
   Relation pax_rel_ = nullptr;
   Relation aux_rel_ = nullptr;
@@ -78,7 +74,7 @@ class MicroPartitionInfoParallelIterator final
   Oid index_oid_ = InvalidOid;
 
   uint64 batch_allocated_ = 2;
-  uint64 allocated_block_id_ = 0;
+  int64 allocated_block_id_ = -1;
 };
 
 }  // namespace pax
