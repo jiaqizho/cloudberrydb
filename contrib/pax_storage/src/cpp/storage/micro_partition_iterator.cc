@@ -168,7 +168,6 @@ MicroPartitionInfoParallelIterator::New(Relation pax_rel, Snapshot snapshot,
           pax_rel->rd_node, pax_rel->rd_backend,
           cbdb::IsDfsTablespaceById(pax_rel->rd_rel->reltablespace)));
 
-  it->Begin();
   return it;
 }
 
@@ -181,6 +180,10 @@ MicroPartitionInfoParallelIterator::MicroPartitionInfoParallelIterator(
       rel_path_(rel_path) {
 }
 
+/**
+ * Lazily call this function to only change the atomic block counter
+ * when scanning tuples.
+ */
 void MicroPartitionInfoParallelIterator::paxc_begin() {
   Assert(pax_rel_);
   Assert(pscan_);
@@ -196,19 +199,13 @@ void MicroPartitionInfoParallelIterator::paxc_begin() {
   }
 
   allocated_block_id_ =
-      pg_atomic_fetch_add_u64(&pscan_->phs_nallocated, batch_allocated_);
+      (int64)pg_atomic_fetch_add_u64(&pscan_->phs_nallocated, batch_allocated_);
 
   ScanKeyInit(&scan_key[0], ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME,
               BTGreaterEqualStrategyNumber, F_INT4GE, allocated_block_id_);
 
   desc_ = systable_beginscan(aux_rel_, index_oid_, true, snapshot_, 1,
                              &scan_key[0]);
-}
-
-void MicroPartitionInfoParallelIterator::Begin() {
-  CBDB_WRAP_START;
-  { paxc_begin(); }
-  CBDB_WRAP_END;
 }
 
 void MicroPartitionInfoParallelIterator::paxc_end(bool close_aux) {
@@ -230,10 +227,12 @@ void MicroPartitionInfoParallelIterator::paxc_end(bool close_aux) {
   Assert(!tuple_);
 }
 
-void MicroPartitionInfoParallelIterator::End(bool close_aux) {
-  CBDB_WRAP_START;
-  { paxc_end(close_aux); }
-  CBDB_WRAP_END;
+void MicroPartitionInfoParallelIterator::Release() {
+  if (allocated_block_id_ >= 0) {
+    CBDB_WRAP_START;
+    { paxc_end(true); }
+    CBDB_WRAP_END;
+  }
 }
 
 bool MicroPartitionInfoParallelIterator::HasNext() {
@@ -242,6 +241,11 @@ bool MicroPartitionInfoParallelIterator::HasNext() {
   bool has_more;
   CBDB_WRAP_START;
   {
+    /* lazily to get the block number in parallel scan */
+    if (unlikely(allocated_block_id_ < 0))
+      paxc_begin();
+
+    Assert(allocated_block_id_ >= 0);
     do {
       bool is_null;
 
@@ -254,8 +258,7 @@ bool MicroPartitionInfoParallelIterator::HasNext() {
                                    RelationGetDescr(aux_rel_), &is_null);
       Assert(!is_null);
       // check block_id is in the range of [allocated_block_id_,
-      // allocated_block_id_
-      // + batch_allocated_)
+      // allocated_block_id_ + batch_allocated_)
       if (block_id < allocated_block_id_ + batch_allocated_) break;
 
       paxc_end(false);
