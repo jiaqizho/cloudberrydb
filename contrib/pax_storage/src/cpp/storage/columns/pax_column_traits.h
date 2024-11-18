@@ -18,65 +18,61 @@ namespace pax::traits {
 namespace Impl {
 
 template <typename T>
-using CreateFunc = std::function<std::shared_ptr<T> (uint32)>;
+using CreateFunc = std::function<std::unique_ptr<T> (uint32)>;
 
 template <typename T>
-using CreateFunc2 = std::function<std::shared_ptr<T> (uint32, uint32)>;
+using CreateFunc2 = std::function<std::unique_ptr<T> (uint32, uint32)>;
 
 template <typename T>
-static std::shared_ptr<T> CreateImpl(uint32 cap) {
-  auto t = std::make_shared<T>(cap);
+static std::unique_ptr<T> CreateImpl(uint32 cap) {
+  auto t = std::make_unique<T>(cap);
   return t;
 }
 
 template <typename T>
-static std::shared_ptr<T> CreateImpl2(uint32 data_cap, uint32 lengths_cap) {
-  auto t = std::make_shared<T>(data_cap, lengths_cap);
+static std::unique_ptr<T> CreateImpl2(uint32 data_cap, uint32 lengths_cap) {
+  auto t = std::make_unique<T>(data_cap, lengths_cap);
   return t;
 }
 
 template <typename T>
 using CreateEncodingFunc =
-    std::function<std::shared_ptr<T> (uint32, const PaxEncoder::EncodingOption &)>;
+    std::function<std::unique_ptr<T> (uint32, const PaxEncoder::EncodingOption &)>;
 
 template <typename T>
 using CreateDecodingFunc =
-    std::function<std::shared_ptr<T> (uint32, const PaxDecoder::DecodingOption &)>;
+    std::function<std::unique_ptr<T> (uint32, const PaxDecoder::DecodingOption &)>;
 
 template <typename T>
 using CreateEncodingFunc2 =
-    std::function<std::shared_ptr<T> (uint32, uint32, const PaxEncoder::EncodingOption &)>;
+    std::function<std::unique_ptr<T> (uint32, uint32, const PaxEncoder::EncodingOption &)>;
 
 template <typename T>
 using CreateDecodingFunc2 =
-    std::function<std::shared_ptr<T> (uint32, uint32, const PaxDecoder::DecodingOption &)>;
+    std::function<std::unique_ptr<T> (uint32, uint32, const PaxDecoder::DecodingOption &)>;
 
 template <typename T>
-static std::shared_ptr<T> CreateEncodingImpl(uint32 cap,
+static std::unique_ptr<T> CreateEncodingImpl(uint32 cap,
                              const PaxEncoder::EncodingOption &encoding_opt) {
-  auto t = std::make_shared<T>(cap, encoding_opt);
-  return t;
+  return std::make_unique<T>(cap, encoding_opt);
 }
 
 template <typename T>
-static std::shared_ptr<T> CreateDecodingImpl(uint32 cap,
+static std::unique_ptr<T> CreateDecodingImpl(uint32 cap,
                              const PaxDecoder::DecodingOption &decoding_opt) {
-  auto t = std::make_shared<T>(cap, decoding_opt);
-  return t;
+  return std::make_unique<T>(cap, decoding_opt);
 }
 
 template <typename T>
-static std::shared_ptr<T> CreateEncodingImpl2(uint32 cap, uint32 length_cap,
+static std::unique_ptr<T> CreateEncodingImpl2(uint32 cap, uint32 length_cap,
                               const PaxEncoder::EncodingOption &encoding_opt) {
-  auto t = std::make_shared<T>(cap, length_cap, encoding_opt);
-  return t;
+  return std::make_unique<T>(cap, length_cap, encoding_opt);
 }
 
 template <typename T>
-static std::shared_ptr<T> CreateDecodingImpl2(uint32 cap, uint32 length_cap,
+static std::unique_ptr<T> CreateDecodingImpl2(uint32 cap, uint32 length_cap,
                               const PaxDecoder::DecodingOption &decoding_opt) {
-  auto t = std::make_shared<T>(cap, length_cap, decoding_opt);
-  return t;
+  return std::make_unique<T>(cap, length_cap, decoding_opt);
 }
 
 }  // namespace Impl

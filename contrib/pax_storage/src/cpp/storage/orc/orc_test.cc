@@ -17,6 +17,7 @@
 
 namespace pax::tests {
 
+using namespace pax;
 #define PROJECTION_COLUMN 2
 #define PROJECTION_COLUMN_SINGLE 1
 
@@ -33,9 +34,8 @@ class OrcTest : public ::testing::Test {
     ReleaseTestResourceOwner();
   }
 
-  static void VerifySingleStripe(
-      std::shared_ptr<PaxColumns> columns,
-      const std::vector<bool> &proj_map = std::vector<bool>()) {
+  static void VerifySingleStripe(PaxColumns *columns,
+                                 const std::vector<bool> &proj_map=std::vector<bool>()) {
     char column_buff[COLUMN_SIZE];
     struct varlena *vl = nullptr;
     struct varlena *tunpacked = nullptr;
@@ -47,7 +47,7 @@ class OrcTest : public ::testing::Test {
     EXPECT_EQ(static_cast<size_t>(COLUMN_NUMS), columns->GetColumns());
 
     if (proj_map.empty() || proj_map[0]) {
-      auto column1 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[0]);
+      auto column1 = static_cast<PaxNonFixedColumn*>((*columns)[0].get());
       EXPECT_EQ(1UL, column1->GetNonNullRows());
       char *column1_buffer = column1->GetBuffer(0).first;
       EXPECT_EQ(
@@ -66,7 +66,7 @@ class OrcTest : public ::testing::Test {
     }
 
     if (proj_map.empty() || proj_map[1]) {
-      auto column2 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[1]);
+      auto column2 = static_cast<PaxNonFixedColumn*>((*columns)[1].get());
       char *column2_buffer = column2->GetBuffer(0).first;
       EXPECT_EQ(1UL, column2->GetNonNullRows());
       EXPECT_EQ(
@@ -82,8 +82,7 @@ class OrcTest : public ::testing::Test {
     }
 
     if (proj_map.empty() || proj_map[2]) {
-      auto column3 =
-          std::static_pointer_cast<PaxCommColumn<int32>>((*columns)[2]);
+      auto column3 = static_cast<PaxCommColumn<int32>*>((*columns)[2].get());
       std::tie(read_data, read_len) = column3->GetBuffer();
       EXPECT_EQ(4, read_len);
       EXPECT_EQ(INT32_COLUMN_VALUE, *(int32 *)read_data);
@@ -124,7 +123,7 @@ TEST_F(OrcTest, WriteTuple) {
   writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
 
   auto writer = OrcWriter::CreateWriter(
-      writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
+      writer_options, std::move(CreateTestSchemaTypes()), std::move(file_ptr));
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
@@ -143,7 +142,7 @@ TEST_F(OrcTest, OpenOrc) {
   MicroPartitionWriter::WriterOptions writer_options;
   writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
   auto writer = OrcWriter::CreateWriter(
-      writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
+      writer_options, std::move(CreateTestSchemaTypes()), std::move(file_ptr));
 
   writer->WriteTuple(tuple_slot);
   writer->Close();
@@ -151,7 +150,7 @@ TEST_F(OrcTest, OpenOrc) {
   file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
   MicroPartitionReader::ReaderOptions reader_options;
-  auto reader = new OrcReader(file_ptr);
+  auto reader = new OrcReader(std::move(file_ptr));
   reader->Open(reader_options);
 
   EXPECT_EQ(1UL, reader->GetGroupNums());
@@ -166,7 +165,7 @@ TEST_F(OrcTest, WriteReadStripes) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -189,7 +188,7 @@ TEST_F(OrcTest, WriteReadStripes) {
 
   EXPECT_EQ(1UL, reader->GetGroupNums());
   auto group = reader->ReadGroup(0);
-  auto columns = group->GetAllColumns();
+  auto columns = group->GetAllColumns().get();
 
   OrcTest::VerifySingleStripe(columns);
   reader->Close();
@@ -203,7 +202,7 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -223,7 +222,7 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
 
   EXPECT_EQ(1UL, reader->GetGroupNums());
   auto group = reader->ReadGroup(0);
-  auto columns = group->GetAllColumns();
+  auto columns = group->GetAllColumns().get();
 
   reader->Close();
   char column_buff[COLUMN_SIZE];
@@ -231,8 +230,8 @@ TEST_F(OrcTest, WriteReadStripesTwice) {
   GenTextBuffer(column_buff, COLUMN_SIZE);
 
   EXPECT_EQ(static_cast<size_t>(COLUMN_NUMS), columns->GetColumns());
-  auto column1 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[0]);
-  auto column2 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[1]);
+  auto column1 = static_cast<PaxNonFixedColumn*>((*columns)[0].get());
+  auto column2 = static_cast<PaxNonFixedColumn*>((*columns)[1].get());
 
   EXPECT_EQ(2UL, column1->GetNonNullRows());
   EXPECT_EQ(0, std::memcmp(column1->GetBuffer(0).first + VARHDRSZ, column_buff,
@@ -254,7 +253,7 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -277,9 +276,9 @@ TEST_F(OrcTest, WriteReadMultiStripes) {
 
   EXPECT_EQ(2UL, reader->GetGroupNums());
   auto group1 = reader->ReadGroup(0);
-  auto columns1 = group1->GetAllColumns();
+  auto columns1 = group1->GetAllColumns().get();
   auto group2 = reader->ReadGroup(1);
-  auto columns2 = group2->GetAllColumns();
+  auto columns2 = group2->GetAllColumns().get();
   OrcTest::VerifySingleStripe(columns1);
   OrcTest::VerifySingleStripe(columns2);
   reader->Close();
@@ -293,7 +292,7 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -315,7 +314,7 @@ TEST_F(OrcTest, WriteReadCloseEmptyOrc) {
 
   EXPECT_EQ(1UL, reader->GetGroupNums());
   auto group = reader->ReadGroup(0);
-  auto columns = group->GetAllColumns();
+  auto columns = group->GetAllColumns().get();
   OrcTest::VerifySingleStripe(columns);
   reader->Close();
 
@@ -327,7 +326,7 @@ TEST_F(OrcTest, WriteReadEmptyOrc) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -356,7 +355,7 @@ TEST_F(OrcTest, ReadTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -389,7 +388,7 @@ TEST_F(OrcTest, GetTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -498,10 +497,10 @@ TEST_F(OrcTest, WriteReadTupleWithToast) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
-  auto toast_file_ptr = local_fs->Open(toast_file_name, fs::kWriteMode);
+  std::shared_ptr<File> toast_file_ptr = local_fs->Open(toast_file_name, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -764,7 +763,7 @@ TEST_P(OrcEncodingTest, ReadTupleWithEncoding) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<pax::porc::proto::Type_Kind> types;
@@ -846,7 +845,7 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<pax::porc::proto::Type_Kind> types;
@@ -882,14 +881,14 @@ TEST_P(OrcCompressTest, ReadTupleWithCompress) {
 
   ASSERT_EQ(1UL, reader->GetGroupNums());
   auto group = reader->ReadGroup(0);
-  auto columns = group->GetAllColumns();
+  auto columns = group->GetAllColumns().get();
 
   ASSERT_EQ(2UL, columns->GetColumns());
 
-  auto column1 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[0]);
+  auto column1 = static_cast<PaxNonFixedColumn*>((*columns)[0].get());
   ASSERT_EQ(1000UL, column1->GetNonNullRows());
 
-  auto column2 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[1]);
+  auto column2 = static_cast<PaxNonFixedColumn*>((*columns)[1].get());
   ASSERT_EQ(1000UL, column2->GetNonNullRows());
 
   for (size_t i = 0; i < 1000; i++) {
@@ -917,7 +916,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -936,7 +935,7 @@ TEST_F(OrcTest, ReadTupleDefaultColumn) {
   reader->Open(reader_options);
   EXPECT_EQ(1UL, reader->GetGroupNums());
 
-  TupleTableSlot *tuple_slot_empty = CreateTestTupleTableSlot(false);
+  TupleTableSlot *tuple_slot_empty = CreateTestTupleTableSlot(false, 4);
   tuple_slot_empty->tts_tupleDescriptor->attrs[3] = {
       .attlen = 4,
       .attbyval = true,
@@ -972,7 +971,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumn) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -1007,7 +1006,7 @@ TEST_F(OrcTest, ReadTupleDroppedColumnWithProjection) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -1071,7 +1070,7 @@ TEST_F(OrcTest, WriteReadBigTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<pax::porc::proto::Type_Kind> types;
@@ -1115,7 +1114,7 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -1143,10 +1142,10 @@ TEST_F(OrcTest, WriteReadNoFixedColumnInSameTuple) {
 
   EXPECT_EQ(1UL, reader->GetGroupNums());
   auto group = reader->ReadGroup(0);
-  auto columns = group->GetAllColumns();
+  auto columns = group->GetAllColumns().get();
 
   EXPECT_EQ(static_cast<size_t>(COLUMN_NUMS), columns->GetColumns());
-  auto column1 = std::static_pointer_cast<PaxNonFixedColumn>((*columns)[0]);
+  auto column1 = static_cast<PaxNonFixedColumn*>((*columns)[0].get());
 
   GenTextBuffer(column_buff_origin, COLUMN_SIZE);
 
@@ -1167,7 +1166,7 @@ TEST_F(OrcTest, WriteReadWithNullField) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   OrcWriter::WriterOptions writer_options;
@@ -1244,7 +1243,7 @@ TEST_F(OrcTest, WriteReadWithBoundNullField) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   OrcWriter::WriterOptions writer_options;
@@ -1310,7 +1309,7 @@ TEST_F(OrcTest, WriteReadWithALLNullField) {
   auto *local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   OrcWriter::WriterOptions writer_options;
@@ -1366,7 +1365,7 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
     proj_map[proj_index] = !proj_map[proj_index];
   }
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   MicroPartitionWriter::WriterOptions writer_options;
@@ -1394,10 +1393,10 @@ TEST_P(OrcTestProjection, ReadTupleWithProjectionColumn) {
   EXPECT_EQ(2UL, reader->GetGroupNums());
 
   auto group1 = reader->ReadGroup(0);
-  auto columns1 = group1->GetAllColumns();
+  auto columns1 = group1->GetAllColumns().get();
 
   auto group2 = reader->ReadGroup(1);
-  auto columns2 = group2->GetAllColumns();
+  auto columns2 = group2->GetAllColumns().get();
 
   OrcTest::VerifySingleStripe(columns1, proj_map);
   OrcTest::VerifySingleStripe(columns2, proj_map);
@@ -1427,9 +1426,9 @@ TEST_P(OrcEncodingTest, WriterMerge) {
 
   ASSERT_NE(nullptr, local_fs);
 
-  auto file1_ptr = local_fs->Open(file1_name, fs::kReadWriteMode);
-  auto file2_ptr = local_fs->Open(file2_name, fs::kReadWriteMode);
-  auto file3_ptr = local_fs->Open(file3_name, fs::kReadWriteMode);
+  std::shared_ptr<File> file1_ptr = local_fs->Open(file1_name, fs::kReadWriteMode);
+  std::shared_ptr<File> file2_ptr = local_fs->Open(file2_name, fs::kReadWriteMode);
+  std::shared_ptr<File> file3_ptr = local_fs->Open(file3_name, fs::kReadWriteMode);
   EXPECT_NE(nullptr, file1_ptr);
   EXPECT_NE(nullptr, file2_ptr);
   EXPECT_NE(nullptr, file3_ptr);
@@ -1546,7 +1545,7 @@ TEST_F(OrcTest, WriteException) {
 
     writer_options.rel_tuple_desc = tuple_slot->tts_tupleDescriptor;
     auto writer = OrcWriter::CreateWriter(
-        writer_options, std::move(CreateTestSchemaTypes()), file_ptr);
+        writer_options, std::move(CreateTestSchemaTypes()), std::move(file_ptr));
 
     return writer;
   };
@@ -1638,7 +1637,7 @@ TEST_F(OrcTest, ReadException) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   current_pb_func_call_times = 0;
@@ -1662,7 +1661,7 @@ TEST_F(OrcTest, ReadException) {
     ;
     auto file_ptr = local_fs->Open(file_name_, fs::kReadMode);
 
-    return std::make_unique<OrcReader>(file_ptr);
+    return std::make_unique<OrcReader>(std::move(file_ptr));
   };
 
   stub = new Stub();

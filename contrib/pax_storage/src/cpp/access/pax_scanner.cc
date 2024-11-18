@@ -182,7 +182,7 @@ bool PaxIndexScanDesc::OpenMicroPartition(BlockNumber block,
     auto file_name = cbdb::BuildPaxFilePath(rel_path_, block_name);
     auto file = Singleton<LocalFileSystem>::GetInstance()->Open(file_name,
                                                                 fs::kReadMode);
-    auto reader = std::make_unique<OrcReader>(file);
+    auto reader = std::make_unique<OrcReader>(std::move(file));
     reader->Open(options);
     if (reader_) {
       reader_->Close();

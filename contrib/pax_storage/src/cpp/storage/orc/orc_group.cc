@@ -30,7 +30,7 @@ size_t OrcGroup::GetRows() const { return pax_columns_->GetRows(); }
 
 size_t OrcGroup::GetRowOffset() const { return row_offset_; }
 
-std::shared_ptr<PaxColumns> OrcGroup::GetAllColumns() const { return pax_columns_; }
+const std::shared_ptr<PaxColumns> &OrcGroup::GetAllColumns() const { return pax_columns_; }
 
 std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
   int index = 0;
@@ -38,22 +38,25 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
   int column_nums = 0;
 
   Assert(pax_columns_);
+
+  auto &pax_columns = *pax_columns_;
+
   Assert(slot);
 
   // already consumed
-  if (current_row_index_ >= pax_columns_->GetRows()) {
+  if (current_row_index_ >= pax_columns.GetRows()) {
     return {false, current_row_index_};
   }
 
   natts = slot->tts_tupleDescriptor->natts;
-  column_nums = pax_columns_->GetColumns();
+  column_nums = pax_columns.GetColumns();
 
   if (micro_partition_visibility_bitmap_) {
     // skip invisible rows in micro partition
     while (micro_partition_visibility_bitmap_->Test(row_offset_ +
                                                     current_row_index_)) {
       for (index = 0; index < column_nums; index++) {
-        auto column = ((*pax_columns_)[index]);
+        auto column = pax_columns[index].get();
 
         if (!column) {
           continue;
@@ -70,7 +73,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
       current_row_index_++;
     }
 
-    if (current_row_index_ >= pax_columns_->GetRows()) {
+    if (current_row_index_ >= pax_columns.GetRows()) {
       return {false, current_row_index_};
     }
   }
@@ -97,7 +100,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
         continue;
       }
 
-      auto column = ((*pax_columns_)[index]);
+      auto column = pax_columns[index].get();
       Assert(column);
 
       std::tie(slot->tts_values[index], slot->tts_isnull[index]) =
@@ -108,7 +111,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
       // Still need filter with old projection
       // If current proj_col_index_ no build or empty
       // It means current tuple only need return CTID
-      if (index < column_nums && !((*pax_columns_)[index])) {
+      if (index < column_nums && !pax_columns[index]) {
         continue;
       }
 
@@ -128,7 +131,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
         continue;
       }
 
-      auto column = ((*pax_columns_)[index]);
+      auto column = pax_columns[index].get();
       std::tie(slot->tts_values[index], slot->tts_isnull[index]) =
           GetColumnValue(column, current_row_index_, &(current_nulls_[index]));
     }
@@ -166,7 +169,7 @@ bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
       break;
     }
 
-    auto column = ((*pax_columns_)[index]);
+    auto column = ((*pax_columns_)[index]).get();
 
     if (!column) {
       continue;
@@ -197,7 +200,7 @@ bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
 // Used in `GetColumnValue`
 // After accumulating `null_counts` in `GetColumnValue`
 // Then we can direct get Datum when storage type is `orc`
-static std::pair<Datum, std::shared_ptr<MemoryObject>> GetDatumWithNonNull(const std::shared_ptr<PaxColumn> &column,
+static std::pair<Datum, std::shared_ptr<MemoryObject>> GetDatumWithNonNull(PaxColumn *column,
                                                    size_t non_null_offset,
                                                    size_t row_offset) {
   Datum datum = 0;
@@ -285,7 +288,7 @@ std::pair<Datum, bool> OrcGroup::GetColumnValueNoMissing(size_t column_index,
                                                          size_t row_index) {
   uint32 null_counts = 0;
   Assert(column_index < pax_columns_->GetColumns());
-  auto column = (*pax_columns_)[column_index];
+  auto column = (*pax_columns_)[column_index].get();
 
   // dropped column
   if (!column) {
@@ -303,7 +306,7 @@ std::pair<Datum, bool> OrcGroup::GetColumnValueNoMissing(size_t column_index,
   return GetColumnValue(column, row_index, &null_counts);
 }
 
-std::pair<Datum, bool> OrcGroup::GetColumnValue(const std::shared_ptr<PaxColumn> &column,  // NOLINT
+std::pair<Datum, bool> OrcGroup::GetColumnValue(PaxColumn *column,  // NOLINT
                                                 size_t row_index,
                                                 uint32 *null_counts) {
   Assert(column);
@@ -330,7 +333,7 @@ std::pair<Datum, bool> OrcGroup::GetColumnValue(const std::shared_ptr<PaxColumn>
   return {rc, false};
 }
 
-void OrcGroup::CalcNullShuffle(const std::shared_ptr<PaxColumn> &column, size_t column_index) {
+void OrcGroup::CalcNullShuffle(PaxColumn *column, size_t column_index) {
   auto rows = column->GetRows();
   uint32 n_counts = 0;
   auto bm = column->GetBitmap();

@@ -595,7 +595,7 @@ std::string OrcDumpReader::DumpAllData() {
   else
     group = std::make_unique<OrcVecGroup>(std::move(columns), 0, nullptr);
 
-  auto all_columns = group->GetAllColumns();
+  auto all_columns = group->GetAllColumns().get();
   tabulate::Table data_table;
   tabulate::Table data_datum_table;
   tabulate::Table::Row_t data_table_header;
@@ -613,7 +613,7 @@ std::string OrcDumpReader::DumpAllData() {
          column_index++) {
       Datum d;
       bool null;
-      auto column = (*all_columns)[column_index];
+      const auto &column = (*all_columns)[column_index];
 
       std::tie(d, null) = group->GetColumnValueNoMissing((size_t)column_index,
                                                          (size_t)row_index);

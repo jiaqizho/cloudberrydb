@@ -15,7 +15,7 @@ void CopyBitmap(const Bitmap8 *bitmap, size_t range_begin, size_t range_lens,
 void VarlenaToRawBuffer(char *buffer, size_t buffer_len, char **out_data,
                         size_t *out_len);
 
-void CopyBitmapBuffer(std::shared_ptr<PaxColumn> column,
+void CopyBitmapBuffer(PaxColumn *column,
                       std::shared_ptr<Bitmap8> visibility_map_bitset,
                       size_t group_base_offset, size_t range_begin,
                       size_t range_lens, size_t data_range_lens,

@@ -11,7 +11,7 @@
 #endif
 namespace pax {
 
-static void CopyFixedRawBufferWithNull(std::shared_ptr<PaxColumn> column,
+static void CopyFixedRawBufferWithNull(PaxColumn *column,
                                 std::shared_ptr<Bitmap8> visibility_map_bitset,
                                 size_t bitset_index_begin, size_t range_begin,
                                 size_t range_lens, size_t data_index_begin,
@@ -49,7 +49,7 @@ static inline void CopyFixedRawBuffer(char *buffer, size_t len,
   data_buffer->Brush(len);
 }
 
-static void CopyFixedBuffer(std::shared_ptr<PaxColumn> column,
+static void CopyFixedBuffer(PaxColumn *column,
                      std::shared_ptr<Bitmap8> visibility_map_bitset,
                      size_t bitset_index_begin, size_t range_begin,
                      size_t range_lens, size_t data_index_begin,
@@ -84,7 +84,7 @@ static void CopyFixedBuffer(std::shared_ptr<PaxColumn> column,
   }
 }
 
-static void CopyNonFixedBuffer(std::shared_ptr<PaxColumn> column,
+static void CopyNonFixedBuffer(PaxColumn *column,
                         std::shared_ptr<Bitmap8> visibility_map_bitset,
                         size_t bitset_index_begin, size_t range_begin,
                         size_t range_lens, size_t data_index_begin,
@@ -181,7 +181,7 @@ static void CopyNonFixedBuffer(std::shared_ptr<PaxColumn> column,
   }
 }
 
-static void CopyDecimalBuffer(std::shared_ptr<PaxColumn> column,
+static void CopyDecimalBuffer(PaxColumn *column,
                               std::shared_ptr<Bitmap8> visibility_map_bitset,
                               size_t bitset_index_begin, size_t range_begin,
                               size_t range_lens, size_t data_index_begin,
@@ -239,7 +239,7 @@ static void CopyDecimalBuffer(std::shared_ptr<PaxColumn> column,
   }
 }
 
-void CopyBitPackedBuffer(std::shared_ptr<PaxColumn> column,
+void CopyBitPackedBuffer(PaxColumn *column,
                          std::shared_ptr<Bitmap8> visibility_map_bitset,
                          size_t group_base_offset, size_t range_begin,
                          size_t range_lens, size_t data_index_begin,
@@ -278,7 +278,7 @@ void CopyBitPackedBuffer(std::shared_ptr<PaxColumn> column,
   }
 }
 
-static size_t CalcRecordBatchDataBufferSize(std::shared_ptr<PaxColumn> column,
+static size_t CalcRecordBatchDataBufferSize(PaxColumn *column,
                                             size_t range_buffer_len,
                                             size_t num_of_not_nulls) {
   size_t toast_counts;
@@ -308,7 +308,7 @@ static size_t CalcRecordBatchDataBufferSize(std::shared_ptr<PaxColumn> column,
   return TYPEALIGN(MEMORY_ALIGN_SIZE, raw_data_size);
 }
 
-std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumns> columns,
+std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(PaxColumns *columns,
                                                        size_t range_begin,
                                                        size_t range_lens) {
   size_t filter_count;
@@ -338,11 +338,11 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(std::shared_ptr<PaxColumn
     size_t buffer_len = 0;
     PaxColumnTypeInMem column_type;
 
-    if ((*columns)[index] == nullptr) {
+    auto column = (*columns)[index].get();
+    if (column == nullptr) {
       continue;
     }
 
-    auto column = (*columns)[index];
     Assert(index < (size_t)vec_cache_buffer_lens_ && vec_cache_buffer_);
 
     data_index_begin = column->GetRangeNonNullRows(0, range_begin);
