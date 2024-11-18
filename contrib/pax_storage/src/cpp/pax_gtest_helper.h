@@ -22,7 +22,7 @@ namespace pax::tests {
 extern void CreateMemoryContext();
 extern void CreateTestResourceOwner();
 extern void ReleaseTestResourceOwner();
-extern TupleTableSlot *CreateTestTupleTableSlot(bool with_value = true);
+extern TupleTableSlot *CreateTestTupleTableSlot(bool with_value = true, int ncols = COLUMN_NUMS);
 extern TupleTableSlot *CreateTestToastTupleTableSlot();
 #ifdef VEC_BUILD
 extern TupleTableSlot *CreateVecEmptyTupleSlot(TupleDesc tuple_desc);

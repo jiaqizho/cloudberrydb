@@ -11,10 +11,10 @@
 namespace pax {
 
 template <typename T>
-static std::pair<bool, size_t> ColumnTransMemory(const std::shared_ptr<PaxColumn> &column) {
+static std::pair<bool, size_t> ColumnTransMemory(PaxColumn *column) {
   Assert(column->GetStorageFormat() == PaxStorageFormat::kTypeStoragePorcVec);
 
-  auto vec_column = std::static_pointer_cast<T>(column);
+  auto vec_column = static_cast<T*>(column);
   auto data_buffer = vec_column->GetDataBuffer();
   auto data_cap = data_buffer->Capacity();
 
@@ -28,13 +28,12 @@ static std::pair<bool, size_t> ColumnTransMemory(const std::shared_ptr<PaxColumn
   return {false, 0};
 }
 
-static void CopyNonFixedBuffer(std::shared_ptr<PaxVecNonFixedColumn> pcolumn,
+static void CopyNonFixedBuffer(PaxVecNonFixedColumn *column,
                                std::shared_ptr<Bitmap8> visibility_map_bitset,
                                size_t group_base_offset, size_t invisible_rows,
                                size_t total_rows,
                                DataBuffer<int32> *out_offset_buffer,
                                DataBuffer<char> *out_data_buffer) {
-  PaxVecNonFixedColumn *column = pcolumn.get();
   char *buffer;
   size_t buffer_len;
   char *offset_buffer = nullptr;
@@ -76,12 +75,11 @@ static void CopyNonFixedBuffer(std::shared_ptr<PaxVecNonFixedColumn> pcolumn,
   }
 }
 
-static void CopyFixedBuffer(std::shared_ptr<PaxColumn> pcolumn,
+static void CopyFixedBuffer(PaxColumn *column,
                             std::shared_ptr<Bitmap8> visibility_map_bitset,
                             size_t group_base_offset, size_t invisible_rows,
                             size_t total_rows,
                             DataBuffer<char> *out_data_buffer) {
-  PaxColumn *column = pcolumn.get();
   char *buffer;
   size_t pg_attribute_unused() buffer_len;
   Assert(invisible_rows > 0);
@@ -103,7 +101,7 @@ static void CopyFixedBuffer(std::shared_ptr<PaxColumn> pcolumn,
   }
 }
 
-std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxColumns> columns) {
+std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(PaxColumns *columns) {
   size_t invisible_rows;
   size_t total_rows;
 
@@ -116,7 +114,8 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxCol
   }
 
   for (size_t index = 0; index < columns->GetColumns(); index++) {
-    if ((*columns)[index] == nullptr) {
+    auto column = (*columns)[index].get();
+    if (column == nullptr) {
       continue;
     }
 
@@ -124,7 +123,6 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxCol
     DataBuffer<int32> *offset_buffer =
         &(vec_cache_buffer_[index].offset_buffer);
 
-    auto column = (*columns)[index];
     Assert(index < (size_t)vec_cache_buffer_lens_ && vec_cache_buffer_);
 
     char *buffer = nullptr;
@@ -149,7 +147,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxCol
 
         // no need try transfer memory buffer
         if (invisible_rows != 0) {
-          CopyNonFixedBuffer(std::static_pointer_cast<PaxVecNonFixedColumn>(column),
+          CopyNonFixedBuffer(dynamic_cast<PaxVecNonFixedColumn*>(column),
                              micro_partition_visibility_bitmap_,
                              group_base_offset_, invisible_rows, total_rows,
                              offset_buffer, vec_buffer);
@@ -173,7 +171,7 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcVecFormat(std::shared_ptr<PaxCol
         }
 
         std::tie(buffer, buffer_len) =
-            std::static_pointer_cast<PaxVecNonFixedColumn>(column)->GetOffsetBuffer(false);
+            static_cast<PaxVecNonFixedColumn*>(column)->GetOffsetBuffer(false);
         // TODO(jiaqizho): this buffer can also be transferred
         offset_buffer->Set(BlockBuffer::Alloc<char>(
                                TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len)),

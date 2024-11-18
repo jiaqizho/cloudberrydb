@@ -9,7 +9,7 @@ OrcVecGroup::OrcVecGroup(std::unique_ptr<PaxColumns> &&pax_column,
   Assert(COLUMN_STORAGE_FORMAT_IS_VEC(pax_columns_));
 }
 
-static std::pair<Datum, std::shared_ptr<MemoryObject>> GetDatumWithNonNull(const std::shared_ptr<PaxColumn> &column,
+static std::pair<Datum, std::shared_ptr<MemoryObject>> GetDatumWithNonNull(PaxColumn *column,
                                                    size_t row_index) {
   Datum datum = 0;
   std::shared_ptr<MemoryObject> ref;
@@ -78,7 +78,7 @@ static std::pair<Datum, std::shared_ptr<MemoryObject>> GetDatumWithNonNull(const
   return {datum, ref};
 }
 
-std::pair<Datum, bool> OrcVecGroup::GetColumnValue(const std::shared_ptr<PaxColumn> &column,
+std::pair<Datum, bool> OrcVecGroup::GetColumnValue(PaxColumn *column,
                                                    size_t row_index,
                                                    uint32 * /*null_counts*/) {
   if (column->HasNull()) {

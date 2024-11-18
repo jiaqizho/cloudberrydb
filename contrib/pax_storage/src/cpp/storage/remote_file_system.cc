@@ -134,7 +134,7 @@ std::shared_ptr<RemoteFileSystemOptions> RemoteFileSystem::CastOptions(
   return remote_options;
 }
 
-std::shared_ptr<File> RemoteFileSystem::Open(const std::string &file_path, int flags,
+std::unique_ptr<File> RemoteFileSystem::Open(const std::string &file_path, int flags,
                              const std::shared_ptr<FileSystemOptions> &options) {
   std::shared_ptr<RemoteFileSystemOptions> remote_options;
   char errorMessage[UFILE_ERROR_SIZE] = {0};
@@ -158,7 +158,7 @@ std::shared_ptr<File> RemoteFileSystem::Open(const std::string &file_path, int f
           file_path.c_str(), flags, remote_options->tablespace_id_,
           errorMessage));
 
-  return std::make_shared<RemoteFile>(file, remote_options->tablespace_id_, file_path);
+  return std::make_unique<RemoteFile>(file, remote_options->tablespace_id_, file_path);
 }
 std::string RemoteFileSystem::BuildPath(const File *file) const {
   return file->GetPath();
