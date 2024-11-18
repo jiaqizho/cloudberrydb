@@ -99,7 +99,7 @@ std::unique_ptr<MicroPartitionReader::Group> OrcReader::ReadGroup(
 
 #ifdef ENABLE_DEBUG
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
-    auto column = (*pax_columns)[i];
+    auto column = (*pax_columns)[i].get();
     if (column && !column->GetBuffer().first) {
       auto bm = column->GetBitmap();
       // Assert(bm);
@@ -179,7 +179,7 @@ retry_read_group:
     }
 
     working_group_ = ReadGroup(current_group_index_++);
-    auto columns = working_group_->GetAllColumns();
+    auto columns = working_group_->GetAllColumns().get();
 
     // The column number in Pax file meta could be smaller than the column
     // number in TupleSlot in case after alter table add column DDL operation

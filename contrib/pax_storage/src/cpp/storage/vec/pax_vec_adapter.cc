@@ -446,8 +446,8 @@ int VecAdapter::AppendToVecBuffer() {
   AssertImply(porc_vec_format, current_index_ == 0);
   std::tie(number_of_append, current_index_) =
       porc_vec_format
-          ? AppendPorcVecFormat(process_columns_)
-          : AppendPorcFormat(process_columns_, range_begin, range_lens);
+          ? AppendPorcVecFormat(process_columns_.get())
+          : AppendPorcFormat(process_columns_.get(), range_begin, range_lens);
   Assert(number_of_append <= total_rows);
 
   // In this time cached_batch_lens_ always be 0

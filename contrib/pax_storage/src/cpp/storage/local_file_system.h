@@ -18,7 +18,7 @@ class LocalFileSystem final : public FileSystem {
 
  public:
   LocalFileSystem() = default;
-  std::shared_ptr<File> Open(const std::string &file_path, int flags,
+  std::unique_ptr<File> Open(const std::string &file_path, int flags,
              const std::shared_ptr<FileSystemOptions> &options = nullptr) override;
   void Delete(const std::string &file_path,
               const std::shared_ptr<FileSystemOptions> &options = nullptr) const override;

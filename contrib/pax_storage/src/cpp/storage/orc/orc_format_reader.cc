@@ -378,7 +378,7 @@ pax::porc::proto::StripeFooter OrcFormatReader::ReadStripeWithProjection(
 }
 
 template <typename T>
-static std::shared_ptr<PaxColumn> BuildEncodingColumn(
+static std::unique_ptr<PaxColumn> BuildEncodingColumn(
     std::shared_ptr<DataBuffer<char>> data_buffer, const pax::porc::proto::Stream &data_stream,
     const ColumnEncoding &data_encoding, bool is_vec) {
   uint32 not_null_rows = 0;
@@ -432,7 +432,7 @@ static std::shared_ptr<PaxColumn> BuildEncodingColumn(
   Assert(false);
 }
 
-static std::shared_ptr<PaxColumn> BuildEncodingBitPackedColumn(
+static std::unique_ptr<PaxColumn> BuildEncodingBitPackedColumn(
     std::shared_ptr<DataBuffer<char>> data_buffer, const porc::proto::Stream &data_stream,
     const ColumnEncoding &data_encoding, bool is_vec) {
   uint32 not_null_rows = 0;
@@ -486,7 +486,7 @@ static std::shared_ptr<PaxColumn> BuildEncodingBitPackedColumn(
   Assert(false);
 }
 
-static std::shared_ptr<PaxColumn> BuildEncodingDecimalColumn(
+static std::unique_ptr<PaxColumn> BuildEncodingDecimalColumn(
     const std::shared_ptr<DataBuffer<char>> &data_buffer, const pax::porc::proto::Stream &data_stream,
     const pax::porc::proto::Stream &len_stream,
     const ColumnEncoding &data_encoding) {
@@ -495,7 +495,7 @@ static std::shared_ptr<PaxColumn> BuildEncodingDecimalColumn(
   uint64 data_stream_len = 0;
   std::shared_ptr<DataBuffer<int32>> length_stream_buffer;
   std::shared_ptr<DataBuffer<char>> data_stream_buffer;
-  std::shared_ptr<PaxNonFixedColumn> pax_column;
+  std::unique_ptr<PaxNonFixedColumn> pax_column;
   uint64 padding = 0;
 
   not_null_rows = static_cast<uint32>(len_stream.column());
@@ -567,7 +567,7 @@ static std::shared_ptr<PaxColumn> BuildEncodingDecimalColumn(
   return pax_column;
 }
 
-static std::shared_ptr<PaxColumn> BuildVecEncodingDecimalColumn(
+static std::unique_ptr<PaxColumn> BuildVecEncodingDecimalColumn(
     const std::shared_ptr<DataBuffer<char>> &data_buffer, const pax::porc::proto::Stream &data_stream,
     const ColumnEncoding &data_encoding, bool is_vec) {
   uint32 not_null_rows = 0;
@@ -606,7 +606,7 @@ static std::shared_ptr<PaxColumn> BuildVecEncodingDecimalColumn(
   return pax_column;
 }
 
-static std::shared_ptr<PaxColumn> BuildEncodingVecNonFixedColumn(
+static std::unique_ptr<PaxColumn> BuildEncodingVecNonFixedColumn(
     const std::shared_ptr<DataBuffer<char>> &data_buffer, const pax::porc::proto::Stream &data_stream,
     const pax::porc::proto::Stream &len_stream,
     const ColumnEncoding &data_encoding, bool is_bpchar, bool is_no_hdr) {
@@ -616,7 +616,7 @@ static std::shared_ptr<PaxColumn> BuildEncodingVecNonFixedColumn(
   uint64 data_stream_len = 0;
   std::shared_ptr<DataBuffer<int32>> length_stream_buffer;
   std::shared_ptr<DataBuffer<char>> data_stream_buffer;
-  std::shared_ptr<PaxVecNonFixedColumn> pax_column;
+  std::unique_ptr<PaxVecNonFixedColumn> pax_column;
   PaxDecoder::DecodingOption decoding_option;
   size_t data_cap, lengths_cap;
 
@@ -705,7 +705,7 @@ static std::shared_ptr<PaxColumn> BuildEncodingVecNonFixedColumn(
   return pax_column;
 }
 
-static std::shared_ptr<PaxColumn> BuildEncodingNonFixedColumn(
+static std::unique_ptr<PaxColumn> BuildEncodingNonFixedColumn(
     std::shared_ptr<DataBuffer<char>> data_buffer, const pax::porc::proto::Stream &data_stream,
     const pax::porc::proto::Stream &len_stream,
     const ColumnEncoding &data_encoding, bool is_bpchar) {
@@ -714,7 +714,7 @@ static std::shared_ptr<PaxColumn> BuildEncodingNonFixedColumn(
   uint64 data_stream_len = 0;
   std::shared_ptr<DataBuffer<int32>> length_stream_buffer;
   std::shared_ptr<DataBuffer<char>> data_stream_buffer;
-  std::shared_ptr<PaxNonFixedColumn> pax_column;
+  std::unique_ptr<PaxNonFixedColumn> pax_column;
   uint64 padding = 0;
   PaxDecoder::DecodingOption decoding_option;
   size_t data_cap, lengths_cap;
@@ -992,7 +992,7 @@ std::unique_ptr<PaxColumns> OrcFormatReader::ReadStripe(size_t group_index, cons
 
     // fill nulls data buffer
     Assert(pax_columns->GetColumns() > 0);
-    auto last_column = (*pax_columns)[pax_columns->GetColumns() - 1];
+    const auto &last_column = (*pax_columns)[pax_columns->GetColumns() - 1];
     Assert(last_column);
     last_column->SetRows(stripe_info.numberofrows());
     if (has_null) {
@@ -1016,7 +1016,7 @@ std::unique_ptr<PaxColumns> OrcFormatReader::ReadStripe(size_t group_index, cons
 
   Assert(storage_tyep_verify == pax_columns->GetStorageFormat());
   for (size_t index = 0; index < column_types_.size(); index++) {
-    auto column_verify = (*pax_columns)[index];
+    const auto &column_verify = (*pax_columns)[index];
     if (column_verify) {
       Assert(storage_tyep_verify == column_verify->GetStorageFormat());
     }

@@ -70,7 +70,7 @@ TEST_F(OrcVecTest, WriteReadGroup) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<pax::porc::proto::Type_Kind> types;
@@ -128,8 +128,8 @@ TEST_F(OrcVecTest, WriteReadGroup) {
 
   EXPECT_EQ(2UL, columns1->GetColumns());
 
-  auto column1 = std::static_pointer_cast<PaxVecNonFixedColumn>((*columns1)[0]);
-  auto column2 = std::static_pointer_cast<PaxVecCommColumn<int32>>((*columns1)[1]);
+  auto column1 = static_cast<PaxVecNonFixedColumn*>((*columns1)[0].get());
+  auto column2 = static_cast<PaxVecCommColumn<int32>*>((*columns1)[1].get());
 
   auto column1_data = column1->GetDataBuffer();
   auto column2_data = column2->GetDataBuffer();
@@ -171,8 +171,8 @@ TEST_F(OrcVecTest, WriteReadGroup) {
   auto group2 = reader->ReadGroup(1);
   auto columns2 = group2->GetAllColumns();
 
-  column1 = std::static_pointer_cast<PaxVecNonFixedColumn>((*columns2)[0]);
-  column2 = std::static_pointer_cast<PaxVecCommColumn<int32>>((*columns2)[1]);
+  column1 = static_cast<PaxVecNonFixedColumn*>((*columns2)[0].get());
+  column2 = static_cast<PaxVecCommColumn<int32>*>((*columns2)[1].get());
 
   column1_data = column1->GetDataBuffer();
   column2_data = column2->GetDataBuffer();
@@ -213,7 +213,7 @@ TEST_F(OrcVecTest, WriteReadGroupWithEncoding) {
   auto local_fs = Singleton<LocalFileSystem>::GetInstance();
   ASSERT_NE(nullptr, local_fs);
 
-  auto file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
+  std::shared_ptr<File> file_ptr = local_fs->Open(file_name_, fs::kWriteMode);
   EXPECT_NE(nullptr, file_ptr);
 
   std::vector<pax::porc::proto::Type_Kind> types;
@@ -278,8 +278,8 @@ TEST_F(OrcVecTest, WriteReadGroupWithEncoding) {
 
   EXPECT_EQ(2UL, columns1->GetColumns());
 
-  auto column1 = std::static_pointer_cast<PaxVecNonFixedColumn>((*columns1)[0]);
-  auto column2 = std::static_pointer_cast<PaxVecCommColumn<int32>>((*columns1)[1]);
+  auto column1 = static_cast<PaxVecNonFixedColumn*>((*columns1)[0].get());
+  auto column2 = static_cast<PaxVecCommColumn<int32>*>((*columns1)[1].get());
 
   auto column1_data = column1->GetDataBuffer();
   auto column2_data = column2->GetDataBuffer();
@@ -321,8 +321,8 @@ TEST_F(OrcVecTest, WriteReadGroupWithEncoding) {
   auto group2 = reader->ReadGroup(1);
   auto columns2 = group2->GetAllColumns();
 
-  column1 = std::static_pointer_cast<PaxVecNonFixedColumn>((*columns2)[0]);
-  column2 = std::static_pointer_cast<PaxVecCommColumn<int32>>((*columns2)[1]);
+  column1 = static_cast<PaxVecNonFixedColumn*>((*columns2)[0].get());
+  column2 = static_cast<PaxVecCommColumn<int32>*>((*columns2)[1].get());
 
   column1_data = column1->GetDataBuffer();
   column2_data = column2->GetDataBuffer();

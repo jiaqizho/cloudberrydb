@@ -154,7 +154,7 @@ std::string LocalFile::DebugString() const {
   return fmt("LOCAL file [path=%s]", file_path_.c_str());
 }
 
-std::shared_ptr<File> LocalFileSystem::Open(const std::string &file_path, int flags,
+std::unique_ptr<File> LocalFileSystem::Open(const std::string &file_path, int flags,
                             const std::shared_ptr<FileSystemOptions> & /*options*/) {
   int fd;
 
@@ -179,7 +179,7 @@ std::shared_ptr<File> LocalFileSystem::Open(const std::string &file_path, int fl
             fd, file_path.c_str(), flags));
   }
 
-  return std::make_shared<LocalFile>(fd, file_path);
+  return std::make_unique<LocalFile>(fd, file_path);
 }
 
 void LocalFileSystem::Delete(const std::string &file_path,

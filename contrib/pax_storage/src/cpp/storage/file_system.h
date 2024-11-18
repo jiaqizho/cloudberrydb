@@ -67,7 +67,7 @@ class FileSystem {
   virtual ~FileSystem() = default;
 
   // operate with path
-  virtual std::shared_ptr<File> Open(const std::string &file_path, int flags,
+  virtual std::unique_ptr<File> Open(const std::string &file_path, int flags,
                      const std::shared_ptr<FileSystemOptions> &options = nullptr) = 0;
   virtual std::vector<std::string> ListDirectory(
       const std::string &path, const std::shared_ptr<FileSystemOptions> &options = nullptr) const = 0;

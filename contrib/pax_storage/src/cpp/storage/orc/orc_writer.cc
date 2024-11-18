@@ -28,7 +28,7 @@ std::vector<pax::porc::proto::Type_Kind> OrcWriter::BuildSchema(TupleDesc desc,
   return type_kinds;
 }
 
-static std::shared_ptr<PaxColumn> CreateDecimalColumn(
+static std::unique_ptr<PaxColumn> CreateDecimalColumn(
     bool is_vec, const PaxEncoder::EncodingOption &opts) {
   if (is_vec) {
     return traits::ColumnOptCreateTraits2<
@@ -39,7 +39,7 @@ static std::shared_ptr<PaxColumn> CreateDecimalColumn(
   }
 }
 
-static std::shared_ptr<PaxColumn> CreateBpCharColumn(
+static std::unique_ptr<PaxColumn> CreateBpCharColumn(
     bool is_vec, const PaxEncoder::EncodingOption &opts) {
   if (is_vec)
     return traits::ColumnOptCreateTraits2<PaxVecBpCharColumn>::create_encoding(
@@ -49,7 +49,7 @@ static std::shared_ptr<PaxColumn> CreateBpCharColumn(
       DEFAULT_CAPACITY, DEFAULT_CAPACITY, opts);
 }
 
-static std::shared_ptr<PaxColumn> CreateBitPackedColumn(
+static std::unique_ptr<PaxColumn> CreateBitPackedColumn(
     bool is_vec, const PaxEncoder::EncodingOption &opts) {
   if (is_vec)
     return traits::ColumnOptCreateTraits2<
@@ -60,7 +60,7 @@ static std::shared_ptr<PaxColumn> CreateBitPackedColumn(
 }
 
 template <typename N>
-static std::shared_ptr<PaxColumn> CreateCommColumn(
+static std::unique_ptr<PaxColumn> CreateCommColumn(
     bool is_vec, const PaxEncoder::EncodingOption &opts) {
   if (is_vec)
     return traits::ColumnOptCreateTraits<PaxVecEncodingColumn,
@@ -201,7 +201,7 @@ OrcWriter::OrcWriter(
   for (int i = 0; i < natts; i++) {
     auto attr = &desc->attrs[i];
     Assert((size_t)i < pax_columns_->GetColumns());
-    auto column = (*pax_columns_)[i];
+    auto column = (*pax_columns_)[i].get();
 
     Assert(column);
     size_t align_size;
@@ -266,8 +266,8 @@ void OrcWriter::Flush() {
                                writer_options_.storage_format);
 
     for (size_t i = 0; i < column_types_.size(); ++i) {
-      auto old_column = (*pax_columns_)[i];
-      auto new_column = (*new_columns)[i];
+      auto old_column = (*pax_columns_)[i].get();
+      auto new_column = (*new_columns)[i].get();
 
       Assert(old_column && new_column);
       if (old_column->HasAttributes()) {
@@ -738,7 +738,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
     auto pb_stats = stripe_info->add_colstats();
     auto col_stats = stats_info->columnstats(static_cast<int>(i));
-    auto pax_column = (*pax_columns)[i];
+    auto pax_column = (*pax_columns)[i].get();
 
     Assert(col_stats.hasnull() == pax_column->HasNull());
     Assert(col_stats.allnull() == pax_column->AllNull());
@@ -800,7 +800,7 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
   stripe_info->set_toastlength(toast_len);
   stripe_info->set_numberoftoast(number_of_toast);
   for (size_t i = 0; i < pax_columns->GetColumns(); i++) {
-    auto pax_column = (*pax_columns)[i];
+    auto pax_column = (*pax_columns)[i].get();
     auto ext_buffer = pax_column->GetExternalToastDataBuffer();
     stripe_info->add_exttoastlength(ext_buffer ? ext_buffer->Used() : 0);
   }
@@ -887,7 +887,7 @@ void OrcWriter::WriteFileFooter(BufferedOutputStream *buffer_mem_stream) {
 
     auto sub_proto_type = file_footer_.add_types();
     sub_proto_type->set_kind(orc_type);
-    auto pax_column = (*pax_columns_)[i];
+    auto pax_column = (*pax_columns_)[i].get();
     if (pax_column && pax_column->HasAttributes()) {
       const auto &column_attrs = pax_column->GetAttributes();
       for (const auto &kv : column_attrs) {
