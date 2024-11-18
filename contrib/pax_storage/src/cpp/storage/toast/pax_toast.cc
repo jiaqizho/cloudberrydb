@@ -302,7 +302,7 @@ std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_toast(Datum d, char sto
   Datum datum = d;
 
   if (!pax_enable_toast) {
-    return {0, nullptr};
+    return {d, nullptr};
   }
 
   switch (storage_type) {
