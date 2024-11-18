@@ -36,9 +36,10 @@ void ReleaseTestResourceOwner() {
   ResourceOwnerDelete(tmp_resource_owner);
 }
 
-static TupleDesc CreateTestTupleDesc() {
+static TupleDesc CreateTestTupleDesc(int ncols) {
+  Assert(ncols >= COLUMN_NUMS);
   auto tuple_desc = reinterpret_cast<TupleDescData *>(cbdb::Palloc0(
-      sizeof(TupleDescData) + sizeof(FormData_pg_attribute) * COLUMN_NUMS));
+      sizeof(TupleDescData) + sizeof(FormData_pg_attribute) * ncols));
 
   tuple_desc->natts = COLUMN_NUMS;
   tuple_desc->attrs[0] = {.atttypid = TEXTOID,
@@ -67,11 +68,11 @@ static TupleDesc CreateTestTupleDesc() {
   return tuple_desc;
 }
 
-TupleTableSlot *CreateTestTupleTableSlot(bool with_value) {
+TupleTableSlot *CreateTestTupleTableSlot(bool with_value, int ncols) {
   TupleTableSlot *tuple_slot = nullptr;
   TupleDesc tuple_desc = nullptr;
 
-  tuple_desc = CreateTestTupleDesc();
+  tuple_desc = CreateTestTupleDesc(ncols);
 
   tuple_slot = MakeTupleTableSlot(tuple_desc, &TTSOpsVirtual);
 

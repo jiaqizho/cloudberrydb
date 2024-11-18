@@ -16,18 +16,9 @@ class PaxColumns : public PaxColumn {
 
   ~PaxColumns() override;
 
-  // Use to merge other columns, the columns pass in will be delete
-  // This method is horizontal merge, `Merge(PaxColumn *column)` is
-  // vertical merge.
-  // a horizontal merge example:
-  // columns1: c1   null c3
-  // columns2: null c2   null
-  // after merge: c1 c2 c3
-  void Merge(std::shared_ptr<PaxColumns> columns);
+  const std::unique_ptr<PaxColumn> &operator[](uint64 i);
 
-  std::shared_ptr<PaxColumn> operator[](uint64 i);
-
-  void Append(std::shared_ptr<PaxColumn> column);
+  void Append(std::unique_ptr<PaxColumn> &&column);
 
   void Append(char *buffer, size_t size) override;
 
@@ -104,7 +95,7 @@ class PaxColumns : public PaxColumn {
   void CombineVecDataBuffer();
 
  protected:
-  std::vector<std::shared_ptr<PaxColumn>> columns_;
+  std::vector<std::unique_ptr<PaxColumn>> columns_;
   std::vector<std::shared_ptr<DataBuffer<char>>> data_holder_;
   std::shared_ptr<DataBuffer<char>> data_;
   size_t row_nums_;
