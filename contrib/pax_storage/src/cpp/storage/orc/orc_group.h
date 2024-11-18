@@ -23,7 +23,7 @@ class OrcGroup : public MicroPartitionReader::Group {
 
   size_t GetRowOffset() const override;
 
-  std::shared_ptr<PaxColumns> GetAllColumns() const override;
+  const std::shared_ptr<PaxColumns> &GetAllColumns() const override;
 
   std::pair<bool, size_t> ReadTuple(TupleTableSlot *slot) override;
 
@@ -40,8 +40,7 @@ class OrcGroup : public MicroPartitionReader::Group {
   }
 
  protected:
-  void CalcNullShuffle(const std::shared_ptr<PaxColumn> &column,
-                       size_t column_index);
+  void CalcNullShuffle(PaxColumn *column, size_t column_index);
 
   // Used to get the no missing column
   std::pair<Datum, bool> GetColumnValueNoMissing(size_t column_index,
@@ -54,9 +53,11 @@ class OrcGroup : public MicroPartitionReader::Group {
   // will be calculated through `null_counts`. The other `GetColumnValue`
   // function are less efficient in `foreach` because they have to calculate the
   // offset of the row data from scratch every time.
-  virtual std::pair<Datum, bool> GetColumnValue(
-      const std::shared_ptr<PaxColumn> &column, size_t row_index,
-      uint32 *null_counts);
+  //
+  // column is not owned
+  virtual std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
+                                                size_t row_index,
+                                                uint32 *null_counts);
 
  protected:
   std::shared_ptr<PaxColumns> pax_columns_;
@@ -79,9 +80,9 @@ class OrcVecGroup final : public OrcGroup {
               const std::vector<int> *proj_col_index);
 
  private:
-  std::pair<Datum, bool> GetColumnValue(
-      const std::shared_ptr<PaxColumn> &column, size_t row_index,
-      uint32 *null_counts) override;
+  // column is not owned
+  std::pair<Datum, bool> GetColumnValue(PaxColumn *column, size_t row_index,
+                                        uint32 *null_counts) override;
 };
 
 }  // namespace pax

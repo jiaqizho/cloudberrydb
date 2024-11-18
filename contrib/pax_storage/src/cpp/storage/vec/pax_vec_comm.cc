@@ -47,7 +47,7 @@ void VarlenaToRawBuffer(char *buffer, size_t buffer_len, char **out_data,
   *out_data = VARDATA_ANY(vl);
 }
 
-void CopyBitmapBuffer(std::shared_ptr<PaxColumn> column,
+void CopyBitmapBuffer(PaxColumn *column,
                       std::shared_ptr<Bitmap8> visibility_map_bitset,
                       size_t bitset_index_begin, size_t range_begin,
                       size_t range_lens, size_t data_range_lens,

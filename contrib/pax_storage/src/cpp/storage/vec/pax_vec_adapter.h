@@ -81,10 +81,10 @@ class VecAdapter final {
   void FullWithCTID(TupleTableSlot *slot, VecBatchBuffer *batch_buffer);
   void FillMissColumn(int attr_index);
 
-  std::pair<size_t, size_t> AppendPorcFormat(std::shared_ptr<PaxColumns> columns,
+  std::pair<size_t, size_t> AppendPorcFormat(PaxColumns *columns,
                                              size_t range_begin,
                                              size_t range_lens);
-  std::pair<size_t, size_t> AppendPorcVecFormat(std::shared_ptr<PaxColumns> columns);
+  std::pair<size_t, size_t> AppendPorcVecFormat(PaxColumns *columns);
 
   inline size_t GetInvisibleNumber(size_t range_begin, size_t range_lens) {
     if (micro_partition_visibility_bitmap_ == nullptr) {

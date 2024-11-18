@@ -14,7 +14,7 @@
 namespace pax {
 
 template <typename N>
-static std::shared_ptr<PaxColumn> CreateCommColumn(bool is_vec,
+static std::unique_ptr<PaxColumn> CreateCommColumn(bool is_vec,
                                    const PaxEncoder::EncodingOption &opts) {
   return is_vec
              ? traits::ColumnOptCreateTraits<
@@ -42,29 +42,9 @@ PaxStorageFormat PaxColumns::GetStorageFormat() const {
   return storage_format_;
 }
 
-void PaxColumns::Merge(std::shared_ptr<PaxColumns> columns) {
-  Assert(GetColumns() == columns->GetColumns());
-  Assert(GetRows() == columns->GetRows());
-  Assert(columns->data_holder_.empty());
+const std::unique_ptr<PaxColumn> &PaxColumns::operator[](uint64 i) { return columns_[i]; }
 
-  for (size_t i = 0; i < columns->GetColumns(); i++) {
-    AssertImply(columns_[i], !columns->columns_[i]);
-    if (!columns_[i] && columns->columns_[i]) {
-      columns_[i] = columns->columns_[i];
-      columns->columns_[i] = nullptr;
-    }
-  }
-
-  if (columns->data_) {
-    data_holder_.emplace_back(columns->data_);
-    columns->data_ = nullptr;
-  }
-
-}
-
-std::shared_ptr<PaxColumn> PaxColumns::operator[](uint64 i) { return columns_[i]; }
-
-void PaxColumns::Append(std::shared_ptr<PaxColumn> column) { columns_.emplace_back(column); }
+void PaxColumns::Append(std::unique_ptr<PaxColumn> &&column) { columns_.emplace_back(std::move(column)); }
 
 void PaxColumns::Append(char * /*buffer*/, size_t /*size*/) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
@@ -125,7 +105,7 @@ void PaxColumns::SetExternalToastDataBuffer(
   external_toast_data_ = std::move(external_toast_data);
   size_t curr_offset = 0;
   for (size_t i = 0; i < columns_.size(); i++) {
-    auto column = columns_[i];
+    const auto &column = columns_[i];
     size_t column_size = column_sizes[i];
     // no toasts
     if (!column || column->ToastCounts() == 0) {
@@ -200,7 +180,7 @@ void PaxColumns::VerifyAllExternalToasts(
   Assert(ext_toast_lens.size() == columns_.size());
 
   for (size_t i = 0; i < columns_.size(); i++) {
-    auto column = columns_[i];
+    const auto &column = columns_[i];
     if (!column) {
       continue;
     }
@@ -239,7 +219,7 @@ void PaxColumns::VerifyAllExternalToasts(
   }
 
   for (size_t i = 0; i < columns_.size(); i++) {
-    auto column = columns_[i];
+    const auto &column = columns_[i];
     if (!column) {
       continue;
     }
