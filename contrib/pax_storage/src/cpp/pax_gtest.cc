@@ -46,6 +46,10 @@ std::vector<std::tuple<pax::ColumnEncoding_Kind, int>> MockGetRelEncodingOptions
   return std::vector<std::tuple<pax::ColumnEncoding_Kind, int>>();
 }
 
+char MockGetTyptype(Oid typid) {
+  return TYPTYPE_BASE;
+}
+
 // Mock global method which is not link from another libarays
 void GlobalMock(Stub *stub) {
   stub->set(pax::MinMaxGetPgStrategyProcinfo, MockMinMaxGetStrategyProcinfo);
@@ -57,6 +61,7 @@ void GlobalMock(Stub *stub) {
   stub->set(cbdb::GetMinMaxColumnIndexes, MockGetMinMaxColumnIndexes);
   stub->set(cbdb::GetBloomFilterColumnIndexes, MockBloomFilterColumnIndexes);
   stub->set(cbdb::GetRelEncodingOptions, MockGetRelEncodingOptions);
+  stub->set(cbdb::GetTyptype, MockGetTyptype);
   stub->set(ExecStoreVirtualTuple, MockExecStoreVirtualTuple);
 }
 
