@@ -72,7 +72,7 @@ static std::unique_ptr<PaxColumn> CreateCommColumn(
 }
 
 static std::unique_ptr<PaxColumns> BuildColumns(
-    const std::vector<pax::porc::proto::Type_Kind> &types,
+    const std::vector<pax::porc::proto::Type_Kind> &types, const TupleDesc desc,
     const std::vector<std::tuple<ColumnEncoding_Kind, int>>
         &column_encoding_types,
     const std::pair<ColumnEncoding_Kind, int> &lengths_encoding_types,
@@ -84,8 +84,13 @@ static std::unique_ptr<PaxColumns> BuildColumns(
   is_vec = (storage_format == PaxStorageFormat::kTypeStoragePorcVec);
   columns->SetStorageFormat(storage_format);
 
-  for (size_t i = 0; i < types.size(); i++) {
+  for (size_t i = 0; i < types.size();
+       i++) {  // already checked types.size() == desc->nattrs
     auto type = types[i];
+    auto attr = &desc->attrs[i];
+    char attrttype = cbdb::GetTyptype(attr->atttypid);
+    std::unique_ptr<PaxColumn> column = nullptr;
+    size_t align_size;
 
     PaxEncoder::EncodingOption encoding_option;
     encoding_option.column_encode_type = std::get<0>(column_encoding_types[i]);
@@ -105,30 +110,31 @@ static std::unique_ptr<PaxColumns> BuildColumns(
       case (pax::porc::proto::Type_Kind::Type_Kind_STRING): {
         encoding_option.is_sign = false;
         if (is_vec) {
-          columns->Append(
+          column =
               traits::ColumnOptCreateTraits2<PaxVecNonFixedEncodingColumn>::
                   create_encoding(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
-                                  std::move(encoding_option)));
+                                  std::move(encoding_option));
+
         } else {
-          columns->Append(
-              traits::ColumnOptCreateTraits2<PaxNonFixedEncodingColumn>::
-                  create_encoding(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
-                                  std::move(encoding_option)));
+          column = traits::ColumnOptCreateTraits2<
+              PaxNonFixedEncodingColumn>::create_encoding(DEFAULT_CAPACITY,
+                                                          DEFAULT_CAPACITY,
+                                                          std::move(
+                                                              encoding_option));
         }
 
         break;
       }
       case (pax::porc::proto::Type_Kind::Type_Kind_VECNOHEADER): {
         Assert(is_vec);
-        columns->Append(
+        column =
             traits::ColumnOptCreateTraits2<PaxVecNoHdrColumn>::create_encoding(
-                DEFAULT_CAPACITY, DEFAULT_CAPACITY,
-                std::move(encoding_option)));
+                DEFAULT_CAPACITY, DEFAULT_CAPACITY, std::move(encoding_option));
         break;
       }
       case (pax::porc::proto::Type_Kind::Type_Kind_VECBPCHAR):
       case (pax::porc::proto::Type_Kind::Type_Kind_BPCHAR): {
-        columns->Append(CreateBpCharColumn(is_vec, std::move(encoding_option)));
+        column = CreateBpCharColumn(is_vec, std::move(encoding_option));
         break;
       }
       case (pax::porc::proto::Type_Kind::Type_Kind_VECDECIMAL):
@@ -137,35 +143,54 @@ static std::unique_ptr<PaxColumns> BuildColumns(
                     type == pax::porc::proto::Type_Kind::Type_Kind_VECDECIMAL);
         AssertImply(!is_vec,
                     type == pax::porc::proto::Type_Kind::Type_Kind_DECIMAL);
-        columns->Append(
-            CreateDecimalColumn(is_vec, std::move(encoding_option)));
+        column = CreateDecimalColumn(is_vec, std::move(encoding_option));
         break;
       }
       case (pax::porc::proto::Type_Kind::Type_Kind_BOOLEAN):
-        columns->Append(
-            CreateBitPackedColumn(is_vec, std::move(encoding_option)));
+        column = CreateBitPackedColumn(is_vec, std::move(encoding_option));
         break;
       case (pax::porc::proto::Type_Kind::Type_Kind_BYTE):  // len 1 integer
-        columns->Append(
-            CreateCommColumn<int8>(is_vec, std::move(encoding_option)));
+        column = CreateCommColumn<int8>(is_vec, std::move(encoding_option));
         break;
       case (pax::porc::proto::Type_Kind::Type_Kind_SHORT):  // len 2 integer
-        columns->Append(
-            CreateCommColumn<int16>(is_vec, std::move(encoding_option)));
+        column = CreateCommColumn<int16>(is_vec, std::move(encoding_option));
         break;
       case (pax::porc::proto::Type_Kind::Type_Kind_INT):  // len 4 integer
-        columns->Append(
-            CreateCommColumn<int32>(is_vec, std::move(encoding_option)));
+        column = CreateCommColumn<int32>(is_vec, std::move(encoding_option));
         break;
       case (pax::porc::proto::Type_Kind::Type_Kind_LONG):  // len 8 integer
-        columns->Append(
-            CreateCommColumn<int64>(is_vec, std::move(encoding_option)));
+        column = CreateCommColumn<int64>(is_vec, std::move(encoding_option));
         break;
       default:
         CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError,
                    fmt("Invalid PORC PB [type=%d]", type));
         break;
     }
+
+    Assert(column);
+
+    switch (attr->attalign) {
+      case TYPALIGN_SHORT:
+        align_size = ALIGNOF_SHORT;
+        break;
+      case TYPALIGN_INT:
+        align_size = ALIGNOF_INT;
+        break;
+      case TYPALIGN_DOUBLE:
+        align_size = ALIGNOF_DOUBLE;
+        break;
+      case TYPALIGN_CHAR:
+        align_size = PAX_DATA_NO_ALIGN;
+        break;
+      default:
+        CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError,
+                   fmt("Invalid attribute [attalign=%c]", attr->attalign));
+    }
+
+    column->SetAlignSize(align_size);
+    column->SetAlignRows(
+        (attrttype == TYPTYPE_RANGE || attrttype == TYPTYPE_MULTIRANGE));
+    columns->Append(std::move(column));
   }
 
   return columns;
@@ -186,45 +211,14 @@ OrcWriter::OrcWriter(
       current_offset_(0),
       current_toast_file_offset_(0),
       group_stats_(writer_options.rel_tuple_desc) {
-  TupleDesc desc;
-  int natts;
+  Assert(writer_options.rel_tuple_desc);
+  Assert(writer_options.rel_tuple_desc->natts ==
+         static_cast<int>(column_types.size()));
 
-  desc = writer_options.rel_tuple_desc;
-  natts = static_cast<int>(column_types.size());
-  Assert(desc);
-  Assert(desc->natts == natts);
-
-  pax_columns_ = BuildColumns(column_types_, writer_options.encoding_opts,
+  pax_columns_ = BuildColumns(column_types_, writer_options.rel_tuple_desc,
+                              writer_options.encoding_opts,
                               writer_options.lengths_encoding_opts,
                               writer_options.storage_format);
-
-  for (int i = 0; i < natts; i++) {
-    auto attr = &desc->attrs[i];
-    Assert((size_t)i < pax_columns_->GetColumns());
-    auto column = (*pax_columns_)[i].get();
-
-    Assert(column);
-    size_t align_size;
-    switch (attr->attalign) {
-      case TYPALIGN_SHORT:
-        align_size = ALIGNOF_SHORT;
-        break;
-      case TYPALIGN_INT:
-        align_size = ALIGNOF_INT;
-        break;
-      case TYPALIGN_DOUBLE:
-        align_size = ALIGNOF_DOUBLE;
-        break;
-      case TYPALIGN_CHAR:
-        align_size = PAX_DATA_NO_ALIGN;
-        break;
-      default:
-        CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError,
-                   fmt("Invalid attribute [attalign=%c]", attr->attalign));
-    }
-
-    column->SetAlignSize(align_size);
-  }
 
   summary_.rel_oid = writer_options.rel_oid;
   summary_.block_id = writer_options.block_id;
@@ -261,7 +255,8 @@ void OrcWriter::Flush() {
                            current_toast_file_offset_ - toast_mem.Used());
     }
 
-    new_columns = BuildColumns(column_types_, writer_options_.encoding_opts,
+    new_columns = BuildColumns(column_types_, writer_options_.rel_tuple_desc,
+                               writer_options_.encoding_opts,
                                writer_options_.lengths_encoding_opts,
                                writer_options_.storage_format);
 

@@ -213,6 +213,9 @@ class PaxColumn {
   // Which require from `typalign` in `pg_type`
   virtual size_t GetAlignSize() const;
 
+  // Set the pg type
+  inline void SetAlignRows(bool align_rows) { align_rows_ = align_rows; }
+
   // Get current data part encoding type
   inline ColumnEncoding_Kind GetEncodingType() const { return encoded_type_; }
 
@@ -237,7 +240,9 @@ class PaxColumn {
   void SetToastIndexes(std::shared_ptr<DataBuffer<int32>> toast_indexes);
 
   // Get the toast indexes
-  inline std::shared_ptr<DataBuffer<int32>> GetToastIndexes() const { return toast_indexes_; }
+  inline std::shared_ptr<DataBuffer<int32>> GetToastIndexes() const {
+    return toast_indexes_;
+  }
 
   // Set the external toast buffer
   virtual void SetExternalToastDataBuffer(
@@ -328,6 +333,9 @@ class PaxColumn {
   // 2. datum padding: deal it in column `Append`
   size_t type_align_size_;
 
+  // Should we align the each of rows
+  size_t align_rows_;
+
   // the attributes which supplementary description of the column type
   // For example, attributes record `n` in `char(n)`
   std::map<std::string, std::string> attrs_map_;
@@ -409,7 +417,8 @@ class PaxNonFixedColumn : public PaxColumn {
 
   ~PaxNonFixedColumn() override;
 
-  virtual void Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> lengths,
+  virtual void Set(std::shared_ptr<DataBuffer<char>> data,
+                   std::shared_ptr<DataBuffer<int32>> lengths,
                    size_t total_size);
 
   void Append(char *buffer, size_t size) override;
@@ -439,6 +448,8 @@ class PaxNonFixedColumn : public PaxColumn {
 
  protected:
   void BuildOffsets();
+
+  void AppendAlign(char *buffer, size_t size);
 
  protected:
   size_t estimated_size_;

@@ -22,6 +22,7 @@ PaxColumn::PaxColumn()
           ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
       lengths_compress_level_(0),
       type_align_size_(PAX_DATA_NO_ALIGN),
+      align_rows_(false),
       toast_indexes_(nullptr),
       toast_flat_map_(nullptr),
       numeber_of_external_toast_(0),
@@ -331,30 +332,68 @@ void PaxNonFixedColumn::BuildOffsets() {
   }
 }
 
-void PaxNonFixedColumn::Append(char *buffer, size_t size) {
+void PaxNonFixedColumn::AppendAlign(char *buffer, size_t size) {
   size_t origin_size;
   origin_size = size;
 
-  if (!COLUMN_STORAGE_FORMAT_IS_VEC(this)) {
-    Assert(likely(reinterpret_cast<char *> MAXALIGN(data_->Position()) ==
-                  data_->Position()));
-    size = MAXALIGN(size);
-  }
+  PaxColumn::Append(buffer, size);
 
-  PaxColumn::Append(buffer, origin_size);
+  Assert(type_align_size_ != PAX_DATA_NO_ALIGN);
+  Assert(likely(reinterpret_cast<char *> TYPEALIGN(
+                    type_align_size_, data_->Position()) == data_->Position()));
+  size = TYPEALIGN(type_align_size_, size);
+
   if (data_->Available() < size) {
     data_->ReSize(data_->Used() + size, 2);
   }
 
-  if (lengths_->Available() == 0) {
+  if (lengths_->Available() < sizeof(int32)) {
     lengths_->ReSize(lengths_->Used() + sizeof(int32), 2);
   }
 
   estimated_size_ += size;
   data_->Write(buffer, origin_size);
+  data_->Brush(origin_size);
+  if (size - origin_size != 0) {
+    data_->WriteZero(size - origin_size);
+    data_->Brush(size - origin_size);
+  }
+
+  Assert(size <= INT32_MAX);
+  auto length = static_cast<int32>(size);
+  lengths_->Write(&length, sizeof(int32));
+  lengths_->Brush(sizeof(int32));
+
+  offsets_.emplace_back(offsets_.empty()
+                            ? 0
+                            : offsets_[offsets_.size() - 1] +
+                                  (*lengths_)[offsets_.size() - 1]);
+  Assert(offsets_.size() == lengths_->GetSize());
+}
+
+void PaxNonFixedColumn::Append(char *buffer, size_t size) {
+  if (align_rows_) {
+    AppendAlign(buffer, size);
+    return;
+  }
+
+  PaxColumn::Append(buffer, size);
+
+  if (data_->Available() < size) {
+    data_->ReSize(data_->Used() + size, 2);
+  }
+
+  if (lengths_->Available() < sizeof(int32)) {
+    lengths_->ReSize(lengths_->Used() + sizeof(int32), 2);
+  }
+
+  estimated_size_ += size;
+  data_->Write(buffer, size);
   data_->Brush(size);
 
-  lengths_->Write(reinterpret_cast<int32 *>(&size), sizeof(int32));
+  Assert(size <= INT32_MAX);
+  auto length = static_cast<int32>(size);
+  lengths_->Write(&length, sizeof(int32));
   lengths_->Brush(sizeof(int32));
 
   offsets_.emplace_back(offsets_.empty()
