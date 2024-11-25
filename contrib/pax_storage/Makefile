@@ -52,6 +52,7 @@ install-data: build
 install: install-data
 	$(INSTALL_SHLIB) pax.so '$(DESTDIR)$(pkglibdir)/pax.so'
 	@if [ -f build/src/cpp/pax_dump ]; then $(INSTALL_PROGRAM) build/src/cpp/pax_dump '$(DESTDIR)$(bindir)/pax_dump'; fi;
+	make -j10 -C build install
 
 .PHONY: pax-test
 pax-test: 
