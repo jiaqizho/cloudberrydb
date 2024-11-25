@@ -162,7 +162,6 @@ install(FILES ${PAX_CLUSTERING_HEADERS}
 install(TARGETS paxformat
   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
-
 ## test whether libpaxformat.so can be linked normally
 add_executable(paxformat_test paxformat_test.cc)
 target_include_directories(paxformat_test PUBLIC ${pax_target_include} ${CMAKE_CURRENT_SOURCE_DIR})

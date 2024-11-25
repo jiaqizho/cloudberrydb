@@ -120,6 +120,7 @@ set(pax_vec_src
 )
 
 # add tabulate which used in the UDF
+SET(INSTALL_TABULATE OFF)
 add_subdirectory(contrib/tabulate)
 
 #### pax.so
@@ -214,7 +215,5 @@ if (BUILD_TOOLS)
   target_link_libraries(pax_dump PUBLIC pax protobuf)
 endif(BUILD_TOOLS)
 
-## install dynamic libraray
-install(TARGETS pax
-  LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/postgresql/
-  RENAME pax.so)
+# no need install dynamic libraray into `/lib/postgresql/`
+# Makefile will do that
