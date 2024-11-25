@@ -17,8 +17,8 @@ class ColumnBasicInfo;
 class ColumnDataStats;
 }  // namespace stats
 class MicroPartitionStatsData;
-struct SumStatsInMem;
 class BloomFilter;
+struct ColumnMemStats;
 
 class MicroPartitionStats final {
  public:
@@ -61,12 +61,8 @@ class MicroPartitionStats final {
   TupleDesc tuple_desc_;
   // stats_: only references the info object by pointer
   std::unique_ptr<MicroPartitionStatsData> stats_;
-  std::vector<Datum> min_in_mem_;
-  std::vector<Datum> max_in_mem_;
   std::unordered_map<Datum, ByteBuffer> buffer_holders_;
 
-  // the stats to desc sum
-  std::vector<SumStatsInMem> sum_stats_;
   AggState *agg_state_;
   ExprContext expr_context_;
 
@@ -82,9 +78,8 @@ class MicroPartitionStats final {
   std::vector<std::pair<OperMinMaxFunc, OperMinMaxFunc>> local_funcs_;
   bool allow_fallback_to_pg_ = false;  // only effect min/max
 
-  // status to indicate whether the oids are initialized
-  // or the min-max values are initialized
-  std::vector<char> status_;
+  std::vector<ColumnMemStats> column_mem_stats_;
+
   bool initialized_ = false;
 };
 
