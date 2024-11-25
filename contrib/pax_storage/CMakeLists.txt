@@ -28,6 +28,7 @@ if (PAX_USE_DEBUG)
   # Use to build compile_commands.json
   SET(CMAKE_BUILD_TYPE "Debug")
   SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")
+  SET(INSTALL_GTEST OFF) # disable gtest install() target
 else()
   SET(CMAKE_BUILD_TYPE "Release")
   SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3")
@@ -38,6 +39,7 @@ message(STATUS "PAX BUILD TYPE: ${CMAKE_BUILD_TYPE}")
 
 if(BUILD_GBENCH)
   SET(BUILD_GTEST ON)
+  SET(BENCHMARK_ENABLE_INSTALL OFF) # disable benchmark install() target
 endif(BUILD_GBENCH)
 
 if (BUILD_GTEST)

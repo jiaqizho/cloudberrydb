@@ -57,12 +57,14 @@ void GlobalMock(Stub *stub) {
 
 int main(int argc, char **argv) {
   Stub *stub_global;
+  int rc;
   MemoryContextInit();
   stub_global = new Stub();
 
   testing::InitGoogleTest(&argc, argv);
   GlobalMock(stub_global);
-  MemoryContextReset(TopMemoryContext);
 
-  return RUN_ALL_TESTS();
+  rc = RUN_ALL_TESTS();
+  MemoryContextReset(TopMemoryContext);
+  return rc;
 }
