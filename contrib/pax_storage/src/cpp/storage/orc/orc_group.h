@@ -12,10 +12,10 @@ class OrcDumpReader;
 
 class OrcGroup : public MicroPartitionReader::Group {
  public:
-  OrcGroup(std::unique_ptr<PaxColumns> &&pax_column,
-           size_t row_offset,
-           const std::vector<int> *proj_col_index,
-           std::shared_ptr<Bitmap8> micro_partition_visibility_bitmap = nullptr);
+  OrcGroup(
+      std::unique_ptr<PaxColumns> &&pax_column, size_t row_offset,
+      const std::vector<int> *proj_col_index,
+      std::shared_ptr<Bitmap8> micro_partition_visibility_bitmap = nullptr);
 
   ~OrcGroup() override;
 
@@ -31,12 +31,17 @@ class OrcGroup : public MicroPartitionReader::Group {
 
   std::pair<Datum, bool> GetColumnValue(TupleDesc desc, size_t column_index,
                                         size_t row_index) override;
-  void SetVisibilityMap(std::shared_ptr<Bitmap8> visibility_bitmap) {
+  void SetVisibilityMap(std::shared_ptr<Bitmap8> visibility_bitmap) override {
     micro_partition_visibility_bitmap_ = visibility_bitmap;
   }
 
+  std::shared_ptr<Bitmap8> GetVisibilityMap() const override {
+    return micro_partition_visibility_bitmap_;
+  }
+
  protected:
-  void CalcNullShuffle(const std::shared_ptr<PaxColumn> &column, size_t column_index);
+  void CalcNullShuffle(const std::shared_ptr<PaxColumn> &column,
+                       size_t column_index);
 
   // Used to get the no missing column
   std::pair<Datum, bool> GetColumnValueNoMissing(size_t column_index,
@@ -49,9 +54,9 @@ class OrcGroup : public MicroPartitionReader::Group {
   // will be calculated through `null_counts`. The other `GetColumnValue`
   // function are less efficient in `foreach` because they have to calculate the
   // offset of the row data from scratch every time.
-  virtual std::pair<Datum, bool> GetColumnValue(const std::shared_ptr<PaxColumn> &column,
-                                                size_t row_index,
-                                                uint32 *null_counts);
+  virtual std::pair<Datum, bool> GetColumnValue(
+      const std::shared_ptr<PaxColumn> &column, size_t row_index,
+      uint32 *null_counts);
 
  protected:
   std::shared_ptr<PaxColumns> pax_columns_;
@@ -63,20 +68,20 @@ class OrcGroup : public MicroPartitionReader::Group {
  private:
   friend class tools::OrcDumpReader;
   std::vector<uint32> current_nulls_;
-  std::vector<uint32*> nulls_shuffle_;
+  std::vector<uint32 *> nulls_shuffle_;
   // only a reference, owner by pax_filter
   const std::vector<int> *proj_col_index_;
 };
 
 class OrcVecGroup final : public OrcGroup {
  public:
-  OrcVecGroup(std::unique_ptr<PaxColumns> &&pax_column,
-              size_t row_offset,
+  OrcVecGroup(std::unique_ptr<PaxColumns> &&pax_column, size_t row_offset,
               const std::vector<int> *proj_col_index);
 
  private:
-  std::pair<Datum, bool> GetColumnValue(const std::shared_ptr<PaxColumn> &column, size_t row_index,
-                                        uint32 *null_counts) override;
+  std::pair<Datum, bool> GetColumnValue(
+      const std::shared_ptr<PaxColumn> &column, size_t row_index,
+      uint32 *null_counts) override;
 };
 
 }  // namespace pax
