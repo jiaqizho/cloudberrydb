@@ -153,6 +153,10 @@ class MicroPartitionReader {
 
     virtual void SetVisibilityMap(
         std::shared_ptr<Bitmap8> visibility_bitmap) = 0;
+
+    // Used in `OpenApi`. Once user call the `GetAllColumns`,
+    // then it still need use the visible map to filter.
+    virtual std::shared_ptr<Bitmap8> GetVisibilityMap() const = 0;
   };
 
   struct ReaderOptions {
