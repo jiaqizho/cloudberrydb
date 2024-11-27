@@ -2,6 +2,8 @@
 
 #include "comm/cbdb_api.h"
 
+#include "comm/cbdb_wrappers.h"
+
 namespace paxc {
 
 // Get the required objid Tuple from pg_pax_fastsequence system table.
@@ -24,8 +26,11 @@ static HeapTuple CPaxOpenFastSequenceTable(Oid objid,
 
   scan = systable_beginscan(rel, PAX_FASTSEQUENCE_INDEX_OID, true, NULL, 1,
                             scankey);
-
   tuple = systable_getnext(scan);
+  if (HeapTupleIsValid(tuple)) {
+    // lock the CTID
+    LockTuple(rel, &(tuple->t_self), ExclusiveLock);
+  }
 
   *pax_fastsequence_rel = rel;
   *pax_fastsequece_scan = scan;
@@ -35,7 +40,12 @@ static HeapTuple CPaxOpenFastSequenceTable(Oid objid,
 
 static inline void CPaxCloseFastSequenceTable(Relation pax_fastsequence_rel,
                                               SysScanDesc pax_fastsequece_scan,
+                                              HeapTuple tuple,
                                               LOCKMODE lock_mode) {
+  if (HeapTupleIsValid(tuple)) {
+    UnlockTuple(pax_fastsequence_rel, &(tuple->t_self), ExclusiveLock);
+  }
+
   systable_endscan(pax_fastsequece_scan);
   table_close(pax_fastsequence_rel, lock_mode);
 }
@@ -129,7 +139,8 @@ void CPaxInitializeFastSequenceEntry(Oid objid, char init_type,
   }
 
   heap_freetuple(new_tuple);
-  CPaxCloseFastSequenceTable(pax_fastsequence_rel, scan, RowExclusiveLock);
+  CPaxCloseFastSequenceTable(pax_fastsequence_rel, scan, tuple, 
+                             RowExclusiveLock);
 }
 
 // GetFastSequences
@@ -170,7 +181,8 @@ int32 CPaxGetFastSequences(Oid objid, bool increase) {
                            seqno + 1);
   }
 
-  CPaxCloseFastSequenceTable(pax_fastsequence_rel, scan, RowExclusiveLock);
+  CPaxCloseFastSequenceTable(pax_fastsequence_rel, scan, tuple, 
+                             RowExclusiveLock);
 
   return seqno;
 }
@@ -192,7 +204,8 @@ char *CPaxGetFastSequencesName(Oid oid, bool missing_ok) {
     pax_fs_name = (char *)palloc(50);
     sprintf(pax_fs_name, "pax_fast_sequences_%d", oid);
   }
-  CPaxCloseFastSequenceTable(pax_fastsequence_rel, scan, RowExclusiveLock);
+  CPaxCloseFastSequenceTable(pax_fastsequence_rel, scan, tuple, 
+                             RowExclusiveLock);
 
   return pax_fs_name;
 }
@@ -200,9 +213,12 @@ char *CPaxGetFastSequencesName(Oid oid, bool missing_ok) {
 }  // namespace paxc
 
 namespace cbdb {
-  
+
 int32 CPaxGetFastSequences(Oid objid, bool increase) {
-  return paxc::CPaxGetFastSequences(objid, increase);
+  CBDB_WRAP_START;
+  { return paxc::CPaxGetFastSequences(objid, increase); }
+  CBDB_WRAP_END;
+  return -1;
 }
 
 }  // namespace cbdb
