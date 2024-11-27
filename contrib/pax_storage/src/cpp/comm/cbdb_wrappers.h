@@ -80,10 +80,6 @@ void *Palloc0(size_t size);
 void *RePalloc(void *ptr, size_t size);
 void Pfree(void *ptr);
 
-HTAB *HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
-                 int flags);
-void *HashSearch(HTAB *hashp, const void *key_ptr, HASHACTION action,
-                 bool *found_ptr);
 MemoryContext AllocSetCtxCreate(MemoryContext parent, const char *name,
                                 Size min_context_size, Size init_block_size,
                                 Size max_block_size);
