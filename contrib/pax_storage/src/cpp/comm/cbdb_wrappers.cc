@@ -71,22 +71,6 @@ void Pfree(void *ptr) {
 
 }  // namespace cbdb
 
-HTAB *cbdb::HashCreate(const char *tabname, int64 nelem, const HASHCTL *info,
-                       int flags) {
-  CBDB_WRAP_START;
-  { return hash_create(tabname, nelem, info, flags); }
-  CBDB_WRAP_END;
-  return nullptr;
-}
-
-void *cbdb::HashSearch(HTAB *hashp, const void *key_ptr, HASHACTION action,
-                       bool *found_ptr) {
-  CBDB_WRAP_START;
-  { return hash_search(hashp, key_ptr, action, found_ptr); }
-  CBDB_WRAP_END;
-  return nullptr;
-}
-
 MemoryContext cbdb::AllocSetCtxCreate(MemoryContext parent, const char *name,
                                       Size min_context_size,
                                       Size init_block_size,
