@@ -348,7 +348,10 @@ void InsertOrUpdateMicroPartitionPlaceHolder(
   auto aux_rel = context.GetRelation();
   auto oldtuple = context.SearchMicroPartitionEntry();
   if (!HeapTupleIsValid(oldtuple))
-    elog(ERROR, "micro partition doesn't exist before inserting tuples");
+    elog(ERROR,
+         "micro partition doesn't exist before inserting tuples, relid:%d, "
+         "block_id:%d",
+         aux_relid, block_id);
 
   if (num_tuples > 0) {
     auto newtuple = heap_form_tuple(RelationGetDescr(aux_rel), values, nulls);
@@ -426,7 +429,7 @@ void ScanAuxContext::BeginSearchMicroPartition(Oid aux_relid,
     ScanKeyData scankey[1];
 
     ScanKeyInit(&scankey[0], ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME,
-                BTEqualStrategyNumber, F_INT42EQ, block_id);
+                BTEqualStrategyNumber, F_INT4EQ, block_id);
     scan_ = systable_beginscan(aux_rel_, aux_index_relid, true, snapshot, 1,
                                scankey);
   } else if (block_id == PAX_SCAN_ALL_BLOCKS) {

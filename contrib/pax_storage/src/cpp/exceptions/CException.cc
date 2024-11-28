@@ -39,7 +39,7 @@ static inline void StackTrace(char *stack_buffer,
   void *addr_list[max_depth + 1];
   int addr_len;
   char **symbol_list;
-  size_t origin_func_name_size = 256;
+  size_t origin_func_name_size = 16384;  // same as ORCA
   size_t func_name_size = origin_func_name_size;
   char func_name[func_name_size];
   int index = 0;
