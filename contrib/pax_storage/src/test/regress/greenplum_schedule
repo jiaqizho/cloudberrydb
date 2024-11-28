@@ -67,8 +67,8 @@ test: namespace_gp
 # test gpdb internal and segment connections
 test: gp_connections
 
-# bitmap_index triggers recovery, run it seperately
-# test: bitmap_index [Orca Unstable]
+#  triggers recovery, run it seperately
+test: bitmap_index 
 test: gp_dump_query_oids analyze gp_owner_permission incremental_analyze truncate_gp
 test: as_alias regex_gp gpparams with_clause transient_types gp_rules motion_gp indexjoin dispatch_encoding
 
