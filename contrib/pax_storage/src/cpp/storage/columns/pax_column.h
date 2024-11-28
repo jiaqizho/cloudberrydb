@@ -449,7 +449,7 @@ class PaxNonFixedColumn : public PaxColumn {
   // so a variable-length element of the lengths stream can use int32
   // to represent the length
   std::shared_ptr<DataBuffer<int32>> lengths_;
-  std::vector<uint64> offsets_;
+  std::vector<int32> offsets_;
 };
 
 };  // namespace pax
