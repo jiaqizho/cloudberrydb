@@ -31,6 +31,11 @@ class MicroPartitionStats final {
   MicroPartitionStats *Reset();
   ::pax::stats::MicroPartitionStatisticsInfo *Serialize();
 
+  inline const std::vector<bool> &GetRequiredStatsColsMask() {
+    Assert(initialized_);
+    return required_stats_;
+  }
+
   void MergeRawInfo(::pax::stats::MicroPartitionStatisticsInfo *stats_info);
   void MergeTo(MicroPartitionStats *stats);
   ::pax::stats::ColumnBasicInfo *GetColumnBasicInfo(int column_index) const;
@@ -68,6 +73,9 @@ class MicroPartitionStats final {
   // the stats to desc bloom filter
   std::vector<BloomFilter> bf_stats_;
   std::vector<char> bf_status_;
+
+  // The mask of columns for which statistics are requested
+  std::vector<bool> required_stats_;
 
   // less: pair[0], greater: pair[1]
   std::vector<std::pair<FmgrInfo, FmgrInfo>> finfos_;

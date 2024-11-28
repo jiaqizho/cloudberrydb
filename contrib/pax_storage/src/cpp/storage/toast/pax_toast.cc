@@ -13,13 +13,12 @@ namespace pax {
 
 class ExternalToastData : public MemoryObject {
  public:
-  ExternalToastData(std::shared_ptr<struct pax_varatt_external_ref> external_ref, ByteBuffer &&buffer)
-    : ref_(std::move(external_ref))
-    , buffer_(std::move(buffer)) {
-
-  }
-  ExternalToastData(const ExternalToastData &)=delete;
-  ExternalToastData &operator=(const ExternalToastData &)=delete;
+  ExternalToastData(
+      std::shared_ptr<struct pax_varatt_external_ref> external_ref,
+      ByteBuffer &&buffer)
+      : ref_(std::move(external_ref)), buffer_(std::move(buffer)) {}
+  ExternalToastData(const ExternalToastData &) = delete;
+  ExternalToastData &operator=(const ExternalToastData &) = delete;
   ExternalToastData &operator=(ExternalToastData &&tmp) {
     if (this != &tmp) {
       ref_ = std::move(tmp.ref_);
@@ -107,8 +106,8 @@ static ByteBuffer pax_lz4_compress_datum_without_hdr(
   max_size = compressor.GetCompressBound(valsize);
 
   ByteBuffer buffer(max_size);
-  len = compressor.Compress(buffer.Addr(), max_size, VARDATA_ANY(value), valsize,
-                            0 /* level has no effect*/);
+  len = compressor.Compress(buffer.Addr(), max_size, VARDATA_ANY(value),
+                            valsize, 0 /* level has no effect*/);
   if (compressor.IsError(len) || len > valsize) {
     return ByteBuffer();
   }
@@ -195,7 +194,7 @@ static ByteBuffer pax_make_compressed_toast(
   // VARSIZE(tmp)), whereas the uncompressed format would take only one
   // header byte and no padding if the value is short enough.  So we insist
   // on a savings of more than 2 bytes to ensure we have a gain.
-  tmp = reinterpret_cast<struct varlena*>(buffer.Addr());
+  tmp = reinterpret_cast<struct varlena *>(buffer.Addr());
   if (VARSIZE(tmp) < valsize - 2) {
     // successful compression
     Assert(cmid != TOAST_INVALID_COMPRESSION_ID);
@@ -251,11 +250,12 @@ static std::pair<ByteBuffer, ToastCompressionId> pax_do_compressed_raw(
   return std::pair<ByteBuffer, ToastCompressionId>{std::move(buffer), cmid};
 
 no_compress:
-  return std::pair<ByteBuffer, ToastCompressionId>{ByteBuffer(), TOAST_INVALID_COMPRESSION_ID};
+  return std::pair<ByteBuffer, ToastCompressionId>{
+      ByteBuffer(), TOAST_INVALID_COMPRESSION_ID};
 }
 
-static std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_external_toast(Datum value,
-                                     bool need_compress) {
+static std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_external_toast(
+    Datum value, bool need_compress) {
   ToastCompressionId cmid = TOAST_INVALID_COMPRESSION_ID;
   pax_varatt_external_ref *varatt_ref;
   ByteBuffer buffer;
@@ -294,10 +294,12 @@ static std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_external_toast(D
   }
 
   SET_VARTAG_EXTERNAL(varatt_ref, VARTAG_CUSTOM);
-  return {PointerGetDatum(varatt_ref), std::make_shared<ExternalToastData>(obj_ref, std::move(buffer))};
+  return {PointerGetDatum(varatt_ref),
+          std::make_shared<ExternalToastData>(obj_ref, std::move(buffer))};
 }
 
-std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_toast(Datum d, char storage_type) {
+std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_toast(
+    Datum d, char storage_type) {
   std::shared_ptr<MemoryObject> mobj;
   Datum datum = d;
 
@@ -317,14 +319,16 @@ std::pair<Datum, std::shared_ptr<MemoryObject>> pax_make_toast(Datum d, char sto
         datum = PointerGetDatum(buffer.Addr());
         mobj = std::make_shared<ExternalToastValue>(std::move(buffer));
       } else if (VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST(d)) {
-        std::tie(datum, mobj) = pax_make_external_toast(PointerGetDatum(d), true);
+        std::tie(datum, mobj) =
+            pax_make_external_toast(PointerGetDatum(d), true);
       }
       break;
     }
     case TYPSTORAGE_EXTERNAL: {
       if (VARATT_CAN_MAKE_PAX_EXTERNAL_TOAST(d)) {
         // should not make compress toast here
-        std::tie(datum, mobj) = pax_make_external_toast(PointerGetDatum(d), false);
+        std::tie(datum, mobj) =
+            pax_make_external_toast(PointerGetDatum(d), false);
       }
       break;
     }
@@ -465,7 +469,8 @@ size_t pax_detoast_raw(Datum d, char *dst_buff, size_t dst_cap, char *ext_buff,
   return decompress_size;
 }
 
-std::pair<Datum, std::shared_ptr<MemoryObject>> pax_detoast(Datum d, char *ext_buff, size_t ext_buff_size) {
+std::pair<Datum, std::shared_ptr<MemoryObject>> pax_detoast(
+    Datum d, char *ext_buff, size_t ext_buff_size) {
   std::shared_ptr<ExternalToastValue> value;
 
   if (VARATT_IS_COMPRESSED(d)) {
@@ -484,7 +489,8 @@ std::pair<Datum, std::shared_ptr<MemoryObject>> pax_detoast(Datum d, char *ext_b
 
     SET_VARSIZE(result, raw_size + VARHDRSZ);
 
-    return std::pair<Datum, std::shared_ptr<MemoryObject>>{PointerGetDatum(result), value};
+    return std::pair<Datum, std::shared_ptr<MemoryObject>>{
+        PointerGetDatum(result), value};
   } else if (VARATT_IS_PAX_EXTERNAL_TOAST(d)) {
     char *result;
     Assert(ext_buff);
@@ -508,14 +514,23 @@ std::pair<Datum, std::shared_ptr<MemoryObject>> pax_detoast(Datum d, char *ext_b
 
     Assert(decompress_size == origin_size);
     SET_VARSIZE(result, origin_size + VARHDRSZ);
-    return std::pair<Datum, std::shared_ptr<MemoryObject>>{PointerGetDatum(result), value};
+    return std::pair<Datum, std::shared_ptr<MemoryObject>>{
+        PointerGetDatum(result), value};
   }
 
   return std::pair<Datum, std::shared_ptr<MemoryObject>>{d, nullptr};
 }
 
 ExternalToastValue::ExternalToastValue(size_t size)
-  : buffer_(ByteBuffer(size, size)) { }
+    : buffer_(ByteBuffer(size, size)) {}
 ExternalToastValue::ExternalToastValue(ByteBuffer &&buffer)
-  : buffer_(std::move(buffer)) { }
+    : buffer_(std::move(buffer)) {}
+
+struct varlena *pg_detoast_exp_short(struct varlena *vl) {
+  if (VARATT_IS_COMPRESSED(vl) || VARATT_IS_EXTERNAL(vl)) {
+    return cbdb::PgDeToastDatum(vl);
+  }
+
+  return vl;
+}
 }  // namespace pax

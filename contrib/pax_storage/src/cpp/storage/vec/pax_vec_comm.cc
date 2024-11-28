@@ -1,5 +1,5 @@
 #include "storage/vec/pax_vec_comm.h"
-
+#include "storage/toast/pax_toast.h"
 #ifdef VEC_BUILD
 
 namespace pax {
@@ -39,7 +39,7 @@ void VarlenaToRawBuffer(char *buffer, size_t buffer_len, char **out_data,
 
 #ifdef ENABLE_DEBUG
   // should not exist no toast here
-  auto tunpacked = cbdb::PgDeToastDatum(vl);
+  auto tunpacked = pg_detoast_exp_short(vl);
   Assert((Pointer)vl == (Pointer)tunpacked);
 #endif
 
@@ -91,8 +91,7 @@ void CopyBitmapBuffer(std::shared_ptr<PaxColumn> column,
       auto null_bytes =
           TYPEALIGN(MEMORY_ALIGN_SIZE, BITS_TO_BYTES(out_range_lens));
       Assert(!null_bits_buffer->GetBuffer());
-      null_bits_buffer->Set(BlockBuffer::Alloc0<char>(null_bytes),
-                            null_bytes);
+      null_bits_buffer->Set(BlockBuffer::Alloc0<char>(null_bytes), null_bytes);
       CopyBitmap(&null_bitmap, 0, out_range_lens, null_bits_buffer);
       *out_visable_null_counts = null_count;
       CBDB_CHECK(out_range_lens == null_index,
