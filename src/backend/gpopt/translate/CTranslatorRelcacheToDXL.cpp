@@ -121,13 +121,7 @@ CTranslatorRelcacheToDXL::RetrieveObject(CMemoryPool *mp,
 			break;
 
 		default:
-			break;
-	}
-
-	if (nullptr == md_obj)
-	{
-		// no match found
-		GPOS_RAISE(gpdxl::ExmaMD, gpdxl::ExmiMDCacheEntryNotFound,
+			GPOS_RAISE(gpdxl::ExmaMD, gpdxl::ExmiMDCacheEntryNotFound,
 				   mdid->GetBuffer());
 	}
 
@@ -407,7 +401,7 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 	is_partitioned = (nullptr != part_keys && 0 < part_keys->Size());
 
 	// get number of leaf partitions
-	if (gpdb::RelIsPartitioned(oid))
+	if (is_partitioned)
 	{
 		// FIXME_GPDB_12_MERGE_FIXME: misestimate (most likely underestimate) the number of leaf partitions
 		// ORCA doesn't really care, except to determine whether to sort before inserting
