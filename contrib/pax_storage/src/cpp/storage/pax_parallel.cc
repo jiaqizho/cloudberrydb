@@ -170,8 +170,12 @@ bool PaxFragmentInterface::OpenFile() {
 
   InitAdapter();
 
-  auto reader = std::make_unique<OrcReader>(file_system->Open(
-      m.GetFileName(), fs::kReadMode));
+  auto data_file = file_system->Open(m.GetFileName(), fs::kReadMode);
+  std::shared_ptr<File> toast_file;
+  if (m.GetExistToast()) {
+    toast_file = file_system->Open(m.GetFileName() + TOAST_FILE_SUFFIX, fs::kReadMode);
+  }
+  auto reader = std::make_unique<OrcReader>(std::move(data_file), std::move(toast_file));
 
   reader_ = std::make_unique<PaxVecReader>(std::move(reader), adapter_, filter);
   reader_->Open(options);
