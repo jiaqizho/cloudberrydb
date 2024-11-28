@@ -43,39 +43,37 @@ CJobQueue::EjqrAdd(CJob *pj)
 	EJobQueueResult ejer = EjqrCompleted;
 
 	// check if job has completed before getting the lock
-	if (!m_fCompleted)
+	if (m_fCompleted)
 	{
-		// check if this is the main job
-		if (pj == m_pj)
+		return EjqrCompleted;
+	}
+
+	// check if this is the main job
+	if (pj == m_pj)
+	{
+		ejer = EjqrMain;
+		pj->IncRefs();
+	}
+	else
+	{
+		// the job must not completed
+		m_listjQueued.Append(pj);
+		BOOL fOwner = (pj == m_listjQueued.First());
+
+		// first caller becomes the owner
+		if (fOwner)
 		{
-			GPOS_ASSERT(!m_fCompleted);
+			GPOS_ASSERT(nullptr == m_pj);
+
+			m_pj = pj;
 			ejer = EjqrMain;
-			pj->IncRefs();
 		}
 		else
 		{
-			// check if job is completed
-			if (!m_fCompleted)
-			{
-				m_listjQueued.Append(pj);
-				BOOL fOwner = (pj == m_listjQueued.First());
-
-				// first caller becomes the owner
-				if (fOwner)
-				{
-					GPOS_ASSERT(nullptr == m_pj);
-
-					m_pj = pj;
-					ejer = EjqrMain;
-				}
-				else
-				{
-					ejer = EjqrQueued;
-				}
-
-				pj->IncRefs();
-			}
+			ejer = EjqrQueued;
 		}
+
+		pj->IncRefs();
 	}
 
 	return ejer;
