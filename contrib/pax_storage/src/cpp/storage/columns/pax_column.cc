@@ -27,7 +27,7 @@ PaxColumn::PaxColumn()
       numeber_of_external_toast_(0),
       external_toast_data_(nullptr) {}
 
-PaxColumn::~PaxColumn() { }
+PaxColumn::~PaxColumn() {}
 
 PaxColumnTypeInMem PaxColumn::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeInvalid;
@@ -120,7 +120,8 @@ bool PaxColumn::IsToast(size_t pos) {
   return !toast_flat_map_->Test(pos);
 }
 
-void PaxColumn::SetToastIndexes(std::shared_ptr<DataBuffer<int32>> toast_indexes) {
+void PaxColumn::SetToastIndexes(
+    std::shared_ptr<DataBuffer<int32>> toast_indexes) {
   Assert(!toast_indexes_ && !toast_flat_map_);
   toast_indexes_ = toast_indexes;
   Assert(total_rows_ > 0 && toast_indexes->Used() > 0);
@@ -199,7 +200,7 @@ PaxCommColumn<T>::PaxCommColumn(uint32 capacity) {
 }
 
 template <typename T>
-PaxCommColumn<T>::~PaxCommColumn() { }
+PaxCommColumn<T>::~PaxCommColumn() {}
 
 template <typename T>  // NOLINT: redirect constructor
 PaxCommColumn<T>::PaxCommColumn() : PaxCommColumn(DEFAULT_CAPACITY) {}
@@ -311,11 +312,11 @@ PaxNonFixedColumn::PaxNonFixedColumn(uint32 data_capacity,
 PaxNonFixedColumn::PaxNonFixedColumn()
     : PaxNonFixedColumn(DEFAULT_CAPACITY, DEFAULT_CAPACITY) {}
 
-PaxNonFixedColumn::~PaxNonFixedColumn() { }
+PaxNonFixedColumn::~PaxNonFixedColumn() {}
 
-void PaxNonFixedColumn::Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> lengths,
+void PaxNonFixedColumn::Set(std::shared_ptr<DataBuffer<char>> data,
+                            std::shared_ptr<DataBuffer<int32>> lengths,
                             size_t total_size) {
-
   estimated_size_ = total_size;
   data_ = std::move(data);
   lengths_ = std::move(lengths);
@@ -323,9 +324,10 @@ void PaxNonFixedColumn::Set(std::shared_ptr<DataBuffer<char>> data, std::shared_
 }
 
 void PaxNonFixedColumn::BuildOffsets() {
-  offsets_.clear();
+  Assert(offsets_.empty());
+  offsets_.resize(lengths_->GetSize());
   for (size_t i = 0; i < lengths_->GetSize(); i++) {
-    offsets_.emplace_back(i == 0 ? 0 : offsets_[i - 1] + (*lengths_)[i - 1]);
+    offsets_[i] = i == 0 ? 0 : offsets_[i - 1] + (*lengths_)[i - 1];
   }
 }
 
