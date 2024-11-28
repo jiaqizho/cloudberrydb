@@ -293,6 +293,8 @@ std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(
 
   tuple_desc = writer_options_.rel_tuple_desc;
   Assert(tuple_desc);
+  const auto &required_stats_cols = group_stats_.GetRequiredStatsColsMask();
+
   for (int i = 0; i < tuple_desc->natts; i++) {
     bool save_origin_datum;
     auto attrs = TupleDescAttr(tuple_desc, i);
@@ -326,9 +328,16 @@ std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(
     }
 
     save_origin_datum = false;
-    // still detoast the origin toast
-    detoast_vl = cbdb::PgDeToastDatum(tts_value_vl);
-    Assert(detoast_vl != nullptr);
+
+    // if not in required_stats_cols, then we allow datum with short header
+    if (required_stats_cols[i] || VARATT_IS_COMPRESSED(tts_value_vl) ||
+        VARATT_IS_EXTERNAL(tts_value_vl)) {
+      // still detoast the origin toast
+      detoast_vl = cbdb::PgDeToastDatum(tts_value_vl);
+      Assert(detoast_vl != nullptr);
+    } else {
+      detoast_vl = tts_value_vl;
+    }
 
     if (tts_value_vl != detoast_vl) {
       table_slot->tts_values[i] = PointerGetDatum(detoast_vl);

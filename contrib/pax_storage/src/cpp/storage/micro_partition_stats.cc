@@ -441,6 +441,7 @@ MicroPartitionStats::MicroPartitionStats(TupleDesc desc,
     sum_stats_.emplace_back(std::move(SumStatsInMem()));
     bf_status_.emplace_back(STATUS_UNINITIALIZED);
     bf_stats_.emplace_back(std::move(BloomFilter()));
+    required_stats_.emplace_back(false);
   }
 }
 
@@ -1121,6 +1122,7 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns,
 
   Assert(natts == static_cast<int>(status_.size()));
   Assert(status_.size() == finfos_.size());
+  Assert(status_.size() == required_stats_.size());
 
   if (initialized_) {
     return;
@@ -1193,6 +1195,16 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns,
     } else {
       sum_stats_[i].status = STATUS_NOT_SUPPORT;
     }
+
+    Assert(status_[i] == STATUS_NOT_SUPPORT ||
+           status_[i] == STATUS_MISSING_INIT_VAL);
+    Assert(sum_stats_[i].status == STATUS_NOT_SUPPORT ||
+           sum_stats_[i].status == STATUS_MISSING_INIT_VAL);
+
+    if (status_[i] == STATUS_MISSING_INIT_VAL ||
+        sum_stats_[i].status == STATUS_MISSING_INIT_VAL) {
+      required_stats_[i] = true;
+    }
   }
 
   // init the bloom filter stats
@@ -1221,6 +1233,13 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns,
     bf_info->set_bf_hash_funcs(bf_stats_[i].GetKHashFuncs());
     bf_info->set_bf_seed(bf_stats_[i].GetSeed());
     bf_info->set_bf_m(bf_stats_[i].GetM());
+
+    Assert(bf_status_[i] == STATUS_NOT_SUPPORT ||
+           bf_status_[i] == STATUS_MISSING_INIT_VAL);
+
+    if (bf_status_[i] == STATUS_MISSING_INIT_VAL) {
+      required_stats_[i] = true;
+    }
   }
 
   agg_state_ = makeNode(AggState);
