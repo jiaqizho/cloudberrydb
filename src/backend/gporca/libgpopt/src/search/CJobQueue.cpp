@@ -96,6 +96,7 @@ CJobQueue::NotifyCompleted(CSchedulerContext *psc)
 	GPOS_ASSERT(!m_fCompleted);
 	m_fCompleted = true;
 
+	GPOS_ASSERT(m_listjQueued.Size() == 1);
 	GPOS_ASSERT(!m_listjQueued.IsEmpty());
 	while (!m_listjQueued.IsEmpty())
 	{

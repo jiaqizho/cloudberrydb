@@ -325,11 +325,12 @@ CScheduler::FExecute(CJob *pj, CSchedulerContext *psc)
 				}
 				break;
 
-			case CJobQueue::EjqrQueued:
+			case CJobQueue::EjqrQueued: {
+				GPOS_ASSERT(false);
 				// queued job
 				fCompleted = false;
 				break;
-
+			}
 			case CJobQueue::EjqrCompleted:
 				break;
 		}
@@ -496,6 +497,7 @@ CScheduler::Complete(CJob *pj)
 void
 CScheduler::CompleteQueued(CJob *pj)
 {
+	GPOS_ASSERT(false);
 	GPOS_ASSERT(0 == pj->UlpRefs());
 
 #ifdef GPOS_DEBUG
