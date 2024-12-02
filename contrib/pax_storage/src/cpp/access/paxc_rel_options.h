@@ -28,7 +28,7 @@ namespace paxc {
 #define PAX_MAX_PARALLEL_WORKERS 64
 #define PAX_DEFAULT_PARALLEL_WORKERS -1
 #define PAX_ZORDER_CLUSTER_TYPE "zorder"
-#define PAX_LEXICAL_CLUSTER_TYPE "lexical" 
+#define PAX_LEXICAL_CLUSTER_TYPE "lexical"
 #define PAX_CLUSTER_TYPE_DEFAULT PAX_ZORDER_CLUSTER_TYPE
 
 #define PAX_SOPT_STORAGE_FORMAT "storage_format"
@@ -40,7 +40,7 @@ namespace paxc {
 #define PAX_SOPT_BLOOMFILTER_COLUMNS "bloomfilter_columns"
 #define PAX_SOPT_CLUSTER_COLUMNS "cluster_columns"
 #define PAX_SOPT_PARALLEL_WORKERS "parallel_workers"
-#define PAX_SOPT_CLUSTER_TYPE  "cluster_type"
+#define PAX_SOPT_CLUSTER_TYPE "cluster_type"
 
 // plain structure used by reloptions, can be accessed from C++ code.
 struct PaxOptions {
@@ -148,7 +148,9 @@ extern PaxStorageFormat StorageFormatKeyToPaxStorageFormat(
 }  // namespace pax
 
 namespace cbdb {
-std::vector<int> GetMinMaxColumnsIndex(Relation rel);
-std::vector<int> GetBloomFilterColumnsIndex(Relation rel);
-std::vector<int> GetClusterColumnsIndex(Relation rel);
+std::vector<int> GetMinMaxColumnIndexes(Relation rel);
+std::vector<int> GetBloomFilterColumnIndexes(Relation rel);
+std::vector<int> GetClusterColumnIndexes(Relation rel);
+std::vector<std::tuple<pax::ColumnEncoding_Kind, int>> GetRelEncodingOptions(
+    Relation rel);
 }  // namespace cbdb

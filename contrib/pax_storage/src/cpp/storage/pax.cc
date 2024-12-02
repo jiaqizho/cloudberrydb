@@ -107,7 +107,7 @@ class IndexUpdater final {
 namespace pax {
 
 TableWriter::TableWriter(Relation relation)
-    : relation_(relation), summary_callback_(nullptr) {
+    : relation_(relation), summary_callback_(nullptr), options_cached_(false) {
   Assert(relation);
   is_dfs_table_space_ =
       relation_->rd_rel->reltablespace != InvalidOid &&
@@ -120,19 +120,6 @@ TableWriter::TableWriter(Relation relation)
   } else {
     file_system_ = Singleton<LocalFileSystem>::GetInstance();
   }
-}
-
-PaxStorageFormat TableWriter::GetStorageFormat() {
-  if (!already_get_format_) {
-    Assert(relation_);
-    storage_format_ = StorageFormatKeyToPaxStorageFormat(RelationGetOptions(
-        relation_, storage_format,
-        pax_default_storage_format ? pax_default_storage_format
-                                   : STORAGE_FORMAT_TYPE_DEFAULT));
-    already_get_format_ = true;
-  }
-
-  return storage_format_;
 }
 
 TableWriter *TableWriter::SetWriteSummaryCallback(
@@ -161,55 +148,6 @@ std::string TableWriter::GenFilePath(const std::string &block_id) {
 
 std::string TableWriter::GenToastFilePath(const std::string &file_path) {
   return file_path + TOAST_FILE_SUFFIX;
-}
-
-std::vector<int> TableWriter::GetMinMaxColumnIndexes() {
-  if (!already_get_min_max_col_idx_) {
-    min_max_col_idx_ = cbdb::GetMinMaxColumnsIndex(relation_);
-    already_get_min_max_col_idx_ = true;
-  }
-
-  return min_max_col_idx_;
-}
-
-std::vector<int> TableWriter::GetBloomFilterColumnIndexes() {
-  if (!already_get_bf_col_idx_) {
-    bf_col_idx_ = cbdb::GetBloomFilterColumnsIndex(relation_);
-    already_get_bf_col_idx_ = true;
-  }
-
-  return bf_col_idx_;
-}
-
-std::vector<std::tuple<ColumnEncoding_Kind, int>>
-TableWriter::GetRelEncodingOptions() {
-  size_t natts = 0;
-  paxc::PaxOptions **pax_options = nullptr;
-  std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
-
-  CBDB_WRAP_START;
-  { pax_options = paxc::paxc_relation_get_attribute_options(relation_); }
-  CBDB_WRAP_END;
-  Assert(pax_options);
-
-  natts = relation_->rd_att->natts;
-
-  for (size_t index = 0; index < natts; index++) {
-    if (pax_options[index]) {
-      encoding_opts.emplace_back(std::make_tuple(
-          CompressKeyToColumnEncodingKind(pax_options[index]->compress_type),
-          pax_options[index]->compress_level));
-    } else {
-      // TODO(jiaqizho): In pax, we will fill a `DEF_ENCODED` if user not set
-      // the encoding clause. Need a GUC to decide whether we should use
-      // `NO_ENCODE` or keep use `DEF_ENCODED` also may allow user define
-      // different default encoding type for the different pg_type?
-      encoding_opts.emplace_back(
-          std::make_tuple(ColumnEncoding_Kind_DEF_ENCODED, 0));
-    }
-  }
-  cbdb::Pfree(pax_options);
-  return encoding_opts;
 }
 
 std::unique_ptr<MicroPartitionWriter> TableWriter::CreateMicroPartitionWriter(
@@ -272,9 +210,24 @@ std::unique_ptr<MicroPartitionWriter> TableWriter::CreateMicroPartitionWriter(
   return mp_writer;
 }
 
+void TableWriter::InitOptionsCaches() {
+  if (!options_cached_) {
+    storage_format_ = StorageFormatKeyToPaxStorageFormat(RelationGetOptions(
+        relation_, storage_format,
+        pax_default_storage_format ? pax_default_storage_format
+                                   : STORAGE_FORMAT_TYPE_DEFAULT));
+    min_max_col_idx_ = cbdb::GetMinMaxColumnIndexes(relation_);
+    bf_col_idx_ = cbdb::GetBloomFilterColumnIndexes(relation_);
+    encoding_opts_ = cbdb::GetRelEncodingOptions(relation_);
+    options_cached_ = true;
+  }
+}
+
 void TableWriter::Open() {
   rel_path_ = cbdb::BuildPaxDirectoryPath(
       relation_->rd_node, relation_->rd_backend, is_dfs_table_space_);
+
+  InitOptionsCaches();
 
   // Exception may be thrown causing writer_ to be nullptr
 
@@ -618,7 +571,7 @@ void TableDeleter::DeleteWithVisibilityMap(
       rel_->rd_node, rel_->rd_backend,
       cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace));
 
-  min_max_col_idxs = cbdb::GetMinMaxColumnsIndex(rel_);
+  min_max_col_idxs = cbdb::GetMinMaxColumnIndexes(rel_);
   stats_updater_projection->SetColumnProjection(min_max_col_idxs,
                                                 rel_->rd_att->natts);
   do {
@@ -686,7 +639,7 @@ void TableDeleter::DeleteWithVisibilityMap(
                           std::make_shared<Bitmap8>(visi_bitmap->Raw(),
                                                     Bitmap8::ReadOnlyOwnBitmap),
                           min_max_col_idxs,
-                          cbdb::GetBloomFilterColumnsIndex(rel_),
+                          cbdb::GetBloomFilterColumnIndexes(rel_),
                           stats_updater_projection);
 
     // write pg_pax_blocks_oid
