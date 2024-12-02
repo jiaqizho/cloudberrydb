@@ -167,7 +167,7 @@ TEST_F(PaxWriterTest, WriteReadTuple) {
   delete reader;
 }
 
-std::vector<int> MockGetALLMinMaxColumnsIndex(Relation rel) {
+std::vector<int> MockGetALLMinMaxColumnIndexes(Relation rel) {
   std::vector<int> minmax_columns;
   for (int i = 0; i < rel->rd_att->natts; i++) {
     minmax_columns.push_back(i);
@@ -219,7 +219,7 @@ TEST_F(PaxWriterTest, TestOper) {
   // 8 groups in a file
   pax_max_tuples_per_group = split_size / 8;
 
-  stub->set(cbdb::GetMinMaxColumnsIndex, MockGetALLMinMaxColumnsIndex);
+  stub->set(cbdb::GetMinMaxColumnIndexes, MockGetALLMinMaxColumnIndexes);
   stub->set(cbdb::SumAGGGetProcinfo, MockSumAGGGetProcinfo);
 
   auto writer = new MockWriter(relation, callback);
