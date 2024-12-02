@@ -294,7 +294,7 @@ static size_t CalcRecordBatchDataBufferSize(std::shared_ptr<PaxColumn> column,
     for (size_t i = 0; i < toast_indexes->GetSize(); i++) {
       auto toast_index = (*toast_indexes)[i];
       std::tie(toast_buff, toast_buff_size) = column->GetBuffer(
-          toast_index - column->GetRangeNonNullRows(0, toast_index));
+          column->GetRangeNonNullRows(0, toast_index));
       toast_total_size += pax_toast_raw_size(PointerGetDatum(toast_buff));
       toast_total_size -= pax_toast_hdr_size(PointerGetDatum(toast_buff));
     }
