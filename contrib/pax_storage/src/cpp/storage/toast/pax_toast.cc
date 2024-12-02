@@ -51,10 +51,10 @@ static ByteBuffer pax_pglz_compress_datum_without_hdr(
   ByteBuffer buffer(len, len);
   len = compressor.Compress(buffer.Addr(), len, VARDATA_ANY(value), valsize,
                             0 /* level has no effect*/);
-  buffer.SetSize(len);
   if (compressor.IsError(len)) {
     return ByteBuffer();
   }
+  buffer.SetSize(len);
   return buffer;
 }
 
