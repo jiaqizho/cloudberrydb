@@ -404,19 +404,21 @@ static std::vector<int> GetColumnsIndexByOptions(
   return indexes;
 }
 
-std::vector<int> cbdb::GetMinMaxColumnsIndex(Relation rel) {
+namespace cbdb {
+
+std::vector<int> GetMinMaxColumnIndexes(Relation rel) {
   auto options = (paxc::PaxOptions *)rel->rd_options;
   return GetColumnsIndexByOptions(
       rel, options ? options->minmax_columns() : nullptr, nullptr);
 }
 
-std::vector<int> cbdb::GetBloomFilterColumnsIndex(Relation rel) {
+std::vector<int> GetBloomFilterColumnIndexes(Relation rel) {
   auto options = (paxc::PaxOptions *)rel->rd_options;
   return GetColumnsIndexByOptions(
       rel, options ? options->bloomfilter_columns() : nullptr, nullptr);
 }
 
-std::vector<int> cbdb::GetClusterColumnsIndex(Relation rel) {
+std::vector<int> GetClusterColumnIndexes(Relation rel) {
   auto options = (paxc::PaxOptions *)rel->rd_options;
   return GetColumnsIndexByOptions(
       rel, options ? options->cluster_columns() : nullptr,
@@ -428,3 +430,37 @@ std::vector<int> cbdb::GetClusterColumnsIndex(Relation rel) {
         }
       });
 }
+
+std::vector<std::tuple<pax::ColumnEncoding_Kind, int>> GetRelEncodingOptions(
+    Relation rel) {
+  size_t natts = 0;
+  paxc::PaxOptions **pax_options = nullptr;
+  std::vector<std::tuple<pax::ColumnEncoding_Kind, int>> encoding_opts;
+
+  CBDB_WRAP_START;
+  { pax_options = paxc::paxc_relation_get_attribute_options(rel); }
+  CBDB_WRAP_END;
+  Assert(pax_options);
+
+  natts = rel->rd_att->natts;
+
+  for (size_t index = 0; index < natts; index++) {
+    if (pax_options[index]) {
+      encoding_opts.emplace_back(
+          std::make_tuple(pax::CompressKeyToColumnEncodingKind(
+                              pax_options[index]->compress_type),
+                          pax_options[index]->compress_level));
+    } else {
+      // TODO(jiaqizho): In pax, we will fill a `DEF_ENCODED` if user not set
+      // the encoding clause. Need a GUC to decide whether we should use
+      // `NO_ENCODE` or keep use `DEF_ENCODED` also may allow user define
+      // different default encoding type for the different pg_type?
+      encoding_opts.emplace_back(
+          std::make_tuple(pax::ColumnEncoding_Kind_DEF_ENCODED, 0));
+    }
+  }
+  cbdb::Pfree(pax_options);
+  return encoding_opts;
+}
+
+}  //  namespace cbdb

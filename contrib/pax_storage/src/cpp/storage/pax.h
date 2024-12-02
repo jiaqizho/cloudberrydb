@@ -31,8 +31,6 @@ class TableWriter {
 
   virtual ~TableWriter();
 
-  PaxStorageFormat GetStorageFormat();
-
   virtual const FileSplitStrategy *GetFileSplitStrategy() const;
 
   virtual void WriteTuple(TupleTableSlot *slot);
@@ -53,12 +51,34 @@ class TableWriter {
 
   virtual std::string GenToastFilePath(const std::string &file_path);
 
+#ifdef RUN_GTEST
   virtual std::vector<std::tuple<ColumnEncoding_Kind, int>>
-  GetRelEncodingOptions();
+  GetRelEncodingOptions() {
+    Assert(options_cached_);
+    return encoding_opts_;
+  }
+#else
 
-  std::vector<int> GetMinMaxColumnIndexes();
+  inline std::vector<std::tuple<ColumnEncoding_Kind, int>>
+  GetRelEncodingOptions() {
+    Assert(options_cached_);
+    return encoding_opts_;
+  }
 
-  std::vector<int> GetBloomFilterColumnIndexes();
+#endif
+  inline std::vector<int> GetMinMaxColumnIndexes() {
+    Assert(options_cached_);
+    return min_max_col_idx_;
+  }
+
+  inline std::vector<int> GetBloomFilterColumnIndexes() {
+    Assert(options_cached_);
+    return bf_col_idx_;
+  }
+
+  inline PaxStorageFormat GetStorageFormat() { return storage_format_; }
+
+  void InitOptionsCaches();
 
   std::unique_ptr<MicroPartitionWriter> CreateMicroPartitionWriter(
       std::shared_ptr<MicroPartitionStats> mp_stats, bool write_only = true);
@@ -75,12 +95,13 @@ class TableWriter {
 
   size_t num_tuples_ = 0;
   BlockNumber current_blockno_ = 0;
-  bool already_get_format_ = false;
+
+  bool options_cached_;
   PaxStorageFormat storage_format_ = PaxStorageFormat::kTypeStoragePorcNonVec;
-  bool already_get_min_max_col_idx_ = false;
   std::vector<int> min_max_col_idx_;
-  bool already_get_bf_col_idx_ = false;
   std::vector<int> bf_col_idx_;
+  std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts_;
+
   bool is_dfs_table_space_;
 };
 
