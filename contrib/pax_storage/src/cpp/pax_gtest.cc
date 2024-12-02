@@ -34,12 +34,16 @@ std::string MockBuildPaxDirectoryPath(RelFileNode, BackendId) {
   return std::string(".");
 }
 
-std::vector<int> MockGetMinMaxColumnsIndex(Relation rel) {
+std::vector<int> MockGetMinMaxColumnIndexes(Relation rel) {
   return std::vector<int>();
 }
 
-std::vector<int> MockBloomFilterColumnsIndex(Relation rel) {
+std::vector<int> MockBloomFilterColumnIndexes(Relation rel) {
   return std::vector<int>();
+}
+
+std::vector<std::tuple<pax::ColumnEncoding_Kind, int>> MockGetRelEncodingOptions(Relation rel) {
+  return std::vector<std::tuple<pax::ColumnEncoding_Kind, int>>();
 }
 
 // Mock global method which is not link from another libarays
@@ -50,8 +54,9 @@ void GlobalMock(Stub *stub) {
   stub->set(cbdb::InsertMicroPartitionPlaceHolder,
             MockInsertMicroPartitionPlaceHolder);
   stub->set(cbdb::DeleteMicroPartitionEntry, MockDeleteMicroPartitionEntry);
-  stub->set(cbdb::GetMinMaxColumnsIndex, MockGetMinMaxColumnsIndex);
-  stub->set(cbdb::GetBloomFilterColumnsIndex, MockBloomFilterColumnsIndex);
+  stub->set(cbdb::GetMinMaxColumnIndexes, MockGetMinMaxColumnIndexes);
+  stub->set(cbdb::GetBloomFilterColumnIndexes, MockBloomFilterColumnIndexes);
+  stub->set(cbdb::GetRelEncodingOptions, MockGetRelEncodingOptions);
   stub->set(ExecStoreVirtualTuple, MockExecStoreVirtualTuple);
 }
 

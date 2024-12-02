@@ -61,6 +61,7 @@ void TableParitionWriter::Open() {
   rel_path_ = cbdb::BuildPaxDirectoryPath(
       relation_->rd_node, relation_->rd_backend,
       cbdb::IsDfsTablespaceById(relation_->rd_rel->reltablespace));
+  InitOptionsCaches();
   // 1 for the default parition
   writer_counts_ = part_obj_->NumPartitions() + 1;
   Assert(writer_counts_ > 1);
