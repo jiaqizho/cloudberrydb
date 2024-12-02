@@ -12,7 +12,7 @@ option(BUILD_GTEST "Build with google test" ON)
 option(BUILD_GBENCH "Build with google benchmark" ON)
 
 # Build pax tools
-option(BUILD_TOOLS "Build with pax tools" OFF)
+option(BUILD_TOOLS "Build with pax tools" ON)
 
 # Build with return dictionary in record batch
 option(BUILD_RB_RET_DICT "Build with pax direct return dictionary in record batch." OFF)

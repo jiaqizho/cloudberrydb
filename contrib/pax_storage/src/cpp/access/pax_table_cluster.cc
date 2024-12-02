@@ -55,7 +55,7 @@ static Oid OperatorGetCast(const char *operatorName, Oid operatorNamespace,
 static std::unique_ptr<clustering::DataClustering::DataClusteringOptions>
 CreateDataClusteringOptions(const clustering::DataClustering::ClusterType type,
                             Relation rel) {
-  auto columns = cbdb::GetClusterColumnsIndex(rel);
+  auto columns = cbdb::GetClusterColumnIndexes(rel);
   CBDB_CHECK(!columns.empty(), cbdb::CException::kExTypeInvalid,
              "No columns to cluster");
   switch (type) {
@@ -108,7 +108,7 @@ clustering::DataClustering::ClusterType GetClusterType(Relation rel) {
 }
 
 void Cluster(Relation rel, Snapshot snapshot, bool is_incremental_cluster) {
-  auto columns = cbdb::GetClusterColumnsIndex(rel);
+  auto columns = cbdb::GetClusterColumnIndexes(rel);
   CBDB_CHECK(!columns.empty(), cbdb::CException::kExTypeInvalid);
 
   clustering::DataClustering::ClusterType cluster_type = GetClusterType(rel);
