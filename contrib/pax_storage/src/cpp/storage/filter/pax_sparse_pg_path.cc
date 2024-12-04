@@ -122,8 +122,8 @@ std::shared_ptr<PFTNode> PaxSparseFilter::ProcessOpExpr(Expr *clause) {
     opno = op_expr->opno;
     collid = op_expr->inputcollid;
 
-    ok = cbdb::PGOperatorProcinfo(opno, &op_name, &op_lefttype, &op_righttype,
-                                  NULL);
+    ok = cbdb::PGGetOperatorNo(opno, &op_name, &op_lefttype, &op_righttype,
+                               NULL);
 
     if (!ok) {
       ignore_reason = pax::fmt("Invalid proc in OpExpr, [opno=%d]", opno);
@@ -171,6 +171,69 @@ std::shared_ptr<PFTNode> PaxSparseFilter::ProcessOpExpr(Expr *clause) {
 
 ignore_clause:
   Assert(!left_node && !right_node && !op_node);
+  Assert(!ignore_reason.empty());
+  return std::make_shared<UnsupportedNode>(ignore_reason);
+}
+
+std::shared_ptr<PFTNode> PaxSparseFilter::ProcessCastExpr(Expr *clause) {
+  std::shared_ptr<CastNode> cast_node = nullptr;
+  std::shared_ptr<PFTNode> sub_node = nullptr;
+  FuncExpr *func_clause;
+  std::string ignore_reason;
+  Expr *sub_expr;
+
+  func_clause = castNode(FuncExpr, clause);
+  Assert(func_clause->funcformat == COERCE_EXPLICIT_CAST ||
+         func_clause->funcformat == COERCE_IMPLICIT_CAST);
+
+  if (list_length(func_clause->args) != 1) {
+    ignore_reason = pax::fmt("Unexpected CAST args [len=%d]",
+                             list_length(func_clause->args));
+    goto ignore_clause;
+  }
+
+  sub_expr = (Expr *)linitial(func_clause->args);
+  if (!sub_expr) {
+    ignore_reason = pax::fmt("Empty sub expr in CAST expr");
+    goto ignore_clause;
+  }
+
+  sub_node = ExprWalker(sub_expr);
+  Assert(sub_node);
+
+  cast_node = std::make_shared<CastNode>();
+  cast_node->opno = func_clause->funcid;
+  cast_node->result_typid = func_clause->funcresulttype;
+  cast_node->coll = func_clause->funccollid;
+  PFTNode::AppendSubNode(cast_node, std::move(sub_node));
+
+  return cast_node;
+ignore_clause:
+  Assert(!cast_node && !sub_node);
+  Assert(!ignore_reason.empty());
+  return std::make_shared<UnsupportedNode>(ignore_reason);
+}
+
+std::shared_ptr<PFTNode> PaxSparseFilter::ProcessFuncExpr(Expr *clause) {
+  FuncExpr *func_clause;
+  std::string ignore_reason;
+
+  func_clause = castNode(FuncExpr, clause);
+  switch (func_clause->funcformat) {
+    case COERCE_EXPLICIT_CAST:  // fallthrough
+    case COERCE_IMPLICIT_CAST: {
+      return ProcessCastExpr(clause);
+    }
+    default: {
+      ignore_reason =
+          pax::fmt("Not support funcformat in FuncExpr, [funcformat=%d]",
+                   func_clause->funcformat);
+      goto ignore_clause;
+    }
+  }
+
+  Assert(false);
+ignore_clause:
   Assert(!ignore_reason.empty());
   return std::make_shared<UnsupportedNode>(ignore_reason);
 }
@@ -251,6 +314,9 @@ std::shared_ptr<PFTNode> PaxSparseFilter::ExprWalker(Expr *clause) {
       break;
     case T_Const:
       node = ProcessConstExpr(clause);
+      break;
+    case T_FuncExpr:
+      node = ProcessFuncExpr(clause);
       break;
     case T_OpExpr:
       node = ProcessOpExpr(clause);

@@ -75,12 +75,14 @@ LOG:  kind file, filter rate: 1 / 3  (seg1 slice1 10.13.9.100:7003 pid=28346)
 (1 row)
 
 select count(*) from t_bool where v = false;
+LOG:  kind file, filter rate: 0 / 3
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bool where v = true;
+LOG:  kind file, filter rate: 0 / 3
  count 
 -------
     15
