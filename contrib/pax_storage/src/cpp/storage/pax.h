@@ -10,10 +10,10 @@
 #include "comm/bitmap.h"
 #include "comm/iterator.h"
 #include "storage/file_system.h"
+#include "storage/filter/pax_filter.h"
 #include "storage/micro_partition.h"
 #include "storage/micro_partition_metadata.h"
 #include "storage/orc/porc.h"
-#include "storage/pax_filter.h"
 #include "storage/pax_itemptr.h"
 #include "storage/strategy.h"
 

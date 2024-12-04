@@ -22,23 +22,29 @@
 #undef MILLISECOND
 #undef MICROSECOND
 #undef IsPowerOf2
+#undef Abs
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 
-#include <arrow/array/array_decimal.h>
-#include <arrow/array/array_dict.h>
-#include <arrow/array/data.h>
+#include <arrow/array.h>
 #include <arrow/array/array_binary.h>
 #include <arrow/array/array_decimal.h>
+#include <arrow/array/array_dict.h>
 #include <arrow/array/array_nested.h>
 #include <arrow/array/array_primitive.h>
 #include <arrow/array/data.h>
 #include <arrow/c/abi.h>
 #include <arrow/c/bridge.h>
+#include <arrow/compute/api_scalar.h>
+#include <arrow/dataset/dataset.h>
+#include <arrow/dataset/scanner.h>
 #include <arrow/record_batch.h>
+#include <arrow/result.h>
+#include <arrow/type.h>
 #include <arrow/util/bit_util.h>
+#include <arrow/util/iterator.h>
 
 #pragma GCC diagnostic pop
 
@@ -60,12 +66,16 @@
 
 // NOLINTNEXTLINE
 #define IsPowerOf2(x) (x > 0 && ((x) & ((x)-1)) == 0)
-
+#define Abs(x) ((x) >= 0 ? (x) : -(x))
 namespace arrow {
 
 void ExportArrayRelease(ArrowArray *array);
 void ExportArrayRoot(const std::shared_ptr<ArrayData> &data,
                      ArrowArray *export_array);
+int FindFieldIndex(
+    const std::vector<std::pair<const char *, size_t>> &table_names,
+    const std::pair<const char *, size_t> &kname);
+std::pair<const char *, size_t> ExtractFieldName(const std::string &name);
 }  // namespace arrow
 
 #endif  // VEC_BUILD

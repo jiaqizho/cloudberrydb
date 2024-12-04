@@ -15,6 +15,37 @@ static const opername_strategy_mapping strategy_map[] = {
     {GreaterStrategyStr, BTGreaterStrategyNumber},
 };
 
+StrategyNumber InvertStrategy(StrategyNumber strategy) {
+  if (strategy == InvalidStrategy) {
+    return InvalidStrategy;
+  }
+
+  // Note that this is not the handling logic for the `not expression`
+  // Instead, it is to flip the variables in the `opexpr` from the right side to
+  // the left side For example:
+  //    (where 100 < v1) == (where v1 > 100)
+  //    (where 100 < v1) != (where v1 >= 100)
+  //
+  //    (where 100 <= v1) == (where v1 >= 100)
+  //    (where 100 <= v1) != (where v1 > 100)
+  switch (strategy) {
+    case BTLessStrategyNumber:
+      return BTGreaterStrategyNumber;
+    case BTLessEqualStrategyNumber:
+      return BTGreaterEqualStrategyNumber;
+    case BTEqualStrategyNumber:
+      return BTEqualStrategyNumber;
+    case BTGreaterEqualStrategyNumber:
+      return BTLessEqualStrategyNumber;
+    case BTGreaterStrategyNumber:
+      return BTLessStrategyNumber;
+    default:
+      Assert(false);
+  }
+  Assert(false);
+  return InvalidStrategy;
+}
+
 StrategyNumber OpernameToStrategy(const char *opername) {
   Assert(opername);
   if (!opername) {

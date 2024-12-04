@@ -32,7 +32,8 @@ namespace pax {
 #define PAX_MAX_BLOOM_FILTER_WORK_MEMORY_BYTES (INT_MAX)
 
 bool pax_enable_debug = true;
-bool pax_enable_filter = true;
+bool pax_enable_sparse_filter = true;
+bool pax_enable_row_filter = false;
 int pax_scan_reuse_buffer_size = 0;
 int pax_max_tuples_per_group = PAX_MAX_TUPLES_PER_GROUP_DEFAULT;
 int pax_max_tuples_per_file = PAX_MAX_TUPLES_PER_FILE_DEFAULT;
@@ -43,6 +44,7 @@ int pax_min_size_of_compress_toast = PAX_MIN_SIZE_MAKE_COMPRESSED_TOAST;
 int pax_min_size_of_external_toast = PAX_MIN_SIZE_MAKE_EXTERNAL_TOAST;
 char *pax_default_storage_format = nullptr;
 int pax_bloom_filter_work_memory_bytes = PAX_BLOOM_FILTER_WORK_MEMORY_BYTES;
+bool pax_log_filter_tree = false;
 
 }  // namespace pax
 
@@ -101,9 +103,15 @@ void DefineGUCs() {
                            &pax::pax_enable_debug, true, PGC_USERSET, 0, NULL,
                            NULL, NULL);
 
-  DefineCustomBoolVariable("pax_enable_filter", "enable pax filter", NULL,
-                           &pax::pax_enable_filter, true, PGC_USERSET, 0, NULL,
-                           NULL, NULL);
+  DefineCustomBoolVariable("pax_enable_sparse_filter",
+                           "enable pax filter, contains min/max and bloom "
+                           "filters for sparse filtering",
+                           NULL, &pax::pax_enable_sparse_filter, true,
+                           PGC_USERSET, 0, NULL, NULL, NULL);
+
+  DefineCustomBoolVariable("pax_enable_row_filter", "enable pax row filter",
+                           NULL, &pax::pax_enable_row_filter, false,
+                           PGC_USERSET, 0, NULL, NULL, NULL);
 
   DefineCustomIntVariable(
       "pax_scan_reuse_buffer_size", "set the reuse buffer size", NULL,
@@ -162,6 +170,10 @@ void DefineGUCs() {
                           PAX_MIN_BLOOM_FILTER_WORK_MEMORY_BYTES,
                           PAX_MAX_BLOOM_FILTER_WORK_MEMORY_BYTES, PGC_USERSET,
                           0, NULL, NULL, NULL);
+
+  DefineCustomBoolVariable("pax_log_filter_tree", "Log the filter tree", NULL,
+                           &pax::pax_log_filter_tree, false, PGC_USERSET, 0,
+                           NULL, NULL, NULL);
 }
 
 }  // namespace paxc
