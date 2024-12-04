@@ -10,6 +10,7 @@ namespace pax {
 enum PFTNodeType {
   InvalidType = 0,
   OpType,
+  CastType,
   ConstType,
   VarType,
   NullTestType,
@@ -55,6 +56,19 @@ struct OpNode final : public PFTNode {
     return ::pax::fmt(
         "OpNode(opno=%d, strategy=%d, collation=%d, ltypid=%d, rtypid=%d)",
         opno, strategy, collation, left_typid, right_typid);
+  }
+};
+
+struct CastNode final : public PFTNode {
+  Oid opno = InvalidOid;
+  Oid result_typid = InvalidOid;
+  Oid coll = InvalidOid;
+
+  CastNode() : PFTNode(CastType) {}
+  ~CastNode() = default;
+
+  std::string DebugString() const override {
+    return ::pax::fmt("CastNode(opno=%d, result_typid=%d)", opno, result_typid);
   }
 };
 

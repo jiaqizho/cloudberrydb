@@ -63,6 +63,8 @@ class PaxSparseFilter final {
   std::shared_ptr<PFTNode> ProcessOpExpr(Expr *expr);
   std::shared_ptr<PFTNode> ProcessScalarArrayOpExpr(Expr *expr);
   std::shared_ptr<PFTNode> ProcessNullTest(Expr *expr);
+  std::shared_ptr<PFTNode> ProcessCastExpr(Expr *expr);
+  std::shared_ptr<PFTNode> ProcessFuncExpr(Expr *expr);
 
   // Make the `quals` to the `AndNode` if length of `quals` > 1
   // quals may create/append by below cases:
@@ -131,6 +133,9 @@ class PaxSparseFilter final {
                   const std::shared_ptr<PFTNode> &node);
   bool ExecOpNode(PaxSparseExecContext *exec_ctx,
                   const std::shared_ptr<PFTNode> &node);
+  bool ExecCastNode(PaxSparseExecContext *exec_ctx,
+                    const std::shared_ptr<PFTNode> &node);
+
   bool ExecConstNode(PaxSparseExecContext *exec_ctx,
                      const std::shared_ptr<PFTNode> &node);
   bool ExecVarNode(PaxSparseExecContext *exec_ctx,

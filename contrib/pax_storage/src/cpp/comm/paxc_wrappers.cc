@@ -169,8 +169,8 @@ failed:
   return false;
 }
 
-bool PGOperatorProcinfo(Oid opno, NameData *oprname, Oid *oprleft,
-                        Oid *oprright, FmgrInfo *finfo) {
+bool PGGetOperatorNo(Oid opno, NameData *oprname, Oid *oprleft, Oid *oprright,
+                     FmgrInfo *finfo) {
   HeapTuple tup;
   Form_pg_operator op;
   FmgrInfo dummy;
@@ -190,8 +190,8 @@ bool PGOperatorProcinfo(Oid opno, NameData *oprname, Oid *oprleft,
   return true;
 }
 
-bool AddGetProcinfo(Oid atttypid, Oid subtype, Oid namespc, Oid *resulttype,
-                    FmgrInfo *finfo) {
+bool PGGetAddOperator(Oid atttypid, Oid subtype, Oid namespc, Oid *resulttype,
+                      FmgrInfo *finfo) {
   static const char *oprname = "+";
   FmgrInfo dummy;
   HeapTuple tuple;
@@ -216,6 +216,39 @@ bool AddGetProcinfo(Oid atttypid, Oid subtype, Oid namespc, Oid *resulttype,
   ReleaseSysCache(tuple);
 
   fmgr_info_cxt(oprcode, finfo ? finfo : &dummy, CurrentMemoryContext);
+
+  return true;
+}
+
+bool PGGetProc(Oid procoid, FmgrInfo *finfo) {
+  HeapTuple tuple;
+  bool is_null;
+  FmgrInfo dummy;
+  Datum prosrc_datum;
+  char *prosrc;
+  Oid func_oid;
+
+  /*
+   * We do not honor check_function_bodies since it's unlikely the function
+   * name will be found later if it isn't there now.
+   */
+
+  tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(procoid));
+  if (!HeapTupleIsValid(tuple)) return false;
+
+  prosrc_datum = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_prosrc, &is_null);
+  if (is_null) return false;
+  prosrc = TextDatumGetCString(prosrc_datum);
+
+  func_oid = fmgr_internal_function(prosrc);
+  if (func_oid == InvalidOid)
+    ereport(ERROR,
+            (errcode(ERRCODE_UNDEFINED_FUNCTION),
+             errmsg("there is no built-in function named \"%s\"", prosrc)));
+
+  fmgr_info_cxt(func_oid, finfo ? finfo : &dummy, CurrentMemoryContext);
+
+  ReleaseSysCache(tuple);
 
   return true;
 }
@@ -254,8 +287,8 @@ bool SumAGGGetProcinfo(Oid atttypid, Oid *prorettype, Oid *transtype,
 
   // 2. open the pg_operator get the `add_func` which is `+(prorettype,
   // prorettype)`
-  is_null = !AddGetProcinfo(*prorettype, *prorettype, PG_CATALOG_NAMESPACE,
-                            &addrettyp, add_finfo);
+  is_null = !PGGetAddOperator(*prorettype, *prorettype, PG_CATALOG_NAMESPACE,
+                              &addrettyp, add_finfo);
   if (is_null || addrettyp != *prorettype) {
     // can't get the `add` operator or return type not match
     return false;

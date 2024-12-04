@@ -623,6 +623,37 @@ bool PaxSparseFilter::ExecConstNode(PaxSparseExecContext *exec_ctx,
   return false;
 }
 
+bool PaxSparseFilter::ExecCastNode(PaxSparseExecContext *exec_ctx,
+                                   const std::shared_ptr<PFTNode> &node) {
+  std::shared_ptr<CastNode> cast_node;
+  FmgrInfo finfo;
+
+  Assert(node && IsNode(node, CastType));
+  Assert(node->sub_nodes.size() == 1);
+
+  if (ExecFilterTree(exec_ctx, node->sub_nodes[0])) {
+    return true;
+  }
+
+  // Only can cast the var type and need with min/max
+  // if current node only have bloom filter, the bloom filter will not work.
+  if (exec_ctx->from_node != VarType || !exec_ctx->var_value.exist_min_max) {
+    return true;
+  }
+
+  cast_node = std::dynamic_pointer_cast<CastNode>(node);
+  auto ok = cbdb::PGGetProc(cast_node->opno, &finfo);
+  if (!ok) {
+    return true;
+  }
+
+  exec_ctx->var_value.min =
+      cbdb::FunctionCall1Coll(&finfo, cast_node->coll, exec_ctx->var_value.min);
+  exec_ctx->var_value.max =
+      cbdb::FunctionCall1Coll(&finfo, cast_node->coll, exec_ctx->var_value.max);
+  return false;
+}
+
 bool PaxSparseFilter::ExecVarNode(PaxSparseExecContext *exec_ctx,
                                   const std::shared_ptr<PFTNode> &node) {
   Form_pg_attribute attr;
@@ -747,6 +778,7 @@ bool PaxSparseFilter::ExecInNode(PaxSparseExecContext *exec_ctx,
   int16 typlen;
   bool typbyval;
   bool is_null;
+  bool can_run_bf;
 
   Assert(node && IsNode(node, InType));
   Assert(node->sub_nodes.size() == 2);
@@ -773,13 +805,22 @@ bool PaxSparseFilter::ExecInNode(PaxSparseExecContext *exec_ctx,
   typlen = attr->attlen;
   coll = attr->attcollation;
 
+  // Mounting nodes other than VarNode + ConstNode under the IN node
+  // will cause the bloomfilter in statistis to become invalid.
+  //
+  // for example:
+  //   select count(*) from t_bf where v1 in (3, 9, -1, '3'::float);
+  // v1 CAST to the float, then bloom filter will be different
+  can_run_bf = IsNode(in_node->sub_nodes[0], VarType) &&
+               IsNode(in_node->sub_nodes[1], ConstType);
+
   // check the bf part(if set) before we check the min/max
   //
   // If current clause is `NOT IN (a,b)` case then we cannot use bloom filter to
   // filter. This is because bloom filter has false positives. We can only
   // expect that the element is not in bloom filter, it is only possible to
   // filter the `IN (a,b)` case.
-  if (lctx_copy.var_value.exist_bf) {
+  if (can_run_bf && lctx_copy.var_value.exist_bf) {
     bool not_in_bf = true;
 
     // Bloom filter not support the numeric
@@ -997,6 +1038,11 @@ bool PaxSparseFilter::ExecFilterTree(PaxSparseExecContext *exec_ctx,
       // Then NotType + NULLTEST will be flat in `SimplifyFilterTree`
       no_filter = true;
       exec_ctx->from_node = ResultType;
+      break;
+    }
+    case CastType: {
+      no_filter = ExecCastNode(exec_ctx, node);
+      exec_ctx->from_node = VarType;
       break;
     }
     case VarType: {

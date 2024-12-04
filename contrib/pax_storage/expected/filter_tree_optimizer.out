@@ -527,33 +527,33 @@ OrNode
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
-UnsupportedNode(reason=Unknown Expr)
+UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  Origin filter tree: 
 OrNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
-UnsupportedNode(reason=Unknown Expr)
+UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  Origin filter tree: 
 OrNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
-UnsupportedNode(reason=Unknown Expr)
+UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
  count 
 -------
    200
@@ -567,7 +567,7 @@ AndNode
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
@@ -575,14 +575,14 @@ AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
-  └── UnsupportedNode(reason=Unknown Expr)
+  └── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  Origin filter tree: 
 AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
@@ -590,14 +590,14 @@ AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
-  └── UnsupportedNode(reason=Unknown Expr)
+  └── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  Origin filter tree: 
 AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
@@ -605,7 +605,7 @@ AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
-  └── UnsupportedNode(reason=Unknown Expr)
+  └── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  kind file, filter rate: 0 / 2
  count 
 -------
@@ -657,6 +657,7 @@ insert into t_bf values(1, generate_series(401, 500), generate_series(501, 600),
 set client_min_messages to log;
 select count(*) from t_bf where v1 in (3, 9, -1, '3'::float);
 LOG:  statement: select count(*) from t_bf where v1 in (3, 9, -1, '3'::float);
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      2
@@ -1112,33 +1113,33 @@ OrNode
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
-UnsupportedNode(reason=Unknown Expr)
+UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  Origin filter tree: 
 OrNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
-UnsupportedNode(reason=Unknown Expr)
+UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  Origin filter tree: 
 OrNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
-UnsupportedNode(reason=Unknown Expr)
+UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
  count 
 -------
    200
@@ -1152,7 +1153,7 @@ AndNode
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
@@ -1160,14 +1161,14 @@ AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
-  └── UnsupportedNode(reason=Unknown Expr)
+  └── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  Origin filter tree: 
 AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
@@ -1175,14 +1176,14 @@ AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
-  └── UnsupportedNode(reason=Unknown Expr)
+  └── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  Origin filter tree: 
 AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
   └── OpNode(opno=97, strategy=1, collation=0, ltypid=23, rtypid=23)
-    ├── UnsupportedNode(reason=Unknown Expr)
+    ├── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
     └── ConstNode(const_type=23, flags=0)
 
 Final filter tree: 
@@ -1190,7 +1191,7 @@ AndNode
   ├── OpNode(opno=521, strategy=5, collation=0, ltypid=23, rtypid=23)
   │  ├── VarNode(attrno=2)
   │  └── ConstNode(const_type=23, flags=0)
-  └── UnsupportedNode(reason=Unknown Expr)
+  └── UnsupportedNode(reason=Not support funcformat in FuncExpr, [funcformat=0])
 LOG:  kind file, filter rate: 0 / 2
  count 
 -------

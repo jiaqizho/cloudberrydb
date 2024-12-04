@@ -1756,243 +1756,189 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(bpchar, text)
 select count(*) from t_bpchar where v > 'pf9'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfe'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfj'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfo'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v > 'pft'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v < 'pf9'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v < 'pff'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfk'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfp'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfz'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v = 'pf9'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfe'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfj'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfk'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pft'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfz'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pf9'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfa'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pff'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfk'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfp'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfz'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pf9'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfe'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfj'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfo'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pft'::text;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -2000,243 +1946,189 @@ LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.1
 
 -- oper(bpchar, name)
 select count(*) from t_bpchar where v > 'pf9'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfe'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfj'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfo'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v > 'pft'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v < 'pf9'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v < 'pff'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfk'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfp'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfz'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v = 'pf9'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfe'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfj'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfk'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pft'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfz'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pf9'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfa'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pff'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfk'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfp'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfz'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pf9'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfe'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfj'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfo'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pft'::name;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=24210)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=24211)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=24212)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
