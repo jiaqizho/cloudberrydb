@@ -3,7 +3,7 @@
 #include <utility>
 
 #include "comm/pax_memory.h"
-#include "storage/pax_filter.h"
+#include "storage/filter/pax_filter.h"
 
 namespace pax {
 
@@ -23,7 +23,7 @@ MicroPartitionWriter *MicroPartitionWriter::SetStatsCollector(
   return this;
 }
 
-MicroPartitionReaderProxy::~MicroPartitionReaderProxy() { }
+MicroPartitionReaderProxy::~MicroPartitionReaderProxy() {}
 
 void MicroPartitionReaderProxy::Open(
     const MicroPartitionReader::ReaderOptions &options) {
@@ -47,7 +47,8 @@ bool MicroPartitionReaderProxy::GetTuple(TupleTableSlot *slot,
   return reader_->GetTuple(slot, row_index);
 }
 
-void MicroPartitionReaderProxy::SetReader(std::unique_ptr<MicroPartitionReader> &&reader) {
+void MicroPartitionReaderProxy::SetReader(
+    std::unique_ptr<MicroPartitionReader> &&reader) {
   Assert(reader);
   Assert(!reader_);
   reader_ = std::move(reader);
@@ -66,8 +67,8 @@ MicroPartitionReaderProxy::GetGroupStatsInfo(size_t group_index) {
   return std::move(reader_->GetGroupStatsInfo(group_index));
 }
 
-std::unique_ptr<MicroPartitionReader::Group> MicroPartitionReaderProxy::ReadGroup(
-    size_t index) {
+std::unique_ptr<MicroPartitionReader::Group>
+MicroPartitionReaderProxy::ReadGroup(size_t index) {
   return reader_->ReadGroup(index);
 }
 

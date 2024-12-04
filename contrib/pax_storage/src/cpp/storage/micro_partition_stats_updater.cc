@@ -1,9 +1,9 @@
 #include "storage/micro_partition_stats_updater.h"
 
 #include "comm/pax_memory.h"
+#include "storage/filter/pax_filter.h"
 #include "storage/micro_partition_stats.h"
 #include "storage/pax_defined.h"
-#include "storage/pax_filter.h"
 #include "storage/pax_itemptr.h"
 
 namespace pax {

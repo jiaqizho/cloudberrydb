@@ -757,9 +757,9 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
     PAX_LOG_IF(pax_enable_debug,
                "write group[%lu](allnull=%s, hasnull=%s, nonnullrows=%lu, "
                "hastoast=%s, nrows=%lu)",
-               i, col_stats.allnull() ? "true" : "false",
-               col_stats.hasnull() ? "true" : "false", col_stats.nonnullrows(),
-               pax_column->ToastCounts() > 0 ? "true" : "false",
+               i, BOOL_TOSTRING(col_stats.allnull()),
+               BOOL_TOSTRING(col_stats.hasnull()), col_stats.nonnullrows(),
+               BOOL_TOSTRING(pax_column->ToastCounts() > 0),
                pax_column->GetRows());
   }
 

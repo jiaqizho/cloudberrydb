@@ -11,7 +11,7 @@
 #include "exceptions/CException.h"
 #include "pax_gtest_helper.h"
 #include "storage/local_file_system.h"
-#include "storage/pax_filter.h"
+#include "storage/filter/pax_filter.h"
 #include "storage/toast/pax_toast.h"
 #include "stub.h"
 
@@ -33,8 +33,9 @@ class OrcTest : public ::testing::Test {
     ReleaseTestResourceOwner();
   }
 
-  static void VerifySingleStripe(std::shared_ptr<PaxColumns> columns,
-                                 const std::vector<bool> &proj_map=std::vector<bool>()) {
+  static void VerifySingleStripe(
+      std::shared_ptr<PaxColumns> columns,
+      const std::vector<bool> &proj_map = std::vector<bool>()) {
     char column_buff[COLUMN_SIZE];
     struct varlena *vl = nullptr;
     struct varlena *tunpacked = nullptr;
@@ -81,7 +82,8 @@ class OrcTest : public ::testing::Test {
     }
 
     if (proj_map.empty() || proj_map[2]) {
-      auto column3 = std::static_pointer_cast<PaxCommColumn<int32>>((*columns)[2]);
+      auto column3 =
+          std::static_pointer_cast<PaxCommColumn<int32>>((*columns)[2]);
       std::tie(read_data, read_len) = column3->GetBuffer();
       EXPECT_EQ(4, read_len);
       EXPECT_EQ(INT32_COLUMN_VALUE, *(int32 *)read_data);
@@ -637,7 +639,7 @@ TEST_F(OrcTest, WriteReadTupleWithToast) {
   toast_file_ptr = local_fs->Open(toast_file_name, fs::kReadMode);
   EXPECT_NE(nullptr, file_ptr);
   std::vector<bool> projection = {false, true, true, true};
-  std::shared_ptr<PaxFilter> filter = std::make_shared<PaxFilter>(false);
+  std::shared_ptr<PaxFilter> filter = std::make_shared<PaxFilter>();
 
   filter->SetColumnProjection(std::move(projection));
   reader_options.filter = filter;
