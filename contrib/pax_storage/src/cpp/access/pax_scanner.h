@@ -5,8 +5,8 @@
 #include <unordered_set>
 
 #include "comm/pax_memory.h"
+#include "storage/filter/pax_filter.h"
 #include "storage/pax.h"
-#include "storage/pax_filter.h"
 #ifdef VEC_BUILD
 #include "storage/vec/pax_vec_adapter.h"
 #endif
@@ -25,7 +25,7 @@ class PaxIndexScanDesc final {
                   bool *call_again, bool *all_dead);
 
   // release internal reader
-  void Release(); 
+  void Release();
   inline IndexFetchTableData *ToBase() { return &base_; }
   inline Relation GetRelation() { return base_.rel; }
   static inline PaxIndexScanDesc *FromBase(IndexFetchTableData *base) {
@@ -44,14 +44,15 @@ class PaxIndexScanDesc final {
 class PaxScanDesc {
  public:
   PaxScanDesc() = default;
-  TableScanDesc BeginScan(Relation relation, Snapshot snapshot,
-                          int nkeys, struct ScanKeyData *key,
-                          ParallelTableScanDesc pscan, uint32 flags,
-                          std::shared_ptr<PaxFilter> &&pax_filter, bool build_bitmap);
+  TableScanDesc BeginScan(Relation relation, Snapshot snapshot, int nkeys,
+                          struct ScanKeyData *key, ParallelTableScanDesc pscan,
+                          uint32 flags, std::shared_ptr<PaxFilter> &&pax_filter,
+                          bool build_bitmap);
 
-  TableScanDesc BeginScanExtractColumns(
-      Relation rel, Snapshot snapshot, int nkeys, struct ScanKeyData *key,
-      ParallelTableScanDesc parallel_scan, struct PlanState *ps, uint32 flags);
+  TableScanDesc BeginScanExtractColumns(Relation rel, Snapshot snapshot,
+                                        int nkeys, struct ScanKeyData *key,
+                                        ParallelTableScanDesc parallel_scan,
+                                        struct PlanState *ps, uint32 flags);
 
   void EndScan();
   void ReScan(ScanKey key, bool set_params, bool allow_strat, bool allow_sync,

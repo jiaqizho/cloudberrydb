@@ -23,7 +23,7 @@ drop table t1;
 drop table t2;
 
 -- test bloom filter(only work on IN case)
-set pax_enable_filter to on;
+set pax_enable_sparse_filter to on;
 -- the fixed length and type by value type
 create table t1(single_seg int, v1 int, v2 int) with (bloomfilter_columns='v1,v2');
 
@@ -46,8 +46,8 @@ select * from t1 where v1 in (104, 105, 106) and v2 > 100;
 select * from t1 where v1 in (104, 105, 106, NULL) and v2 > 100;
 
 select * from t1 where v1 in (1, 2, NULL) and v2 in (4, 5, 6); -- filter all by (4, 5, 6)
-select * from t1 where v1 in (1, 2, 3) and v2 in (4, 5, NULL); -- filter nothing cause (4, 5, NULL)
-select * from t1 where v1 in (1, 2, NULL) and v2 in (4, 5, NULL); -- filter nothing cause (4, 5, NULL)
+select * from t1 where v1 in (1, 2, 3) and v2 in (4, 5, NULL); -- support filter NULL
+select * from t1 where v1 in (1, 2, NULL) and v2 in (4, 5, NULL); -- support filter NULL
 
 reset client_min_messages;
 set vector.enable_vectorization to on;
@@ -74,8 +74,8 @@ select * from t2 where v1 in ('1', '2', '3') and v2 in ('104', '105', '106');
 select * from t2 where v1 in ('1', '2', '3') and v2 in ('101', '102', '103');
 
 select * from t2 where v1 in ('1', '2', NULL) and v2 in ('4', '5', '6'); -- filter all by ('4', '5', '6')
-select * from t2 where v1 in ('1', '2', '3') and v2 in ('4', '5', NULL); -- filter nothing cause ('4', '5', NULL)
-select * from t2 where v1 in ('1', '2', NULL) and v2 in ('4', '5', NULL); -- filter nothing cause ('4', '5', NULL)
+select * from t2 where v1 in ('1', '2', '3') and v2 in ('4', '5', NULL); -- support filter NULL
+select * from t2 where v1 in ('1', '2', NULL) and v2 in ('4', '5', NULL); -- support filter NULL
 
 select * from t2 where v1 in ('104', '105', '106') and v2 > '100';
 reset client_min_messages;
@@ -152,5 +152,5 @@ reset client_min_messages;
 reset pax_bloom_filter_work_memory_bytes;
 reset pax_max_tuples_per_group;
 reset pax_max_tuples_per_file;
-reset pax_enable_filter;
+reset pax_enable_sparse_filter;
 reset vector.enable_vectorization;

@@ -17,7 +17,7 @@
 #include "storage/pax.h"
 #include "storage/pax_buffer.h"
 #include "storage/pax_defined.h"
-
+#include "storage/filter/pax_sparse_filter.h"
 #ifdef VEC_BUILD
 #include "utils/am_vec.h"
 #endif
@@ -91,8 +91,7 @@ static inline int ChooseCheapColumn(TupleDesc desc) {
     if (attlen < 0) continue;
 
     if (att->attisdropped) {
-      if (drop_i < 0)
-        drop_i = i;
+      if (drop_i < 0) drop_i = i;
       continue;
     }
 
@@ -133,7 +132,7 @@ PaxIndexScanDesc::PaxIndexScanDesc(Relation rel) : base_{.rel = rel} {
       cbdb::IsDfsTablespaceById(rel->rd_rel->reltablespace));
 }
 
-PaxIndexScanDesc::~PaxIndexScanDesc() { }
+PaxIndexScanDesc::~PaxIndexScanDesc() {}
 
 bool PaxIndexScanDesc::FetchTuple(ItemPointer tid, Snapshot snapshot,
                                   TupleTableSlot *slot, bool *call_again,
@@ -242,7 +241,8 @@ bool PaxScanDesc::BitmapNextTuple(struct TBMIterateResult *tbmres,
 TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
                                      int nkeys, struct ScanKeyData * /*key*/,
                                      ParallelTableScanDesc pscan, uint32 flags,
-                                     std::shared_ptr<PaxFilter> &&pax_filter, bool build_bitmap) {
+                                     std::shared_ptr<PaxFilter> &&pax_filter,
+                                     bool build_bitmap) {
   MemoryContext old_ctx;
   std::shared_ptr<PaxFilter> filter;
   TableReader::ReaderOptions reader_options{};
@@ -262,7 +262,8 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   desc->rs_base_.rs_nkeys = nkeys;
   desc->rs_base_.rs_flags = flags;
   desc->rs_base_.rs_parallel = pscan;
-  desc->reused_buffer_ = std::make_shared<DataBuffer<char>>(pax_scan_reuse_buffer_size);
+  desc->reused_buffer_ =
+      std::make_shared<DataBuffer<char>>(pax_scan_reuse_buffer_size);
   if (pax_filter)
     desc->filter_ = std::move(pax_filter);
   else
@@ -304,17 +305,19 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
     iter = MicroPartitionInfoIterator::New(relation, aux_snapshot);
   }
 
-  if (filter->HasMicroPartitionFilter()) {
+  if (filter->SparseFilterEnabled()) {
     auto wrap = std::make_unique<FilterIterator<MicroPartitionMetadata>>(
         std::move(iter), [filter, relation](const auto &x) {
           MicroPartitionStatsProvider provider(x.GetStats());
-          auto ok = filter->TestScan(provider, RelationGetDescr(relation),
-                                     PaxFilterStatisticsKind::kFile);
+          auto ok =
+              filter->ExecSparseFilter(provider, RelationGetDescr(relation),
+                                       PaxSparseFilter::StatisticsKind::kFile);
           return ok;
         });
     iter = std::move(wrap);
   }
-  desc->reader_ = std::make_unique<TableReader>(std::move(iter), reader_options);
+  desc->reader_ =
+      std::make_unique<TableReader>(std::move(iter), reader_options);
 
   MemoryContextSwitchTo(old_ctx);
   pgstat_count_heap_scan(relation);
@@ -322,7 +325,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   return &desc->rs_base_;
 }
 
-PaxScanDesc::~PaxScanDesc() { }
+PaxScanDesc::~PaxScanDesc() {}
 void PaxScanDesc::EndScan() {
   if (pax_enable_debug && filter_) {
     filter_->LogStatistics();
@@ -333,10 +336,9 @@ void PaxScanDesc::EndScan() {
   Assert(reader_);
   reader_->Close();
   reader_ = nullptr;
-  
+
   // optional index_scan should close internal file
-  if (index_desc_)
-    index_desc_->Release();
+  if (index_desc_) index_desc_->Release();
 
   if (rs_base_.rs_flags & SO_TEMP_SNAPSHOT)
     UnregisterSnapshot(rs_base_.rs_snapshot);
@@ -358,13 +360,13 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
   {
     PaxcExtractcolumnContext extract_column(col_bits);
 
-
     found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(targetlist),
-					 &extract_column);
-    found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(qual), col_bits) ||
-	    found;
+                                         &extract_column);
+    found = cbdb::ExtractcolumnsFromNode(reinterpret_cast<Node *>(qual),
+                                         col_bits) ||
+            found;
     build_bitmap = cbdb::IsSystemAttrNumExist(&extract_column,
-					      SelfItemPointerAttributeNumber);
+                                              SelfItemPointerAttributeNumber);
   }
   filter = std::make_shared<PaxFilter>();
 
@@ -379,27 +381,23 @@ TableScanDesc PaxScanDesc::BeginScanExtractColumns(
   // The `cols` life cycle will be bound to `PaxFilter`
   filter->SetColumnProjection(std::move(col_bits));
 
-  if (pax_enable_filter) {
-    ScanKey scan_keys = nullptr;
-    int n_scan_keys = 0;
-    auto ok = pax::BuildScanKeys(rel, qual, false, &scan_keys, &n_scan_keys);
-    if (ok) filter->SetScanKeys(scan_keys, n_scan_keys);
+  if (pax_enable_sparse_filter) {
+    filter->InitSparseFilter(rel, qual);
 
-// FIXME: enable predicate pushdown can filter rows immediately without
-// assigning all columns. But it may mess the filter orders for multiple
-// conditions. For example: ... where a = 2 and f_leak(b) the second condition
-// may be executed before the first one.
-#if 0
-    if (gp_enable_predicate_pushdown
+    // FIXME: enable predicate pushdown can filter rows immediately without
+    // assigning all columns. But it may mess the filter orders for multiple
+    // conditions. For example: ... where a = 2 and f_leak(b) the second
+    // condition may be executed before the first one.
+    if (gp_enable_predicate_pushdown && pax_enable_row_filter
 #ifdef VEC_BUILD
         && !(flags & SO_TYPE_VECTOR)
 #endif
-    )
-      filter->BuildExecutionFilterForColumns(rel, ps);
-#endif
+    ) {
+      filter->InitRowFilter(rel, ps, filter->GetColumnProjection());
+    }
   }
-  return BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags, std::move(filter),
-                   build_bitmap);
+  return BeginScan(rel, snapshot, 0, nullptr, parallel_scan, flags,
+                   std::move(filter), build_bitmap);
 }
 
 // FIXME: shall we take these parameters into account?
