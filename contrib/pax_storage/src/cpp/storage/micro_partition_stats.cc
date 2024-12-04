@@ -1229,6 +1229,11 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns,
     bf_stats_[i].CreateFixed();
     bf_status_[i] = STATUS_MISSING_INIT_VAL;
 
+    // still need set the basic info
+    auto info = stats_->GetColumnBasicInfo(i);
+    info->set_typid(att->atttypid);
+    info->set_collation(att->attcollation);
+
     auto bf_info = stats_->GetBloomFilterBasicInfo(i);
     bf_info->set_bf_hash_funcs(bf_stats_[i].GetKHashFuncs());
     bf_info->set_bf_seed(bf_stats_[i].GetSeed());
@@ -1450,8 +1455,8 @@ void MicroPartitionStatsToString(
     }
 
     // hasnull/allnull information
-    appendStringInfo(str, "(%s,%s),", BoolToString(column.allnull()),
-                     BoolToString(column.hasnull()));
+    appendStringInfo(str, "(%s,%s),", BOOL_TOSTRING(column.allnull()),
+                     BOOL_TOSTRING(column.hasnull()));
 
     // count(column) information
     appendStringInfo(str, "(%ld),", column.nonnullrows());

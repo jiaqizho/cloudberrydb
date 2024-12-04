@@ -6,7 +6,7 @@
 
 set default_table_access_method to pax;
 set pax_enable_debug to on;
-set pax_enable_filter to on;
+set pax_enable_sparse_filter to on;
 set pax_max_tuples_per_group to 5;
 
 -- 
@@ -157,6 +157,6 @@ reset client_min_messages;
 drop table t_float8;
 
 reset pax_enable_debug;
-reset pax_enable_filter;
+reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
 reset vector.enable_vectorization;

@@ -1,4 +1,4 @@
-set pax_enable_filter = on;
+set pax_enable_sparse_filter = on;
 create table pax_test.null_test_t(a int, b int, c text) using pax;
 insert into pax_test.null_test_t(a) select null from generate_series(1,2)i;
 insert into pax_test.null_test_t select 1, i, 'cc_' || i from generate_series(1,2)i;
@@ -19,7 +19,9 @@ select * from pax_test.null_test_t t where t.* is not null;
 
 drop table pax_test.null_test_t;
 -- start_matchignore
--- m/LOG:  statement: .*/
+-- m/LOG:  statement:/
+-- m/no filter/
+-- m/No sparse filter/
 -- end_matchignore
 -- test IN expression for vectoriaztion scan
 -- test cases for different column types: int, int8, bool, float, numeric, text, varchar, bpchar
@@ -55,8 +57,8 @@ explain select * from pax_test.in_test_t where b in (1, null);
 (4 rows)
 
 select * from pax_test.in_test_t where b in (1, null);
-LOG:  kind file, filter rate: 0 / 2
-LOG:  kind group, filter rate: 0 / 2
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 0 / 1
  a | b | c | d | e | f | g | h 
 ---+---+---+---+---+---+---+---
 (0 rows)
@@ -72,7 +74,7 @@ explain select * from pax_test.in_test_t where b in (2, 3);
 
 select * from pax_test.in_test_t where b in (2, 3);
 LOG:  kind file, filter rate: 1 / 2
-LOG:  kind group, filter rate: 0 / 1
+kind group, filter rate: 0 / 1
  a | b | c | d |      e       |  f  |  g  |                h                 
 ---+---+---+---+--------------+-----+-----+----------------------------------
  1 | 2 | t | 2 | 2.0000000000 | t_2 | v_2 | bp_2                            
@@ -98,7 +100,6 @@ explain select * from pax_test.in_test_t where c in ('f');
 (4 rows)
 
 select * from pax_test.in_test_t where c in ('t');
-LOG:  kind group, filter rate: 0 / 2
  a | b  | c | d  |       e       |  f   |  g   |                h                 
 ---+----+---+----+---------------+------+------+----------------------------------
  1 |    | t |  1 |  1.0000000000 | t_1  | v_1  | bp_1                            
@@ -114,7 +115,6 @@ LOG:  kind group, filter rate: 0 / 2
 (10 rows)
 
 select * from pax_test.in_test_t where c in ('f');
-LOG:  kind group, filter rate: 0 / 2
  a | b  | c | d  |       e       |  f   |  g   |                h                 
 ---+----+---+----+---------------+------+------+----------------------------------
  1 | 20 | f | 20 | 20.0000000000 | t_20 | v_20 | bp_20                           
@@ -141,7 +141,7 @@ explain select * from pax_test.in_test_t where d in (2.0, 4.0);
 
 select * from pax_test.in_test_t where d in (2.0, 4.0);
 LOG:  kind file, filter rate: 1 / 2
-LOG:  kind group, filter rate: 0 / 1
+kind group, filter rate: 0 / 1
  a | b | c | d |      e       |  f  |  g  |                h                 
 ---+---+---+---+--------------+-----+-----+----------------------------------
  1 | 2 | t | 2 | 2.0000000000 | t_2 | v_2 | bp_2                            
@@ -177,7 +177,7 @@ explain select * from pax_test.in_test_t where f in ('t_2', 't_4');
 
 select * from pax_test.in_test_t where f in ('t_2', 't_4');
 LOG:  kind file, filter rate: 1 / 2
-LOG:  kind group, filter rate: 0 / 1
+kind group, filter rate: 0 / 1
  a | b | c | d |      e       |  f  |  g  |                h                 
 ---+---+---+---+--------------+-----+-----+----------------------------------
  1 | 2 | t | 2 | 2.0000000000 | t_2 | v_2 | bp_2                            
@@ -195,7 +195,7 @@ explain select * from pax_test.in_test_t where g in ('v_2', 'v_4');
 
 select * from pax_test.in_test_t where g in ('v_2', 'v_4');
 LOG:  kind file, filter rate: 1 / 2
-LOG:  kind group, filter rate: 0 / 1
+kind group, filter rate: 0 / 1
  a | b | c | d |      e       |  f  |  g  |                h                 
 ---+---+---+---+--------------+-----+-----+----------------------------------
  1 | 2 | t | 2 | 2.0000000000 | t_2 | v_2 | bp_2                            
@@ -213,7 +213,7 @@ explain select * from pax_test.in_test_t where h in ('bp_2', 'bp_4');
 
 select * from pax_test.in_test_t where h in ('bp_2', 'bp_4');
 LOG:  kind file, filter rate: 1 / 2
-LOG:  kind group, filter rate: 0 / 1
+kind group, filter rate: 0 / 1
  a | b | c | d |      e       |  f  |  g  |                h                 
 ---+---+---+---+--------------+-----+-----+----------------------------------
  1 | 2 | t | 2 | 2.0000000000 | t_2 | v_2 | bp_2                            
@@ -223,4 +223,4 @@ LOG:  kind group, filter rate: 0 / 1
 reset client_min_messages;
 drop table pax_test.in_test_t;
 reset vector.enable_vectorization;
-reset pax_enable_filter;
+reset pax_enable_sparse_filter;

@@ -3,8 +3,10 @@
 #include "comm/guc.h"
 #include "comm/log.h"
 #include "comm/pax_memory.h"
+#include "storage/filter/pax_filter.h"
+#include "storage/filter/pax_sparse_filter.h"
+#include "storage/filter/pax_row_filter.h"
 #include "storage/pax_defined.h"
-#include "storage/pax_filter.h"
 #include "storage/pax_itemptr.h"
 
 namespace pax {
@@ -19,7 +21,7 @@ std::unique_ptr<MicroPartitionReader> MicroPartitionRowFilterReader::New(
     std::shared_ptr<PaxFilter> filter,
     std::shared_ptr<Bitmap8> visibility_bitmap) {
   Assert(reader);
-  Assert(filter && filter->HasRowScanFilter());
+  Assert(filter && filter->GetRowFilter());
 
   auto r = std::make_unique<MicroPartitionRowFilterReader>();
   r->SetReader(std::move(reader));
@@ -28,14 +30,15 @@ std::unique_ptr<MicroPartitionReader> MicroPartitionRowFilterReader::New(
   return r;
 }
 
-std::shared_ptr<MicroPartitionReader::Group> MicroPartitionRowFilterReader::GetNextGroup(
-    TupleDesc desc) {
+std::shared_ptr<MicroPartitionReader::Group>
+MicroPartitionRowFilterReader::GetNextGroup(TupleDesc desc) {
   auto ngroups = reader_->GetGroupNums();
 retry_next_group:
   if (group_index_ >= ngroups) return nullptr;
   auto info = reader_->GetGroupStatsInfo(group_index_);
   ++group_index_;
-  if (!filter_->TestScan(*info, desc, PaxFilterStatisticsKind::kGroup)) {
+  if (!filter_->ExecSparseFilter(*info, desc,
+                                 PaxSparseFilter::StatisticsKind::kGroup)) {
     goto retry_next_group;
   }
   group_ = reader_->ReadGroup(group_index_ - 1);
@@ -45,8 +48,10 @@ retry_next_group:
 
 bool MicroPartitionRowFilterReader::ReadTuple(TupleTableSlot *slot) {
   auto g = group_;
-  auto ctx = filter_->GetExecutionFilterContext();
-  const auto &remaining_columns = filter_->GetRemainingColumns();
+  Assert(filter_->GetRowFilter());
+  auto ctx = filter_->GetRowFilter()->GetExecutionFilterContext();
+  const auto &remaining_columns =
+      filter_->GetRowFilter()->GetRemainingColumns();
   size_t nrows;
   TupleDesc desc;
 
@@ -106,8 +111,9 @@ bool MicroPartitionRowFilterReader::TestRowScanInternal(TupleTableSlot *slot,
   Assert(estate);
   Assert(slot);
   Assert(attno >= 0);
+  Assert(filter_->GetRowFilter());
 
-  auto ctx = filter_->GetExecutionFilterContext();
+  auto ctx = filter_->GetRowFilter()->GetExecutionFilterContext();
   auto econtext = ctx->econtext;
   econtext->ecxt_scantuple = slot;
 

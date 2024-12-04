@@ -4,6 +4,7 @@
 #include "comm/pax_memory.h"
 #include "storage/pax_itemptr.h"
 #include "storage/vec/pax_vec_adapter.h"
+#include "storage/filter/pax_sparse_filter.h"
 #ifdef VEC_BUILD
 
 namespace pax {
@@ -29,9 +30,10 @@ void PaxVecReader::Open(const ReaderOptions &options) {
 
 void PaxVecReader::Close() { reader_->Close(); }
 
-PaxVecReader::~PaxVecReader() { }
+PaxVecReader::~PaxVecReader() {}
 
-std::shared_ptr<arrow::RecordBatch> PaxVecReader::ReadBatch(PaxFragmentInterface *frag) {
+std::shared_ptr<arrow::RecordBatch> PaxVecReader::ReadBatch(
+    PaxFragmentInterface *frag) {
   auto desc = adapter_->GetRelationTupleDesc();
   std::shared_ptr<arrow::RecordBatch> result;
   size_t flush_nums_of_rows = 0;
@@ -43,13 +45,14 @@ retry_next_group:
     }
     auto group_index = current_group_index_++;
     auto info = reader_->GetGroupStatsInfo(group_index);
-    if (filter_ &&
-        !filter_->TestScan(*info, desc, PaxFilterStatisticsKind::kGroup)) {
+    if (filter_ && !filter_->ExecSparseFilter(
+                       *info, desc, PaxSparseFilter::StatisticsKind::kGroup)) {
       goto retry_next_group;
     }
 
     working_group_ = reader_->ReadGroup(group_index);
-    adapter_->SetDataSource(working_group_->GetAllColumns(), working_group_->GetRowOffset());
+    adapter_->SetDataSource(working_group_->GetAllColumns(),
+                            working_group_->GetRowOffset());
   }
 
   if (!adapter_->AppendToVecBuffer()) {
@@ -77,8 +80,8 @@ retry_read_group:
     }
     auto group_index = current_group_index_++;
     auto info = reader_->GetGroupStatsInfo(group_index);
-    if (filter_ &&
-        !filter_->TestScan(*info, desc, PaxFilterStatisticsKind::kGroup)) {
+    if (filter_ && !filter_->ExecSparseFilter(
+                       *info, desc, PaxSparseFilter::StatisticsKind::kGroup)) {
       goto retry_read_group;
     }
 
@@ -120,7 +123,8 @@ std::unique_ptr<ColumnStatsProvider> PaxVecReader::GetGroupStatsInfo(
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
-std::unique_ptr<MicroPartitionReader::Group> PaxVecReader::ReadGroup(size_t index) {
+std::unique_ptr<MicroPartitionReader::Group> PaxVecReader::ReadGroup(
+    size_t index) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
