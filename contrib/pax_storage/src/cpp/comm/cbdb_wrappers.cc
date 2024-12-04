@@ -129,6 +129,27 @@ Datum cbdb::DatumFromPointer(const void *p, int16 typlen) {
 }
 #endif
 
+BpChar *cbdb::BpcharInput(const char *s, size_t len, int32 atttypmod) {
+  CBDB_WRAP_START;
+  { return bpchar_input(s, len, atttypmod); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
+VarChar *cbdb::VarcharInput(const char *s, size_t len, int32 atttypmod) {
+  CBDB_WRAP_START;
+  { return varchar_input(s, len, atttypmod); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
+text *cbdb::CstringToText(const char *s, size_t len) {
+  CBDB_WRAP_START;
+  { return cstring_to_text_with_len(s, len); }
+  CBDB_WRAP_END;
+  return nullptr;
+}
+
 Numeric cbdb::DatumToNumeric(Datum d) {
   CBDB_WRAP_START;
   { return DatumGetNumeric(d); }
@@ -168,6 +189,23 @@ void cbdb::ArrayFreeIterator(ArrayIterator iterator) {
   CBDB_WRAP_START;
   { return array_free_iterator(iterator); }
   CBDB_WRAP_END;
+}
+
+ArrayType *cbdb::ConstructMdArrayType(Datum *datums, bool *nulls, int len,
+                                      Oid atttypid, int attlen, bool attbyval,
+                                      char attalign) {
+  CBDB_WRAP_START;
+  {
+    int dims[1];
+    int lbs[1];
+
+    dims[0] = len;
+    lbs[0] = 1;
+    return construct_md_array(datums, nulls, 1, dims, lbs, atttypid, attlen,
+                              attbyval, attalign);
+  }
+  CBDB_WRAP_END;
+  return nullptr;
 }
 
 struct varlena *cbdb::PgDeToastDatum(struct varlena *datum) {

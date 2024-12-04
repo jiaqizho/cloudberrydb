@@ -1,4 +1,4 @@
-set pax_enable_filter = on;
+set pax_enable_sparse_filter = on;
 create table pax_test.null_test_t(a int, b int, c text) using pax;
 
 insert into pax_test.null_test_t(a) select null from generate_series(1,2)i;
@@ -12,7 +12,9 @@ select * from pax_test.null_test_t t where t.* is not null;
 drop table pax_test.null_test_t;
 
 -- start_matchignore
--- m/LOG:  statement: .*/
+-- m/LOG:  statement:/
+-- m/no filter/
+-- m/No sparse filter/
 -- end_matchignore
 
 -- test IN expression for vectoriaztion scan
@@ -73,4 +75,4 @@ reset client_min_messages;
 drop table pax_test.in_test_t;
 reset vector.enable_vectorization;
 
-reset pax_enable_filter;
+reset pax_enable_sparse_filter;

@@ -8,10 +8,11 @@
 #include <stdexcept>
 #include <string>
 
+#include "comm/guc.h"
 #include "storage/columns/pax_columns.h"
+#include "storage/filter/pax_filter.h"
 #include "storage/micro_partition_metadata.h"
 #include "storage/pax_defined.h"
-#include "storage/pax_filter.h"
 
 namespace pax {
 

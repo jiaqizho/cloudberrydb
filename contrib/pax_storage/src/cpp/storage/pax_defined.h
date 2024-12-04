@@ -28,11 +28,4 @@ enum PaxStorageFormat {
   kTypeStoragePorcVec = 2,
 };
 
-// filter kind
-enum PaxFilterStatisticsKind {
-  // The value will be index at `filter_kind_desc`
-  kFile = 0,
-  kGroup = 1,
-};
-
 }  // namespace pax

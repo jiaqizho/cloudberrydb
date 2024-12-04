@@ -7,6 +7,8 @@
 namespace pax {
 
 #define MAX_LEN_OF_FMT_STR 2048
+#define BOOL_TOSTRING(is) ((is) ? "true" : "false")
+
 static char format_str[MAX_LEN_OF_FMT_STR] = {0};
 
 // Do not use the (Args...) to forward args

@@ -112,6 +112,33 @@ void ExportArrayRoot(const std::shared_ptr<ArrayData> &data,
   ExportArrayNodeDetails(export_array, data, child_array, false);
 }
 
+int FindFieldIndex(
+    const std::vector<std::pair<const char *, size_t>> &table_names,
+    const std::pair<const char *, size_t> &kname) {
+  auto num = table_names.size();
+
+  for (size_t i = 0; i < num; i++) {
+    const auto &fname = table_names[i];
+    if (fname.second == kname.second &&
+        memcmp(fname.first, kname.first, fname.second) == 0)
+      return i;
+  }
+
+  if (kname.second == 4 && memcmp(kname.first, "ctid", 4) == 0)
+    return SelfItemPointerAttributeNumber;
+
+  throw std::string("Not found field name:") + kname.first;
+}
+
+std::pair<const char *, size_t> ExtractFieldName(const std::string &name) {
+  const char *p = name.c_str();
+  auto idx = name.find_last_of('(');
+
+  if (idx == std::string::npos) return {p, name.size()};
+
+  return {p, idx};
+}
+
 }  // namespace arrow
 
 #endif  // VEC_BUILD

@@ -10,6 +10,7 @@
 #define GreaterStrategyStr ">"
 
 extern StrategyNumber OpernameToStrategy(const char *data);
+extern StrategyNumber InvertStrategy(StrategyNumber strategy);
 extern const char *StrategyToOpername(StrategyNumber number);
 
 namespace pax {

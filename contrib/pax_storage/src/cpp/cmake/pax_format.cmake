@@ -33,6 +33,11 @@ set(pax_storage_src
     storage/columns/pax_vec_encoding_column.cc
     storage/columns/pax_vec_numeric_column.cc
     storage/oper/pax_oper_udf.cc
+    storage/filter/pax_filter.cc
+    storage/filter/pax_row_filter.cc
+    storage/filter/pax_sparse_filter.cc
+    storage/filter/pax_sparse_pg_path.cc
+    storage/filter/pax_sparse_vec_path.cc
     storage/oper/pax_oper.cc
     storage/oper/pax_stats.cc
     storage/file_system.cc
@@ -52,7 +57,6 @@ set(pax_storage_src
     storage/orc/orc_type.cc
     storage/orc/orc_writer.cc
     storage/pax_buffer.cc
-    storage/pax_filter.cc
     storage/proto/protobuf_stream.cc
     storage/remote_file_system.cc
     storage/toast/pax_toast.cc

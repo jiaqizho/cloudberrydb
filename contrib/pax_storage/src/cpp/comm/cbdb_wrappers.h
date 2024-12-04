@@ -117,7 +117,9 @@ static inline bool DatumToBool(Datum d) noexcept { return DatumGetBool(d); }
 
 static inline Datum BoolToDatum(bool d) noexcept { return BoolGetDatum(d); }
 
-static inline Datum NumericToDatum(Numeric n) noexcept { return NumericGetDatum(n); }
+static inline Datum NumericToDatum(Numeric n) noexcept {
+  return NumericGetDatum(n);
+}
 
 static inline Datum Float4ToDutum(float4 d) noexcept {
   return Float4GetDatum(d);
@@ -135,6 +137,10 @@ static inline float8 DatumToFloat8(Datum d) noexcept {
   return DatumGetFloat8(d);
 }
 
+BpChar *BpcharInput(const char *s, size_t len, int32 atttypmod);
+VarChar *VarcharInput(const char *s, size_t len, int32 atttypmod);
+text *CstringToText(const char *s, size_t len);
+
 Numeric DatumToNumeric(Datum d);
 
 ArrayType *DatumToArrayTypeP(Datum d);
@@ -143,6 +149,9 @@ ArrayIterator ArrayCreateIterator(ArrayType *arr, int slice_ndim,
                                   ArrayMetaState *mstate);
 bool ArrayIterate(ArrayIterator iterator, Datum *value, bool *isnull);
 void ArrayFreeIterator(ArrayIterator iterator);
+ArrayType *ConstructMdArrayType(Datum *datums, bool *nulls, int len,
+                                Oid atttypid, int attlen, bool attbyval,
+                                char attalign);
 
 void *PointerAndLenFromDatum(Datum d, int *len);
 

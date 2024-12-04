@@ -19,7 +19,7 @@ create table t2(v1 int, v2 text, v3 varchar, v4 varchar(100), v5 bit, v6 float, 
 drop table t1;
 drop table t2;
 -- test bloom filter(only work on IN case)
-set pax_enable_filter to on;
+set pax_enable_sparse_filter to on;
 -- the fixed length and type by value type
 create table t1(single_seg int, v1 int, v2 int) with (bloomfilter_columns='v1,v2');
 insert into t1 values(1, generate_series(1, 100), generate_series(101, 200));
@@ -106,7 +106,7 @@ LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
 (0 rows)
 
 select * from t1 where v1 in (104, 105, 106, NULL) and v2 > 100;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
+LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2 
 ------------+----+----
 (0 rows)
@@ -117,14 +117,14 @@ LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
 ------------+----+----
 (0 rows)
 
-select * from t1 where v1 in (1, 2, 3) and v2 in (4, 5, NULL); -- filter nothing cause (4, 5, NULL)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
+select * from t1 where v1 in (1, 2, 3) and v2 in (4, 5, NULL); -- support filter NULL
+LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2 
 ------------+----+----
 (0 rows)
 
-select * from t1 where v1 in (1, 2, NULL) and v2 in (4, 5, NULL); -- filter nothing cause (4, 5, NULL)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
+select * from t1 where v1 in (1, 2, NULL) and v2 in (4, 5, NULL); -- support filter NULL
+LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2 
 ------------+----+----
 (0 rows)
@@ -134,7 +134,7 @@ set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t1 where v1 in (12, 55, 77); -- different group
 LOG:  kind file, filter rate: 0 / 2
-LOG:  kind group, filter rate: 14 / 20
+kind group, filter rate: 14 / 20
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -147,7 +147,7 @@ LOG:  kind group, filter rate: 14 / 20
 
 select * from t1 where v1 in (12, 55, 77) and v2 > 100;
 LOG:  kind file, filter rate: 0 / 2
-LOG:  kind group, filter rate: 14 / 20
+kind group, filter rate: 14 / 20
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -222,14 +222,14 @@ LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
 ------------+----+----
 (0 rows)
 
-select * from t2 where v1 in ('1', '2', '3') and v2 in ('4', '5', NULL); -- filter nothing cause ('4', '5', NULL)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
+select * from t2 where v1 in ('1', '2', '3') and v2 in ('4', '5', NULL); -- support filter NULL
+LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2 
 ------------+----+----
 (0 rows)
 
-select * from t2 where v1 in ('1', '2', NULL) and v2 in ('4', '5', NULL); -- filter nothing cause ('4', '5', NULL)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
+select * from t2 where v1 in ('1', '2', NULL) and v2 in ('4', '5', NULL); -- support filter NULL
+LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=28983)
  single_seg | v1 | v2 
 ------------+----+----
 (0 rows)
@@ -245,7 +245,7 @@ set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t2 where v1 in ('12', '55', '77'); -- different group
 LOG:  kind file, filter rate: 0 / 2
-LOG:  kind group, filter rate: 14 / 20
+kind group, filter rate: 14 / 20
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -258,7 +258,7 @@ LOG:  kind group, filter rate: 14 / 20
 
 select * from t2 where v1 in ('12', '55', '77') and v2 > '100';
 LOG:  kind file, filter rate: 0 / 2
-LOG:  kind group, filter rate: 14 / 20
+kind group, filter rate: 14 / 20
  single_seg | v1 | v2  
 ------------+----+-----
           1 | 12 | 112
@@ -446,5 +446,5 @@ reset client_min_messages;
 reset pax_bloom_filter_work_memory_bytes;
 reset pax_max_tuples_per_group;
 reset pax_max_tuples_per_file;
-reset pax_enable_filter;
+reset pax_enable_sparse_filter;
 reset vector.enable_vectorization;

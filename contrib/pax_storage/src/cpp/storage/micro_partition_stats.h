@@ -7,8 +7,8 @@
 #include "comm/byte_buffer.h"
 #include "comm/guc.h"
 #include "comm/pax_memory.h"
+#include "storage/filter/pax_filter.h"
 #include "storage/oper/pax_stats.h"
-#include "storage/pax_filter.h"
 
 namespace pax {
 namespace stats {
