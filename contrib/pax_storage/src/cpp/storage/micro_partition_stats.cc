@@ -198,7 +198,7 @@ static bool PrepareStatisticsInfoCombine(
              right_column_stats.info().prorettype());
       Oid addrettype;
 
-      if (!cbdb::AddGetProcinfo(left_column_stats.info().prorettype(),
+      if (!cbdb::PGGetAddOperator(left_column_stats.info().prorettype(),
                                 right_column_stats.info().prorettype(),
                                 PG_CATALOG_NAMESPACE, &addrettype,
                                 &sum_finfos[i])) {
