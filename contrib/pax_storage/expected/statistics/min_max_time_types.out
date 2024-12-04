@@ -1633,234 +1633,182 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=9308)
 
 -- oper(time, timetz)
 select count(*) from t_time where v > '00:00:00+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v > '00:00:05+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v > '00:00:10+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v > '00:00:15+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v > '00:00:20+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v < '00:00:00+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v < '00:00:06+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v < '00:00:11+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v < '00:00:16+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v < '00:00:21+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v = '00:00:00+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v = '00:00:05+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v = '00:00:10+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v = '00:00:11+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v = '00:00:20+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v = '00:00:21+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v >= '00:00:00+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v >= '00:00:06+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v >= '00:00:11+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v >= '00:00:16+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v >= '00:00:21+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_time where v <= '00:00:00+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v <= '00:00:05+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v <= '00:00:10+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v <= '00:00:15+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_time where v <= '00:00:20+00'::timetz;
-LOG:  scan key build failed. attr index: 2 build failed.  (seg0 slice1 10.13.9.100:7002 pid=9307)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg2 slice1 10.13.9.100:7004 pid=9309)
-LOG:  scan key build failed. attr index: 2 build failed.  (seg1 slice1 10.13.9.100:7003 pid=9308)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0

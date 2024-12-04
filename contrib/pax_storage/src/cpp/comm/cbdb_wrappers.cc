@@ -421,18 +421,26 @@ bool cbdb::PGGetOperator(const char *operatorName, Oid operatorNamespace,
   CBDB_WRAP_END;
 }
 
-bool cbdb::PGOperatorProcinfo(Oid opno, NameData *oprname, Oid *oprleft,
+bool cbdb::PGGetOperatorNo(Oid opno, NameData *oprname, Oid *oprleft,
                               Oid *oprright, FmgrInfo *finfo) {
   CBDB_WRAP_START;
-  { return paxc::PGOperatorProcinfo(opno, oprname, oprleft, oprright, finfo); }
+  { return paxc::PGGetOperatorNo(opno, oprname, oprleft, oprright, finfo); }
   CBDB_WRAP_END;
 }
 
-bool cbdb::AddGetProcinfo(Oid atttypid, Oid subtype, Oid namespc,
+bool cbdb::PGGetAddOperator(Oid atttypid, Oid subtype, Oid namespc,
                           Oid *resulttype, FmgrInfo *finfo) {
   CBDB_WRAP_START;
   {
-    return paxc::AddGetProcinfo(atttypid, subtype, namespc, resulttype, finfo);
+    return paxc::PGGetAddOperator(atttypid, subtype, namespc, resulttype, finfo);
+  }
+  CBDB_WRAP_END;
+}
+
+bool cbdb::PGGetProc(Oid procoid, FmgrInfo *finfo) {
+  CBDB_WRAP_START;
+  {
+    return paxc::PGGetProc(procoid, finfo);
   }
   CBDB_WRAP_END;
 }
