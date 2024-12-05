@@ -50,6 +50,17 @@ select ptblockname,ptstatistics,ptisclustered from get_pax_aux_table('t_zorder_c
 
 
 drop table t_zorder_cluster;
+-- test cluster reloption without order
+create table t_zorder_cluster(c1 int, c2 int) with (minmax_columns='c1,c2', cluster_columns='c2,c1');
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+cluster t_zorder_cluster;
+select ptblockname,ptstatistics,ptisclustered from get_pax_aux_table('t_zorder_cluster');
+
+drop table t_zorder_cluster;
 
 -- test cluster index
 set pax_max_tuples_per_file to 131072;
