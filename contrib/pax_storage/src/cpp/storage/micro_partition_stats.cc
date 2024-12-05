@@ -199,9 +199,9 @@ static bool PrepareStatisticsInfoCombine(
       Oid addrettype;
 
       if (!cbdb::PGGetAddOperator(left_column_stats.info().prorettype(),
-                                right_column_stats.info().prorettype(),
-                                PG_CATALOG_NAMESPACE, &addrettype,
-                                &sum_finfos[i])) {
+                                  right_column_stats.info().prorettype(),
+                                  PG_CATALOG_NAMESPACE, &addrettype,
+                                  &sum_finfos[i])) {
         return false;
       }
 
@@ -1118,48 +1118,43 @@ void MicroPartitionStats::CopyDatum(Datum src, Datum *dst, int typlen,
 void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns,
                                      const std::vector<int> &bf_columns) {
   auto natts = tuple_desc_->natts;
-  int num_minmax_columns, num_bf_columns;
+
+  std::vector<bool> mm_mask;
+  std::vector<bool> bf_mask;
 
   Assert(natts == static_cast<int>(status_.size()));
   Assert(status_.size() == finfos_.size());
   Assert(status_.size() == required_stats_.size());
 
+  Assert(static_cast<int>(minmax_columns.size()) <= natts);
+  Assert(static_cast<int>(bf_columns.size()) <= natts);
+
   if (initialized_) {
     return;
   }
 
-  num_minmax_columns = static_cast<int>(minmax_columns.size());
-  Assert(num_minmax_columns <= natts);
+  mm_mask.resize(natts, false);
+  bf_mask.resize(natts, false);
 
-  num_bf_columns = static_cast<int>(bf_columns.size());
-  Assert(num_bf_columns <= natts);
+  for (size_t j = 0; j < minmax_columns.size(); j++) {
+    Assert(minmax_columns[j] < natts);
+    mm_mask[minmax_columns[j]] = true;
+  }
 
-#ifdef USE_ASSERT_CHECKING
-  // minmax_columns should be sorted
-  for (int i = 1; i < num_minmax_columns; i++)
-    Assert(minmax_columns[i - 1] < minmax_columns[i]);
-#endif
+  for (size_t j = 0; j < bf_columns.size(); j++) {
+    Assert(bf_columns[j] < natts);
+    bf_mask[bf_columns[j]] = true;
+  }
 
-  for (int i = 0, j = 0; i < natts; i++) {
+  for (int i = 0; i < natts; i++) {
     auto att = TupleDescAttr(tuple_desc_, i);
     auto info = stats_->GetColumnBasicInfo(i);
 
-    if (att->attisdropped) {
+    if (att->attisdropped || !mm_mask[i]) {
       status_[i] = STATUS_NOT_SUPPORT;
       sum_stats_[i].status = STATUS_NOT_SUPPORT;
       continue;
     }
-
-    while (j < num_minmax_columns && minmax_columns[j] < i) {
-      j++;
-    }
-
-    if (j >= num_minmax_columns || minmax_columns[j] != i) {
-      status_[i] = STATUS_NOT_SUPPORT;
-      sum_stats_[i].status = STATUS_NOT_SUPPORT;
-      continue;
-    }
-    j++;
 
     // init_minmax_status: (only use to mark)
     if (GetStrategyProcinfo(att->atttypid, att->atttypid, local_funcs_[i])) {
@@ -1208,23 +1203,13 @@ void MicroPartitionStats::Initialize(const std::vector<int> &minmax_columns,
   }
 
   // init the bloom filter stats
-  for (int i = 0, j = 0; i < natts; i++) {
+  for (int i = 0; i < natts; i++) {
     auto att = TupleDescAttr(tuple_desc_, i);
 
-    if (att->attisdropped) {
+    if (att->attisdropped || !bf_mask[i]) {
       bf_status_[i] = STATUS_NOT_SUPPORT;
       continue;
     }
-
-    while (j < num_bf_columns && bf_columns[j] < i) {
-      j++;
-    }
-
-    if (j >= num_bf_columns || bf_columns[j] != i) {
-      bf_status_[i] = STATUS_NOT_SUPPORT;
-      continue;
-    }
-    j++;
 
     bf_stats_[i].CreateFixed();
     bf_status_[i] = STATUS_MISSING_INIT_VAL;
