@@ -112,6 +112,28 @@ select ptblockname,ptstatistics,ptisclustered from get_pax_aux_table('t_zorder_c
 (6 rows)
 
 drop table t_zorder_cluster;
+-- test cluster reloption without order
+create table t_zorder_cluster(c1 int, c2 int) with (minmax_columns='c1,c2', cluster_columns='c2,c1');
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Cloudberry Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+insert into t_zorder_cluster select i,i from generate_series(1,100000) i;
+cluster t_zorder_cluster;
+select ptblockname,ptstatistics,ptisclustered from get_pax_aux_table('t_zorder_cluster');
+ ptblockname |                                              ptstatistics                                               | ptisclustered 
+-------------+---------------------------------------------------------------------------------------------------------+---------------
+           5 | [(false,false),(131072),(1,78633),(5126644321)],[(false,false),(131072),(1,78633),(5126644321)]         | t
+           6 | [(false,false),(35563),(78633,99996),(3178950384)],[(false,false),(35563),(78633,99996),(3178950384)]   | t
+           5 | [(false,false),(131072),(5,79072),(5187913809)],[(false,false),(131072),(5,79072),(5187913809)]         | t
+           6 | [(false,false),(34983),(79072,100000),(3132737841)],[(false,false),(34983),(79072,100000),(3132737841)] | t
+           5 | [(false,false),(131072),(2,78230),(5147801190)],[(false,false),(131072),(2,78230),(5147801190)]         | t
+           6 | [(false,false),(36238),(78230,99999),(3226202455)],[(false,false),(36238),(78230,99999),(3226202455)]   | t
+(6 rows)
+
+drop table t_zorder_cluster;
 -- test cluster index
 set pax_max_tuples_per_file to 131072;
 drop table if EXISTS t_index_cluster;
