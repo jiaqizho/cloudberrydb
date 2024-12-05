@@ -17,6 +17,12 @@ insert into t2 select i::bpchar,i::bpchar,i::varchar, i::varchar from generate_s
 select * from get_pax_aux_table('t2');
 drop table t2;
 
+-- stats reloption without order
+create table t1(v1 int, v2 text, v3 float8, v4 bool) with (minmax_columns='v2,v4,v1,v3', bloomfilter_columns='v4,v2,v3');
+insert into t1 select i,i::text,i::float8, i % 2 > 0 from generate_series(1, 1000)i;
+select * from get_pax_aux_table('t1');
+drop table t1;
+
 -- test `hasnull/allnull`/`count`, not need setting the minmax_columns
 create table t1(v1 int, v2 float8);
 
