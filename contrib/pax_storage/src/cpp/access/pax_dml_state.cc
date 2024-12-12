@@ -55,32 +55,30 @@ void CPaxDmlStateLocal::FinishDmlState(Relation rel, CmdType /*operation*/) {
   }
 }
 
-std::shared_ptr<CPaxInserter> CPaxDmlStateLocal::GetInserter(Relation rel) {
+CPaxInserter *CPaxDmlStateLocal::GetInserter(Relation rel) {
   auto state = FindDmlState(cbdb::RelationGetRelationId(rel));
   if (state->inserter == nullptr) {
-    state->inserter = std::make_shared<CPaxInserter>(rel);
+    state->inserter = std::make_unique<CPaxInserter>(rel);
   }
-  return state->inserter;
+  return state->inserter.get();
 }
 
-std::shared_ptr<CPaxDeleter> CPaxDmlStateLocal::GetDeleter(Relation rel, Snapshot snapshot,
+CPaxDeleter *CPaxDmlStateLocal::GetDeleter(Relation rel, Snapshot snapshot,
                                            bool missing_null) {
   auto state = FindDmlState(cbdb::RelationGetRelationId(rel));
   if (state->deleter == nullptr && !missing_null) {
-    state->deleter = std::make_shared<CPaxDeleter>(rel, snapshot);
+    state->deleter = std::make_unique<CPaxDeleter>(rel, snapshot);
   }
-  return state->deleter;
+  return state->deleter.get();
 }
 
-void CPaxDmlStateLocal::Reset() {
-  cbdb::pax_memory_context = nullptr;
-}
+void CPaxDmlStateLocal::Reset() { cbdb::pax_memory_context = nullptr; }
 
 CPaxDmlStateLocal::CPaxDmlStateLocal()
-    : last_oid_(InvalidOid)
-    , cb_{.func = DmlStateResetCallback, .arg = NULL} {}
+    : last_oid_(InvalidOid), cb_{.func = DmlStateResetCallback, .arg = NULL} {}
 
-std::shared_ptr<CPaxDmlStateLocal::DmlStateValue> CPaxDmlStateLocal::RemoveDmlState(const Oid &oid) {
+std::shared_ptr<CPaxDmlStateLocal::DmlStateValue>
+CPaxDmlStateLocal::RemoveDmlState(const Oid &oid) {
   std::shared_ptr<CPaxDmlStateLocal::DmlStateValue> value;
 
   auto it = dml_descriptor_tab_.find(oid);
@@ -96,11 +94,11 @@ std::shared_ptr<CPaxDmlStateLocal::DmlStateValue> CPaxDmlStateLocal::RemoveDmlSt
   return value;
 }
 
-std::shared_ptr<CPaxDmlStateLocal::DmlStateValue> CPaxDmlStateLocal::FindDmlState(const Oid &oid) {
+std::shared_ptr<CPaxDmlStateLocal::DmlStateValue>
+CPaxDmlStateLocal::FindDmlState(const Oid &oid) {
   Assert(OidIsValid(oid));
 
-  if (this->last_oid_ == oid)
-    return last_state_;
+  if (this->last_oid_ == oid) return last_state_;
 
   auto it = dml_descriptor_tab_.find(oid);
   if (it != dml_descriptor_tab_.end()) {
