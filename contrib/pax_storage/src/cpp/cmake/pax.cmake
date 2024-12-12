@@ -120,8 +120,13 @@ set(pax_vec_src
   storage/vec/pax_vec_adapter.cc
   storage/vec/pax_vec_comm.cc
   storage/vec/pax_vec_reader.cc
-  storage/pax_parallel.cc
 )
+if (VEC_BUILD)
+set(pax_vec_src ${pax_vec_src}
+  storage/vec_parallel_common.cc
+  storage/vec_parallel_pax.cc
+)
+endif()
 
 # add tabulate which used in the UDF
 SET(INSTALL_TABULATE OFF)

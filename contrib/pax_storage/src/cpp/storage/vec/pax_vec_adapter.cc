@@ -20,7 +20,7 @@ extern "C" {
 #include "storage/pax_itemptr.h"
 #include "storage/vec/arrow_wrapper.h"
 #include "storage/vec/pax_vec_comm.h"
-#include "storage/pax_parallel.h"
+#include "storage/vec_parallel_common.h"
 
 namespace pax {
 
