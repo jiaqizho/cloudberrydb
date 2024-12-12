@@ -42,7 +42,6 @@ PaxStorageFormat PaxColumns::GetStorageFormat() const {
   return storage_format_;
 }
 
-const std::unique_ptr<PaxColumn> &PaxColumns::operator[](uint64 i) { return columns_[i]; }
 
 void PaxColumns::Append(std::unique_ptr<PaxColumn> &&column) { columns_.emplace_back(std::move(column)); }
 

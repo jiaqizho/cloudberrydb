@@ -30,9 +30,9 @@ class CPaxDmlStateLocal final {
   void FinishDmlState(Relation rel, CmdType operation);
 
   bool IsInitialized() const { return cbdb::pax_memory_context != nullptr; }
-  std::shared_ptr<CPaxInserter> GetInserter(Relation rel);
-  std::shared_ptr<CPaxDeleter> GetDeleter(Relation rel, Snapshot snapshot,
-                          bool missing_null=false);
+  CPaxInserter *GetInserter(Relation rel);
+  CPaxDeleter *GetDeleter(Relation rel, Snapshot snapshot,
+                          bool missing_null = false);
 
   void Reset();
 
@@ -41,8 +41,8 @@ class CPaxDmlStateLocal final {
 
  private:
   struct DmlStateValue {
-    std::shared_ptr<CPaxInserter> inserter;
-    std::shared_ptr<CPaxDeleter> deleter;
+    std::unique_ptr<CPaxInserter> inserter;
+    std::unique_ptr<CPaxDeleter> deleter;
   };
 
   CPaxDmlStateLocal();
@@ -52,7 +52,6 @@ class CPaxDmlStateLocal final {
   std::shared_ptr<DmlStateValue> RemoveDmlState(const Oid &oid);
 
  private:
-
   std::unordered_map<Oid, std::shared_ptr<DmlStateValue>> dml_descriptor_tab_;
   Oid last_oid_;
   std::shared_ptr<DmlStateValue> last_state_;
