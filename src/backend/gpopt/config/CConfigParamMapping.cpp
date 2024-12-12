@@ -290,7 +290,11 @@ CConfigParamMapping::SConfigMappingElem CConfigParamMapping::m_elements[] = {
 	 false,	 // m_negate_param
 	 GPOS_WSZ_LIT(
 		 "Explore a nested loop join even if a hash join is possible")},
-
+	{EopttraceEnableUseDistributionInDQA,
+	 &optimizer_enable_use_distribution_in_dqa,
+	 false,	 // m_negate_param
+	 GPOS_WSZ_LIT(
+		 "Enable use the distribution key in DQA")},
 };
 
 //---------------------------------------------------------------------------

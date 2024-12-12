@@ -423,6 +423,7 @@
 		"optimizer_enable_partition_propagation",
 		"optimizer_enable_partition_selection",
 		"optimizer_enable_range_predicate_dpe",
+		"optimizer_enable_use_distribution_in_dqa",
 		"optimizer_enable_redistribute_nestloop_loj_inner_child",
 		"optimizer_enable_replicated_table",
 		"optimizer_enable_sort",

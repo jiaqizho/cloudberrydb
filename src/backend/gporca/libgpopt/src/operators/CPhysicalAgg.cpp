@@ -115,12 +115,17 @@ CPhysicalAgg::CPhysicalAgg(
 		ulDistrReqs = 2;
 	}
 
-	// Split DQA generates a 2-stage aggregate to handle the case where
-	// hash aggregate has a distinct agg func. Here we need to be careful
-	// not to prohibit distribution property enforcement.
-	m_should_enforce_distribution &= !(
-		isAggFromSplitDQA && aggStage == CLogicalGbAgg::EasTwoStageScalarDQA &&
-		colref_array->Size() > 0);
+	// Force enable distribution property in DQA
+	if (GPOS_FTRACE(EopttraceEnableUseDistributionInDQA)) {
+		m_should_enforce_distribution = false;
+	} else {
+		// Split DQA generates a 2-stage aggregate to handle the case where
+		// hash aggregate has a distinct agg func. Here we need to be careful
+		// not to prohibit distribution property enforcement.
+		m_should_enforce_distribution &= !(
+			isAggFromSplitDQA && aggStage == CLogicalGbAgg::EasTwoStageScalarDQA &&
+			colref_array->Size() > 0);
+	}
 
 	SetDistrRequests(ulDistrReqs);
 }

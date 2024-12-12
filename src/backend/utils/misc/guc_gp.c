@@ -405,6 +405,7 @@ bool		optimizer_enable_space_pruning;
 bool		optimizer_enable_associativity;
 bool		optimizer_enable_eageragg;
 bool		optimizer_enable_range_predicate_dpe;
+bool		optimizer_enable_use_distribution_in_dqa;
 
 /* Analyze related GUCs for Optimizer */
 bool		optimizer_analyze_root_partition;
@@ -2948,6 +2949,17 @@ struct config_bool ConfigureNamesBool_gp[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
 		&optimizer_enable_range_predicate_dpe,
+		false,
+		NULL, NULL, NULL
+	},
+
+	{
+		{"optimizer_enable_use_distribution_in_dqa", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Enable use the distribution key in DQA"),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&optimizer_enable_use_distribution_in_dqa,
 		false,
 		NULL, NULL, NULL
 	},

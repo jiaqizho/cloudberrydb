@@ -210,10 +210,13 @@ enum EOptTraceFlag
 	// Use legacy (cdbhash) opfamilies for compatibility
 	EopttraceUseLegacyOpfamilies = 103039,
 
-	// enable NL Left Join plan alternatives where inner child is redistributed if possible
+	// Enable NL Left Join plan alternatives where inner child is redistributed if possible
 	EopttraceEnableRedistributeNLLOJInnerChild = 103040,
 
 	EopttraceForceComprehensiveJoinImplementation = 103041,
+
+	// Enable use the distribution key in DQA
+	EopttraceEnableUseDistributionInDQA = 103042,
 
 	///////////////////////////////////////////////////////
 	///////////////////// statistics flags ////////////////
