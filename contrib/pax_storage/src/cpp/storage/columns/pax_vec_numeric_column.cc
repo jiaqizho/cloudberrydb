@@ -96,6 +96,26 @@ std::pair<char *, size_t> PaxShortNumericColumn::GetBuffer(size_t position) {
   return {DatumGetPointer(datum), VARSIZE_ANY_EXHDR(vl) + VARHDRSZ};
 }
 
+Datum PaxShortNumericColumn::GetDatum(size_t position) {
+  Assert(position < GetRows());
+  int8 *raw_buffer;
+  Datum datum;
+
+  CBDB_CHECK(position < GetRows(), cbdb::CException::ExType::kExTypeOutOfRange,
+             fmt("Fail to get buffer [pos=%lu, total rows=%lu], \n %s",
+                 position, GetRows(), DebugString().c_str()));
+
+  Assert(data_->Used() > position * width_);
+
+  raw_buffer = data_->GetBuffer() + (position * width_);
+  datum = vec_short_numeric_to_datum((int64 *)raw_buffer,
+                                     (int64 *)(raw_buffer + sizeof(int64)));
+  Assert(datum != 0);
+
+  numeric_holder_.emplace_back(cbdb::DatumToNumeric(datum));
+  return datum;
+}
+
 std::shared_ptr<DataBuffer<int8>> PaxShortNumericColumn::GetDataBuffer() { return data_; }
 
 int32 PaxShortNumericColumn::GetTypeLength() const {
