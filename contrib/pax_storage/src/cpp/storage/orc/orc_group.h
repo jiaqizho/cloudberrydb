@@ -25,9 +25,9 @@ class OrcGroup : public MicroPartitionReader::Group {
 
   const std::shared_ptr<PaxColumns> &GetAllColumns() const override;
 
-  std::pair<bool, size_t> ReadTuple(TupleTableSlot *slot) override;
+  virtual std::pair<bool, size_t> ReadTuple(TupleTableSlot *slot) override;
 
-  bool GetTuple(TupleTableSlot *slot, size_t row_index) override;
+  virtual bool GetTuple(TupleTableSlot *slot, size_t row_index) override;
 
   std::pair<Datum, bool> GetColumnValue(TupleDesc desc, size_t column_index,
                                         size_t row_index) override;
@@ -46,32 +46,19 @@ class OrcGroup : public MicroPartitionReader::Group {
   std::pair<Datum, bool> GetColumnValueNoMissing(size_t column_index,
                                                  size_t row_index);
 
-  // Used in `ReadTuple`
-  // Different from the other `GetColumnValue` function, in this function, if a
-  // null row is encountered, then we will perform an accumulation operation on
-  // `null_counts`. If no null row is encountered, the offset of the row data
-  // will be calculated through `null_counts`. The other `GetColumnValue`
-  // function are less efficient in `foreach` because they have to calculate the
-  // offset of the row data from scratch every time.
-  //
-  // column is not owned
-  virtual std::pair<Datum, bool> GetColumnValue(PaxColumn *column,
-                                                size_t row_index,
-                                                uint32 *null_counts);
-
  protected:
   std::shared_ptr<PaxColumns> pax_columns_;
   std::shared_ptr<Bitmap8> micro_partition_visibility_bitmap_;
   size_t row_offset_;
   size_t current_row_index_;
   std::vector<std::shared_ptr<MemoryObject>> buffer_holders_;
+  // only a reference, owner by pax_filter
+  const std::vector<int> *proj_col_index_;
 
  private:
   friend class tools::OrcDumpReader;
   std::vector<uint32> current_nulls_;
   std::vector<uint32 *> nulls_shuffle_;
-  // only a reference, owner by pax_filter
-  const std::vector<int> *proj_col_index_;
 };
 
 class OrcVecGroup final : public OrcGroup {
@@ -79,10 +66,15 @@ class OrcVecGroup final : public OrcGroup {
   OrcVecGroup(std::unique_ptr<PaxColumns> &&pax_column, size_t row_offset,
               const std::vector<int> *proj_col_index);
 
- private:
-  // column is not owned
-  std::pair<Datum, bool> GetColumnValue(PaxColumn *column, size_t row_index,
-                                        uint32 *null_counts) override;
+  // We want to inline the `GetColumnValue` function so we override
+  // `ReadTuple`
+  virtual std::pair<bool, size_t> ReadTuple(TupleTableSlot *slot) override;
+
+  virtual bool GetTuple(TupleTableSlot *slot, size_t row_index) override;
+
+  // Used to get the no missing column
+  std::pair<Datum, bool> GetColumnValueNoMissing(size_t column_index,
+                                                 size_t row_index) override;
 };
 
 }  // namespace pax
