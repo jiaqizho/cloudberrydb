@@ -63,6 +63,11 @@ class PaxColumns : public PaxColumn {
   // Get the combine buffer of single column
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 
+  // can't call this function on columns
+  Datum GetDatum(size_t position) override {
+    CBDB_RAISE(cbdb::CException::kExTypeUnImplements);
+  }
+
   std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
                                            size_t len) override;
 

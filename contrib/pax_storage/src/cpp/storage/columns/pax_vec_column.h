@@ -28,6 +28,8 @@ class PaxVecCommColumn : public PaxColumn {
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 
+  Datum GetDatum(size_t position) override;
+
   std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
                                            size_t len) override;
 
@@ -65,7 +67,8 @@ class PaxVecNonFixedColumn : public PaxColumn {
 
   ~PaxVecNonFixedColumn() override;
 
-  virtual void Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> offsets,
+  virtual void Set(std::shared_ptr<DataBuffer<char>> data,
+                   std::shared_ptr<DataBuffer<int32>> offsets,
                    size_t total_size, size_t non_null_rows);
 
   void Append(char *buffer, size_t size) override;
@@ -88,6 +91,8 @@ class PaxVecNonFixedColumn : public PaxColumn {
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 
+  Datum GetDatum(size_t position) override;
+
   std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
                                            size_t len) override;
 
@@ -109,6 +114,8 @@ class PaxVecNonFixedColumn : public PaxColumn {
 
   // used in `kTypeStoragePorcVec`
   int32 next_offsets_;
+
+  std::vector<std::shared_ptr<MemoryObject>> buffer_holders_;
 };
 
 }  // namespace pax

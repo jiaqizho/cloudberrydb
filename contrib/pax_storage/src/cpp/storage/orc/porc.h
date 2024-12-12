@@ -18,7 +18,6 @@
 namespace pax {
 class MicroPartitionStats;
 class OrcFormatReader;
-class OrcGroup;
 
 class OrcWriter : public MicroPartitionWriter {
  public:

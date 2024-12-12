@@ -2,85 +2,8 @@
 #include "storage/toast/pax_toast.h"
 namespace pax {
 
-OrcVecGroup::OrcVecGroup(std::unique_ptr<PaxColumns> &&pax_column,
-                         size_t row_offset,
-                         const std::vector<int> *proj_col_index)
-    : OrcGroup(std::move(pax_column), row_offset, proj_col_index) {
-  Assert(COLUMN_STORAGE_FORMAT_IS_VEC(pax_columns_));
-}
-
-static std::pair<Datum, std::shared_ptr<MemoryObject>> GetDatumWithNonNull(PaxColumn *column,
-                                                   size_t row_index) {
-  Datum datum = 0;
-  std::shared_ptr<MemoryObject> ref;
-  char *buffer;
-  size_t buffer_len;
-
-  Assert(column);
-
-  std::tie(buffer, buffer_len) = column->GetBuffer(row_index);
-  switch (column->GetPaxColumnTypeInMem()) {
-    case kTypeVecBpChar:
-    case kTypeNonFixed:
-      datum = PointerGetDatum(buffer);
-      if (column->IsToast(row_index)) {
-        auto external_buffer = column->GetExternalToastDataBuffer();
-        std::tie(datum, ref) = pax_detoast(datum,
-                          external_buffer ? external_buffer->Start() : nullptr,
-                          external_buffer ? external_buffer->Used() : 0);
-        break;
-      }
-
-      {
-        auto size = TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len + VARHDRSZ);
-        ByteBuffer bb(size, size);
-        auto tmp = bb.Addr();
-        SET_VARSIZE(tmp, buffer_len + VARHDRSZ);
-        memcpy(VARDATA(tmp), buffer, buffer_len);
-        datum = PointerGetDatum(tmp);
-        ref = std::make_shared<ExternalToastValue>(std::move(bb));
-      }
-      break;
-    case kTypeVecBitPacked:
-    case kTypeFixed: {
-      Assert(buffer_len > 0);
-      switch (buffer_len) {
-        case 1:
-          datum = cbdb::Int8ToDatum(*reinterpret_cast<int8 *>(buffer));
-          break;
-        case 2:
-          datum = cbdb::Int16ToDatum(*reinterpret_cast<int16 *>(buffer));
-          break;
-        case 4:
-          datum = cbdb::Int32ToDatum(*reinterpret_cast<int32 *>(buffer));
-          break;
-        case 8:
-          datum = cbdb::Int64ToDatum(*reinterpret_cast<int64 *>(buffer));
-          break;
-        default:
-          Assert(!"should't be here, fixed type len should be 1, 2, 4, 8");
-      }
-      break;
-    }
-    case kTypeVecDecimal:
-    case kTypeVecNoHeader: {
-      datum = PointerGetDatum(buffer);
-      break;
-    }
-    case kTypeBitPacked:
-    case kTypeBpChar:
-    case kTypeDecimal:
-    default:
-      Assert(!"should't be here, non-implemented column type in memory");
-      break;
-  }
-
-  return {datum, ref};
-}
-
-std::pair<Datum, bool> OrcVecGroup::GetColumnValue(PaxColumn *column,
-                                                   size_t row_index,
-                                                   uint32 * /*null_counts*/) {
+inline static std::pair<Datum, bool> GetColumnDatum(PaxColumn *column,
+                                                    size_t row_index) {
   if (column->HasNull()) {
     auto bm = column->GetBitmap();
     Assert(bm);
@@ -88,13 +11,176 @@ std::pair<Datum, bool> OrcVecGroup::GetColumnValue(PaxColumn *column,
       return {0, true};
     }
   }
-  Datum datum;
-  std::shared_ptr<MemoryObject> mobj;
+  return {column->GetDatum(row_index), false};
+}
 
-  std::tie(datum, mobj) = GetDatumWithNonNull(column, row_index);
-  if (mobj) buffer_holders_.emplace_back(mobj);
+OrcVecGroup::OrcVecGroup(std::unique_ptr<PaxColumns> &&pax_column,
+                         size_t row_offset,
+                         const std::vector<int> *proj_col_index)
+    : OrcGroup(std::move(pax_column), row_offset, proj_col_index) {
+  Assert(COLUMN_STORAGE_FORMAT_IS_VEC(pax_columns_));
+}
 
-  return {datum, false};
+std::pair<bool, size_t> OrcVecGroup::ReadTuple(TupleTableSlot *slot) {
+  int index = 0;
+  int natts = 0;
+  int column_nums = 0;
+
+  Assert(pax_columns_);
+
+  auto &pax_columns = *pax_columns_;
+
+  Assert(slot);
+
+  // already consumed
+  if (current_row_index_ >= pax_columns.GetRows()) {
+    return {false, current_row_index_};
+  }
+
+  natts = slot->tts_tupleDescriptor->natts;
+  column_nums = pax_columns.GetColumns();
+
+  if (micro_partition_visibility_bitmap_) {
+    // skip invisible rows in micro partition
+    while (micro_partition_visibility_bitmap_->Test(row_offset_ +
+                                                    current_row_index_)) {
+      for (index = 0; index < column_nums; index++) {
+        auto column = pax_columns[index].get();
+
+        if (!column) {
+          continue;
+        }
+        
+      }
+      current_row_index_++;
+    }
+
+    if (current_row_index_ >= pax_columns.GetRows()) {
+      return {false, current_row_index_};
+    }
+  }
+
+  // proj_col_index_ is not empty
+  if (proj_col_index_ && !proj_col_index_->empty()) {
+    for (size_t i = 0; i < proj_col_index_->size(); i++) {
+      // filter with projection
+      index = (*proj_col_index_)[i];
+
+      // handle PAX columns number inconsistent with pg catalog natts in case
+      // data not been inserted yet or read pax file conserved before last add
+      // column DDL is done, for these cases it is normal that pg catalog schema
+      // is not match with that in PAX file.
+      if (index >= column_nums) {
+        cbdb::SlotGetMissingAttrs(slot, index, index + 1);
+        continue;
+      }
+
+      // In case column is droped, then set its value as null without reading
+      // data tuples.
+      if (unlikely(slot->tts_tupleDescriptor->attrs[index].attisdropped)) {
+        slot->tts_isnull[index] = true;
+        continue;
+      }
+
+      auto column = pax_columns[index].get();
+      Assert(column);
+
+      std::tie(slot->tts_values[index], slot->tts_isnull[index]) =
+          GetColumnDatum(column, current_row_index_);
+    }
+  } else {
+    for (index = 0; index < column_nums; index++) {
+      // Still need filter with old projection
+      // If current proj_col_index_ no build or empty
+      // It means current tuple only need return CTID
+      if (!pax_columns[index]) {
+        continue;
+      }
+
+      // In case column is droped, then set its value as null without reading
+      // data tuples.
+      if (unlikely(slot->tts_tupleDescriptor->attrs[index].attisdropped)) {
+        slot->tts_isnull[index] = true;
+        continue;
+      }
+
+      auto column = pax_columns[index].get();
+      std::tie(slot->tts_values[index], slot->tts_isnull[index]) =
+          GetColumnDatum(column, current_row_index_);
+    }
+
+    for (index = column_nums; index < natts; index++) {
+      // handle PAX columns number inconsistent with pg catalog natts in case
+      // data not been inserted yet or read pax file conserved before last add
+      // column DDL is done, for these cases it is normal that pg catalog schema
+      // is not match with that in PAX file.
+      cbdb::SlotGetMissingAttrs(slot, index, natts);
+    }
+  }
+
+  current_row_index_++;
+  return {true, current_row_index_ - 1};
+}
+
+bool OrcVecGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
+  size_t index = 0;
+  size_t natts = 0;
+  size_t column_nums = 0;
+
+  Assert(pax_columns_);
+  Assert(slot);
+
+  if (row_index >= pax_columns_->GetRows()) {
+    return false;
+  }
+
+  // if tuple has been deleted, return false;
+  if (micro_partition_visibility_bitmap_ &&
+      micro_partition_visibility_bitmap_->Test(row_offset_ + row_index)) {
+    return false;
+  }
+
+  natts = static_cast<size_t>(slot->tts_tupleDescriptor->natts);
+  column_nums = pax_columns_->GetColumns();
+
+  for (index = 0; index < natts; index++) {
+    // Same logic with `ReadTuple`
+    if (index >= column_nums) {
+      cbdb::SlotGetMissingAttrs(slot, index, natts);
+      break;
+    }
+
+    auto column = ((*pax_columns_)[index]).get();
+
+    if (!column) {
+      continue;
+    }
+
+    if (unlikely(slot->tts_tupleDescriptor->attrs[index].attisdropped)) {
+      slot->tts_isnull[index] = true;
+      continue;
+    }
+
+    // different with `ReadTuple`
+    std::tie(slot->tts_values[index], slot->tts_isnull[index]) =
+        GetColumnDatum(column, row_index);
+  }
+
+  return true;
+}
+
+
+std::pair<Datum, bool> OrcVecGroup::GetColumnValueNoMissing(size_t column_index,
+                                                         size_t row_index) {
+  Assert(column_index < pax_columns_->GetColumns());
+  auto column = (*pax_columns_)[column_index].get();
+
+  // dropped column
+  if (!column) {
+    return {0, true};
+  }
+
+  return GetColumnDatum(column, row_index);
 }
 
 }  // namespace pax

@@ -274,6 +274,13 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
 }
 
 template <typename T>
+Datum PaxCommColumn<T>::GetDatum(size_t position) {
+  Assert(position < GetNonNullRows());
+  auto ptr = data_->Start() + (sizeof(T) * position);
+  return (Datum)(*reinterpret_cast<T *>(ptr));
+}
+
+template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetRangeBuffer(size_t start_pos,
                                                            size_t len) {
   CBDB_CHECK((start_pos + len) <= GetNonNullRows(),
@@ -415,6 +422,28 @@ std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
 
   return std::make_pair(data_->GetBuffer() + offsets_[position],
                         offsets_[position + 1] - offsets_[position]);
+}
+
+Datum PaxNonFixedColumn::GetDatum(size_t position) {
+  Assert(position < GetNonNullRows());
+  const char *buffer = nullptr;
+  const auto &start_offset = offsets_[position];
+  buffer = data_->GetBuffer() + start_offset;
+  Datum datum = PointerGetDatum(buffer);
+
+  if (unlikely(IsToast(position))) {
+    std::shared_ptr<MemoryObject> ref;
+    auto external_buffer = GetExternalToastDataBuffer();
+    std::tie(datum, ref) =
+        pax_detoast(datum, external_buffer ? external_buffer->Start() : nullptr,
+                    external_buffer ? external_buffer->Used() : 0);
+
+    if (ref) {
+      buffer_holders_.emplace_back(ref);
+    }
+  }
+
+  return datum;
 }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetRangeBuffer(size_t start_pos,
