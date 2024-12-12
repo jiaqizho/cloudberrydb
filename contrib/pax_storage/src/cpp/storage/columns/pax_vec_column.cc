@@ -12,14 +12,14 @@ PaxVecCommColumn<T>::PaxVecCommColumn(uint32 capacity) {
 }
 
 template <typename T>
-PaxVecCommColumn<T>::~PaxVecCommColumn() {
-}
+PaxVecCommColumn<T>::~PaxVecCommColumn() {}
 
 template <typename T>  // NOLINT: redirect constructor
 PaxVecCommColumn<T>::PaxVecCommColumn() : PaxVecCommColumn(DEFAULT_CAPACITY) {}
 
 template <typename T>
-void PaxVecCommColumn<T>::Set(std::shared_ptr<DataBuffer<T>> data, size_t non_null_rows) {
+void PaxVecCommColumn<T>::Set(std::shared_ptr<DataBuffer<T>> data,
+                              size_t non_null_rows) {
   data_ = std::move(data);
   non_null_rows_ = non_null_rows;
 }
@@ -104,6 +104,13 @@ std::pair<char *, size_t> PaxVecCommColumn<T>::GetBuffer(size_t position) {
 }
 
 template <typename T>
+Datum PaxVecCommColumn<T>::GetDatum(size_t position) {
+  Assert(position < GetRows());
+  auto ptr = data_->Start() + (sizeof(T) * position);
+  return (Datum)(*reinterpret_cast<T *>(ptr));
+}
+
+template <typename T>
 std::pair<char *, size_t> PaxVecCommColumn<T>::GetRangeBuffer(size_t start_pos,
                                                               size_t len) {
   CBDB_CHECK((start_pos + len) <= GetRows(),
@@ -141,11 +148,11 @@ PaxVecNonFixedColumn::PaxVecNonFixedColumn(uint32 data_capacity,
 PaxVecNonFixedColumn::PaxVecNonFixedColumn()
     : PaxVecNonFixedColumn(DEFAULT_CAPACITY, DEFAULT_CAPACITY) {}
 
-PaxVecNonFixedColumn::~PaxVecNonFixedColumn() { }
+PaxVecNonFixedColumn::~PaxVecNonFixedColumn() {}
 
 void PaxVecNonFixedColumn::Set(std::shared_ptr<DataBuffer<char>> data,
-                               std::shared_ptr<DataBuffer<int32>> offsets, size_t total_size,
-                               size_t non_null_rows) {
+                               std::shared_ptr<DataBuffer<int32>> offsets,
+                               size_t total_size, size_t non_null_rows) {
   Assert(data && offsets);
 
   estimated_size_ = total_size;
@@ -261,6 +268,37 @@ std::pair<char *, size_t> PaxVecNonFixedColumn::GetBuffer(size_t position) {
                         last_offset - start_offset);
 }
 
+Datum PaxVecNonFixedColumn::GetDatum(size_t position) {
+  Assert(position < GetRows());
+  Datum datum;
+  char *buffer;
+  std::shared_ptr<MemoryObject> ref;
+  size_t buffer_len;
+  std::tie(buffer, buffer_len) = GetBuffer(position);
+
+  if (IsToast(position)) {
+    datum = PointerGetDatum(buffer);
+    auto external_buffer = GetExternalToastDataBuffer();
+    std::tie(datum, ref) =
+        pax_detoast(datum, external_buffer ? external_buffer->Start() : nullptr,
+                    external_buffer ? external_buffer->Used() : 0);
+
+  } else {
+    auto size = TYPEALIGN(MEMORY_ALIGN_SIZE, buffer_len + VARHDRSZ);
+    ByteBuffer bb(size, size);
+    auto tmp = bb.Addr();
+    SET_VARSIZE(tmp, buffer_len + VARHDRSZ);
+    memcpy(VARDATA(tmp), buffer, buffer_len);
+    datum = PointerGetDatum(tmp);
+    ref = std::make_unique<ExternalToastValue>(std::move(bb));
+  }
+
+  if (ref) {
+    buffer_holders_.emplace_back(ref);
+  }
+  return datum;
+}
+
 std::pair<char *, size_t> PaxVecNonFixedColumn::GetRangeBuffer(size_t start_pos,
                                                                size_t len) {
   CBDB_CHECK((start_pos + len) <= (offsets_->GetSize() - 1),
@@ -279,6 +317,8 @@ std::pair<char *, size_t> PaxVecNonFixedColumn::GetRangeBuffer(size_t start_pos,
                         last_offset - start_offset);
 }
 
-std::shared_ptr<DataBuffer<char>> PaxVecNonFixedColumn::GetDataBuffer() { return data_; }
+std::shared_ptr<DataBuffer<char>> PaxVecNonFixedColumn::GetDataBuffer() {
+  return data_;
+}
 
 }  // namespace pax

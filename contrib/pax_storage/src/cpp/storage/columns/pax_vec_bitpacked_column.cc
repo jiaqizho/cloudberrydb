@@ -72,6 +72,18 @@ std::pair<char *, size_t> PaxVecBitPackedColumn::GetBuffer(size_t position) {
   return std::make_pair(buffer, sizeof(bool));
 }
 
+Datum PaxVecBitPackedColumn::GetDatum(size_t position) {
+  Assert(position < GetRows());
+  if (!flat_buffer_) {
+    flat_buffer_ = std::make_unique<DataBuffer<bool>>(non_null_rows_ * sizeof(bool));
+  }
+  Assert(flat_buffer_->Available() >= sizeof(bool));
+  flat_buffer_->Write(bitmap_raw_.Test(position));
+  auto buffer = (char *)flat_buffer_->GetAvailableBuffer();
+  flat_buffer_->Brush(sizeof(bool));
+  return cbdb::Int8ToDatum(*reinterpret_cast<int8 *>(buffer));
+}
+
 PaxColumnTypeInMem PaxVecBitPackedColumn::GetPaxColumnTypeInMem() const {
   return PaxColumnTypeInMem::kTypeVecBitPacked;
 }

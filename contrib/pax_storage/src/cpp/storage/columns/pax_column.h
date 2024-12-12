@@ -134,6 +134,31 @@ class PaxColumn {
   //
   virtual std::pair<char *, size_t> GetBuffer(size_t position) = 0;
 
+  // Get the column value by position
+  //
+  // It will return the different values in different `ColumnStorageType` +
+  // `ColumnTypeInMem`
+  // like `GetBuffer` it should NEVER call in write path with encoding option!!!
+  // But without encoding option, still can direct call it.
+
+  // The interface implements the conversion of Buffer to Datum according to
+  // different combinations of `ColumnTypeInMem` + `ColumnStorageType
+  //
+  // If `storage_type_` is kTypeStoragePorcVec
+  // Then data part contains `null field` which means the position is the
+  // `row index` to get the data.
+  //
+  // But If `storage_type_` is not kTypeStoragePorcVec
+  // Then position should be `row index - null counts`, because
+  // data part will not contains `null field`.
+  //
+  // Also it is kind different in fixed-length column and non-fixed-length
+  // column when `storage_type_` is kTypeStoragePorcVec. For the fixed-length
+  // column, If we got a `null field`, then it will return zero . But in
+  // non-fixed-length column, once we got  `null field`, the datum will be
+  // `PointerToDatum(nullptr)`.
+  virtual Datum GetDatum(size_t position) = 0;
+
   // Get buffer by range [start_pos, start_pos + len)
   // Should never call in write path with encoding option
   virtual std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
@@ -391,6 +416,8 @@ class PaxCommColumn : public PaxColumn {
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 
+  Datum GetDatum(size_t position) override;
+
   std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
                                            size_t len) override;
 
@@ -448,6 +475,8 @@ class PaxNonFixedColumn : public PaxColumn {
 
   std::pair<char *, size_t> GetBuffer(size_t position) override;
 
+  Datum GetDatum(size_t position) override;
+
   std::pair<char *, size_t> GetRangeBuffer(size_t start_pos,
                                            size_t len) override;
 
@@ -477,6 +506,7 @@ class PaxNonFixedColumn : public PaxColumn {
   // Notice: we should not use offsets in the write path at this time until
   // we fixed the fixme above.
   std::vector<int32> offsets_;
+  std::vector<std::shared_ptr<MemoryObject>> buffer_holders_;
 };
 
 };  // namespace pax
