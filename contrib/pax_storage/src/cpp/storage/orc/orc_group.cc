@@ -136,9 +136,7 @@ std::pair<bool, size_t> OrcGroup::ReadTuple(TupleTableSlot *slot) {
           GetColumnValue(column, current_row_index_, &(current_nulls_[index]));
     }
   }
-
-  current_row_index_++;
-  return {true, current_row_index_ - 1};
+  return {true, current_row_index_++};
 }
 
 bool OrcGroup::GetTuple(TupleTableSlot *slot, size_t row_index) {
