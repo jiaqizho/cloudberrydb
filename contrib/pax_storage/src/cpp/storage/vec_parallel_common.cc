@@ -1,18 +1,14 @@
-#include "storage/pax_parallel.h"
+#include "storage/vec_parallel_common.h"
 
 #include <algorithm>
 #include <stdexcept>
 
-#include "access/pax_visimap.h"
 #include "catalog/pax_aux_table.h"
 #include "catalog/pg_pax_tables.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/paxc_wrappers.h"
 #include "comm/vec_numeric.h"
 #include "storage/file_system.h"
-#include "storage/local_file_system.h"
-#include "storage/micro_partition_iterator.h"
-#include "storage/micro_partition_metadata.h"
 #include "storage/filter/pax_sparse_filter.h"
 #ifdef VEC_BUILD
 
@@ -29,28 +25,6 @@ class PaxRecordBatchGenerator {
  private:
   std::shared_ptr<PaxFragmentInterface> desc_;
 };
-
-std::vector<int> SchemaToIndex(TupleDesc desc, arrow::Schema *schema) {
-  std::vector<int> result;
-  auto names = schema->field_names();
-  for (int i = 0; i < desc->natts; i++) {
-    auto attr = TupleDescAttr(desc, i);
-    char *attname;
-
-    if (attr->attisdropped) continue;
-
-    attname = NameStr(attr->attname);
-    if (std::find(names.begin(), names.end(), attname) != names.end()) {
-      result.push_back(i);
-    }
-  }
-
-  if (std::find(names.begin(), names.end(), "ctid") != names.end()) {
-    result.push_back(SelfItemPointerAttributeNumber);
-  }
-  if (result.size() == names.size()) return result;
-  throw std::logic_error("unknown name in schema");
-}
 
 template <typename T>
 class ParallelIteratorImpl : public ParallelIterator<T> {
@@ -112,36 +86,29 @@ bool PaxFragmentInterface::OpenFile() {
     visimap_ = nullptr;
   }
 
-  auto op = scan_desc_->Iterator()->Next();
+  auto desc = scan_desc_.get();
+
+  auto op = desc->Iterator()->Next();
   if (!op) return false;
 
-  auto file_system = Singleton<LocalFileSystem>::GetInstance();
+  auto file_system = desc->GetFileSystem();
   auto m = std::move(op).value();
-  auto filter = scan_desc_->GetPaxFilter();
+  auto filter = desc->GetPaxFilter();
 
   MicroPartitionReader::ReaderOptions options;
-  block_no_ = m.GetMicroPartitionId();
+  block_no_ = m->GetBlockId();
 
   // TODO: convert arrow filter to pax filter
   options.filter = filter;
   options.reused_buffer = nullptr;
-  {
-    const auto &visimap_name = m.GetVisibilityBitmapFile();
-    if (!visimap_name.empty()) {
-      visimap_ = pax::LoadVisimap(file_system, nullptr, visimap_name);
-      BitmapRaw<uint8_t> raw(visimap_->data(), visimap_->size());
-      options.visibility_bitmap =
-          std::make_shared<Bitmap8>(raw, BitmapTpl<uint8>::ReadOnlyRefBitmap);
-    }
-  }
+  std::tie(visimap_, options.visibility_bitmap) = m->GetVisibilityBitmap(file_system);
 
   InitAdapter();
 
-  auto data_file = file_system->Open(m.GetFileName(), fs::kReadMode);
+  auto data_file = file_system->Open(m->GetFileName(), fs::kReadMode, desc->GetFileSystemOptions());
   std::shared_ptr<File> toast_file;
-  if (m.GetExistToast()) {
-    toast_file =
-        file_system->Open(m.GetFileName() + TOAST_FILE_SUFFIX, fs::kReadMode);
+  if (auto name = m->GetToastName(); !name.empty()) {
+    toast_file = file_system->Open(name, fs::kReadMode, desc->GetFileSystemOptions());
   }
   auto reader = std::make_unique<OrcReader>(std::move(data_file), 
     std::move(toast_file));
@@ -211,13 +178,20 @@ void ParallelScanDesc::CalculateScanColumns(
   pax_filter_->SetColumnProjection(std::move(proj_bits));
 }
 
-arrow::Status ParallelScanDesc::Initialize(
-    uint32_t tableoid, const std::shared_ptr<arrow::Schema> &table_schema,
-    const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options) {
-  relation_ = cbdb::TableOpen(tableoid, AccessShareLock);
-  auto tupdesc = RelationGetDescr(relation_);
 
-  std::vector<MicroPartitionMetadata> result;
+arrow::Status ParallelScanDesc::Initialize(Relation relation,
+  const std::shared_ptr<arrow::Schema> &table_schema,
+  const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options,
+  FileSystem *file_system, std::shared_ptr<FileSystemOptions> fs_options,
+  pax::IteratorBase<std::shared_ptr<MicroPartitionInfoProvider>> &&it) {
+  relation_ = relation;
+  file_system_ = file_system;
+  fs_options_ = std::move(fs_options);
+  Assert(relation && file_system);
+
+  auto tupdesc = RelationGetDescr(relation);
+
+  std::vector<std::shared_ptr<MicroPartitionInfoProvider>> result;
 
   table_schema_ = table_schema;
   scan_schema_ = scan_options->dataset_schema;
@@ -231,22 +205,20 @@ arrow::Status ParallelScanDesc::Initialize(
   CalculateScanColumns(table_names);
   pax_filter_->InitSparseFilter(relation_, scan_options->filter, table_names);
 
-  auto it = MicroPartitionInfoIterator::New(relation_, nullptr);
-  while (it->HasNext()) {
-    auto meta = it->Next();
+  while (it.HasNext()) {
+    auto meta = it.Next();
     bool ok = true;
     if (pax_filter_->SparseFilterEnabled()) {
-      MicroPartitionStatsProvider provider(meta.GetStats());
+      MicroPartitionStatsProvider provider(meta->GetStats());
       ok = pax_filter_->ExecSparseFilter(provider, tupdesc,
                                          PaxSparseFilter::StatisticsKind::kFile);
     }
     if (ok) result.emplace_back(std::move(meta));
   }
-  it->Release();
+  it.Release();
 
   num_micro_partitions_ = static_cast<int>(result.size());
-  iterator_ = std::make_unique<ParallelIteratorImpl<MicroPartitionMetadata>>(
-      std::move(result));
+  iterator_ = std::make_unique<ParallelIteratorImpl<std::shared_ptr<MicroPartitionInfoProvider>>>(std::move(result));
 
   return arrow::Status::OK();
 }
@@ -257,7 +229,6 @@ void ParallelScanDesc::Release() {
   if (pax_enable_debug && pax_filter_) {
     pax_filter_->LogStatistics();
   }
-  cbdb::TableClose(relation_, NoLock);
   relation_ = nullptr;
   iterator_ = nullptr;
 }
@@ -278,12 +249,6 @@ ParallelScanDesc::FragmentIteratorInternal::Next() {
       std::make_shared<PaxFragmentInterface>(desc_));
 }
 
-arrow::Result<arrow::dataset::FragmentIterator>
-PaxDatasetInterface::GetFragmentsImpl(arrow::compute::Expression predicate) {
-  ParallelScanDesc::FragmentIteratorInternal it(desc_);
-  return arrow::Iterator<std::shared_ptr<arrow::dataset::Fragment>>(
-      std::move(it));
-}
 
 }  // namespace pax
 

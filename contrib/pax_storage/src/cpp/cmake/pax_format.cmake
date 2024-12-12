@@ -81,6 +81,13 @@ set(pax_vec_src
   storage/vec/pax_vec_reader.cc
 )
 
+if(VEC_BUILD)
+set(pax_vec_src ${pax_vec_src}
+  storage/vec_parallel_common.cc
+   )
+
+endif()
+
 set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR} contrib/tabulate/include)
 set(pax_target_link_libs uuid protobuf zstd z)
 if (PAX_USE_LZ4)
@@ -103,7 +110,7 @@ if (VEC_BUILD)
       ${INSTALL_HOME}/lib)
   set(pax_target_link_libs
       ${pax_target_link_libs}
-      arrow)
+      arrow arrow_dataset)
 endif(VEC_BUILD)
 
 add_library(paxformat SHARED ${PROTO_SRCS} ${pax_storage_src} ${pax_clustering_src} ${pax_exceptions_src} ${pax_comm_src} ${pax_vec_src})

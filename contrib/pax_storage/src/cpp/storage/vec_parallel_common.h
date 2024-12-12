@@ -22,10 +22,6 @@ class Schema;
 
 namespace pax {
 
-extern std::shared_ptr<arrow::Schema> TupdescToArrowSchema(TupleDesc tupdesc);
-
-extern std::vector<int> SchemaToIndex(TupleDesc desc, arrow::Schema *schema);
-
 template <typename T>
 class ParallelIterator {
  public:
@@ -33,19 +29,30 @@ class ParallelIterator {
   virtual std::optional<T> Next() = 0;
 };
 
+class MicroPartitionInfoProvider {
+ public:
+  virtual ~MicroPartitionInfoProvider() = default;
+  virtual int GetBlockId() const = 0;
+  virtual std::string GetFileName() const = 0;
+  virtual std::string GetToastName() const = 0;
+  virtual const ::pax::stats::MicroPartitionStatisticsInfo &GetStats() const = 0;
+  virtual std::pair<std::shared_ptr<std::vector<uint8_t>>,
+                   std::unique_ptr<Bitmap8>> GetVisibilityBitmap(FileSystem *file_system) = 0;
+};
+
 class PaxFragmentInterface;
 
-class ParallelScanDesc : public std::enable_shared_from_this<ParallelScanDesc> {
+class ParallelScanDesc final : public std::enable_shared_from_this<ParallelScanDesc> {
  public:
   inline bool ShouldBuildCtid() const { return build_ctid_bitmap_; }
-  inline ParallelIterator<MicroPartitionMetadata> *Iterator() {
-    return iterator_.get();
-  }
+  inline ParallelIterator<std::shared_ptr<MicroPartitionInfoProvider>> *Iterator() { return iterator_.get(); }
   ~ParallelScanDesc() = default;
 
-  arrow::Status Initialize(
-      uint32_t tableoid, const std::shared_ptr<arrow::Schema> &table_schema,
-      const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options);
+  arrow::Status Initialize(Relation relation,
+    const std::shared_ptr<arrow::Schema> &table_schema,
+    const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options,
+    FileSystem *file_system, std::shared_ptr<FileSystemOptions> options,
+    pax::IteratorBase<std::shared_ptr<MicroPartitionInfoProvider>> &&it);
   void Release();
   const std::shared_ptr<arrow::Schema> &TableSchema() const {
     return table_schema_;
@@ -58,14 +65,8 @@ class ParallelScanDesc : public std::enable_shared_from_this<ParallelScanDesc> {
   const std::vector<int> &ScanColumns() const { return scan_columns_; }
   const std::shared_ptr<PaxFilter> &GetPaxFilter() const { return pax_filter_; }
   Relation GetRelation() const { return relation_; }
-
- private:
-  void CalculateScanColumns(
-      const std::vector<std::pair<const char *, size_t>> &table_names);
-  void TransformFilterExpression(
-      const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options,
-      const arrow::compute::Expression &expr,
-      const std::vector<std::pair<const char *, size_t>> &table_names);
+  FileSystem *GetFileSystem() const { return file_system_; }
+  const std::shared_ptr<FileSystemOptions> &GetFileSystemOptions() const { return fs_options_; }
 
   struct FragmentIteratorInternal {
     FragmentIteratorInternal(const std::shared_ptr<ParallelScanDesc> &desc);
@@ -75,49 +76,23 @@ class ParallelScanDesc : public std::enable_shared_from_this<ParallelScanDesc> {
     std::shared_ptr<ParallelScanDesc> desc_;
     int fragment_counter_;
   };
+
+ private:
+  void CalculateScanColumns(const std::vector<std::pair<const char *, size_t>> &table_names);
+
   Relation relation_ = nullptr;
+  FileSystem *file_system_ = nullptr;
+  std::shared_ptr<FileSystemOptions> fs_options_;
   std::shared_ptr<PaxFilter> pax_filter_;
   std::vector<int> scan_columns_;
-  std::unique_ptr<ParallelIterator<MicroPartitionMetadata>> iterator_;
+  std::unique_ptr<ParallelIterator<std::shared_ptr<MicroPartitionInfoProvider>>> iterator_;
   std::shared_ptr<arrow::Schema> table_schema_;
   std::shared_ptr<arrow::Schema> scan_schema_;
   int num_micro_partitions_ = 0;
   bool build_ctid_bitmap_ = false;
-  bool has_called_ = false;  // has called GetPaxFragmentGen()
-
-  friend class PaxDatasetInterface;
 };
 
-class PaxDatasetInterface : public arrow::dataset::DatasetInterface {
- public:
-  // Initialize should be able to call postgres functions, if error happens,
-  // will raise the PG ERROR
-  PaxDatasetInterface(std::shared_ptr<arrow::Schema> table_schema)
-      : DatasetInterface(table_schema) {}
-  arrow::Status Initialize(uint32_t tableoid,
-                           const std::shared_ptr<arrow::dataset::ScanOptions>
-                               &scan_options) override {
-    desc_ = std::make_shared<ParallelScanDesc>();
-    return desc_->Initialize(tableoid, schema(), scan_options);
-  }
-
-  void Release() override {
-    if (desc_) desc_->Release();
-  }
-  std::string type_name() const override { return "pax-parallel-scan"; }
-  arrow::Result<arrow::dataset::FragmentIterator> GetFragmentsImpl(
-      arrow::compute::Expression predicate) override;
-
-  static std::shared_ptr<arrow::dataset::DatasetInterface> New(
-      std::shared_ptr<arrow::Schema> table_schema) {
-    return std::make_shared<PaxDatasetInterface>(table_schema);
-  }
-
- private:
-  std::shared_ptr<ParallelScanDesc> desc_;
-};
-
-class PaxFragmentInterface : public arrow::dataset::FragmentInterface {
+class PaxFragmentInterface final : public arrow::dataset::FragmentInterface {
  public:
   PaxFragmentInterface(const std::shared_ptr<ParallelScanDesc> &scan_desc);
   virtual ~PaxFragmentInterface() = default;
