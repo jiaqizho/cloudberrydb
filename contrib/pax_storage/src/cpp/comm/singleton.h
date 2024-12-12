@@ -1,47 +1,22 @@
 #pragma once
 
-#include <memory>
-#include <mutex>
-#include <utility>
-
-#include "comm/pax_memory.h"
-
 namespace pax {
 
 template <typename T>
 class Singleton final {
  public:
-  friend class ClassCreator;
   Singleton(const Singleton &) = delete;
   Singleton &operator=(const Singleton &) = delete;
-  template <typename... ArgTypes>
-  static T *GetInstance(ArgTypes &&...args) {
-    std::call_once(
-        of,
-        [](ArgTypes &&...args) {
-          instance.reset(new T(std::forward<ArgTypes>(args)...));
-        },
-        std::forward<ArgTypes>(args)...);
 
-    return instance.get();
+  template <typename... Args>
+  inline static T *GetInstance(Args &&...args) {
+    static T instance{std::forward<Args>(args)...};
+    return &instance;
   }
 
-  static inline void Destroy() {
-    if (instance) {
-      instance.reset();
-    }
-  }
-
- private:
+ protected:
   Singleton() = default;
   ~Singleton() = default;
-  static std::once_flag of;
-  static std::unique_ptr<T> instance;
 };
 
-template <class T>
-std::once_flag Singleton<T>::of;
-
-template <class T>
-std::unique_ptr<T> Singleton<T>::instance = nullptr;
 }  // namespace pax
