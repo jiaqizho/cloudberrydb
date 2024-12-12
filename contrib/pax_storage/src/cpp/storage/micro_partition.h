@@ -158,6 +158,10 @@ class MicroPartitionReader {
     // Used in `OpenApi`. Once user call the `GetAllColumns`,
     // then it still need use the visible map to filter.
     virtual std::shared_ptr<Bitmap8> GetVisibilityMap() const = 0;
+
+    // Used to get the no missing column
+    virtual std::pair<Datum, bool> GetColumnValueNoMissing(
+        size_t column_index, size_t row_index) = 0;
   };
 
   struct ReaderOptions {
