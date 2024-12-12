@@ -234,7 +234,16 @@ class PaxColumn {
   virtual size_t ToastCounts();
 
   // Test current row is a toast
-  bool IsToast(size_t position);
+  bool IsToast(size_t pos) {
+    if (!toast_flat_map_) {
+      return false;
+    }
+
+    CBDB_CHECK(pos < total_rows_, cbdb::CException::ExType::kExTypeOutOfRange,
+              fmt("Fail to check is toast [pos=%lu, total rows=%u], \n %s", pos,
+                  total_rows_, DebugString().c_str()));
+    return !toast_flat_map_->Test(pos);
+  }
 
   // Set the toast indexes
   void SetToastIndexes(std::shared_ptr<DataBuffer<int32>> toast_indexes);

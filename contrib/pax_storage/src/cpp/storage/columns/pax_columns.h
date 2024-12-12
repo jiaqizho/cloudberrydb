@@ -16,7 +16,9 @@ class PaxColumns : public PaxColumn {
 
   ~PaxColumns() override;
 
-  const std::unique_ptr<PaxColumn> &operator[](uint64 i);
+  inline const std::unique_ptr<PaxColumn> &operator[](uint64 i) {
+    return columns_[i];
+  }
 
   void Append(std::unique_ptr<PaxColumn> &&column);
 
@@ -45,8 +47,9 @@ class PaxColumns : public PaxColumn {
   size_t ToastCounts() override;
 
   // Set the external toast buffer
-  void SetExternalToastDataBuffer(std::shared_ptr<DataBuffer<char>> external_toast_data,
-                                  const std::vector<size_t> &column_sizes);
+  void SetExternalToastDataBuffer(
+      std::shared_ptr<DataBuffer<char>> external_toast_data,
+      const std::vector<size_t> &column_sizes);
 
   // Get the external toast data buffer
   std::shared_ptr<DataBuffer<char>> GetExternalToastDataBuffer() override;
