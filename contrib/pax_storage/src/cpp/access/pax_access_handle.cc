@@ -21,7 +21,7 @@
 #include "exceptions/CException.h"
 #include "storage/local_file_system.h"
 #ifdef VEC_BUILD
-#include "storage/pax_parallel.h"
+#include "storage/vec_parallel_pax.h"
 #endif
 
 
