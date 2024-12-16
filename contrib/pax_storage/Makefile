@@ -34,10 +34,12 @@ DIRS = $(shell find src/cpp -maxdepth 2 -type d)
 SRC = $(foreach dir, $(DIRS), $(wildcard $(dir)/*.cc))
 
 .PHONY: install-data build
-build: $(SRC)
-	@echo "build pax"
-	mkdir -p build
-	cd build && cmake .. -DCMAKE_INSTALL_PREFIX=$(DESTDIR)$(prefix) && make -j8
+build:
+	@if [ ! -f build/Makefile ]; then \
+		mkdir -p build && \
+		cd build && cmake .. -DCMAKE_INSTALL_PREFIX=$(DESTDIR)$(prefix); \
+	fi
+	cd build && make -j8
 	@cp -f build/src/cpp/libpax.so pax.so
 
 pax-unit-test: 
