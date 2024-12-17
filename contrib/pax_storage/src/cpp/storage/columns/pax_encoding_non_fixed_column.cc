@@ -225,10 +225,9 @@ std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetBuffer() {
       shared_data_ =
           std::make_shared<DataBuffer<char>>(PaxNonFixedColumn::data_->Used());
       encoder_->SetDataBuffer(shared_data_);
-      Assert(offsets_.size() == lengths_->GetSize());
 
       char *data_buffer = PaxNonFixedColumn::data_->GetBuffer();
-      for (size_t i = 0; i < offsets_.size(); i++) {
+      for (size_t i = 0; i < lengths_->GetSize(); i++) {
         encoder_->Append(data_buffer, (*lengths_)[i]);
         data_buffer += (*lengths_)[i];
       }

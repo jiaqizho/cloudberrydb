@@ -469,6 +469,13 @@ class PaxNonFixedColumn : public PaxColumn {
   // so a variable-length element of the lengths stream can use int32
   // to represent the length
   std::shared_ptr<DataBuffer<int32>> lengths_;
+
+  // FIXME: currently, the pax file stores the lengths stream, each element of
+  // which is the length of each record. We need to use offsets instead. so
+  // that when reading data, there is no need to build the offsets array.
+  //
+  // Notice: we should not use offsets in the write path at this time until
+  // we fixed the fixme above.
   std::vector<int32> offsets_;
 };
 
