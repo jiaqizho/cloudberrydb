@@ -315,8 +315,8 @@ void PaxNonFixedColumn::Set(std::shared_ptr<DataBuffer<char>> data,
 
 void PaxNonFixedColumn::BuildOffsets() {
   Assert(offsets_.empty());
-  offsets_.resize(lengths_->GetSize());
-  for (size_t i = 0; i < lengths_->GetSize(); i++) {
+  offsets_.resize(lengths_->GetSize() + 1);
+  for (size_t i = 0; i <= lengths_->GetSize(); i++) {
     offsets_[i] = i == 0 ? 0 : offsets_[i - 1] + (*lengths_)[i - 1];
   }
 }
@@ -352,12 +352,6 @@ void PaxNonFixedColumn::AppendAlign(char *buffer, size_t size) {
   auto length = static_cast<int32>(size);
   lengths_->Write(&length, sizeof(int32));
   lengths_->Brush(sizeof(int32));
-
-  offsets_.emplace_back(offsets_.empty()
-                            ? 0
-                            : offsets_[offsets_.size() - 1] +
-                                  (*lengths_)[offsets_.size() - 1]);
-  Assert(offsets_.size() == lengths_->GetSize());
 }
 
 void PaxNonFixedColumn::Append(char *buffer, size_t size) {
@@ -384,12 +378,6 @@ void PaxNonFixedColumn::Append(char *buffer, size_t size) {
   auto length = static_cast<int32>(size);
   lengths_->Write(&length, sizeof(int32));
   lengths_->Brush(sizeof(int32));
-
-  offsets_.emplace_back(offsets_.empty()
-                            ? 0
-                            : offsets_[offsets_.size() - 1] +
-                                  (*lengths_)[offsets_.size() - 1]);
-  Assert(offsets_.size() == lengths_->GetSize());
 }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetLengthBuffer() {
@@ -421,12 +409,12 @@ int64 PaxNonFixedColumn::GetLengthsOriginLength() const {
 int32 PaxNonFixedColumn::GetTypeLength() const { return -1; }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
-  CBDB_CHECK(position < GetNonNullRows(),
-             cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get buffer [pos=%lu, not null rows=%lu], \n %s",
-                 position, GetNonNullRows(), DebugString().c_str()));
+  Assert(position < GetNonNullRows());
+  Assert(position + 1 < offsets_.size());
+  Assert(offsets_[position + 1] > offsets_[position]);
+
   return std::make_pair(data_->GetBuffer() + offsets_[position],
-                        (*lengths_)[position]);
+                        offsets_[position + 1] - offsets_[position]);
 }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetRangeBuffer(size_t start_pos,
