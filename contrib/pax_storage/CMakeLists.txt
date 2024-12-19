@@ -5,7 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(TOP_DIR ${PROJECT_SOURCE_DIR}/../..)
 set(CBDB_INCLUDE_DIR ${TOP_DIR}/src/include)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -Wno-redundant-move -Wno-error=redundant-move -Wno-error=ignored-qualifiers -Wuninitialized -Winit-self -Wstrict-aliasing -Wno-missing-field-initializers -Wno-unused-parameter -Wno-clobbered -Wno-sized-deallocation -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -Wno-unused-function -Wno-redundant-move -Wno-error=redundant-move -Wno-error=ignored-qualifiers -Wuninitialized -Winit-self -Wstrict-aliasing -Wno-missing-field-initializers -Wno-unused-parameter -Wno-clobbered -Wno-sized-deallocation -g")
+
+option(USE_MANIFEST_API "Use manifest API" ON)
+option(USE_PAX_CATALOG "Use manifest API, by pax impl" ON)
 
 # Build gtest options
 option(BUILD_GTEST "Build with google test" ON)
@@ -16,6 +19,16 @@ option(BUILD_TOOLS "Build with pax tools" ON)
 
 # Build with return dictionary in record batch
 option(BUILD_RB_RET_DICT "Build with pax direct return dictionary in record batch." OFF)
+
+if (USE_MANIFEST_API)
+  ADD_DEFINITIONS(-DUSE_MANIFEST_API)
+else()
+  set(USE_PAX_CATALOG ON)
+endif(USE_MANIFEST_API)
+
+if (USE_PAX_CATALOG)
+  ADD_DEFINITIONS(-DUSE_PAX_CATALOG)
+endif()
 
 include(CheckSymbolExists)
 SET(PG_CONFIG_HEADER_FILE "${CBDB_INCLUDE_DIR}/pg_config.h")

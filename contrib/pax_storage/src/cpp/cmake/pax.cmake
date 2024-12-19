@@ -77,7 +77,6 @@ set(pax_storage_src
     storage/paxc_smgr.cc
     storage/toast/pax_toast.cc
     storage/strategy.cc
-    storage/micro_partition_iterator.cc
     storage/remote_file_system.cc
     storage/wal/pax_wal.cc
     storage/wal/paxc_desc.c
@@ -102,6 +101,7 @@ set(pax_access_src
     access/paxc_rel_options.cc
     access/paxc_scanner.cc
     access/pax_access_handle.cc
+    access/pax_access_method_internal.cc
     access/pax_deleter.cc
     access/pax_dml_state.cc
     access/pax_inserter.cc
@@ -112,10 +112,25 @@ set(pax_access_src
     access/pax_scanner.cc)
 
 set(pax_catalog_src
-    catalog/pax_aux_table.cc
-    catalog/pg_pax_tables.cc
     catalog/pax_fastsequence.cc
+    catalog/pax_manifest.cc
     )
+if (USE_PAX_CATALOG)
+  set(pax_catalog_src ${pax_catalog_src}
+      catalog/pax_aux_table.cc
+      catalog/pg_pax_tables.cc)
+endif()
+
+if (USE_MANIFEST_API)
+  set(pax_storage_src ${pax_storage_src} storage/micro_partition_iterator_manifest.cc)
+  if (USE_PAX_CATALOG)
+    set(pax_catalog_src ${pax_catalog_src} catalog/pax_manifest_impl.cc)
+  else()
+    # use manifest implementation
+  endif()
+else() # USE_MANIFEST_API
+  set(pax_storage_src ${pax_storage_src} storage/micro_partition_iterator.cc)
+endif()
 
 set(pax_vec_src
   storage/vec/arrow_wrapper.cc
@@ -149,6 +164,7 @@ set(pax_target_dependencies generate_protobuf create_sql_script)
 
 add_library(pax SHARED ${pax_target_src})
 set_target_properties(pax PROPERTIES OUTPUT_NAME pax)
+
 
 # vec build
 if (VEC_BUILD)

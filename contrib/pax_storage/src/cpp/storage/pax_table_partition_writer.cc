@@ -4,7 +4,7 @@
 
 #include "access/pax_deleter.h"
 #include "access/pax_partition.h"
-#include "catalog/pax_aux_table.h"
+#include "catalog/pax_catalog.h"
 #include "comm/pax_memory.h"
 #include "storage/micro_partition_stats.h"
 
