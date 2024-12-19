@@ -3,9 +3,7 @@
 #include "access/pax_access_handle.h"
 #include "access/pax_dml_state.h"
 #include "access/pax_visimap.h"
-#include "catalog/pax_aux_table.h"
-#include "catalog/pax_fastsequence.h"
-#include "catalog/pg_pax_tables.h"
+#include "catalog/pax_catalog.h"
 #include "comm/guc.h"
 #include "comm/pax_memory.h"
 #include "comm/pax_resource.h"
@@ -22,47 +20,6 @@
 #include "utils/am_vec.h"
 #endif
 
-namespace paxc {
-
-static inline bool TestVisimap(Relation rel, const char *visimap_name,
-                               int offset) {
-  CBDB_TRY();
-  { return pax::TestVisimap(rel, visimap_name, offset); }
-  CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({});
-  CBDB_END_TRY();
-  pg_unreachable();
-}
-
-bool IndexUniqueCheck(Relation rel, ItemPointer tid, Snapshot snapshot,
-                      bool * /*all_dead*/) {
-  paxc::ScanAuxContext context;
-  HeapTuple tuple;
-  Oid aux_relid;
-  bool exists;
-  int block_id;
-
-  aux_relid = ::paxc::GetPaxAuxRelid(RelationGetRelid(rel));
-  block_id = pax::GetBlockNumber(*tid);
-  context.BeginSearchMicroPartition(aux_relid, InvalidOid, snapshot,
-                                    AccessShareLock, block_id);
-  tuple = context.SearchMicroPartitionEntry();
-  exists = HeapTupleIsValid(tuple);
-  if (exists) {
-    bool isnull;
-    auto desc = RelationGetDescr(context.GetRelation());
-    auto visimap = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTVISIMAPNAME,
-                                desc, &isnull);
-    if (!isnull) {
-      exists = TestVisimap(rel, NameStr(*DatumGetName(visimap)),
-                           pax::GetTupleOffset(*tid));
-    }
-  }
-
-  context.EndSearchMicroPartition(AccessShareLock);
-  return exists;
-}
-}  // namespace paxc
 
 namespace pax {
 
@@ -299,10 +256,10 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   if (desc->rs_base_.rs_parallel) {
     ParallelBlockTableScanDesc pt_scan = (ParallelBlockTableScanDesc)pscan;
 
-    iter = MicroPartitionInfoParallelIterator::New(relation, aux_snapshot,
-                                                   pt_scan);
+    iter = MicroPartitionIterator::NewParallelIterator(relation, aux_snapshot,
+                                                       pt_scan);
   } else {
-    iter = MicroPartitionInfoIterator::New(relation, aux_snapshot);
+    iter = MicroPartitionIterator::New(relation, aux_snapshot);
   }
 
   if (filter->SparseFilterEnabled()) {

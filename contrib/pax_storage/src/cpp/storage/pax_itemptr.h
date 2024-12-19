@@ -78,6 +78,4 @@ static inline uint64 CTIDToUint64(ItemPointerData ctid) {
   return ctid_u64;
 }
 
-extern std::string GenerateBlockID(Relation relation);
-
 }  // namespace pax
