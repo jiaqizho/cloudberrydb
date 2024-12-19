@@ -4,8 +4,6 @@
 
 #include "comm/cbdb_wrappers.h"
 
-namespace paxc {
-
 // Get the required objid Tuple from pg_pax_fastsequence system table.
 // objid indicates single pax micro-partition table oid.
 // lock_mode indicates the lock level used when retrive data from system table.
@@ -210,13 +208,11 @@ char *CPaxGetFastSequencesName(Oid oid, bool missing_ok) {
   return pax_fs_name;
 }
 
-}  // namespace paxc
-
 namespace cbdb {
 
 int32 CPaxGetFastSequences(Oid objid, bool increase) {
   CBDB_WRAP_START;
-  { return paxc::CPaxGetFastSequences(objid, increase); }
+  { return ::CPaxGetFastSequences(objid, increase); }
   CBDB_WRAP_END;
   return -1;
 }

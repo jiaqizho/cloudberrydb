@@ -1,6 +1,6 @@
 #include "clustering/pax_clustering_writer.h"
 
-#include "catalog/pax_aux_table.h"
+#include "catalog/pax_catalog.h"
 
 namespace pax {
 namespace clustering {

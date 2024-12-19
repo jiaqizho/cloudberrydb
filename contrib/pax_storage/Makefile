@@ -33,7 +33,7 @@ all: build
 DIRS = $(shell find src/cpp -maxdepth 2 -type d)
 SRC = $(foreach dir, $(DIRS), $(wildcard $(dir)/*.cc))
 
-.PHONY: install-data
+.PHONY: install-data build
 build: $(SRC)
 	@echo "build pax"
 	mkdir -p build
@@ -64,11 +64,7 @@ pax-test:
 	$(bindir)/dropdb --if-exists pax_test
 
 .PHONY: icw_test
-icw_test: pax-test isolation2_test
-	@echo "Begin running pax regression tests"
-	make -C $(PAX_REGRESS_DIR) regress_link
-	@echo "Current PGOPTIONS=$(PGOPTIONS)"
-	make -C $(PAX_REGRESS_DIR) icw_test
+icw_test: pax-test regress_test isolation2_test
 	@echo "Begin running pax+vector regression tests"
 	@echo "Current PGOPTIONS=$(PGOPTIONS) -c vector.enable_vectorization=on"
 	PGOPTIONS="$(PGOPTIONS) -c vector.enable_vectorization=on" make -C $(PAX_VEC_REGRESS_DIR) icw_test
@@ -76,7 +72,13 @@ icw_test: pax-test isolation2_test
 	@echo "Current PGOPTIONS=$(PGOPTIONS) -c vector.enable_vectorization=on -c pax_default_storage_format=porc_vec"
 	PGOPTIONS="$(PGOPTIONS) -c vector.enable_vectorization=on -c pax_default_storage_format=porc_vec" make -C $(PAX_VEC_REGRESS_DIR) icw_test
 
-.PHONY: isolation2_test
+.PHONY: regress_test isolation2_test
+regress_test:
+	@echo "Begin running pax regression tests"
+	make -C $(PAX_REGRESS_DIR) regress_link
+	@echo "Current PGOPTIONS=$(PGOPTIONS)"
+	make -C $(PAX_REGRESS_DIR) icw_test
+
 isolation2_test:
 	make -C $(PAX_ISOLATION2_DIR) installcheck
 

@@ -3,7 +3,7 @@
 #include "comm/cbdb_api.h"
 
 #include "access/pax_access_handle.h"
-#include "catalog/pg_pax_tables.h"
+#include "catalog/pax_catalog.h"
 #include "comm/cbdb_wrappers.h"
 
 namespace paxc {
@@ -225,6 +225,9 @@ static List *TransformPartitionExtension(ParseState *pstate, Relation relation,
 
 static bool PaxLoadPartitionSpec(Oid relid, List **partparams_list,
                                  List **partboundspec_list) {
+#if defined(USE_MANIFEST_API) && !defined(USE_PAX_CATALOG)
+  return false;
+#else
   Node *part;
   List *list;
 
@@ -236,6 +239,7 @@ static bool PaxLoadPartitionSpec(Oid relid, List **partparams_list,
   *partparams_list = castNode(List, list_nth(list, 0));
   *partboundspec_list = castNode(List, list_nth(list, 1));
   return true;
+#endif
 }
 
 static inline PartitionRangeDatumKind RangeDatumToKind(List *datums, int i) {
@@ -650,9 +654,13 @@ bool PartitionObject::Initialize(Relation pax_rel) {
   // 1. rename column name
   // 2. change column type
   // 3. drop one or more columns in the partition keys
+#if defined(USE_MANIFEST_API) && !defined(USE_PAX_CATALOG)
+  return false;
+#else
   CBDB_WRAP_START;
   { return stub_.Initialize(pax_rel); }
   CBDB_WRAP_END;
+#endif
 }
 void PartitionObject::Release() {
   CBDB_WRAP_START;

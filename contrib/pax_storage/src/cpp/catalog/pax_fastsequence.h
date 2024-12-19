@@ -25,13 +25,21 @@
 #define FASTSEQUENCE_INIT_TYPE_INPLACE 'I'
 #define FASTSEQUENCE_INIT_TYPE_UPDATE 'U'
 
-namespace paxc {
-void CPaxInitializeFastSequenceEntry(Oid objid, char init_type,
-                                     int32 fast_seq = 0);
-int32 CPaxGetFastSequences(Oid objid, bool increase = true);
-char *CPaxGetFastSequencesName(Oid oid, bool missing_ok);
-}  // namespace paxc
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-namespace cbdb{
+void CPaxInitializeFastSequenceEntry(Oid objid, char init_type,
+                                     int32 fast_seq);
+int32 CPaxGetFastSequences(Oid objid, bool increase);
+char *CPaxGetFastSequencesName(Oid oid, bool missing_ok);
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+namespace cbdb {
 int32 CPaxGetFastSequences(Oid objid, bool increase = true);
 }
+#endif

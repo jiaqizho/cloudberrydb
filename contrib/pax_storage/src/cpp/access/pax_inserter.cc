@@ -6,7 +6,7 @@
 #include "access/pax_dml_state.h"
 #include "access/pax_partition.h"
 #include "access/paxc_rel_options.h"
-#include "catalog/pax_aux_table.h"
+#include "catalog/pax_catalog.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/micro_partition_stats.h"
 #include "storage/strategy.h"
