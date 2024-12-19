@@ -5,7 +5,7 @@
 #include <map>
 
 #include "access/paxc_rel_options.h"
-#include "catalog/pax_aux_table.h"
+#include "catalog/pax_catalog.h"
 #include "clustering/clustering.h"
 #include "clustering/index_clustering.h"
 #include "clustering/lexical_clustering.h"
@@ -114,7 +114,7 @@ void Cluster(Relation rel, Snapshot snapshot, bool is_incremental_cluster) {
   clustering::DataClustering::ClusterType cluster_type = GetClusterType(rel);
 
   std::vector<MicroPartitionMetadata> delete_files;
-  auto iter = MicroPartitionInfoIterator::New(rel, snapshot);
+  auto iter = MicroPartitionIterator::New(rel, snapshot);
   auto wrap = std::make_unique<FilterIterator<MicroPartitionMetadata>>(
       std::move(iter),
       [&delete_files, is_incremental_cluster](const MicroPartitionMetadata &x) {
@@ -148,7 +148,7 @@ void Cluster(Relation rel, Snapshot snapshot, bool is_incremental_cluster) {
 
 void IndexCluster(Relation old_rel, Relation new_rel, Relation index,
                   Snapshot snapshot) {
-  auto iter = MicroPartitionInfoIterator::New(old_rel, snapshot);
+  auto iter = MicroPartitionIterator::New(old_rel, snapshot);
 
   auto reader = std::make_unique<clustering::PaxClusteringReader>(
       old_rel, std::move(iter));

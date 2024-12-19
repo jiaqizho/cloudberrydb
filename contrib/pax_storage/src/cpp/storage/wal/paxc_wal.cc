@@ -343,6 +343,7 @@ void XLogRedoPaxCreateDirectory(XLogReaderState *record) {
   char *rec = XLogRecGetData(record);
   xl_pax_directory *xlrec = (xl_pax_directory *)rec;
 
+  TablespaceCreateDbspace(xlrec->node.spcNode, xlrec->node.dbNode, true);
   dirpath = paxc::BuildPaxDirectoryPath(xlrec->node, InvalidBackendId, false);
 
   PAX_LOG_IF(pax::pax_enable_debug,

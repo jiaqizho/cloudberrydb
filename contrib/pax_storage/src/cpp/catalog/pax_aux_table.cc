@@ -6,8 +6,7 @@
 
 #include <utility>
 
-#include "catalog/pax_fastsequence.h"
-#include "catalog/pg_pax_tables.h"
+#include "catalog/pax_catalog.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/fmt.h"
 #include "storage/file_system.h"
@@ -47,8 +46,9 @@ static void CPaxNontransactionalTruncateTable(Relation rel) {
   heap_truncate_one_rel(aux_rel);
   relation_close(aux_rel, NoLock);
 
-  paxc::CPaxInitializeFastSequenceEntry(RelationGetRelid(rel),
-                                        FASTSEQUENCE_INIT_TYPE_INPLACE);
+  CPaxInitializeFastSequenceEntry(RelationGetRelid(rel),
+                                  FASTSEQUENCE_INIT_TYPE_INPLACE,
+                                  0);
 }
 
 void CPaxCreateMicroPartitionTable(Relation rel) {
@@ -71,24 +71,24 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
                                    aux_relname, aux_namespace_id);
   tupdesc = CreateTemplateTupleDesc(NATTS_PG_PAX_BLOCK_TABLES);
   TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME,
-                     "ptblockname", INT4OID, -1, 0);
+                     PAX_AUX_PTBLOCKNAME, INT4OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT,
-                     "pttupcount", INT4OID, -1, 0);
+                     PAX_AUX_PTTUPCOUNT, INT4OID, -1, 0);
   // TODO(chenhongjie): uncompressed and compressed ptblocksize are needed.
   TupleDescInitEntry(tupdesc, (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE,
-                     "ptblocksize", INT4OID, -1, 0);
+                     PAX_AUX_PTBLOCKSIZE, INT4OID, -1, 0);
   TupleDescInitEntry(tupdesc,
                      (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS,
-                     "ptstatistics", PAX_AUX_STATS_TYPE_OID, -1, 0);
+                     PAX_AUX_PTSTATISITICS, PAX_AUX_STATS_TYPE_OID, -1, 0);
   TupleDescInitEntry(tupdesc,
                      (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTVISIMAPNAME,
-                     "ptvisimapname", NAMEOID, -1, 0);
+                     PAX_AUX_PTVISIMAPNAME, NAMEOID, -1, 0);
   TupleDescInitEntry(tupdesc,
                      (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST,
-                     "ptexistexttoast", BOOLOID, -1, 0);
+                     PAX_AUX_PTEXISTEXTTOAST, BOOLOID, -1, 0);
   TupleDescInitEntry(tupdesc,
                      (AttrNumber)ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED,
-                     "ptisclustered", BOOLOID, -1, 0);
+                     PAX_AUX_PTISCLUSTERED, BOOLOID, -1, 0);
   {
     // Add constraints for the aux table
     auto attr =
@@ -589,12 +589,6 @@ Oid FindAuxIndexOid(Oid aux_relid, Snapshot snapshot) {
   CBDB_WRAP_END;
 }
 
-void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot, int block_id) {
-  CBDB_WRAP_START;
-  { paxc::DeleteMicroPartitionEntry(pax_relid, snapshot, block_id); }
-  CBDB_WRAP_END;
-}
-
 struct FetchMicroPartitionAuxRowContext {
   pax::MicroPartitionMetadata info;
   Relation rel;
@@ -643,7 +637,8 @@ static void FetchMicroPartitionAuxRowCallback(Datum *values, bool *isnull,
   if (!isnull[ANUM_PG_PAX_BLOCK_TABLES_PTVISIMAPNAME - 1]) {
     auto datum = values[ANUM_PG_PAX_BLOCK_TABLES_PTVISIMAPNAME - 1];
     auto name = NameStr(*DatumGetName(datum));
-    ctx->info.SetVisibilityBitmapFile(std::string(name));
+    auto vname = cbdb::BuildPaxFilePath(rel_path, name);
+    ctx->info.SetVisibilityBitmapFile(std::move(vname));
   }
 
   Assert(!isnull[ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST - 1]);
@@ -665,7 +660,7 @@ static void FetchMicroPartitionAuxRowCallbackWrapper(Datum *values,
   CBDB_END_TRY();
 }
 
-pax::MicroPartitionMetadata GetMicroPartitionMetadata(Relation rel,
+pax::MicroPartitionMetadata PaxGetMicroPartitionMetadata(Relation rel,
                                                       Snapshot snapshot,
                                                       int block_id) {
   CBDB_WRAP_START;
@@ -680,34 +675,6 @@ pax::MicroPartitionMetadata GetMicroPartitionMetadata(Relation rel,
   CBDB_WRAP_END;
 }
 
-void InsertMicroPartitionPlaceHolder(Oid pax_relid, int block_id) {
-  CBDB_WRAP_START;
-  {
-    Oid aux_relid;
-
-    aux_relid = ::paxc::GetPaxAuxRelid(pax_relid);
-    paxc::InsertMicroPartitionPlaceHolder(aux_relid, block_id);
-  }
-  CBDB_WRAP_END;
-}
-
-void InsertOrUpdateMicroPartitionEntry(const pax::WriteSummary &summary) {
-  CBDB_WRAP_START;
-  {
-    Oid aux_relid;
-
-    aux_relid = ::paxc::GetPaxAuxRelid(summary.rel_oid);
-
-    paxc::InsertOrUpdateMicroPartitionPlaceHolder(
-        aux_relid, std::stol(summary.block_id), summary.num_tuples,
-        summary.file_size,
-        summary.mp_stats ? *summary.mp_stats
-                         : ::pax::stats::MicroPartitionStatisticsInfo(),
-        summary.exist_ext_toast, summary.is_clustered);
-  }
-  CBDB_WRAP_END;
-}
-
 void UpdateVisimap(Oid aux_relid, int block_id, const char *visimap_filename) {
   CBDB_WRAP_START;
   { paxc::UpdateVisimap(aux_relid, block_id, visimap_filename); }
@@ -718,13 +685,6 @@ void UpdateStatistics(Oid aux_relid, int block_id,
                       pax::stats::MicroPartitionStatisticsInfo *mp_stats) {
   CBDB_WRAP_START;
   { paxc::UpdateStatistics(aux_relid, block_id, mp_stats); }
-  CBDB_WRAP_END;
-}
-
-bool IsMicroPartitionVisible(Relation pax_rel, BlockNumber block,
-                             Snapshot snapshot) {
-  CBDB_WRAP_START;
-  { return paxc::IsMicroPartitionVisible(pax_rel, block, snapshot); }
   CBDB_WRAP_END;
 }
 
@@ -755,79 +715,7 @@ void CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(Relation rel) {
 void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
                                            const RelFileNode *newrnode,
                                            bool createnewpath) {
-  std::string src_path;
-  std::string dst_path;
-  std::vector<std::string> filelist;
-
-  Assert(rel && newrnode);
-
-  bool is_dfs_tblspace = cbdb::IsDfsTablespaceById(rel->rd_rel->reltablespace);
-  CBDB_CHECK(!cbdb::IsDfsTablespaceById(is_dfs_tblspace),
-             cbdb::CException::kExTypeUnImplements,
-             "remote filesystem not support copy data");
-
-  FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
-  src_path = cbdb::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend,
-                                         is_dfs_tblspace);
-  Assert(!src_path.empty());
-
-  dst_path =
-      cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend, is_dfs_tblspace);
-  Assert(!dst_path.empty());
-
-  CBDB_CHECK(!src_path.empty() && !dst_path.empty(),
-             cbdb::CException::ExType::kExTypeFileOperationError,
-             fmt("Fail to build directory path. "
-                 "src [spcNode=%u, dbNode=%u, relNode=%lu, backend=%d]"
-                 "dst [spcNode=%u, dbNode=%u, relNode=%lu, backend=%d]",
-                 rel->rd_node.spcNode, rel->rd_node.dbNode,
-                 rel->rd_node.relNode, rel->rd_backend, newrnode->spcNode,
-                 newrnode->dbNode, newrnode->relNode, rel->rd_backend));
-
-  // createnewpath is used to indicate if creating destination micropartition
-  // file directory and storage file for copying or not.
-  // 1. For RelationCopyData case, createnewpath should be set as true to
-  // explicitly create a new destination directory under
-  //    new tablespace path pg_tblspc/.
-  // 2. For RelationCopyDataForCluster case, createnewpath should be set as
-  // false cause the destination directory was already
-  //    created with a new temp table by previously calling
-  //    PaxAuxRelationSetNewFilenode.
-  if (createnewpath) {
-    // create pg_pax_table relfilenode file and dbid directory.
-    cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
-                                         SMGR_PAX, rel);
-
-    // create micropartition file destination folder for copying.
-    CBDB_CHECK((fs->CreateDirectory(dst_path) == 0),
-               cbdb::CException::ExType::kExTypeIOError,
-               fmt("Fail to create directory [path=%s]", dst_path.c_str()));
-
-    // only permanent table should write wal
-    if (cbdb::NeedWAL(rel)) {
-      cbdb::XLogPaxCreateDirectory(*newrnode);
-    }
-  }
-
-  // Get micropatition file source folder filename list for copying, if file
-  // list is empty then skip copying file directly.
-  filelist = fs->ListDirectory(src_path);
-  if (filelist.empty()) return;
-
-  for (auto &iter : filelist) {
-    Assert(!iter.empty());
-    std::string src_file = src_path;
-    std::string dst_file = dst_path;
-    src_file.append("/");
-    src_file.append(iter);
-    dst_file.append("/");
-    dst_file.append(iter);
-    auto file1 = fs->Open(src_file, pax::fs::kReadMode);
-    auto file2 = fs->Open(dst_file, pax::fs::kWriteMode);
-    fs->CopyFile(file1.get(), file2.get());
-    file1->Close();
-    file2->Close();
-  }
+  PaxCopyAllDataFiles(rel, newrnode, createnewpath);
 }
 
 void CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(Relation old_rel,

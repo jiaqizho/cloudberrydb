@@ -9,10 +9,8 @@
 #include "access/pax_updater.h"
 #include "access/paxc_rel_options.h"
 #include "access/paxc_scanner.h"
-#include "catalog/pax_aux_table.h"
-#include "catalog/pax_fastsequence.h"
-#include "catalog/pg_pax_tables.h"
 #include "clustering/zorder_utils.h"
+#include "catalog/pax_catalog.h"
 #include "comm/guc.h"
 #include "comm/pax_memory.h"
 #include "comm/pax_resource.h"
@@ -158,171 +156,6 @@ bool CCPaxAccessMethod::IndexFetchTuple(struct IndexFetchTableData *scan,
 }
 
 void CCPaxAccessMethod::IndexFetchReset(IndexFetchTableData * /*scan*/) {}
-
-void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
-                                               const RelFileNode *newrnode,
-                                               char persistence,
-                                               TransactionId *freeze_xid,
-                                               MultiXactId *minmulti) {
-  Relation pax_tables_rel;
-  ScanKeyData scan_key[1];
-  SysScanDesc scan;
-  HeapTuple tuple;
-  Oid pax_relid;
-  bool exists;
-
-  *freeze_xid = *minmulti = InvalidTransactionId;
-
-  pax_tables_rel = table_open(PAX_TABLES_RELATION_ID, RowExclusiveLock);
-  pax_relid = RelationGetRelid(rel);
-
-  ScanKeyInit(&scan_key[0], ANUM_PG_PAX_TABLES_RELID, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(pax_relid));
-  scan = systable_beginscan(pax_tables_rel, PAX_TABLES_RELID_INDEX_ID, true,
-                            NULL, 1, scan_key);
-  tuple = systable_getnext(scan);
-  exists = HeapTupleIsValid(tuple);
-  if (exists) {
-    Oid aux_relid;
-
-    // set new filenode, not create new table
-    //
-    // 1. truncate aux table by new relfilenode
-    aux_relid = ::paxc::GetPaxAuxRelid(pax_relid);
-    Assert(OidIsValid(aux_relid));
-    paxc::PaxAuxRelationSetNewFilenode(aux_relid);
-  } else {
-    // create new table
-    //
-    // 1. create aux table
-    // 2. initialize fast sequence in pg_pax_fastsequence
-    // 3. setup dependency
-    paxc::CPaxCreateMicroPartitionTable(rel);
-  }
-
-  // initialize or reset the fast sequence number
-  paxc::CPaxInitializeFastSequenceEntry(
-      pax_relid,
-      exists ? FASTSEQUENCE_INIT_TYPE_UPDATE : FASTSEQUENCE_INIT_TYPE_CREATE);
-
-  systable_endscan(scan);
-  table_close(pax_tables_rel, NoLock);
-
-  // if table in dfs_tablespace, need not create relfilenode file on s3
-  if (paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace)) {
-    // FIXME(gongxun): currently it is not possible to delete files in
-    // dfs_tablespace through mdunlink_pax, so pending delete logic is
-    // retained for the tables under dfs_tablespace
-    paxc::PaxAddPendingDelete(rel, *newrnode, false);
-    return;
-  }
-
-  // create relfilenode file for pax table
-  auto srel = RelationCreateStorage(*newrnode, persistence, SMGR_PAX, rel);
-  smgrclose(srel);
-
-  // create data directory
-  CBDB_TRY();
-  {
-    FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
-    auto path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend, false);
-    Assert(!path.empty());
-    CBDB_CHECK(
-        (fs->CreateDirectory(path) == 0),
-        cbdb::CException::ExType::kExTypeIOError,
-        fmt("Create directory failed [path=%s, errno=%d], "
-            "relfilenode [spcNode=%u, dbNode=%u, relNode=%lu, backend=%d]",
-            path.c_str(), errno, newrnode->spcNode, newrnode->dbNode,
-            newrnode->relNode, rel->rd_backend));
-    // only permanent table should write wal
-    if (cbdb::NeedWAL(rel)) {
-      cbdb::XLogPaxCreateDirectory(*newrnode);
-    }
-  }
-  CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({});
-  CBDB_END_TRY();
-}
-
-// * non transactional truncate table case:
-// 1. create table inside transactional block, and then truncate table inside
-// transactional block.
-// 2.create table outside transactional block, insert data
-// and truncate table inside transactional block.
-void CCPaxAccessMethod::RelationNontransactionalTruncate(Relation rel) {
-  CBDB_TRY();
-  { pax::CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(rel); }
-  CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({});
-  CBDB_END_TRY();
-}
-
-void CCPaxAccessMethod::RelationCopyData(Relation rel,
-                                         const RelFileNode *newrnode) {
-  CBDB_TRY();
-  {
-    cbdb::RelOpenSmgr(rel);
-    pax::CCPaxAuxTable::PaxAuxRelationCopyData(rel, newrnode, true);
-    cbdb::RelCloseSmgr(rel);
-    cbdb::RelDropStorage(rel);
-  }
-  CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({});
-  CBDB_END_TRY();
-}
-
-//  Copy data from `OldTable` into `NewTable`, as part of a CLUSTER or VACUUM
-//  FULL.
-
-//  PAX does not have dead tuples, but the core framework requires
-//  to implement this callback to do CLUSTER/VACUUM FULL/etc.
-//  PAX may have re-organize semantics for this function.
-
-//  Additional Input parameters:
-//  - use_sort - if true, the table contents are sorted appropriate for
-//    `OldIndex`; if false and OldIndex is not InvalidOid, the data is copied
-//    in that index's order; if false and OldIndex is InvalidOid, no sorting is
-//    performed
-//  - OldIndex - see use_sort
-//  - OldestXmin - computed by vacuum_set_xid_limits(), even when
-//    not needed for the relation's AM
-//  - *xid_cutoff - ditto
-//  - *multi_cutoff - ditto
-
-//  Output parameters:
-//  - *xid_cutoff - rel's new relfrozenxid value, may be invalid
-//  - *multi_cutoff - rel's new relminmxid value, may be invalid
-//  - *tups_vacuumed - stats, for logging, if appropriate for AM
-//  - *tups_recently_dead - stats, for logging, if appropriate for AM
-
-void CCPaxAccessMethod::RelationCopyForCluster(
-    Relation old_rel, Relation new_rel, Relation old_index, bool use_sort,
-    TransactionId /*oldest_xmin*/, TransactionId * /*xid_cutoff*/,
-    MultiXactId * /*multi_cutoff*/, double * /*num_tuples*/,
-    double * /*tups_vacuumed*/, double * /* tups_recently_dead*/) {
-  Assert(RELATION_IS_PAX(old_rel));
-  Assert(RELATION_IS_PAX(new_rel));
-  CBDB_TRY();
-  {
-    //  if false and OldIndex is InvalidOid, no sorting is performed, just copy
-    if (!use_sort && old_index == NULL) {
-      pax::CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(old_rel, new_rel);
-      return;
-    }
-
-    // TODO(gongxun): should we support index's order to cluster table? ao/aocs
-    // does not support.
-
-    // like aocs, pax tables can only be clustered against a btree index
-    CBDB_CHECK(old_index && (old_index->rd_rel->relam == BTREE_AM_OID),
-               cbdb::CException::kExTypeInvalidIndexType,
-               "PAX tables can only be clustered against a btree index");
-    pax::IndexCluster(old_rel, new_rel, old_index, GetActiveSnapshot());
-  }
-  CBDB_CATCH_DEFAULT();
-  CBDB_FINALLY({});
-  CBDB_END_TRY();
-}
 
 void CCPaxAccessMethod::ScanRescan(TableScanDesc scan, ScanKey key,
                                    bool set_params, bool allow_strat,
@@ -673,105 +506,10 @@ void PaxAccessMethod::RelationVacuum(Relation /*onerel*/,
   /* PAX: micro-partitions have no dead tuples, so vacuum is empty */
 }
 
-uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {
-  Oid pax_aux_oid;
-  Relation pax_aux_rel;
-  TupleDesc aux_tup_desc;
-  HeapTuple aux_tup;
-  SysScanDesc aux_scan;
-  uint64 pax_size = 0;
-
-  if (fork_number != MAIN_FORKNUM) return 0;
-
-  // Get the oid of pg_pax_blocks_xxx from pg_pax_tables
-  pax_aux_oid = ::paxc::GetPaxAuxRelid(rel->rd_id);
-
-  // Scan pg_pax_blocks_xxx to calculate size of micro partition
-  pax_aux_rel = table_open(pax_aux_oid, AccessShareLock);
-  aux_tup_desc = RelationGetDescr(pax_aux_rel);
-
-  aux_scan = systable_beginscan(pax_aux_rel, InvalidOid, false, NULL, 0, NULL);
-  while (HeapTupleIsValid(aux_tup = systable_getnext(aux_scan))) {
-    bool isnull = false;
-    // TODO(chenhongjie): Exactly what is needed and being obtained is
-    // compressed size. Later, when the aux table supports size attributes
-    // before/after compression, we need to distinguish two attributes by names.
-    Datum tup_datum = heap_getattr(
-        aux_tup, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE, aux_tup_desc, &isnull);
-
-    Assert(!isnull);
-    pax_size += DatumGetUInt32(tup_datum);
-  }
-
-  systable_endscan(aux_scan);
-  table_close(pax_aux_rel, AccessShareLock);
-
-  return pax_size;
-}
-
 bool PaxAccessMethod::RelationNeedsToastTable(Relation /*rel*/) {
   // PAX never used the toasting, don't create the toast table from Cloudberry 7
 
   return false;
-}
-
-// Similar to the case of AO and AOCS tables, PAX table has auxiliary tables,
-// size can be read directly from the auxiliary table, and there is not much
-// space for optimization in estimating relsize. So this function is implemented
-// in the same way as pax_relation_size().
-void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
-                                      BlockNumber *pages, double *tuples,
-                                      double *allvisfrac) {
-  Oid pax_aux_oid;
-  Relation pax_aux_rel;
-  TupleDesc aux_tup_desc;
-  HeapTuple aux_tup;
-  SysScanDesc aux_scan;
-  uint64 total_tuples = 0;
-  uint64 pax_size = 0;
-
-  // Even an empty table takes at least one page,
-  // but number of tuples for an empty table could be 0.
-  *tuples = 0;
-  *pages = 1;
-  // index-only scan is not supported in PAX
-  *allvisfrac = 0;
-
-  // Get the oid of pg_pax_blocks_xxx from pg_pax_tables
-  pax_aux_oid = ::paxc::GetPaxAuxRelid(rel->rd_id);
-
-  // Scan pg_pax_blocks_xxx to get attributes
-  pax_aux_rel = table_open(pax_aux_oid, AccessShareLock);
-  aux_tup_desc = RelationGetDescr(pax_aux_rel);
-
-  aux_scan = systable_beginscan(pax_aux_rel, InvalidOid, false, NULL, 0, NULL);
-  while (HeapTupleIsValid(aux_tup = systable_getnext(aux_scan))) {
-    Datum pttupcount_datum;
-    Datum ptblocksize_datum;
-    bool isnull = false;
-
-    pttupcount_datum = heap_getattr(
-        aux_tup, ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT, aux_tup_desc, &isnull);
-    Assert(!isnull);
-    total_tuples += DatumGetUInt32(pttupcount_datum);
-
-    isnull = false;
-    // TODO(chenhongjie): Exactly what we want to get here is uncompressed size,
-    // but what we're getting is compressed size. Later, when the aux table
-    // supports size attributes before/after compression, this needs to
-    // be corrected.
-    ptblocksize_datum = heap_getattr(
-        aux_tup, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE, aux_tup_desc, &isnull);
-
-    Assert(!isnull);
-    pax_size += DatumGetUInt32(ptblocksize_datum);
-  }
-
-  systable_endscan(aux_scan);
-  table_close(pax_aux_rel, AccessShareLock);
-
-  *tuples = static_cast<double>(total_tuples);
-  *pages = RelationGuessNumberOfBlocksFromSize(pax_size);
 }
 
 double PaxAccessMethod::IndexBuildRangeScan(
@@ -893,165 +631,6 @@ void PaxAccessMethod::IndexValidateScan(Relation /*heap_relation*/,
                                         Snapshot /*snapshot*/,
                                         ValidateIndexState * /*state*/) {
   NOT_IMPLEMENTED_YET;
-}
-
-// Swap data between two pax tables, but not swap oids
-// 1. swap partition-spec in pg_pax_tables
-// 2. swap relation content for aux table and toast
-void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2,
-                                        TransactionId frozen_xid,
-                                        MultiXactId cutoff_multi) {
-  HeapTuple old_tuple1;
-  HeapTuple old_tuple2;
-  Relation pax_rel;
-  TupleDesc desc;
-  ScanKeyData key[1];
-  SysScanDesc scan;
-
-  Oid aux_relid1;
-  Oid aux_relid2;
-
-  pax_rel = table_open(PAX_TABLES_RELATION_ID, RowExclusiveLock);
-  desc = RelationGetDescr(pax_rel);
-
-  // save ctid, auxrelid and partition-spec for the first pax relation
-  ScanKeyInit(&key[0], ANUM_PG_PAX_TABLES_RELID, BTEqualStrategyNumber, F_OIDEQ,
-              ObjectIdGetDatum(relid1));
-
-  scan = systable_beginscan(pax_rel, PAX_TABLES_RELID_INDEX_ID, true, nullptr,
-                            1, key);
-  old_tuple1 = systable_getnext(scan);
-  if (!HeapTupleIsValid(old_tuple1))
-    ereport(ERROR, (errmsg("relid=%u is not a pax relation", relid1)));
-
-  old_tuple1 = heap_copytuple(old_tuple1);
-  systable_endscan(scan);
-
-  // save ctid, auxrelid and partition-spec for the second pax relation
-  ScanKeyInit(&key[0], ANUM_PG_PAX_TABLES_RELID, BTEqualStrategyNumber, F_OIDEQ,
-              ObjectIdGetDatum(relid2));
-  scan = systable_beginscan(pax_rel, PAX_TABLES_RELID_INDEX_ID, true, nullptr,
-                            1, key);
-  old_tuple2 = systable_getnext(scan);
-  if (!HeapTupleIsValid(old_tuple2))
-    ereport(ERROR, (errmsg("relid=%u is not a pax relation", relid2)));
-
-  old_tuple2 = heap_copytuple(old_tuple2);
-  systable_endscan(scan);
-
-  // swap the entries
-  {
-    HeapTuple tuple1;
-    HeapTuple tuple2;
-    Datum values[NATTS_PG_PAX_TABLES];
-    bool nulls[NATTS_PG_PAX_TABLES];
-    Datum datum;
-    bool isnull;
-
-    datum =
-        heap_getattr(old_tuple1, ANUM_PG_PAX_TABLES_AUXRELID, desc, &isnull);
-    Assert(!isnull);
-    aux_relid1 = DatumGetObjectId(datum);
-
-    values[ANUM_PG_PAX_TABLES_RELID - 1] = ObjectIdGetDatum(relid1);
-    values[ANUM_PG_PAX_TABLES_AUXRELID - 1] = datum;
-    nulls[ANUM_PG_PAX_TABLES_RELID - 1] = false;
-    nulls[ANUM_PG_PAX_TABLES_AUXRELID - 1] = false;
-
-    datum = heap_getattr(old_tuple2, ANUM_PG_PAX_TABLES_PARTITIONSPEC, desc,
-                         &isnull);
-    if (!isnull) {
-      auto vl = reinterpret_cast<struct varlena *>(DatumGetPointer(datum));
-      vl = pg_detoast_datum_packed(vl);
-      values[ANUM_PG_PAX_TABLES_PARTITIONSPEC - 1] = PointerGetDatum(vl);
-    }
-    nulls[ANUM_PG_PAX_TABLES_PARTITIONSPEC - 1] = isnull;
-
-    tuple1 = heap_form_tuple(desc, values, nulls);
-    tuple1->t_data->t_ctid = old_tuple1->t_data->t_ctid;
-    tuple1->t_self = old_tuple1->t_self;
-    tuple1->t_tableOid = old_tuple1->t_tableOid;
-
-    datum =
-        heap_getattr(old_tuple2, ANUM_PG_PAX_TABLES_AUXRELID, desc, &isnull);
-    Assert(!isnull);
-    aux_relid2 = DatumGetObjectId(datum);
-
-    values[ANUM_PG_PAX_TABLES_RELID - 1] = ObjectIdGetDatum(relid2);
-    values[ANUM_PG_PAX_TABLES_AUXRELID - 1] = datum;
-    nulls[ANUM_PG_PAX_TABLES_RELID - 1] = false;
-    nulls[ANUM_PG_PAX_TABLES_AUXRELID - 1] = false;
-
-    datum = heap_getattr(old_tuple1, ANUM_PG_PAX_TABLES_PARTITIONSPEC, desc,
-                         &isnull);
-    if (!isnull) {
-      auto vl = reinterpret_cast<struct varlena *>(DatumGetPointer(datum));
-      vl = pg_detoast_datum_packed(vl);
-      values[ANUM_PG_PAX_TABLES_PARTITIONSPEC - 1] = PointerGetDatum(vl);
-    }
-    nulls[ANUM_PG_PAX_TABLES_PARTITIONSPEC - 1] = isnull;
-
-    tuple2 = heap_form_tuple(desc, values, nulls);
-    tuple2->t_data->t_ctid = old_tuple2->t_data->t_ctid;
-    tuple2->t_self = old_tuple2->t_self;
-    tuple2->t_tableOid = old_tuple2->t_tableOid;
-
-    CatalogIndexState indstate;
-
-    indstate = CatalogOpenIndexes(pax_rel);
-    CatalogTupleUpdateWithInfo(pax_rel, &tuple1->t_self, tuple1, indstate);
-    CatalogTupleUpdateWithInfo(pax_rel, &tuple2->t_self, tuple2, indstate);
-    CatalogCloseIndexes(indstate);
-  }
-
-  table_close(pax_rel, NoLock);
-
-  /* swap fast seq */
-  {
-    int32 seqno1, seqno2;
-
-    seqno1 = CPaxGetFastSequences(relid1, false);
-    seqno2 = CPaxGetFastSequences(relid2, false);
-
-    CPaxInitializeFastSequenceEntry(relid1, FASTSEQUENCE_INIT_TYPE_UPDATE,
-                                    seqno2);
-    CPaxInitializeFastSequenceEntry(relid2, FASTSEQUENCE_INIT_TYPE_UPDATE,
-                                    seqno1);
-  }
-  SIMPLE_FAULT_INJECTOR("pax_finish_swap_fast_fastsequence");
-
-  /* swap relation files for aux table */
-  {
-    Relation aux_rel1;
-    Relation aux_rel2;
-    ReindexParams reindex_params = {0};
-    Relation toast_rel1 = nullptr;
-    Relation toast_rel2 = nullptr;
-
-    aux_rel1 = relation_open(aux_relid1, AccessExclusiveLock);
-    aux_rel2 = relation_open(aux_relid2, AccessExclusiveLock);
-
-    if (OidIsValid(aux_rel1->rd_rel->reltoastrelid))
-      toast_rel1 =
-          relation_open(aux_rel1->rd_rel->reltoastrelid, AccessExclusiveLock);
-    if (OidIsValid(aux_rel2->rd_rel->reltoastrelid))
-      toast_rel2 =
-          relation_open(aux_rel2->rd_rel->reltoastrelid, AccessExclusiveLock);
-
-    swap_relation_files(aux_relid1, aux_relid2, false, /* target_is_pg_class */
-                        true, /* swap_toast_by_content */
-                        true, /*swap_stats */
-                        true, /* is_internal */
-                        frozen_xid, cutoff_multi, NULL);
-
-    if (toast_rel1) relation_close(toast_rel1, NoLock);
-    if (toast_rel2) relation_close(toast_rel2, NoLock);
-    relation_close(aux_rel1, NoLock);
-    relation_close(aux_rel2, NoLock);
-
-    reindex_relation(aux_relid1, 0, &reindex_params);
-    reindex_relation(aux_relid2, 0, &reindex_params);
-  }
 }
 
 bytea *PaxAccessMethod::AmOptions(Datum reloptions, char relkind,
@@ -1354,7 +933,6 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
         if (Gp_role == GP_ROLE_DISPATCH) {
           // only cluster pax zorder clustered table
           List *relids = NULL;
-          Relation pax_aux_rel;
           SysScanDesc scan;
           HeapTuple tuple;
 
@@ -1362,7 +940,28 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
           // we'd be holding locks way too long.
           PreventInTransactionBlock(isTopLevel, "CLUSTER");
 
-          pax_aux_rel = table_open(PAX_TABLES_RELATION_ID, AccessShareLock);
+#if defined(USE_MANIFEST_API)
+          auto pax_rel = table_open(RelationRelationId, AccessShareLock);
+          scan = systable_beginscan(pax_rel, InvalidOid, false, GetActiveSnapshot(),
+                                    0, nullptr);
+          while (HeapTupleIsValid(tuple = systable_getnext(scan))) {
+            Datum datum;
+            bool isnull;
+
+            datum = heap_getattr(tuple, Anum_pg_class_relam,
+                                 pax_rel->rd_att, &isnull);
+            if (isnull || DatumGetObjectId(datum) != PAX_TABLE_AM_OID) continue;
+
+            datum = heap_getattr(tuple, Anum_pg_class_oid,
+                                 pax_rel->rd_att, &isnull);
+            Assert(!isnull);
+            Oid relid = DatumGetObjectId(datum);
+            relids = lappend_oid(relids, relid);
+          }
+          systable_endscan(scan);
+          table_close(pax_rel, AccessShareLock);
+#else
+          auto pax_aux_rel = table_open(PAX_TABLES_RELATION_ID, AccessShareLock);
           scan = systable_beginscan(pax_aux_rel, InvalidOid, false,
                                     GetActiveSnapshot(), 0, NULL);
 
@@ -1377,6 +976,7 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
           }
           systable_endscan(scan);
           table_close(pax_aux_rel, AccessShareLock);
+#endif
 
           ListCell *lc = NULL;
           foreach (lc, relids) {
@@ -1463,6 +1063,7 @@ static void PaxCheckClusterColumns(Relation rel, const char *cluster_columns) {
 
 static void PaxCheckParitionOptions(Relation rel, const char *partition_by,
                                     const char *partition_ranges) {
+#if !defined(USE_MANIFEST_API) || defined(USE_PAX_CATALOG)
   if (!partition_by) {
     if (partition_ranges) {
       elog(ERROR, "set '%s', but partition_by not specified", partition_ranges);
@@ -1488,7 +1089,8 @@ static void PaxCheckParitionOptions(Relation rel, const char *partition_by,
     elog(ERROR, "partition_ranges must be set for partition_by='%s'",
          partition_by);
 
-  ::paxc::PaxInitializePartitionSpec(rel, reinterpret_cast<Node *>(part));
+  paxc::PaxInitializePartitionSpec(rel, reinterpret_cast<Node *>(part));
+#endif
 }
 
 static void PaxCheckNumericOption(Relation rel, char *storage_format) {
@@ -1579,147 +1181,6 @@ out:
   relation_close(rel, RowExclusiveLock);
 }
 
-struct PaxObjectProperty {
-  const char *name;
-  Oid class_oid;
-  Oid index_oid;
-  AttrNumber attnum_oid;
-};
-
-static const struct PaxObjectProperty kPaxObjectProperties[] = {
-    {"fast-sequence", PAX_FASTSEQUENCE_OID, PAX_FASTSEQUENCE_INDEX_OID,
-     ANUM_PG_PAX_FAST_SEQUENCE_OBJID},
-    {"pg_pax_tables", PAX_TABLES_RELATION_ID, PAX_TABLES_RELID_INDEX_ID,
-     ANUM_PG_PAX_TABLES_RELID},
-    // add pg_pax_tables here
-};
-
-static const struct PaxObjectProperty *FindPaxObjectProperty(Oid class_id) {
-  for (const auto &property : kPaxObjectProperties) {
-    const auto p = &property;
-    if (p->class_oid == class_id) return p;
-  }
-  return NULL;
-}
-
-static void PaxDeleteObject(struct CustomObjectClass * /*self*/,
-                            const ObjectAddress *object, int /*flags*/) {
-  Relation rel;
-  HeapTuple tup;
-  SysScanDesc scan;
-  ScanKeyData skey[1];
-
-  const auto object_property = FindPaxObjectProperty(object->classId);
-  Assert(object_property);
-  Assert(object_property->class_oid == object->classId);
-
-  rel = table_open(object->classId, RowExclusiveLock);
-  ScanKeyInit(&skey[0], object_property->attnum_oid, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(object->objectId));
-
-  scan =
-      systable_beginscan(rel, object_property->index_oid, true, NULL, 1, skey);
-
-  /* we expect exactly one match */
-  tup = systable_getnext(scan);
-  if (!HeapTupleIsValid(tup))
-    elog(ERROR, "could not find tuple for %s %u", object_property->name,
-         object->objectId);
-
-  CatalogTupleDelete(rel, &tup->t_self);
-
-  systable_endscan(scan);
-
-  table_close(rel, RowExclusiveLock);
-}
-
-static void PaxTableTypeDesc(struct CustomObjectClass * /*self*/,
-                             const ObjectAddress * /*object*/,
-                             bool /*missing_ok*/,
-                             struct StringInfoData *buffer) {
-  appendStringInfoString(buffer, "pax table");
-}
-
-static char *pax_table_get_name(Oid oid, bool missing_ok) {
-  char *pax_rel_name;
-  Relation pax_rel;
-  ScanKeyData skey;
-  SysScanDesc scan;
-  HeapTuple tup;
-
-  pax_rel = table_open(PAX_TABLES_RELATION_ID, AccessShareLock);
-
-  // save ctid, auxrelid and partition-spec for the first pax relation
-  ScanKeyInit(&skey, ANUM_PG_PAX_TABLES_RELID, BTEqualStrategyNumber, F_OIDEQ,
-              ObjectIdGetDatum(oid));
-
-  scan = systable_beginscan(pax_rel, PAX_TABLES_RELID_INDEX_ID, true, nullptr,
-                            1, &skey);
-
-  tup = systable_getnext(scan);
-  if (!HeapTupleIsValid(tup)) {
-    if (!missing_ok) elog(ERROR, "pax table %u could not be found", oid);
-
-    pax_rel_name = NULL;
-  } else {
-    // no need to get relid from tuple
-    pax_rel_name = (char *)palloc(50);
-    sprintf(pax_rel_name, "pax_table_%d", oid);
-  }
-  systable_endscan(scan);
-  table_close(pax_rel, NoLock);
-  return pax_rel_name;
-}
-
-static void PaxTableIdentityObject(struct CustomObjectClass * /*self*/,
-                                   const ObjectAddress *object, List **objname,
-                                   List ** /*objargs*/, bool missing_ok,
-                                   struct StringInfoData *buffer) {
-  char *pax_table_name;
-  pax_table_name = pax_table_get_name(object->objectId, missing_ok);
-  if (pax_table_name) {
-    if (objname) *objname = list_make1(pax_table_name);
-    appendStringInfo(
-        buffer, "pax table identity %s: ", quote_identifier(pax_table_name));
-  }
-}
-
-static void PaxFastSeqTypeDesc(struct CustomObjectClass * /*self*/,
-                               const ObjectAddress * /*object*/,
-                               bool /*missing_ok*/,
-                               struct StringInfoData *buffer) {
-  appendStringInfoString(buffer, "pax fast sequence");
-}
-
-static void PaxFastSeqIdentityObject(struct CustomObjectClass * /*self*/,
-                                     const ObjectAddress *object,
-                                     List **objname, List ** /*objargs*/,
-                                     bool missing_ok,
-                                     struct StringInfoData *buffer) {
-  char *pax_fast_seq_name;
-  pax_fast_seq_name =
-      paxc::CPaxGetFastSequencesName(object->objectId, missing_ok);
-  if (pax_fast_seq_name) {
-    if (objname) *objname = list_make1(pax_fast_seq_name);
-    appendStringInfo(buffer, "pax fast sequences identity %s: ",
-                     quote_identifier(pax_fast_seq_name));
-  }
-}
-
-static struct CustomObjectClass pax_fastsequence_coc = {
-    .class_id = PAX_FASTSEQUENCE_OID,
-    .do_delete = PaxDeleteObject,
-    .object_type_desc = PaxFastSeqTypeDesc,
-    .object_identity_parts = PaxFastSeqIdentityObject,
-};
-
-static struct CustomObjectClass pax_tables_coc = {
-    .class_id = PAX_TABLES_RELATION_ID,
-    .do_delete = PaxDeleteObject,
-    .object_type_desc = PaxTableTypeDesc,
-    .object_identity_parts = PaxTableIdentityObject,
-};
-
 void _PG_init(void) {  // NOLINT
   if (!process_shared_preload_libraries_in_progress)
     elog(ERROR, "pax extension must be loaded in shared_preload_libraries");
@@ -1733,8 +1194,7 @@ void _PG_init(void) {  // NOLINT
   prev_ProcessUtilit_hook = ProcessUtility_hook;
   ProcessUtility_hook = paxProcessUtility;
 
-  register_custom_object_class(&pax_fastsequence_coc);
-  register_custom_object_class(&pax_tables_coc);
+  paxc::register_custom_object_classes();
 
   paxc::DefineGUCs();
 

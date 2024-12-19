@@ -57,7 +57,7 @@ arrow::Status PaxDatasetInterface::Initialize(uint32_t tableoid, const std::shar
   relation_ = cbdb::TableOpen(tableoid, AccessShareLock);
   desc_ = std::make_shared<ParallelScanDesc>();
   auto fs = Singleton<LocalFileSystem>::GetInstance();
-  auto it = MicroPartitionInfoIterator::New(relation_, nullptr);
+  auto it = MicroPartitionIterator::New(relation_, nullptr);
 
   // TODO: refactor the iterator to support non-copy access,
   //       so unique_ptr can be used here.
