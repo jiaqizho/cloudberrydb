@@ -3,8 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "catalog/pax_aux_table.h"
-#include "catalog/pg_pax_tables.h"
+#include "catalog/pax_catalog.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/paxc_wrappers.h"
 #include "comm/vec_numeric.h"

@@ -5,8 +5,7 @@
 
 #include "access/pax_visimap.h"
 #include "access/paxc_rel_options.h"
-#include "catalog/pax_aux_table.h"
-#include "catalog/pg_pax_tables.h"
+#include "catalog/pax_catalog.h"
 #include "comm/cbdb_wrappers.h"
 #include "comm/pax_memory.h"
 #include "comm/paxc_wrappers.h"
@@ -161,15 +160,18 @@ std::unique_ptr<MicroPartitionWriter> TableWriter::CreateMicroPartitionWriter(
   std::shared_ptr<File> file;
   std::shared_ptr<File> toast_file;
   int open_flags;
+  int block_number;
 
   Assert(relation_);
   Assert(strategy_);
   Assert(summary_callback_);
 
-  block_id = GenerateBlockID(relation_);
+  block_number = cbdb::CPaxGetFastSequences(RelationGetRelid(relation_));
+  Assert(block_number >= 0);
+  current_blockno_ = block_number;
+  block_id = std::to_string(block_number);
   file_path = GenFilePath(block_id);
   toast_file_path = GenToastFilePath(file_path);
-  current_blockno_ = std::stol(block_id);
 
   options.rel_oid = relation_->rd_id;
   options.node = relation_->rd_node;
@@ -515,7 +517,7 @@ TableDeleter::TableDeleter(
 }
 
 void TableDeleter::UpdateStatsInAuxTable(
-    Oid aux_oid, const pax::MicroPartitionMetadata &meta,
+    pax::PaxCatalogUpdater &catalog_update, const pax::MicroPartitionMetadata &meta,
     std::shared_ptr<Bitmap8> visi_bitmap,
     const std::vector<int> &min_max_col_idxs,
     const std::vector<int> &bf_col_idxs, std::shared_ptr<PaxFilter> filter) {
@@ -546,12 +548,12 @@ void TableDeleter::UpdateStatsInAuxTable(
                            .Update(slot, min_max_col_idxs, bf_col_idxs);
 
   // update the statistics in aux table
-  cbdb::UpdateStatistics(aux_oid, meta.GetMicroPartitionId(),
-                         updated_stats->Serialize());
+  catalog_update.UpdateStatistics(meta.GetMicroPartitionId(),
+                                  updated_stats->Serialize());
 
   mp_reader->Close();
 
-  ExecDropSingleTupleTableSlot(slot);
+  cbdb::ExecDropSingleTupleTableSlot(slot);
 }
 
 // The pattern of file name of the visimap file is:
@@ -573,7 +575,7 @@ void TableDeleter::DeleteWithVisibilityMap(
   auto stats_updater_projection = std::make_shared<PaxFilter>();
 
   std::unique_ptr<Bitmap8> visi_bitmap;
-  auto aux_oid = cbdb::GetPaxAuxRelid(RelationGetRelid(rel_));
+  auto catalog_update = pax::PaxCatalogUpdater::Begin(rel_);
   auto rel_path = cbdb::BuildPaxDirectoryPath(
       rel_->rd_node, rel_->rd_backend,
       cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace));
@@ -599,26 +601,32 @@ void TableDeleter::DeleteWithVisibilityMap(
           micro_partition_metadata.GetVisibilityBitmapFile();
 
       if (!visibility_map_filename.empty()) {
-        int blocknum;
-        TransactionId xid;
 
-        std::string v_file_name =
-            cbdb::BuildPaxFilePath(rel_path, visibility_map_filename);
         auto buffer =
-            LoadVisimap(file_system_, file_system_options_, v_file_name);
+            LoadVisimap(file_system_, file_system_options_, visibility_map_filename);
         auto visibility_file_bitmap =
             Bitmap8(BitmapRaw<uint8>(buffer->data(), buffer->size()),
                     Bitmap8::ReadOnlyOwnBitmap);
         visi_bitmap =
             Bitmap8::Union(&visibility_file_bitmap, delete_visi_bitmap.get());
 
-        rc = sscanf(visibility_map_filename.c_str(), "%d_%x_%x.visimap",
-                    &blocknum, &generate, &xid);
-        Assert(blocknum >= 0 && block_id == blocknum);
-        (void)xid;
-        CBDB_CHECK(rc == 3, cbdb::CException::kExTypeLogicError,
-                   fmt("Fail to sscanf [rc=%d, filename=%s, rel_path=%s]", rc,
-                       visibility_map_filename.c_str(), rel_path.c_str()));
+#ifdef USE_ASSERT_CHECKING
+        {
+          int blocknum;
+          TransactionId xid;
+
+          auto visi_name = strrchr(visibility_map_filename.c_str(), '/');
+          CBDB_CHECK(visi_name != nullptr, cbdb::CException::kExTypeLogicError);
+          visi_name++;
+          rc = sscanf(visi_name, "%d_%x_%x.visimap",
+                      &blocknum, &generate, &xid);
+          Assert(blocknum >= 0 && block_id == blocknum);
+          (void)xid;
+          CBDB_CHECK(rc == 3, cbdb::CException::kExTypeLogicError,
+                    fmt("Fail to sscanf [rc=%d, filename=%s, rel_path=%s]", rc,
+                        visibility_map_filename.c_str(), rel_path.c_str()));
+        }
+#endif
       } else {
         visi_bitmap = std::move(delete_visi_bitmap);
       }
@@ -644,9 +652,10 @@ void TableDeleter::DeleteWithVisibilityMap(
       visimap_file->Close();
     }
 
+    // TODO: update stats and visimap all in one catalog update
     // Update the stats in pax aux table
     // Notice that: PAX won't update the stats in group
-    UpdateStatsInAuxTable(aux_oid, micro_partition_metadata,
+    UpdateStatsInAuxTable(catalog_update, micro_partition_metadata,
                           std::make_shared<Bitmap8>(visi_bitmap->Raw(),
                                                     Bitmap8::ReadOnlyOwnBitmap),
                           min_max_col_idxs,
@@ -654,8 +663,9 @@ void TableDeleter::DeleteWithVisibilityMap(
                           stats_updater_projection);
 
     // write pg_pax_blocks_oid
-    cbdb::UpdateVisimap(aux_oid, block_id, visimap_file_name);
+    catalog_update.UpdateVisimap(block_id, visimap_file_name);
   } while (iterator->HasNext());
+  catalog_update.End();
 }
 
 void TableDeleter::Delete(
@@ -717,75 +727,3 @@ std::unique_ptr<TableReader> TableDeleter::OpenReader(
 }
 
 }  // namespace pax
-
-extern "C" {
-extern Datum MicroPartitionStatsCombineResult(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(MicroPartitionStatsCombineResult);
-}
-
-// CREATE OR REPLACE FUNCTION MicroPartitionStatsCombineResult(relid Oid)
-// RETURNS text
-//      AS '$libdir/pax', 'MicroPartitionStatsCombineResult' LANGUAGE C
-//      IMMUTABLE;
-Datum MicroPartitionStatsCombineResult(PG_FUNCTION_ARGS) {
-  Oid relid, auxrelid;
-  Relation auxrel, rel;
-  TupleDesc rel_desc;
-
-  HeapTuple tup;
-  SysScanDesc auxscan;
-  bool pg_attribute_unused() isnull;
-  bool pg_attribute_unused() ok;
-  bool got_first = false;
-
-  pax::stats::MicroPartitionStatisticsInfo result, temp;
-  StringInfoData str;
-
-  relid = PG_GETARG_OID(0);
-
-  // get the tuple desc
-  rel = table_open(relid, AccessShareLock);
-  rel_desc = CreateTupleDescCopy(RelationGetDescr(rel));
-  table_close(rel, AccessShareLock);
-
-  auxrelid = ::paxc::GetPaxAuxRelid(relid);
-  auxrel = table_open(auxrelid, AccessShareLock);
-  auxscan = systable_beginscan(auxrel, InvalidOid, false, NULL, 0, NULL);
-  while (HeapTupleIsValid(tup = systable_getnext(auxscan))) {
-    Datum tup_datum = heap_getattr(tup, ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS,
-                                   RelationGetDescr(auxrel), &isnull);
-    Assert(!isnull);
-    auto stats_vl =
-        pg_detoast_datum_packed((struct varlena *)(DatumGetPointer(tup_datum)));
-
-    if (!got_first) {
-      ok = result.ParseFromArray(VARDATA_ANY(stats_vl),
-                                 VARSIZE_ANY_EXHDR(stats_vl));
-      Assert(ok);
-      got_first = true;
-    } else {
-      ok = temp.ParseFromArray(VARDATA_ANY(stats_vl),
-                               VARSIZE_ANY_EXHDR(stats_vl));
-      Assert(ok);
-
-      CBDB_TRY();
-      {
-        ok = pax::MicroPartitionStats::MicroPartitionStatisticsInfoCombine(
-            &result, &temp, rel_desc, false);
-        Assert(ok);
-      }
-      CBDB_CATCH_DEFAULT();
-      CBDB_END_TRY();
-    }
-  }
-
-  systable_endscan(auxscan);
-  table_close(auxrel, AccessShareLock);
-
-  if (!got_first) {
-    PG_RETURN_TEXT_P(cstring_to_text("EMPTY"));
-  }
-
-  paxc::MicroPartitionStatsToString(&result, &str);
-  PG_RETURN_TEXT_P(cstring_to_text(str.data));
-}

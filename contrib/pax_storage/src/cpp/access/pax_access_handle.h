@@ -73,6 +73,8 @@ class PaxAccessMethod final {
                                               bool validate, bool from_type);
 };
 
+void register_custom_object_classes();
+
 }  // namespace paxc
 
 namespace pax {

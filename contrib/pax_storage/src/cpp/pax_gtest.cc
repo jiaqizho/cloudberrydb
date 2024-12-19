@@ -2,8 +2,7 @@
 #include "comm/gtest_wrappers.h"
 
 #include "access/paxc_rel_options.h"
-#include "catalog/pax_aux_table.h"
-#include "catalog/pax_fastsequence.h"
+#include "catalog/pax_catalog.h"
 #include "comm/cbdb_wrappers.h"
 #include "storage/oper/pax_stats.h"
 #include "stub.h"
@@ -49,7 +48,7 @@ std::vector<std::tuple<pax::ColumnEncoding_Kind, int>> MockGetRelEncodingOptions
 // Mock global method which is not link from another libarays
 void GlobalMock(Stub *stub) {
   stub->set(pax::MinMaxGetPgStrategyProcinfo, MockMinMaxGetStrategyProcinfo);
-  stub->set(paxc::CPaxGetFastSequences, MockGetFastSequences);
+  stub->set(CPaxGetFastSequences, MockGetFastSequences);
   stub->set(cbdb::BuildPaxDirectoryPath, MockBuildPaxDirectoryPath);
   stub->set(cbdb::InsertMicroPartitionPlaceHolder,
             MockInsertMicroPartitionPlaceHolder);

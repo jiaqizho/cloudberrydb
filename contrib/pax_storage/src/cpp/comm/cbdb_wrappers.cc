@@ -259,9 +259,8 @@ void cbdb::RelationDropStorageDirectory(Relation rel) {
 }
 
 int cbdb::PathNameCreateDir(const char *path) {
-  CBDB_WRAP_START;
+  // no need to wrap, it calls only posix API.
   { return MakePGDirectory(path); }
-  CBDB_WRAP_END;
 }
 
 HeapTuple cbdb::SearchSysCache(Relation rel, SysCacheIdentifier id) {

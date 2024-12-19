@@ -3,7 +3,6 @@
 
 #include <string>
 
-#include "catalog/pax_aux_table.h"
 #include "storage/micro_partition_metadata.h"
 
 #define PAX_SCAN_ALL_BLOCKS -1
@@ -23,6 +22,10 @@ void CPaxCreateMicroPartitionTable(Relation rel);
 Oid FindAuxIndexOid(Oid aux_relid, Snapshot snapshot);
 
 void InsertMicroPartitionPlaceHolder(Oid aux_relid, int block_id);
+void InsertOrUpdateMicroPartitionPlaceHolder(
+    Oid aux_relid, int block_id, int num_tuples, int file_size,
+    const ::pax::stats::MicroPartitionStatisticsInfo &mp_stats,
+    bool exist_ext_toast, bool is_clustered);
 void UpdateVisimap(Oid aux_relid, int block_id, const char *visimap_filename);
 void UpdateStatistics(Oid aux_relid, int block_id,
                       pax::stats::MicroPartitionStatisticsInfo *mp_stats);
@@ -89,20 +92,15 @@ Oid GetPaxAuxRelid(Oid relid);
 
 Oid FindAuxIndexOid(Oid aux_relid, Snapshot snapshot);
 
-void InsertMicroPartitionPlaceHolder(Oid pax_relid, int block_id);
-void InsertOrUpdateMicroPartitionEntry(const pax::WriteSummary &summary);
-
 void UpdateVisimap(Oid aux_relid, int block_id, const char *visimap_filename);
 
 void UpdateStatistics(Oid aux_relid, int block_id,
                       pax::stats::MicroPartitionStatisticsInfo *mp_stats);
 
-void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot, int block_id);
 bool IsMicroPartitionVisible(Relation pax_rel, BlockNumber block,
                              Snapshot snapshot);
 
-pax::MicroPartitionMetadata GetMicroPartitionMetadata(Relation rel,
-                                                      Snapshot snapshot,
-                                                      int block_id);
-
+pax::MicroPartitionMetadata PaxGetMicroPartitionMetadata(Relation rel,
+                                                         Snapshot snapshot,
+                                                         int block_id);
 }  // namespace cbdb

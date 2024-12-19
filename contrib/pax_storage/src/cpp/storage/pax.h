@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include "catalog/pax_catalog.h"
 #include "comm/bitmap.h"
 #include "comm/iterator.h"
 #include "storage/file_system.h"
@@ -178,7 +179,7 @@ class TableDeleter final {
       TransactionId delete_xid);
 
  private:
-  void UpdateStatsInAuxTable(TransactionId delete_xid,
+  void UpdateStatsInAuxTable(pax::PaxCatalogUpdater &catalog_update,
                              const pax::MicroPartitionMetadata &meta,
                              std::shared_ptr<Bitmap8> visi_bitmap,
                              const std::vector<int> &min_max_col_idxs,

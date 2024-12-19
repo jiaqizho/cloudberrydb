@@ -498,7 +498,7 @@ void PaxAddPendingDelete(Relation rel, RelFileNode rn_node, bool atCommit) {
     pending->reldelete.relnode.node = rn_node;
     pending->reldelete.relnode.isTempRelation =
         rel->rd_backend == TempRelBackendId;
-    pending->reldelete.relnode.smgr_which = SMGR_INVALID;
+    pending->reldelete.relnode.smgr_which = SMGR_PAX;
 
     pending->reldelete.action = &pax_file_pending_rel_deletes_action;
     RegisterPendingDelete(&pending->reldelete);
