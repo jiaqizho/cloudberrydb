@@ -68,6 +68,10 @@ ExecInitDynamicBitmapHeapScan(DynamicBitmapHeapScan *node, EState *estate, int e
 	Relation scanRel = ExecOpenScanRelation(estate, node->bitmapheapscan.scan.scanrelid, eflags);
 	ExecInitScanTupleSlot(estate, &state->ss, RelationGetDescr(scanRel), table_slot_callbacks(scanRel));
 
+	/* Dynamic table/index/bitmap scan can't tell the ops of tupleslot */
+	state->ss.ps.scanopsfixed = false;
+	state->ss.ps.scanopsset = true;
+
 	/*
 	 * Initialize result tuple type and projection info.
 	 */

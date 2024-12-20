@@ -77,6 +77,10 @@ ExecInitDynamicBitmapIndexScan(DynamicBitmapIndexScan *node, EState *estate, int
 	Relation scanRel = ExecOpenScanRelation(estate, node->biscan.scan.scanrelid, eflags);
 	ExecInitScanTupleSlot(estate, &dynamicBitmapIndexScanState->ss, RelationGetDescr(scanRel), table_slot_callbacks(scanRel));
 
+	/* Dynamic table/index/bitmap scan can't tell the ops of tupleslot */
+	dynamicBitmapIndexScanState->ss.ps.scanopsfixed = false;
+	dynamicBitmapIndexScanState->ss.ps.scanopsset = true;
+
 	/*
 	 * Initialize result tuple type and projection info.
 	 */

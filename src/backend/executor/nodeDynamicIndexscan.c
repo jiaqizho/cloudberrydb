@@ -74,6 +74,10 @@ ExecInitDynamicIndexScan(DynamicIndexScan *node, EState *estate, int eflags)
 	Relation scanRel = ExecOpenScanRelation(estate, node->indexscan.scan.scanrelid, eflags);
 	ExecInitScanTupleSlot(estate, &dynamicIndexScanState->ss, RelationGetDescr(scanRel), table_slot_callbacks(scanRel));
 
+	/* Dynamic table/index/bitmap scan can't tell the ops of tupleslot */
+	dynamicIndexScanState->ss.ps.scanopsfixed = false;
+	dynamicIndexScanState->ss.ps.scanopsset = true;
+
 	/*
 	 * Initialize result tuple type and projection info.
 	 */

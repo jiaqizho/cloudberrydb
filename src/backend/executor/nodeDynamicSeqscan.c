@@ -63,9 +63,16 @@ ExecInitDynamicSeqScan(DynamicSeqScan *node, EState *estate, int eflags)
 	Relation scanRel = ExecOpenScanRelation(estate, node->seqscan.scanrelid, eflags);
 	ExecInitScanTupleSlot(estate, &state->ss, RelationGetDescr(scanRel), table_slot_callbacks(scanRel));
 
+	/* Dynamic table/index/bitmap scan can't tell the ops of tupleslot */
+	state->ss.ps.scanopsfixed = false;
+	state->ss.ps.scanopsset = true;
+
 	/* Initialize result tuple type. */
 	ExecInitResultTypeTL(&state->ss.ps);
 	ExecAssignScanProjectionInfo(&state->ss);
+
+	state->ss.ps.resultopsfixed = false;
+	state->ss.ps.resultopsset = true;
 
 	state->nOids = list_length(node->partOids);
 	state->partOids = palloc(sizeof(Oid) * state->nOids);
