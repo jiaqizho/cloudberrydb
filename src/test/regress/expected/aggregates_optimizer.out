@@ -1431,11 +1431,10 @@ explain (costs off) select * from p_t1 group by a,b,c,d;
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on p_t1_1
-         ->  Seq Scan on p_t1_2
+   ->  Dynamic Seq Scan on p_t1
+         Number of partitions to scan: 2 
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 drop table t1 cascade;
 NOTICE:  drop cascades to table t1c

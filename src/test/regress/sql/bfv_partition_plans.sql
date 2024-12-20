@@ -105,6 +105,7 @@ insert into mpp23195_t1 values (generate_series(1,19));
 insert into mpp23195_t2 values (1);
 
 -- TEST
+-- Operator Fallback: InnerIndexNestLoopJoin may have wrong plan not supported
 select find_operator('select * from mpp23195_t1,mpp23195_t2 where mpp23195_t1.i < mpp23195_t2.i;', 'Dynamic Index Scan');
 select * from mpp23195_t1,mpp23195_t2 where mpp23195_t1.i < mpp23195_t2.i;
 

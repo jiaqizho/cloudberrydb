@@ -515,6 +515,7 @@ QUERY PLAN
           "Segments": 1,
           "Gang Type": "primary reader",
           "Parallel Aware": false,
+          "Async Capable": false,
           "Relation Name": "jsonexplaintest",
           "Alias": "jsonexplaintest",
           "Number of partitions to scan": 1,

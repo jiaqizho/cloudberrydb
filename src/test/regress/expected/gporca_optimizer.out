@@ -13354,21 +13354,21 @@ explain (costs off) select * from tpart_dim d join t_ao_btree f on d.a=f.a where
 (8 rows)
 
 explain (costs off) select * from tpart_dim d join tpart_ao_btree f on d.a=f.a where d.b=1;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Operator Fallback: InnerIndexNestLoopJoin may have wrong plan not supported
+                        QUERY PLAN                        
+----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Nested Loop
-         Join Filter: true
-         ->  Seq Scan on tpart_dim
-               Filter: (b = 1)
-         ->  Dynamic Bitmap Heap Scan on tpart_ao_btree
-               Number of partitions to scan: 2 
-               Recheck Cond: (a = tpart_dim.a)
-               Filter: (a = tpart_dim.a)
-               ->  Dynamic Bitmap Index Scan on tpart_ao_btree_ix
-                     Index Cond: (a = tpart_dim.a)
- Optimizer: Pivotal Optimizer (GPORCA)
-(12 rows)
+   ->  Hash Join
+         Hash Cond: (f.a = d.a)
+         ->  Append
+               ->  Seq Scan on tpart_ao_btree_1_prt_1 f_1
+               ->  Seq Scan on tpart_ao_btree_1_prt_2 f_2
+         ->  Hash
+               ->  Seq Scan on tpart_dim d
+                     Filter: (b = 1)
+ Optimizer: Postgres query optimizer
+(10 rows)
 
 -- negative test, make sure we don't use a btree scan on an AO table
 -- start_ignore
@@ -13535,20 +13535,34 @@ default partition def);
 create INDEX y_idx on y (j);
 set optimizer_enable_indexjoin=on;
 explain (costs off) select count(*) from x, y where (x.i > y.j AND x.j <= y.i);
-                          QUERY PLAN                           
----------------------------------------------------------------
- Aggregate
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Operator Fallback: InnerIndexNestLoopJoin may have wrong plan not supported
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
+ Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
-         ->  Nested Loop
-               Join Filter: true
-               ->  Broadcast Motion 3:3  (slice2; segments: 3)
-                     ->  Seq Scan on x
-               ->  Dynamic Index Scan on y_idx on y
-                     Index Cond: (j < x.i)
-                     Filter: ((j < x.i) AND (x.j <= i))
-                     Number of partitions to scan: 5 
- Optimizer: Pivotal Optimizer (GPORCA)
-(11 rows)
+         ->  Partial Aggregate
+               ->  Nested Loop
+                     ->  Broadcast Motion 3:3  (slice2; segments: 3)
+                           ->  Seq Scan on x
+                     ->  Append
+                           ->  Index Scan using y_1_prt_p0_j_idx on y_1_prt_p0 y_1
+                                 Index Cond: (j < x.i)
+                                 Filter: (x.j <= i)
+                           ->  Index Scan using y_1_prt_p1_j_idx on y_1_prt_p1 y_2
+                                 Index Cond: (j < x.i)
+                                 Filter: (x.j <= i)
+                           ->  Index Scan using y_1_prt_p2_j_idx on y_1_prt_p2 y_3
+                                 Index Cond: (j < x.i)
+                                 Filter: (x.j <= i)
+                           ->  Index Scan using y_1_prt_p3_j_idx on y_1_prt_p3 y_4
+                                 Index Cond: (j < x.i)
+                                 Filter: (x.j <= i)
+                           ->  Index Scan using y_1_prt_def_j_idx on y_1_prt_def y_5
+                                 Index Cond: (j < x.i)
+                                 Filter: (x.j <= i)
+ Optimizer: Postgres query optimizer
+(23 rows)
 
 reset optimizer_enable_indexjoin;
 -- InferPredicatesBCC-vcpart-txt.mdp

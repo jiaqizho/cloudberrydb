@@ -43,7 +43,7 @@ explain (costs off) select * from lp;
 (4 rows)
 
 explain (costs off) select * from lp where a > 'a' and a < 'd';
-                           QUERY PLAN                            
+                        QUERY PLAN                         
 -----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on lp
@@ -53,7 +53,7 @@ explain (costs off) select * from lp where a > 'a' and a < 'd';
 (5 rows)
 
 explain (costs off) select * from lp where a > 'a' and a <= 'd';
-                            QUERY PLAN                            
+                         QUERY PLAN                         
 ------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on lp
@@ -103,7 +103,7 @@ explain (costs off) select * from lp where a is null;
 (5 rows)
 
 explain (costs off) select * from lp where a = 'a' or a = 'c';
-                     QUERY PLAN                      
+                        QUERY PLAN                        
 ----------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on lp
@@ -113,7 +113,7 @@ explain (costs off) select * from lp where a = 'a' or a = 'c';
 (5 rows)
 
 explain (costs off) select * from lp where a is not null and (a = 'a' or a = 'c');
-                                       QUERY PLAN                                       
+                                    QUERY PLAN                                    
 ----------------------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on lp
@@ -133,7 +133,7 @@ explain (costs off) select * from lp where a <> 'g';
 (5 rows)
 
 explain (costs off) select * from lp where a <> 'a' and a <> 'd';
-                            QUERY PLAN                             
+                         QUERY PLAN                          
 -------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on lp
@@ -143,7 +143,7 @@ explain (costs off) select * from lp where a <> 'a' and a <> 'd';
 (5 rows)
 
 explain (costs off) select * from lp where a not in ('a', 'd');
-                      QUERY PLAN                      
+                   QUERY PLAN                   
 ------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on lp
@@ -1332,86 +1332,74 @@ explain (costs off) select * from coercepart where a !~ all ('{ab,bc}');
 (5 rows)
 
 explain (costs off) select * from coercepart where a = any ('{ab,bc}');
-                         QUERY PLAN                          
--------------------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on coercepart_ab
-               Filter: ((a)::text = ANY ('{ab,bc}'::text[]))
-         ->  Seq Scan on coercepart_bc
-               Filter: ((a)::text = ANY ('{ab,bc}'::text[]))
+   ->  Dynamic Seq Scan on coercepart
+         Number of partitions to scan: 2 
+         Filter: ((a)::text = ANY ('{ab,bc}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+(5 rows)
 
 explain (costs off) select * from coercepart where a = any ('{ab,null}');
-                          QUERY PLAN                           
----------------------------------------------------------------
+                       QUERY PLAN                        
+---------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on coercepart_ab
-               Filter: ((a)::text = ANY ('{ab,NULL}'::text[]))
+   ->  Dynamic Seq Scan on coercepart
+         Number of partitions to scan: 1 
+         Filter: ((a)::text = ANY ('{ab,NULL}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 explain (costs off) select * from coercepart where a = any (null::text[]);
-                       QUERY PLAN                       
---------------------------------------------------------
+                    QUERY PLAN                    
+--------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on coercepart_ab
-               Filter: ((a)::text = ANY (NULL::text[]))
-         ->  Seq Scan on coercepart_bc
-               Filter: ((a)::text = ANY (NULL::text[]))
-         ->  Seq Scan on coercepart_cd
-               Filter: ((a)::text = ANY (NULL::text[]))
+   ->  Dynamic Seq Scan on coercepart
+         Number of partitions to scan: 3 
+         Filter: ((a)::text = ANY (NULL::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(5 rows)
 
 explain (costs off) select * from coercepart where a = all ('{ab}');
-                        QUERY PLAN                        
-----------------------------------------------------------
+                     QUERY PLAN                     
+----------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on coercepart_ab
-               Filter: ((a)::text = ALL ('{ab}'::text[]))
+   ->  Dynamic Seq Scan on coercepart
+         Number of partitions to scan: 1 
+         Filter: ((a)::text = ALL ('{ab}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 explain (costs off) select * from coercepart where a = all ('{ab,bc}');
-                         QUERY PLAN                          
--------------------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on coercepart_ab
-               Filter: ((a)::text = ALL ('{ab,bc}'::text[]))
-         ->  Seq Scan on coercepart_bc
-               Filter: ((a)::text = ALL ('{ab,bc}'::text[]))
+   ->  Dynamic Seq Scan on coercepart
+         Number of partitions to scan: 2 
+         Filter: ((a)::text = ALL ('{ab,bc}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+(5 rows)
 
 explain (costs off) select * from coercepart where a = all ('{ab,null}');
-                          QUERY PLAN                           
----------------------------------------------------------------
+                       QUERY PLAN                        
+---------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on coercepart_ab
-               Filter: ((a)::text = ALL ('{ab,NULL}'::text[]))
+   ->  Dynamic Seq Scan on coercepart
+         Number of partitions to scan: 1 
+         Filter: ((a)::text = ALL ('{ab,NULL}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 explain (costs off) select * from coercepart where a = all (null::text[]);
-                       QUERY PLAN                       
---------------------------------------------------------
+                    QUERY PLAN                    
+--------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on coercepart_ab
-               Filter: ((a)::text = ALL (NULL::text[]))
-         ->  Seq Scan on coercepart_bc
-               Filter: ((a)::text = ALL (NULL::text[]))
-         ->  Seq Scan on coercepart_cd
-               Filter: ((a)::text = ALL (NULL::text[]))
+   ->  Dynamic Seq Scan on coercepart
+         Number of partitions to scan: 3 
+         Filter: ((a)::text = ALL (NULL::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(5 rows)
 
 drop table coercepart;
 CREATE TABLE part (a INT, b INT) PARTITION BY LIST (a);
@@ -2158,7 +2146,7 @@ explain (analyze, costs off, summary off, timing off) select * from list_part wh
                                QUERY PLAN                               
 ------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Dynamic Seq Scan on list_part (never executed)
+   ->  Dynamic Seq Scan on list_part (actual rows=0 loops=1)
          Number of partitions to scan: 4 
          Filter: (a = (1 + a))
          Partitions scanned:  Avg 4.0 x 3 workers.  Max 4 parts (seg0).
@@ -2996,7 +2984,7 @@ select * from tbl1 join tprt on tbl1.col1 = tprt.col1;
                                      QUERY PLAN                                     
 ------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Hash Join (never executed)
+   ->  Hash Join (actual rows=0 loops=1)
          Hash Cond: (tbl1.col1 = tprt.col1)
          ->  Seq Scan on tbl1 (actual rows=1 loops=1)
          ->  Hash (actual rows=3 loops=1)
@@ -3146,12 +3134,12 @@ create table stable_qual_pruning3 partition of stable_qual_pruning
 -- comparison against a stable value requires run-time pruning
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning where a < localtimestamp;
-                                     QUERY PLAN                                      
--------------------------------------------------------------------------------------
+                                      QUERY PLAN                                      
+--------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Dynamic Seq Scan on stable_qual_pruning (never executed)
+   ->  Dynamic Seq Scan on stable_qual_pruning (actual rows=0 loops=1)
          Number of partitions to scan: 2 
-         Filter: (a < 'Thu May 19 15:14:26.02528 2022'::timestamp without time zone)
+         Filter: (a < 'Thu Dec 19 19:04:45.779097 2024'::timestamp without time zone)
          Partitions scanned:  Avg 2.0 x 3 workers.  Max 2 parts (seg0).
  Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
@@ -3162,7 +3150,7 @@ select * from stable_qual_pruning where a < '2000-02-01'::timestamptz;
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Dynamic Seq Scan on stable_qual_pruning (never executed)
+   ->  Dynamic Seq Scan on stable_qual_pruning (actual rows=0 loops=1)
          Number of partitions to scan: 1 
          Filter: (a < 'Tue Feb 01 00:00:00 2000 PST'::timestamp with time zone)
          Partitions scanned:  Avg 1.0 x 3 workers.  Max 1 parts (seg0).
@@ -3186,7 +3174,7 @@ select * from stable_qual_pruning
                                                       QUERY PLAN                                                      
 ----------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Dynamic Seq Scan on stable_qual_pruning (never executed)
+   ->  Dynamic Seq Scan on stable_qual_pruning (actual rows=0 loops=1)
          Number of partitions to scan: 1 
          Filter: (a = ANY ('{"Tue Feb 01 00:00:00 2000","Fri Jan 01 00:00:00 2010"}'::timestamp without time zone[]))
          Partitions scanned:  Avg 1.0 x 3 workers.  Max 1 parts (seg0).
@@ -3199,9 +3187,9 @@ select * from stable_qual_pruning
                                                          QUERY PLAN                                                          
 -----------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Dynamic Seq Scan on stable_qual_pruning (never executed)
+   ->  Dynamic Seq Scan on stable_qual_pruning (actual rows=0 loops=1)
          Number of partitions to scan: 1 
-         Filter: (a = ANY ('{"Tue Feb 01 00:00:00 2000","Thu May 19 15:14:26.037645 2022"}'::timestamp without time zone[]))
+         Filter: (a = ANY ('{"Tue Feb 01 00:00:00 2000","Thu Dec 19 19:04:45.852371 2024"}'::timestamp without time zone[]))
          Partitions scanned:  Avg 1.0 x 3 workers.  Max 1 parts (seg0).
  Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
@@ -3222,7 +3210,7 @@ select * from stable_qual_pruning
                                                         QUERY PLAN                                                         
 ---------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Dynamic Seq Scan on stable_qual_pruning (never executed)
+   ->  Dynamic Seq Scan on stable_qual_pruning (actual rows=0 loops=1)
          Number of partitions to scan: 1 
          Filter: (a = ANY ('{"Tue Feb 01 00:00:00 2000 PST","Fri Jan 01 00:00:00 2010 PST"}'::timestamp with time zone[]))
          Partitions scanned:  Avg 1.0 x 3 workers.  Max 1 parts (seg0).
@@ -3232,18 +3220,15 @@ select * from stable_qual_pruning
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning
   where a = any(null::timestamptz[]);
-                             QUERY PLAN                             
---------------------------------------------------------------------
+                               QUERY PLAN                               
+------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Append (actual rows=0 loops=1)
-         ->  Seq Scan on stable_qual_pruning1 (actual rows=0 loops=1)
-               Filter: (a = ANY (NULL::timestamp with time zone[]))
-         ->  Seq Scan on stable_qual_pruning2 (actual rows=0 loops=1)
-               Filter: (a = ANY (NULL::timestamp with time zone[]))
-         ->  Seq Scan on stable_qual_pruning3 (actual rows=0 loops=1)
-               Filter: (a = ANY (NULL::timestamp with time zone[]))
+   ->  Dynamic Seq Scan on stable_qual_pruning (actual rows=0 loops=1)
+         Number of partitions to scan: 3 
+         Filter: (a = ANY (NULL::timestamp with time zone[]))
+         Partitions scanned:  Avg 3.0 x 3 workers.  Max 3 parts (seg0).
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(6 rows)
 
 drop table stable_qual_pruning;
 --
@@ -3328,7 +3313,7 @@ select * from boolp where a = (select value from boolvalues where value);
 ------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
    ->  Hash Join (actual rows=0 loops=1)
-         Hash Cond: (boolvalues.value = boolp_f.a)
+         Hash Cond: (boolvalues.value = boolp.a)
          ->  Redistribute Motion 1:3  (slice2) (never executed)
                ->  Assert (actual rows=1 loops=1)
                      Assert Cond: ((row_number() OVER (?)) = 1)
@@ -3340,9 +3325,9 @@ select * from boolp where a = (select value from boolvalues where value);
          ->  Hash (actual rows=0 loops=1)
                Buckets: 262144  Batches: 1  Memory Usage: 2048kB
                ->  Broadcast Motion 3:3  (slice4; segments: 3) (actual rows=0 loops=1)
-                     ->  Append (actual rows=0 loops=1)
-                           ->  Seq Scan on boolp_f (actual rows=0 loops=1)
-                           ->  Seq Scan on boolp_t (actual rows=0 loops=1)
+                     ->  Dynamic Seq Scan on boolp (actual rows=0 loops=1)
+                           Number of partitions to scan: 2 
+                           Partitions scanned:  Avg 2.0 x 3 workers.  Max 2 parts (seg0).
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -3352,7 +3337,7 @@ select * from boolp where a = (select value from boolvalues where not value);
 ------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
    ->  Hash Join (actual rows=0 loops=1)
-         Hash Cond: (boolvalues.value = boolp_f.a)
+         Hash Cond: (boolvalues.value = boolp.a)
          ->  Redistribute Motion 1:3  (slice2) (never executed)
                ->  Assert (actual rows=1 loops=1)
                      Assert Cond: ((row_number() OVER (?)) = 1)
@@ -3364,9 +3349,9 @@ select * from boolp where a = (select value from boolvalues where not value);
          ->  Hash (actual rows=0 loops=1)
                Buckets: 262144  Batches: 1  Memory Usage: 2048kB
                ->  Broadcast Motion 3:3  (slice4; segments: 3) (actual rows=0 loops=1)
-                     ->  Append (actual rows=0 loops=1)
-                           ->  Seq Scan on boolp_f (actual rows=0 loops=1)
-                           ->  Seq Scan on boolp_t (actual rows=0 loops=1)
+                     ->  Dynamic Seq Scan on boolp (actual rows=0 loops=1)
+                           Number of partitions to scan: 2 
+                           Partitions scanned:  Avg 2.0 x 3 workers.  Max 2 parts (seg0).
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -3474,8 +3459,7 @@ explain (analyze, costs off, summary off, timing off) select * from ma_test wher
    Merge Key: ma_test.b
    ->  Sort (actual rows=8 loops=1)
          Sort Key: ma_test.b
-         Sort Method:  quicksort  Memory: ###kB
-         Executor Memory: ###kB  Segments: ###  Max: ###kB (segment ###)
+         Sort Method:  quicksort  Memory: 75kB
          ->  Nested Loop (actual rows=8 loops=1)
                Join Filter: (ma_test.a >= (min(ma_test_p2.b)))
                Rows Removed by Join Filter: 3
@@ -3628,7 +3612,7 @@ create table pp_recpart_23 partition of pp_recpart for values in ('(2,3)');
 explain (costs off) select * from pp_recpart where a = '(1,1)'::pp_rectype;
                 QUERY PLAN                 
 -------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on pp_recpart
          Number of partitions to scan: 1 
          Filter: (a = '(1,1)'::pp_rectype)

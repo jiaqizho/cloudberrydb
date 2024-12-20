@@ -241,22 +241,22 @@ SET enable_hashjoin TO off;
 SET enable_mergejoin TO off;
 SET enable_nestloop TO on;
 EXPLAIN (COSTS OFF, VERBOSE) SELECT * FROM foo JOIN bar on foo.a = bar.a AND foo.b = 11;
-                                     QUERY PLAN                                      
--------------------------------------------------------------------------------------
+                                                           QUERY PLAN                                                           
+--------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Output: foo.a, foo.b, bar.a
    ->  Nested Loop
          Output: foo.a, foo.b, bar.a
-         Join Filter: true
+         Join Filter: (foo.a = bar.a)
          ->  Seq Scan on orca_static_pruning.bar
                Output: bar.a
-         ->  Dynamic Index Scan on foo_idx on orca_static_pruning.foo
+         ->  Materialize
                Output: foo.a, foo.b
-               Index Cond: (foo.a = bar.a)
-               Filter: ((foo.a = bar.a) AND (foo.b = 11))
-               Number of partitions to scan: 1 
- Optimizer: Pivotal Optimizer (GPORCA)
- Settings: enable_hashjoin=off, enable_mergejoin=off, enable_nestloop=on, optimizer=on
+               ->  Seq Scan on orca_static_pruning.foo_part2 foo
+                     Output: foo.a, foo.b
+                     Filter: (foo.b = 11)
+ Settings: enable_hashjoin = 'off', enable_mergejoin = 'off', enable_nestloop = 'on', enable_parallel = 'off', optimizer = 'on'
+ Optimizer: Postgres query optimizer
 (14 rows)
 
 SELECT * FROM foo JOIN bar on foo.a = bar.a AND foo.b = 11;
