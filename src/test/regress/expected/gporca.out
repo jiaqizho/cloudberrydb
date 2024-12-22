@@ -14355,8 +14355,6 @@ INSERT INTO t_clientproductind2 (tradingday, productid, clientid, exchangegroup,
 ('20190715', 'zn_f', 54982370, 'SHFE', 1),
 ('20190715', 'pb_f', 54982370, 'SHFE', 1);
 SET optimizer_enable_hashjoin = OFF;
--- FIXME: orca can't produce correct plan, we fallback this query to
--- postgres optimizer for workaround. See issue 567
 EXPLAIN (COSTS OFF)
 SELECT * FROM(
   SELECT tradingday, 1 AS ins_SpanInsArbitrageRatio

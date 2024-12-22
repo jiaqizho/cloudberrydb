@@ -1354,7 +1354,6 @@ select unsortable_col1, unsortable_col2,
        count(*), sum(v)
   from gstest5 group by grouping sets ((unsortable_col1),(unsortable_col2))
  order by 3,5;
-INFO:  GPORCA failed to produce a plan, falling back to planner
  unsortable_col1 | unsortable_col2 | grouping | count | sum 
 -----------------+-----------------+----------+-------+-----
                4 |                 |        1 |     4 |  60
@@ -1369,7 +1368,6 @@ explain (costs off)
        count(*), sum(v)
   from gstest5 group by grouping sets ((unsortable_col1),(unsortable_col2))
  order by 3,5;
-INFO:  GPORCA failed to produce a plan, falling back to planner
                                   QUERY PLAN                                   
 -------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
@@ -1392,7 +1390,6 @@ select unsortable_col1, unsortable_col2,
        count(*), sum(v)
   from gstest5 group by grouping sets ((unsortable_col1),(unsortable_col2),())
  order by 3,5;
-INFO:  GPORCA failed to produce a plan, falling back to planner
  unsortable_col1 | unsortable_col2 | grouping | count | sum 
 -----------------+-----------------+----------+-------+-----
                4 |                 |        1 |     4 |  60
@@ -1408,7 +1405,6 @@ explain (costs off)
        count(*), sum(v)
   from gstest5 group by grouping sets ((unsortable_col1),(unsortable_col2),())
  order by 3,5;
-INFO:  GPORCA failed to produce a plan, falling back to planner
                                   QUERY PLAN                                   
 -------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)

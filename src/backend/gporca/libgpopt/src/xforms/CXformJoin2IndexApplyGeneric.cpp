@@ -283,6 +283,14 @@ CXformJoin2IndexApplyGeneric::Transform(CXformContext *pxfctxt,
 					CLogicalDynamicGet::PopConvert(pexprCurrInnerChild->Pop());
 				ptabdescInner = popDynamicGet->Ptabdesc();
 				distributionCols = popDynamicGet->PcrsDist();
+				// issue https://github.com/apache/cloudberry/issues/567
+				// the DynamicGet also need check the group key contains the distributionCols
+				if (nullptr != groupingColsToCheck.Value() &&
+					!groupingColsToCheck->ContainsAll(distributionCols))
+				{
+					// the grouping columns are not a superset of the distribution columns
+					return;
+				}
 				pexprGet = pexprCurrInnerChild;
 			}
 			break;
