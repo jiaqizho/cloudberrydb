@@ -11,12 +11,11 @@
 #endif
 namespace pax {
 
-static void CopyFixedRawBufferWithNull(PaxColumn *column,
-                                std::shared_ptr<Bitmap8> visibility_map_bitset,
-                                size_t bitset_index_begin, size_t range_begin,
-                                size_t range_lens, size_t data_index_begin,
-                                size_t data_range_lens,
-                                DataBuffer<char> *out_data_buffer) {
+static void CopyFixedRawBufferWithNull(
+    PaxColumn *column, std::shared_ptr<Bitmap8> visibility_map_bitset,
+    size_t bitset_index_begin, size_t range_begin, size_t range_lens,
+    size_t data_index_begin, size_t data_range_lens,
+    DataBuffer<char> *out_data_buffer) {
   char *buffer;
   size_t buffer_len;
 
@@ -50,11 +49,11 @@ static inline void CopyFixedRawBuffer(char *buffer, size_t len,
 }
 
 static void CopyFixedBuffer(PaxColumn *column,
-                     std::shared_ptr<Bitmap8> visibility_map_bitset,
-                     size_t bitset_index_begin, size_t range_begin,
-                     size_t range_lens, size_t data_index_begin,
-                     size_t data_range_lens,
-                     DataBuffer<char> *out_data_buffer) {
+                            std::shared_ptr<Bitmap8> visibility_map_bitset,
+                            size_t bitset_index_begin, size_t range_begin,
+                            size_t range_lens, size_t data_index_begin,
+                            size_t data_range_lens,
+                            DataBuffer<char> *out_data_buffer) {
   if (column->HasNull()) {
     CopyFixedRawBufferWithNull(
         column, visibility_map_bitset, bitset_index_begin, range_begin,
@@ -85,12 +84,13 @@ static void CopyFixedBuffer(PaxColumn *column,
 }
 
 static void CopyNonFixedBuffer(PaxColumn *column,
-                        std::shared_ptr<Bitmap8> visibility_map_bitset,
-                        size_t bitset_index_begin, size_t range_begin,
-                        size_t range_lens, size_t data_index_begin,
-                        size_t data_range_lens,
-                        DataBuffer<int32> *offset_buffer,
-                        DataBuffer<char> *out_data_buffer, bool is_bpchar) {
+                               std::shared_ptr<Bitmap8> visibility_map_bitset,
+                               size_t bitset_index_begin, size_t range_begin,
+                               size_t range_lens, size_t data_index_begin,
+                               size_t data_range_lens,
+                               DataBuffer<int32> *offset_buffer,
+                               DataBuffer<char> *out_data_buffer,
+                               bool is_bpchar) {
   size_t dst_offset = out_data_buffer->Used();
   char *buffer = nullptr;
   size_t buffer_len = 0;
@@ -213,8 +213,11 @@ static void CopyDecimalBuffer(PaxColumn *column,
           column->GetBuffer(data_index_begin + non_null_offset);
 
       auto vl = (struct varlena *)DatumGetPointer(buffer);
+      Assert(!(VARATT_IS_EXTERNAL(vl) || VARATT_IS_COMPRESSED(vl) ||
+               VARATT_IS_SHORT(vl)));
       num_len = VARSIZE_ANY_EXHDR(vl);
-      numeric = cbdb::DatumToNumeric(PointerGetDatum(buffer));
+      // direct cast
+      numeric = (Numeric)(buffer);
 
       char *dest_buff = out_data_buffer->GetAvailableBuffer();
       Assert(out_data_buffer->Available() >= (size_t)type_len);
@@ -293,8 +296,8 @@ static size_t CalcRecordBatchDataBufferSize(PaxColumn *column,
     int64 toast_total_size = 0;
     for (size_t i = 0; i < toast_indexes->GetSize(); i++) {
       auto toast_index = (*toast_indexes)[i];
-      std::tie(toast_buff, toast_buff_size) = column->GetBuffer(
-          column->GetRangeNonNullRows(0, toast_index));
+      std::tie(toast_buff, toast_buff_size) =
+          column->GetBuffer(column->GetRangeNonNullRows(0, toast_index));
       toast_total_size += pax_toast_raw_size(PointerGetDatum(toast_buff));
       toast_total_size -= pax_toast_hdr_size(PointerGetDatum(toast_buff));
     }
@@ -388,7 +391,8 @@ std::pair<size_t, size_t> VecAdapter::AppendPorcFormat(PaxColumns *columns,
       char *undecoded_buffer;
       size_t undecoded_buffer_len;
       auto undecoded_data_buffer =
-          std::dynamic_pointer_cast<PaxNonFixedEncodingColumn>(column)->GetUndecodedBuffer();
+          std::dynamic_pointer_cast<PaxNonFixedEncodingColumn>(column)
+              ->GetUndecodedBuffer();
       auto out_data_buffer_len =
           TYPEALIGN(MEMORY_ALIGN_SIZE, (range_lens * sizeof(int32)));
       std::tie(index_buffer, entry_buffer, desc_buffer) =
