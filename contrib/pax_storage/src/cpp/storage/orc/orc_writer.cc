@@ -188,8 +188,11 @@ static std::unique_ptr<PaxColumns> BuildColumns(
     }
 
     column->SetAlignSize(align_size);
-    column->SetAlignRows(
-        (attrttype == TYPTYPE_RANGE || attrttype == TYPTYPE_MULTIRANGE));
+    // When typtype is range/multrange need stored align with attalign
+    // Because in some of pg functions(not functions in SQL) will use the
+    // attalign to read the entry inside.
+    column->SetAlignRows(attrttype == TYPTYPE_RANGE ||
+                         attrttype == TYPTYPE_MULTIRANGE);
     columns->Append(std::move(column));
   }
 
@@ -325,8 +328,10 @@ std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(
     save_origin_datum = false;
 
     // if not in required_stats_cols, then we allow datum with short header
+    // Numeric always need ensure that with the 4B header, otherwise it will
+    // be converted twice in the vectorization path.
     if (required_stats_cols[i] || VARATT_IS_COMPRESSED(tts_value_vl) ||
-        VARATT_IS_EXTERNAL(tts_value_vl)) {
+        VARATT_IS_EXTERNAL(tts_value_vl) || attrs->atttypid == NUMERICOID) {
       // still detoast the origin toast
       detoast_vl = cbdb::PgDeToastDatum(tts_value_vl);
       Assert(detoast_vl != nullptr);
