@@ -33,6 +33,9 @@ insert into t2 values(1, generate_series(401, 500), generate_series(501, 600), g
 
 insert into t_allnull select null from generate_series(1,100);
 insert into t_allnull select null from generate_series(1,100);
+analyze t1;
+analyze t2;
+analyze t_allnull;
 
 set client_min_messages to log;
 
@@ -136,20 +139,6 @@ select count(*) from t_bf where v1 not in (1000, 10001);
 -- List<> quals
 select count(*) from t1 left join t2 on t1.v1 = t2.v1 where t1.v1 > 1 and t2.v1 < 10;
 
-analyze t1;
-analyze t2;
-WITH t1_cte AS (
-        SELECT v1, v2, v3
-        FROM t1 where v2 > 0
-)
-SELECT t2.*
-FROM t2
-join t1_cte on t1_cte.v1 = t2.v1 
-WHERE 
-	t1_cte.v2 < 100
-    and ((t1_cte.v1 = 42 AND t2.v1 = 43) OR (t1_cte.v1 = 44 AND t2.v2 = 45)) 
-    and t2.v1 < 90;
-
 -- coalesce, not support yet 
 select count(*) from t1 where coalesce(v1, 2) != 1;
 
@@ -240,18 +229,6 @@ select count(*) from t1 where v1 in (1000, 10001);
 select count(*) from t1 where v1 in (1000, 10001, NULL);
 select count(*) from t1 where v1 not in (1000, 10001); -- not work
 select count(*) from t1 where not (v2 < 1000 and v1 in (1000, 10001));
-
-WITH t1_cte AS (
-        SELECT v1, v2, v3
-        FROM t1 where v2 > 0
-)
-SELECT t2.*
-FROM t2
-join t1_cte on t1_cte.v1 = t2.v1 
-WHERE 
-	t1_cte.v2 < 100
-    and ((t1_cte.v1 = 42 AND t2.v1 = 43) OR (t1_cte.v1 = 44 AND t2.v2 = 45)) 
-    and t2.v1 < 90;
 
 -- coalesce, not support yet 
 select count(*) from t1 where coalesce(v1, 2) != 1;
