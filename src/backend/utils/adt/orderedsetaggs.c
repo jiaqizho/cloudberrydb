@@ -1634,6 +1634,7 @@ gp_percentile_disc_transition(PG_FUNCTION_ARGS)
 				 errmsg("percentile value %g is not between 0 and 1",
 						percentile)));
 	Datum prev_state = PG_GETARG_DATUM(0);
+	bool prev_state_isnull = PG_ARGISNULL(0);
 	Datum val = PG_GETARG_DATUM(1);
 	Datum return_state = prev_state;
 	int64 total_rows = PG_GETARG_INT64(3);
@@ -1666,6 +1667,10 @@ gp_percentile_disc_transition(PG_FUNCTION_ARGS)
 		/* Clean up, so the next group can see NULL for fn_extra */
 		pfree(cnt);
 		fcinfo->flinfo->fn_extra = NULL;
+	}
+
+	if (return_state == prev_state) {
+		fcinfo->isnull = prev_state_isnull;
 	}
 
 	PG_RETURN_DATUM(return_state);
