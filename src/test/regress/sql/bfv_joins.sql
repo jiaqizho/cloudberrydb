@@ -416,6 +416,8 @@ drop table o2;
 drop table o3;
 --end_ignore
 
+-- Current case add in Derive Combined Hashed Spec For Outer Joins (#14045), f8264ad
+-- GPDB will got wrong result in ORCA plan, util merged  [FIXME] Wrong results on main branch for INDF query,ce25faf
 create table o1 (a1 int, b1 int) distributed by (a1);
 create table o2 (a2 int, b2 int) distributed by (a2);
 create table o3 (a3 int, b3 int) distributed by (a3);

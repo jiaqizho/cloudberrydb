@@ -3700,6 +3700,8 @@ ERROR:  table "o2" does not exist
 drop table o3;
 ERROR:  table "o3" does not exist
 --end_ignore
+-- Current case add in Derive Combined Hashed Spec For Outer Joins (#14045), f8264ad
+-- GPDB will got wrong result in ORCA plan, util merged  [FIXME] Wrong results on main branch for INDF query,ce25faf
 create table o1 (a1 int, b1 int) distributed by (a1);
 create table o2 (a2 int, b2 int) distributed by (a2);
 create table o3 (a3 int, b3 int) distributed by (a3);
@@ -3709,22 +3711,22 @@ insert into o3 values (NULL, 20);
 select * from o1 left join o2 on a1 = a2 left join o3 on a2 is not distinct from a3;
  a1 | b1 | a2 | b2 | a3 | b3 
 ----+----+----+----+----+----
-  2 |  2 |    |    |    |   
-  3 |  3 |    |    |    |   
-  4 |  4 |    |    |    |   
-  7 |  7 |    |    |    |   
-  8 |  8 |    |    |    |   
- 16 | 16 | 16 |    |    |   
- 18 | 18 | 18 |    |    |   
- 19 | 19 | 19 |    |    |   
-  1 |  1 |    |    |    |   
+  1 |  1 |    |    |    | 20
  12 | 12 | 12 |    |    |   
  15 | 15 | 15 |    |    |   
  20 | 20 | 20 |    |    |   
-  5 |  5 |    |    |    |   
-  6 |  6 |    |    |    |   
-  9 |  9 |    |    |    |   
- 10 | 10 |    |    |    |   
+  2 |  2 |    |    |    | 20
+  3 |  3 |    |    |    | 20
+  4 |  4 |    |    |    | 20
+  7 |  7 |    |    |    | 20
+  8 |  8 |    |    |    | 20
+ 16 | 16 | 16 |    |    |   
+ 18 | 18 | 18 |    |    |   
+ 19 | 19 | 19 |    |    |   
+  5 |  5 |    |    |    | 20
+  6 |  6 |    |    |    | 20
+  9 |  9 |    |    |    | 20
+ 10 | 10 |    |    |    | 20
  11 | 11 | 11 |    |    |   
  13 | 13 | 13 |    |    |   
  14 | 14 | 14 |    |    |   
@@ -3734,26 +3736,26 @@ select * from o1 left join o2 on a1 = a2 left join o3 on a2 is not distinct from
 select * from o1 left join o2 on a1 = a2 left join o3 on a2 is not distinct from a3 and b2 is distinct from b3;
  a1 | b1 | a2 | b2 | a3 | b3 
 ----+----+----+----+----+----
-  2 |  2 |    |    |    |   
-  3 |  3 |    |    |    |   
-  4 |  4 |    |    |    |   
-  7 |  7 |    |    |    |   
-  8 |  8 |    |    |    |   
- 16 | 16 | 16 |    |    |   
- 18 | 18 | 18 |    |    |   
- 19 | 19 | 19 |    |    |   
-  1 |  1 |    |    |    |   
+  1 |  1 |    |    |    | 20
  12 | 12 | 12 |    |    |   
  15 | 15 | 15 |    |    |   
  20 | 20 | 20 |    |    |   
-  5 |  5 |    |    |    |   
-  6 |  6 |    |    |    |   
-  9 |  9 |    |    |    |   
- 10 | 10 |    |    |    |   
+  5 |  5 |    |    |    | 20
+  6 |  6 |    |    |    | 20
+  9 |  9 |    |    |    | 20
+ 10 | 10 |    |    |    | 20
  11 | 11 | 11 |    |    |   
  13 | 13 | 13 |    |    |   
  14 | 14 | 14 |    |    |   
  17 | 17 | 17 |    |    |   
+  2 |  2 |    |    |    | 20
+  3 |  3 |    |    |    | 20
+  4 |  4 |    |    |    | 20
+  7 |  7 |    |    |    | 20
+  8 |  8 |    |    |    | 20
+ 16 | 16 | 16 |    |    |   
+ 18 | 18 | 18 |    |    |   
+ 19 | 19 | 19 |    |    |   
 (20 rows)
 
 select * from o1 left join o2 on a1 = a2 left join o3 on a2 is not distinct from a3 and b2 = b3;

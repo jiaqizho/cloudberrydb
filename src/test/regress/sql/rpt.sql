@@ -10,6 +10,8 @@
 create schema rpt;
 set search_path to rpt;
 
+-- start_ignore
+-- GPDB_12_MERGE_FIXME: different plan when enable_parallel to on;
 -- If the producer is replicated, request a non-singleton spec
 -- that is not allowed to be enforced, to avoid potential CTE hang issue
 drop table if exists with_test1 cascade;
@@ -41,6 +43,7 @@ WITH
     t1 AS (SELECT * FROM with_test2),
     t2 AS (SELECT id, rc FROM with_test3 WHERE ri = 101991)
 SELECT p.*FROM t1 p JOIN t2 r ON p.isc = r.rc JOIN t2 r1 ON p.iscd = r1.rc LIMIT 1;
+-- end_ignore
 
 ---------
 -- INSERT

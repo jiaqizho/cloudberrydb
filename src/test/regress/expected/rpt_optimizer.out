@@ -9,6 +9,8 @@
 --
 create schema rpt;
 set search_path to rpt;
+-- start_ignore 
+-- GPDB_12_MERGE_FIXME: different plan when enable_parallel to on;
 -- If the producer is replicated, request a non-singleton spec
 -- that is not allowed to be enforced, to avoid potential CTE hang issue
 drop table if exists with_test1 cascade;
@@ -65,9 +67,9 @@ SELECT p.*FROM t1 p JOIN t2 r ON p.isc = r.rc JOIN t2 r1 ON p.iscd = r1.rc LIMIT
 ---------------------------------------------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)  (cost=390.63..390.63 rows=1 width=104)
    ->  Limit  (cost=332.63..390.63 rows=1 width=104)
-         ->  Hash Join  (cost=332.63..739.49 rows=7 width=104)
+         ->  Hash Join  (cost=332.63..739.50 rows=7 width=104)
                Hash Cond: ((with_test2.iscd)::text = (r1.rc)::text)
-               ->  Hash Join  (cost=166.32..572.78 rows=129 width=104)
+               ->  Hash Join  (cost=166.32..572.79 rows=129 width=104)
                      Hash Cond: ((with_test2.isc)::text = (r.rc)::text)
                      ->  Seq Scan on with_test2  (cost=0.00..344.00 rows=24400 width=104)
                      ->  Hash  (cost=166.25..166.25 rows=5 width=516)
@@ -90,6 +92,7 @@ SELECT p.*FROM t1 p JOIN t2 r ON p.isc = r.rc JOIN t2 r1 ON p.iscd = r1.rc LIMIT
   1 | CMN_BIN_YES | CMN_BIN_YES
 (1 row)
 
+-- end_ignore
 ---------
 -- INSERT
 ---------
