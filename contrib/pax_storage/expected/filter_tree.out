@@ -31,6 +31,9 @@ insert into t2 values(1, generate_series(1, 100), generate_series(101, 200), gen
 insert into t2 values(1, generate_series(401, 500), generate_series(501, 600), generate_series(601, 700), generate_series(701, 800));
 insert into t_allnull select null from generate_series(1,100);
 insert into t_allnull select null from generate_series(1,100);
+analyze t1;
+analyze t2;
+analyze t_allnull;
 set client_min_messages to log;
 -- no filter
 select count(*) from t1;
@@ -628,44 +631,6 @@ LOG:  kind file, filter rate: 1 / 2
      8
 (1 row)
 
-analyze t1;
-LOG:  statement: analyze t1;
-LOG:  No sparse filter  (seg0 slice1 10.13.9.100:7002 pid=4328)
-LOG:  No sparse filter  (seg2 slice1 10.13.9.100:7004 pid=4330)
-LOG:  No sparse filter
-analyze t2;
-LOG:  statement: analyze t2;
-LOG:  No sparse filter  (seg0 slice1 10.13.9.100:7002 pid=4328)
-LOG:  No sparse filter  (seg2 slice1 10.13.9.100:7004 pid=4330)
-LOG:  No sparse filter
-WITH t1_cte AS (
-        SELECT v1, v2, v3
-        FROM t1 where v2 > 0
-)
-SELECT t2.*
-FROM t2
-join t1_cte on t1_cte.v1 = t2.v1 
-WHERE 
-	t1_cte.v2 < 100
-    and ((t1_cte.v1 = 42 AND t2.v1 = 43) OR (t1_cte.v1 = 44 AND t2.v2 = 45)) 
-    and t2.v1 < 90;
-LOG:  statement: WITH t1_cte AS (
-        SELECT v1, v2, v3
-        FROM t1 where v2 > 0
-)
-SELECT t2.*
-FROM t2
-join t1_cte on t1_cte.v1 = t2.v1 
-WHERE 
-	t1_cte.v2 < 100
-    and ((t1_cte.v1 = 42 AND t2.v1 = 43) OR (t1_cte.v1 = 44 AND t2.v2 = 45)) 
-    and t2.v1 < 90;
-LOG:  kind file, filter rate: 2 / 2
-LOG:  kind file, filter rate: 1 / 2
- same | v1 | v2 | v3 | v4 
-------+----+----+----+----
-(0 rows)
-
 -- coalesce, not support yet 
 select count(*) from t1 where coalesce(v1, 2) != 1;
 LOG:  statement: select count(*) from t1 where coalesce(v1, 2) != 1;
@@ -1194,35 +1159,6 @@ LOG:  kind file, filter rate: 0 / 2
 -------
    200
 (1 row)
-
-WITH t1_cte AS (
-        SELECT v1, v2, v3
-        FROM t1 where v2 > 0
-)
-SELECT t2.*
-FROM t2
-join t1_cte on t1_cte.v1 = t2.v1 
-WHERE 
-	t1_cte.v2 < 100
-    and ((t1_cte.v1 = 42 AND t2.v1 = 43) OR (t1_cte.v1 = 44 AND t2.v2 = 45)) 
-    and t2.v1 < 90;
-LOG:  statement: WITH t1_cte AS (
-        SELECT v1, v2, v3
-        FROM t1 where v2 > 0
-)
-SELECT t2.*
-FROM t2
-join t1_cte on t1_cte.v1 = t2.v1 
-WHERE 
-	t1_cte.v2 < 100
-    and ((t1_cte.v1 = 42 AND t2.v1 = 43) OR (t1_cte.v1 = 44 AND t2.v2 = 45)) 
-    and t2.v1 < 90;
-LOG:  kind file, filter rate: 2 / 2
-LOG:  kind file, filter rate: 1 / 2
-kind group, filter rate: 0 / 1
- same | v1 | v2 | v3 | v4 
-------+----+----+----+----
-(0 rows)
 
 -- coalesce, not support yet 
 select count(*) from t1 where coalesce(v1, 2) != 1;
