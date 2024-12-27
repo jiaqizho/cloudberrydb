@@ -1,6 +1,7 @@
 #include "storage/filter/pax_filter.h"
 
 #include <sstream>
+#include <thread>
 
 #include "comm/gtest_wrappers.h"
 #include "storage/filter/pax_sparse_filter.h"
@@ -62,6 +63,30 @@ TEST_F(PaxFilterTest, TestPrint) {
   std::cout << sf.DebugString() << std::endl;
 
   sf.filter_tree_ = nullptr;
+}
+
+void thread_task(std::array<std::atomic<int>, 2> &array,
+                 const int loop_counts) {
+  for (int i = 0; i < loop_counts; i++) {
+    array[1].fetch_add(1);
+  }
+}
+
+TEST_F(PaxFilterTest, TestAtotic) {
+  std::array<std::atomic<int>, 2> array = {0};
+  const int thread_nums = 10;
+  const int loop_counts = 500000;
+  std::thread threads[thread_nums];
+
+  for (int i = 0; i < thread_nums; i++) {
+    threads[i] = std::thread(thread_task, std::ref(array), loop_counts);
+  }
+
+  for (int i = 0; i < thread_nums; i++) {
+    threads[i].join();
+  }
+
+  ASSERT_EQ(array[1].load(), loop_counts * thread_nums);
 }
 
 };  // namespace pax::tests
