@@ -156,8 +156,8 @@ class PaxSparseFilter final {
   std::shared_ptr<PFTNode> filter_tree_;
 
   // used to log the filter rate
-  int hits_[StatisticsKind::kEnd];
-  int totals_[StatisticsKind::kEnd];
+  std::array<std::atomic<int>, StatisticsKind::kEnd> hits_;
+  std::array<std::atomic<int>, StatisticsKind::kEnd> totals_;
 
   bool allow_fallback_to_pg_;
 };  // class PaxSparseFilter
