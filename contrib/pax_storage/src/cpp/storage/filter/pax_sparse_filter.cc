@@ -77,10 +77,9 @@ struct PaxSparseExecContext final {
 PaxSparseFilter::PaxSparseFilter(Relation relation, bool allow_fallback_to_pg)
     : rel_(relation),
       filter_tree_(nullptr),
-      allow_fallback_to_pg_(allow_fallback_to_pg) {
-  memset(hits_, 0, sizeof(hits_));
-  memset(totals_, 0, sizeof(totals_));
-}
+      hits_{0},
+      totals_{0},
+      allow_fallback_to_pg_(allow_fallback_to_pg) {}
 
 static void ConvertFilterTreeToDebugString(
     std::stringstream &ss, const std::string &prefix,
@@ -127,18 +126,21 @@ void PaxSparseFilter::LogStatistics() const {
   static const char *filter_kind_desc[] = {"file", "group"};
   std::stringstream ss;
 
-  auto N = sizeof(filter_kind_desc) / sizeof(char *);
-  for (size_t i = 0; i < N; i++) {
-    if (totals_[i] == 0) {
-      ss << pax::fmt("kind %s, no filter. ", filter_kind_desc[i]) << std::endl;
-    } else {
-      ss << pax::fmt("kind %s, filter rate: %d / %d", filter_kind_desc[i],
-                     hits_[i], totals_[i])
-         << std::endl;
+  if (pax_enable_debug) {
+    auto N = sizeof(filter_kind_desc) / sizeof(char *);
+    for (size_t i = 0; i < N; i++) {
+      if (totals_[i] == 0) {
+        ss << pax::fmt("kind %s, no filter. ", filter_kind_desc[i])
+           << std::endl;
+      } else {
+        ss << pax::fmt("kind %s, filter rate: %d / %d", filter_kind_desc[i],
+                       hits_[i].load(), totals_[i].load())
+           << std::endl;
+      }
     }
-  }
 
-  PAX_LOG_IF(pax_enable_debug, "%s", ss.str().c_str());
+    PAX_LOG("%s", ss.str().c_str());
+  }
 }
 
 bool PaxSparseFilter::ExistsFilterPath() const {
@@ -280,11 +282,13 @@ bool PaxSparseFilter::ExecFilter(const ColumnStatsProvider &provider,
   }
 
 no_filter:
-  if (!filter_failed) {
-    hits_[kind] += 1;
-  }
+  if (pax_enable_debug) {
+    if (!filter_failed) {
+      hits_[kind].fetch_add(1);
+    }
 
-  totals_[kind] += 1;
+    totals_[kind].fetch_add(1);
+  }
   return filter_failed;
 }
 
