@@ -1188,6 +1188,14 @@ CTranslatorQueryToDXL::TranslateDeleteQueryToDXL()
 		&m_context->m_has_distributed_tables);
 	const IMDRelation *md_rel = m_md_accessor->RetrieveRel(table_descr->MDId());
 
+	// CBDB_MERGE_FIXME: Support DML operations on partitioned tables
+	if (md_rel->IsPartitioned())
+	{
+		// GPDB_12_MERGE_FIXME: Support DML operations on partitioned tables
+		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+				   GPOS_WSZ_LIT("DML(delete) on partitioned tables"));
+	}
+
 	// make note of the operator classes used in the distribution key
 	NoteDistributionPolicyOpclasses(rte);
 
@@ -1253,6 +1261,14 @@ CTranslatorQueryToDXL::TranslateUpdateQueryToDXL()
 	{
 		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
 				   GPOS_WSZ_LIT("UPDATE with constraints"));
+	}
+
+	// CBDB_MERGE_FIXME: Support DML operations on partitioned tables
+	if (md_rel->IsPartitioned())
+	{
+		// GPDB_12_MERGE_FIXME: Support DML operations on partitioned tables
+		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+				   GPOS_WSZ_LIT("DML(update) on partitioned tables"));
 	}
 
 	// make note of the operator classes used in the distribution key

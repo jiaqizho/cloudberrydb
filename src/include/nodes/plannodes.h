@@ -424,6 +424,7 @@ typedef struct ModifyTable
 	Node	   *onConflictWhere;	/* WHERE for ON CONFLICT UPDATE */
 	Index		exclRelRTI;		/* RTI of the EXCLUDED pseudo relation */
 	List	   *exclRelTlist;	/* tlist of the EXCLUDED pseudo relation */
+	/* CBDB_CHERRYPICK_FIXME: need enable it */
 	bool		forceTupleRouting; /* dynamic scans require tuple routing */
 } ModifyTable;
 
