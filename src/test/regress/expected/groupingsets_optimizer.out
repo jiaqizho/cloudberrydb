@@ -1670,16 +1670,12 @@ explain (costs off)
                                              Sort Key: share0_ref3.b
                                              ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                                    Hash Key: share0_ref3.b
-                                                   ->  Partial GroupAggregate
+                                                   ->  Streaming Partial HashAggregate
                                                          Group Key: share0_ref3.b
-                                                         ->  Sort
-                                                               Sort Key: share0_ref3.b
-                                                               ->  Shared Scan (share slice:id 2:0)
-                                 ->  GroupAggregate
+                                                         ->  Shared Scan (share slice:id 2:0)
+                                 ->  HashAggregate
                                        Group Key: share0_ref4.a
-                                       ->  Sort
-                                             Sort Key: share0_ref4.a
-                                             ->  Shared Scan (share slice:id 1:0)
+                                       ->  Shared Scan (share slice:id 1:0)
                                  ->  Result
                                        ->  Redistribute Motion 1:3  (slice3)
                                              ->  Finalize Aggregate
@@ -1687,7 +1683,7 @@ explain (costs off)
                                                          ->  Partial Aggregate
                                                                ->  Shared Scan (share slice:id 4:0)
  Optimizer: Pivotal Optimizer (GPORCA)
-(40 rows)
+(36 rows)
 
 select a, b, sum(v.x)
   from (values (1),(2)) v(x), gstest_data(v.x)
@@ -2388,23 +2384,7 @@ create table gs_group_1 as
 select g1000, g100, g10, sum(g::numeric), count(*), max(g::text) from
   (select g%1000 as g1000, g%100 as g100, g%10 as g10, g
    from generate_series(0,199999) g) s
-group by cube (g1000,g100,g10);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'g1000' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
-set jit_above_cost to default;
-create table gs_group_2 as
-select g1000, g100, g10, sum(g::numeric), count(*), max(g::text) from
-  (select g/20 as g1000, g/200 as g100, g/2000 as g10, g
-   from generate_series(0,19999) g) s
-group by cube (g1000,g100,g10);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'g1000' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
-create table gs_group_3 as
-select g100, g10, array_agg(g) as a, count(*) as c, max(g::text) as m from
-  (select g/200 as g100, g/2000 as g10, g
-   from generate_series(0,19999) g) s
-group by grouping sets (g100,g10);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
+group by cube (g1000,g100,g10) distributed by (g1000);
 -- Produce results with hash aggregation.
 set enable_hashagg = true;
 set enable_sort = false;
@@ -2449,23 +2429,8 @@ create table gs_hash_1 as
 select g1000, g100, g10, sum(g::numeric), count(*), max(g::text) from
   (select g%1000 as g1000, g%100 as g100, g%10 as g10, g
    from generate_series(0,199999) g) s
-group by cube (g1000,g100,g10);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'g1000' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+group by cube (g1000,g100,g10) distributed by (g1000);
 set jit_above_cost to default;
-create table gs_hash_2 as
-select g1000, g100, g10, sum(g::numeric), count(*), max(g::text) from
-  (select g/20 as g1000, g/200 as g100, g/2000 as g10, g
-   from generate_series(0,19999) g) s
-group by cube (g1000,g100,g10);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'g1000' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
-create table gs_hash_3 as
-select g100, g10, array_agg(g) as a, count(*) as c, max(g::text) as m from
-  (select g/200 as g100, g/2000 as g10, g
-   from generate_series(0,19999) g) s
-group by grouping sets (g100,g10);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
 set enable_sort = true;
 set work_mem to default;
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
