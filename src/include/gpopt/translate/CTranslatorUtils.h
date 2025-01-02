@@ -199,7 +199,7 @@ public:
 	// construct a dynamic array of sets of column attnos corresponding
 	// to the group by clause
 	static CBitSetArray *GetColumnAttnosForGroupBy(
-		CMemoryPool *mp, List *group_clause, List *grouping_set_list,
+		CMemoryPool *mp, List *group_clause, List *grouping_set_list, bool grouping_distinct,
 		ULONG num_cols, UlongToUlongMap *group_col_pos, CBitSet *group_cold);
 
 	// return a copy of the query with constant of unknown type being coerced

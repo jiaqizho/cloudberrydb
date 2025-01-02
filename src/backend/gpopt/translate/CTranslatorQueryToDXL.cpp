@@ -604,7 +604,7 @@ CTranslatorQueryToDXL::TranslateSelectQueryToDXL()
 	{
 		child_dxlnode = TranslateGroupingSets(
 			m_query->jointree, m_query->targetList, m_query->groupClause,
-			m_query->groupingSets, m_query->hasAggs,
+			m_query->groupingSets, m_query->groupDistinct, m_query->hasAggs,
 			sort_group_attno_to_colid_mapping, output_attno_to_colid_mapping);
 	}
 
@@ -2414,7 +2414,7 @@ CTranslatorQueryToDXL::CheckNoDuplicateAliasGroupingColumn(List *target_list,
 CDXLNode *
 CTranslatorQueryToDXL::TranslateGroupingSets(
 	FromExpr *from_expr, List *target_list, List *group_clause,
-	List *grouping_set, BOOL has_aggs,
+	List *grouping_set, bool grouping_distinct, BOOL has_aggs,
 	IntToUlongMap *sort_grpref_to_colid_mapping,
 	IntToUlongMap *output_attno_to_colid_mapping)
 {
@@ -2457,7 +2457,7 @@ CTranslatorQueryToDXL::TranslateGroupingSets(
 		GPOS_NEW(m_mp) UlongToUlongMap(m_mp);
 	CBitSet *unique_grp_cols_bitset = GPOS_NEW(m_mp) CBitSet(m_mp, num_of_cols);
 	CBitSetArray *bitset_array = CTranslatorUtils::GetColumnAttnosForGroupBy(
-		m_mp, group_clause, grouping_set, num_of_cols,
+		m_mp, group_clause, grouping_set, grouping_distinct, num_of_cols,
 		grpcol_index_to_colid_mapping, unique_grp_cols_bitset);
 
 	const ULONG num_of_grouping_sets = bitset_array->Size();

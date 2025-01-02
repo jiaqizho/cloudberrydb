@@ -224,7 +224,7 @@ private:
 	// translate a query with grouping sets
 	CDXLNode *TranslateGroupingSets(
 		FromExpr *from_expr, List *target_list, List *group_clause,
-		List *grouping_set, BOOL has_aggs,
+		List *grouping_set, bool grouping_distinct, BOOL has_aggs,
 		IntToUlongMap *phmiulSortGrpColsColId,
 		IntToUlongMap *output_attno_to_colid_mapping);
 

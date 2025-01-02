@@ -932,6 +932,7 @@ CTranslatorUtils::GetGroupingColidArray(
 CBitSetArray *
 CTranslatorUtils::GetColumnAttnosForGroupBy(
 	CMemoryPool *mp, List *group_clause_list, List *grouping_set_list,
+	bool grouping_distinct,
 	ULONG num_cols,
 	UlongToUlongMap *
 		group_col_pos,	// mapping of grouping col positions to SortGroupRef ids
@@ -1032,6 +1033,39 @@ CTranslatorUtils::GetColumnAttnosForGroupBy(
 		{
 			col_attnos_arr = col_attnos_arr_current;
 		}
+	}
+
+	// Deduplicate the grouping sets result
+	// Can't do dedup when building the `col_attnos_arr`
+	if (grouping_distinct)
+	{
+		CBitSetArray *col_attnos_arr_dedup = GPOS_NEW(mp) CBitSetArray(mp);
+		for (ULONG ul = 0; ul < col_attnos_arr->Size(); ul++)
+		{
+			auto col_attnos = (*col_attnos_arr)[ul];
+			bool exist = false;
+
+			for (ULONG ulInner = 0; ulInner < col_attnos_arr_dedup->Size(); ulInner++)
+			{
+				auto col_attnos_dedup = (*col_attnos_arr_dedup)[ulInner];
+				if (col_attnos_dedup->Equals(col_attnos))
+				{
+					exist = true;
+					break;
+				}
+			}
+
+			if (!exist)
+			{
+				// still need copy here
+				CBitSet *bset =
+						GPOS_NEW(mp) CBitSet(mp, *col_attnos);
+				col_attnos_arr_dedup->Append(bset);
+			}
+		}
+
+		col_attnos_arr->Release();
+		col_attnos_arr = col_attnos_arr_dedup;
 	}
 
 	return col_attnos_arr;
