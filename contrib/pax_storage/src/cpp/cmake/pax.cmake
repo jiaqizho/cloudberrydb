@@ -74,6 +74,7 @@ set(pax_storage_src
     storage/proto/protobuf_stream.cc
     storage/pax.cc 
     storage/pax_table_partition_writer.cc  
+    storage/paxc_smgr.cc
     storage/toast/pax_toast.cc
     storage/strategy.cc
     storage/micro_partition_iterator.cc

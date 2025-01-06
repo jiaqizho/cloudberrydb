@@ -23,7 +23,7 @@
 #ifdef VEC_BUILD
 #include "storage/vec_parallel_pax.h"
 #endif
-
+#include "storage/paxc_smgr.h"
 
 #define NOT_IMPLEMENTED_YET                        \
   ereport(ERROR,                                   \
@@ -206,16 +206,17 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
   systable_endscan(scan);
   table_close(pax_tables_rel, NoLock);
 
-  // add pending delete for pax
-  paxc::PaxAddPendingDelete(rel, *newrnode, false);
-
   // if table in dfs_tablespace, need not create relfilenode file on s3
   if (paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace)) {
+    // FIXME(gongxun): currently it is not possible to delete files in
+    // dfs_tablespace through mdunlink_pax, so pending delete logic is
+    // retained for the tables under dfs_tablespace
+    paxc::PaxAddPendingDelete(rel, *newrnode, false);
     return;
   }
 
   // create relfilenode file for pax table
-  auto srel = RelationCreateStorage(*newrnode, persistence, SMGR_MD, rel);
+  auto srel = RelationCreateStorage(*newrnode, persistence, SMGR_PAX, rel);
   smgrclose(srel);
 
   // create data directory
@@ -258,7 +259,6 @@ void CCPaxAccessMethod::RelationCopyData(Relation rel,
     pax::CCPaxAuxTable::PaxAuxRelationCopyData(rel, newrnode, true);
     cbdb::RelCloseSmgr(rel);
     cbdb::RelDropStorage(rel);
-    cbdb::PaxAddPendingDelete(rel, rel->rd_node, true);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
@@ -1565,15 +1565,6 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id,
       PaxCheckNumericOption(rel, options->storage_format);
     } break;
 
-    case OAT_TRUNCATE:
-    case OAT_DROP:
-      // not drop column
-      if (sub_id == 0) {
-        paxc::PaxAddPendingDelete(rel, rel->rd_node, true);
-      }
-
-      break;
-
     default:
       break;
   }
@@ -1724,6 +1715,9 @@ static struct CustomObjectClass pax_tables_coc = {
 };
 
 void _PG_init(void) {  // NOLINT
+  if (!process_shared_preload_libraries_in_progress)
+    elog(ERROR, "pax extension must be loaded in shared_preload_libraries");
+    
   prev_object_access_hook = object_access_hook;
   object_access_hook = PaxObjectAccessHook;
 
@@ -1742,11 +1736,12 @@ void _PG_init(void) {  // NOLINT
 
   paxc::paxc_reg_rel_options();
 
+  paxc::RegisterPaxSmgr();
+
 #ifdef VEC_BUILD
   // register parallel scan to arrow
   auto ds_registry = arrow::dataset::DatasetRegistry::GetDatasetRegistry();
   ds_registry->AddDatasetImpl(PAX_TABLE_AM_OID, pax::PaxDatasetInterface::New);
 #endif
-
 }
 }  // extern "C"
