@@ -794,7 +794,7 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
   if (createnewpath) {
     // create pg_pax_table relfilenode file and dbid directory.
     cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
-                                         SMGR_MD, rel);
+                                         SMGR_PAX, rel);
 
     // create micropartition file destination folder for copying.
     CBDB_CHECK((fs->CreateDirectory(dst_path) == 0),

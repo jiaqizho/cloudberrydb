@@ -569,7 +569,12 @@ void cbdb::TableClose(Relation rel, LOCKMODE lockmode) {
 
 void cbdb::RelOpenSmgr(Relation rel) {
   CBDB_WRAP_START;
-  { RelationOpenSmgr(rel); }
+  {
+    Assert(RelationIsPAX(rel));
+    if ((rel)->rd_smgr == NULL)
+      smgrsetowner(&((rel)->rd_smgr),
+                   smgropen((rel)->rd_node, (rel)->rd_backend, SMGR_PAX, rel));
+  }
   CBDB_WRAP_END;
 }
 
