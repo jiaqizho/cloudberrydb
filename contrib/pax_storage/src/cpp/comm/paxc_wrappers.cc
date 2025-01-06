@@ -461,7 +461,8 @@ static void PaxFileDoPendingRelDelete(PendingRelDelete *reldelete) {
 }
 
 static struct PendingRelDeleteAction pax_file_pending_rel_deletes_action = {
-    .flags = PENDING_REL_DELETE_DEFAULT_FLAG,
+    .flags = PENDING_REL_DELETE_NEED_PRESERVE | PENDING_REL_DELETE_NEED_XLOG |
+             PENDING_REL_DELETE_NEED_SYNC,
     .destroy_pending_rel_delete = PaxFileDestroyPendingRelDelete,
     .do_pending_rel_delete = PaxFileDoPendingRelDelete};
 
