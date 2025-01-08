@@ -320,7 +320,7 @@ CTranslatorRelcacheToDXL::RetrieveRelCheckConstraints(CMemoryPool *mp, OID oid)
 void
 CTranslatorRelcacheToDXL::CheckUnsupportedRelation(Relation rel)
 {
-	if (!rel->rd_partdesc && gpdb::HasSubclassSlow(rel->rd_id))
+	if (!gpdb::RelationGetPartitionDesc(rel, true) && gpdb::HasSubclassSlow(rel->rd_id))
 	{
 		GPOS_RAISE(gpdxl::ExmaMD, gpdxl::ExmiMDObjUnsupported,
 				   GPOS_WSZ_LIT("Inherited tables"));
@@ -374,11 +374,10 @@ CTranslatorRelcacheToDXL::RetrieveExtStats(CMemoryPool *mp, IMDId *mdid)
 
 			CBitSet *attnos = GPOS_NEW(mp) CBitSet(mp);
 
-			int attno = -1;
-			while ((attno = bms_next_member(item.attrs, attno)) >= 0)
-			{
-				attnos->ExchangeSet(attno);
+			for (int item_idx = 0; item_idx < item.nattributes; item_idx++) {
+				attnos->ExchangeSet(item.attributes[item_idx]);
 			}
+
 			md_ndistincts->Append(GPOS_NEW(mp)
 									  CMDNDistinct(mp, item.ndistinct, attnos));
 		}
@@ -552,17 +551,18 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 	is_partitioned = (nullptr != part_keys && 0 < part_keys->Size());
 
 	// get number of leaf partitions
-	if (rel->rd_partdesc)
+	PartitionDesc part_desc = gpdb::RelationGetPartitionDesc(rel.get(), true);
+	if (part_desc)
 	{
 		partition_oids = GPOS_NEW(mp) IMdIdArray(mp);
 
-		for (int i = 0; i < RelationGetPartitionDesc(rel.get(), true)->nparts; ++i)
+		for (int i = 0; i < part_desc->nparts; ++i)
 		{
-			Oid oid = RelationGetPartitionDesc(rel.get(), true)->oids[i];
+			Oid oid = part_desc->oids[i];
 			partition_oids->Append(GPOS_NEW(mp)
 									   CMDIdGPDB(IMDId::EmdidRel, oid));
 			gpdb::RelationWrapper rel_part = gpdb::GetRelation(oid);
-			if (rel_part->rd_partdesc)
+			if (gpdb::RelationGetPartitionDesc(rel_part.get(), true))
 			{
 				// Multi-level partitioned tables are unsupported - fall back
 				GPOS_RAISE(gpdxl::ExmaMD, gpdxl::ExmiMDObjUnsupported,
@@ -3007,13 +3007,13 @@ CTranslatorRelcacheToDXL::RetrieveStorageTypeForPartitionedTable(Relation rel)
 	// causes gporca generate another query plan. The problem is that the CWorkerPoolManager
 	// holds a static worker pointer, executing gporca nestly is not supported now.
 	// See CWorkerPoolManager::RegisterWorker()
-	if (RelationGetPartitionDesc(rel, true)->nparts == 0)
+	if (gpdb::RelationGetPartitionDesc(rel, true)->nparts == 0)
 	{
 		return IMDRelation::ErelstorageHeap;
 	}
-	for (int i = 0; i < RelationGetPartitionDesc(rel, true)->nparts; ++i)
+	for (int i = 0; i < gpdb::RelationGetPartitionDesc(rel, true)->nparts; ++i)
 	{
-		Oid oid = RelationGetPartitionDesc(rel, true)->oids[i];
+		Oid oid = gpdb::RelationGetPartitionDesc(rel, true)->oids[i];
 		gpdb::RelationWrapper child_rel = gpdb::GetRelation(oid);
 		IMDRelation::Erelstoragetype child_storage =
 			RetrieveRelStorageType(child_rel.get());

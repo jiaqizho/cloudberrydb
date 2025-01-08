@@ -2382,14 +2382,6 @@ ReadCommonSort(Sort *local_node)
 	READ_BOOL_ARRAY(nullsFirst, local_node->numCols);
 }
 
-static void
-ReadSort(Sort *local_node)
-{
-	READ_TEMP_LOCALS();
-
-	ReadCommonSort(local_node);
-}
-
 /*
  * _readSort
  */
@@ -2398,7 +2390,7 @@ _readSort(void)
 {
 	READ_LOCALS_NO_FIELDS(Sort);
 
-	ReadSort(local_node);
+	ReadCommonSort(local_node);
 
 	READ_DONE();
 }
@@ -2411,7 +2403,7 @@ _readIncrementalSort(void)
 {
 	READ_LOCALS(IncrementalSort);
 
-	ReadSort(&local_node->sort);
+	ReadCommonSort(&local_node->sort);
 
 	READ_INT_FIELD(nPresortedCols);
 

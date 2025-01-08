@@ -870,6 +870,17 @@ gpdb::GetRelationPartitionKey(Relation rel)
 	return nullptr;
 }
 
+PartitionDesc
+gpdb::RelationGetPartitionDesc(Relation rel, bool omit_detached)
+{
+	GP_WRAP_START;
+	{
+		return ::RelationGetPartitionDesc(rel, omit_detached);
+	}
+	GP_WRAP_END;
+	return nullptr;
+}
+
 bool
 gpdb::GetCastFunc(Oid src_oid, Oid dest_oid, bool *is_binary_coercible,
 				  Oid *cast_fn_oid, CoercionPathType *pathtype)

@@ -1620,7 +1620,7 @@ GetRelationExtStatistics(Relation relation)
 static List *
 get_relation_statistics(RelOptInfo *rel, Relation relation)
 {
-	Index		varno = rel->relid;
+	Index		varno = rel ? rel->relid : 0;
 	List	   *statoidlist;
 	List	   *stainfos = NIL;
 	ListCell   *l;
@@ -1658,7 +1658,7 @@ get_relation_statistics(RelOptInfo *rel, Relation relation)
 		 * Preprocess expressions (if any). We read the expressions, run them
 		 * through eval_const_expressions, and fix the varnos.
 		 */
-		{
+		if (rel) {
 			bool		isnull;
 			Datum		datum;
 

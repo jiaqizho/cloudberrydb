@@ -516,6 +516,8 @@ void BuildRelationTriggers(Relation rel);
 
 PartitionKey GetRelationPartitionKey(Relation rel);
 
+PartitionDesc RelationGetPartitionDesc(Relation rel, bool omit_detached);
+
 MVNDistinct *GetMVNDistinct(Oid stat_oid);
 
 MVDependencies *GetMVDependencies(Oid stat_oid);

@@ -72,7 +72,7 @@ CPartPruneStepsBuilder::CreatePartPruneInfoForOneLevel(CDXLNode *filterNode)
 	PartitionedRelPruneInfo *pinfo = MakeNode(PartitionedRelPruneInfo);
 	pinfo->rtindex = m_rtindex;
 
-	pinfo->nparts = RelationGetPartitionDesc(m_relation, true)->nparts;
+	pinfo->nparts = gpdb::RelationGetPartitionDesc(m_relation, true)->nparts;
 
 	pinfo->subpart_map = (int *) palloc(sizeof(int) * pinfo->nparts);
 	pinfo->subplan_map = (int *) palloc(sizeof(int) * pinfo->nparts);
@@ -90,7 +90,7 @@ CPartPruneStepsBuilder::CreatePartPruneInfoForOneLevel(CDXLNode *filterNode)
 		{
 			// partition did survive pruning
 			pinfo->subplan_map[i] = part_ptr;
-			pinfo->relid_map[i] = RelationGetPartitionDesc(m_relation, true)->oids[i];
+			pinfo->relid_map[i] = gpdb::RelationGetPartitionDesc(m_relation, true)->oids[i];
 			pinfo->present_parts = bms_add_member(pinfo->present_parts, i);
 			++part_ptr;
 		}
