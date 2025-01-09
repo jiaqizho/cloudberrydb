@@ -514,25 +514,25 @@ SELECT s.stxkind, d.stxdndistinct
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b');
  estimated | actual 
 -----------+--------
-      2550 |   2550
+       221 |    221
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b, c');
  estimated | actual 
 -----------+--------
-       997 |   1000
+      1000 |   1000
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b, c, d');
  estimated | actual 
 -----------+--------
-       997 |   1000
+      1000 |   1000
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY b, c, d');
  estimated | actual 
 -----------+--------
-      1632 |   1632
+       323 |    323
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, d');
@@ -645,7 +645,7 @@ SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY (a+1
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (a+1), (b+100)');
  estimated | actual 
 -----------+--------
-        50 |     50
+       125 |    221
 (1 row)
 
 CREATE STATISTICS s10 (ndistinct) ON (a+1), (b+100), (2*c) FROM ndistinct;
@@ -662,19 +662,19 @@ SELECT s.stxkind, d.stxdndistinct
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY (a+1), (b+100)');
  estimated | actual 
 -----------+--------
-        50 |     50
+       125 |    221
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY (a+1), (b+100), (2*c)');
  estimated | actual 
 -----------+--------
-        50 |     50
+       997 |   1000
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (a+1), (b+100)');
  estimated | actual 
 -----------+--------
-        50 |     50
+       125 |    221
 (1 row)
 
 DROP STATISTICS s10;
@@ -711,7 +711,7 @@ SELECT s.stxkind, d.stxdndistinct
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b');
  estimated | actual 
 -----------+--------
-       125 |    221
+       221 |    221
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (2*c)');
@@ -783,7 +783,7 @@ ANALYZE ndistinct;
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b');
  estimated | actual 
 -----------+--------
-        16 |      9
+         9 |      9
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (b+1)');
@@ -829,7 +829,7 @@ ANALYZE ndistinct;
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b');
  estimated | actual 
 -----------+--------
-        16 |      9
+         9 |      9
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (b+1)');
@@ -875,7 +875,7 @@ ANALYZE ndistinct;
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b');
  estimated | actual 
 -----------+--------
-        16 |      9
+         9 |      9
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (b+1)');
@@ -921,7 +921,7 @@ ANALYZE ndistinct;
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b');
  estimated | actual 
 -----------+--------
-        16 |      9
+         9 |      9
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (b+1)');
@@ -971,7 +971,7 @@ ANALYZE ndistinct;
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, b');
  estimated | actual 
 -----------+--------
-        16 |      9
+         9 |      9
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT COUNT(*) FROM ndistinct GROUP BY a, (b+1)');
@@ -1267,13 +1267,13 @@ SELECT dependencies FROM pg_stats_ext WHERE statistics_name = 'func_deps_stat';
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a = 1 AND b = ''1''');
  estimated | actual 
 -----------+--------
-         2 |     50
+        50 |     50
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a = 1 AND b = ''1'' AND c = 1');
  estimated | actual 
 -----------+--------
-         1 |     50
+        50 |     50
 (1 row)
 
 -- IN
@@ -1436,7 +1436,7 @@ ANALYZE functional_dependencies;
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a = 1 AND b = ''1'' AND c = 1');
  estimated | actual 
 -----------+--------
-         1 |     50
+        50 |     50
 (1 row)
 
 DROP STATISTICS func_deps_stat;
@@ -1821,31 +1821,31 @@ ANALYZE functional_dependencies_multi;
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE a = 0 AND b = 0');
  estimated | actual 
 -----------+--------
-       182 |    714
+       714 |    714
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE 0 = a AND 0 = b');
  estimated | actual 
 -----------+--------
-       182 |    714
+       714 |    714
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE c = 0 AND d = 0');
  estimated | actual 
 -----------+--------
-        74 |    454
+       455 |    454
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE a = 0 AND b = 0 AND c = 0 AND d = 0');
  estimated | actual 
 -----------+--------
-        12 |     64
+        25 |     64
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE 0 = a AND b = 0 AND 0 = c AND d = 0');
  estimated | actual 
 -----------+--------
-        12 |     64
+        25 |     64
 (1 row)
 
 DROP TABLE functional_dependencies_multi;

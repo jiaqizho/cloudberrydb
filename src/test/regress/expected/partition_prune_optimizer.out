@@ -1344,7 +1344,7 @@ explain (costs off) select * from coercepart where a = any ('{ab,bc}');
 explain (costs off) select * from coercepart where a = any ('{ab,null}');
                        QUERY PLAN                        
 ---------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on coercepart
          Number of partitions to scan: 1 
          Filter: ((a)::text = ANY ('{ab,NULL}'::text[]))
@@ -1364,7 +1364,7 @@ explain (costs off) select * from coercepart where a = any (null::text[]);
 explain (costs off) select * from coercepart where a = all ('{ab}');
                      QUERY PLAN                     
 ----------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on coercepart
          Number of partitions to scan: 1 
          Filter: ((a)::text = ALL ('{ab}'::text[]))
@@ -1384,7 +1384,7 @@ explain (costs off) select * from coercepart where a = all ('{ab,bc}');
 explain (costs off) select * from coercepart where a = all ('{ab,null}');
                        QUERY PLAN                        
 ---------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on coercepart
          Number of partitions to scan: 1 
          Filter: ((a)::text = ALL ('{ab,NULL}'::text[]))
@@ -3994,16 +3994,16 @@ explain (costs off) select * from listp1 where a = 2;
 (4 rows)
 
 explain (costs off) update listp1 set a = 1 where a = 2;
-                         QUERY PLAN                         
-------------------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Update on listp1
    ->  Result
          One-Time Filter: true
          ->  Result
                ->  Redistribute Motion 3:3  (slice1; segments: 3)
-                     Hash Key: listp1_1.a
+                     Hash Key: a
                      ->  Split
-                           ->  Seq Scan on listp1 listp1_1
+                           ->  Seq Scan on listp1
                                  Filter: (a = 2)
  Optimizer: Pivotal Optimizer (GPORCA)
 (10 rows)
@@ -4020,16 +4020,16 @@ explain (costs off) select * from listp1 where a = 2;
 (4 rows)
 
 explain (costs off) update listp1 set a = 1 where a = 2;
-                         QUERY PLAN                         
-------------------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Update on listp1
    ->  Result
          One-Time Filter: true
          ->  Result
                ->  Redistribute Motion 3:3  (slice1; segments: 3)
-                     Hash Key: listp1_1.a
+                     Hash Key: a
                      ->  Split
-                           ->  Seq Scan on listp1 listp1_1
+                           ->  Seq Scan on listp1
                                  Filter: (a = 2)
  Optimizer: Pivotal Optimizer (GPORCA)
 (10 rows)

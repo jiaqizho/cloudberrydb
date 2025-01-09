@@ -75,7 +75,7 @@ explain (costs off)
 select * from spgist_domain_tbl where f1 = 'fo';
                 QUERY PLAN                 
 -------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 1:1  (slice1; segments: 1)
    ->  Seq Scan on spgist_domain_tbl
          Filter: ((f1)::text = 'fo'::text)
  Optimizer: Pivotal Optimizer (GPORCA)

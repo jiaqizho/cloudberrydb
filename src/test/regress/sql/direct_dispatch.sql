@@ -599,6 +599,7 @@ set allow_system_table_mods=off;
 -- If opno of clause does not belong to opfamily of distributed key,
 -- do not use direct dispatch to resolve wrong result
 -- FIXME: orca still has wrong results
+-- CBDB_MERGE_FIXME: known ORCA direct dispatch BUG
 create table t_14887(a varchar);
 insert into t_14887 values('a   ');
 explain select * from t_14887 where a = 'a'::bpchar;

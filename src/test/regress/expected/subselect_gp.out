@@ -1916,6 +1916,7 @@ select * from dedup_reptab r where r.a in (select t.a/10 from dedup_tab t);
                Locus: Hashed
                Group Key: (RowIdExpr)
                ->  Sort
+                     Locus: Hashed
                      Sort Key: (RowIdExpr)
                      ->  Redistribute Motion 3:3  (slice2; segments: 3)
                            Locus: Hashed

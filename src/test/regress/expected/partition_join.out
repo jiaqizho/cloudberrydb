@@ -2693,7 +2693,7 @@ SELECT t1.* FROM prt1_adv t1 WHERE EXISTS (SELECT 1 FROM prt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -2707,7 +2707,7 @@ SELECT t1.* FROM prt1_adv t1 WHERE EXISTS (SELECT 1 FROM prt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice4; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -2721,7 +2721,7 @@ SELECT t1.* FROM prt1_adv t1 WHERE EXISTS (SELECT 1 FROM prt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice6; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -2962,7 +2962,7 @@ SELECT t1.* FROM prt1_adv t1 WHERE EXISTS (SELECT 1 FROM prt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -2976,7 +2976,7 @@ SELECT t1.* FROM prt1_adv t1 WHERE EXISTS (SELECT 1 FROM prt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice4; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -2990,7 +2990,7 @@ SELECT t1.* FROM prt1_adv t1 WHERE EXISTS (SELECT 1 FROM prt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice6; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -3800,7 +3800,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -3813,7 +3813,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice3; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -3826,7 +3826,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice4; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -4029,7 +4029,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -4042,7 +4042,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice3; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -4055,7 +4055,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice4; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -4293,7 +4293,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                ->  Unique
                      Group Key: (RowIdExpr)
                      ->  Sort
-                           Sort Key (Distinct): (RowIdExpr)
+                           Sort Key: (RowIdExpr)
                            ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                  Hash Key: (RowIdExpr)
                                  ->  Hash Join
@@ -4469,7 +4469,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -4482,7 +4482,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice3; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join
@@ -4495,7 +4495,7 @@ SELECT t1.* FROM plt1_adv t1 WHERE EXISTS (SELECT 1 FROM plt2_adv t2 WHERE t1.a 
                      ->  Unique
                            Group Key: (RowIdExpr)
                            ->  Sort
-                                 Sort Key (Distinct): (RowIdExpr)
+                                 Sort Key: (RowIdExpr)
                                  ->  Redistribute Motion 3:3  (slice4; segments: 3)
                                        Hash Key: (RowIdExpr)
                                        ->  Hash Join

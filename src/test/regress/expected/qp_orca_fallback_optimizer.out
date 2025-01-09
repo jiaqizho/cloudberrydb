@@ -113,7 +113,7 @@ explain update constr_tab set a = 10;
                ->  Redistribute Motion 3:3  (slice1; segments: 3)  (cost=0.00..431.00 rows=2 width=30)
                      Hash Key: constr_tab_1.a
                      ->  Split  (cost=0.00..431.00 rows=1 width=30)
-                           ->  Seq Scan on constr_tab constr_tab_1  (cost=0.00..431.00 rows=1 width=26)
+                           ->  Seq Scan on constr_tab  (cost=0.00..431.00 rows=1 width=26)
  Optimizer: Pivotal Optimizer (GPORCA)
 (9 rows)
 

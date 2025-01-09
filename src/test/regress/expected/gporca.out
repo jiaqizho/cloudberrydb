@@ -14640,4 +14640,5 @@ select * from conf;
 ---------
  
 (1 row)
+
 reset optimizer_trace_fallback;
