@@ -88,7 +88,6 @@ static std::unique_ptr<PaxColumns> BuildColumns(
        i++) {  // already checked types.size() == desc->nattrs
     auto type = types[i];
     auto attr = &desc->attrs[i];
-    char attrttype = cbdb::GetTyptype(attr->atttypid);
     std::unique_ptr<PaxColumn> column = nullptr;
     size_t align_size;
 
@@ -188,11 +187,6 @@ static std::unique_ptr<PaxColumns> BuildColumns(
     }
 
     column->SetAlignSize(align_size);
-    // When typtype is range/multrange need stored align with attalign
-    // Because in some of pg functions(not functions in SQL) will use the
-    // attalign to read the entry inside.
-    column->SetAlignRows(attrttype == TYPTYPE_RANGE ||
-                         attrttype == TYPTYPE_MULTIRANGE);
     columns->Append(std::move(column));
   }
 
