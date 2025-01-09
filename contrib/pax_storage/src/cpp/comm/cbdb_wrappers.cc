@@ -520,12 +520,6 @@ bool cbdb::GetTypbyval(Oid typid) {
   CBDB_WRAP_END;
 }
 
-char cbdb::GetTyptype(Oid typid) {
-  CBDB_WRAP_START;
-  { return get_typtype(typid); }
-  CBDB_WRAP_END;
-}
-
 SysScanDesc cbdb::SystableBeginScan(Relation rel, Oid index_id, bool index_ok,
                                     Snapshot snapshot, int n_keys,
                                     ScanKey keys) {
