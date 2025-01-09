@@ -22,7 +22,6 @@ PaxColumn::PaxColumn()
           ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
       lengths_compress_level_(0),
       type_align_size_(PAX_DATA_NO_ALIGN),
-      align_rows_(false),
       toast_indexes_(nullptr),
       toast_flat_map_(nullptr),
       numeber_of_external_toast_(0),
@@ -334,7 +333,6 @@ void PaxNonFixedColumn::AppendAlign(char *buffer, size_t size) {
 
   PaxColumn::Append(buffer, size);
 
-  Assert(type_align_size_ != PAX_DATA_NO_ALIGN);
   Assert(likely(reinterpret_cast<char *> TYPEALIGN(
                     type_align_size_, data_->Position()) == data_->Position()));
   size = TYPEALIGN(type_align_size_, size);
@@ -362,7 +360,7 @@ void PaxNonFixedColumn::AppendAlign(char *buffer, size_t size) {
 }
 
 void PaxNonFixedColumn::Append(char *buffer, size_t size) {
-  if (align_rows_) {
+  if (type_align_size_ != PAX_DATA_NO_ALIGN) {
     AppendAlign(buffer, size);
     return;
   }

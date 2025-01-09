@@ -231,7 +231,6 @@ Datum FunctionCall4Coll(FmgrInfo *flinfo, Oid collation, Datum arg1, Datum arg2,
                         Datum arg3, Datum arg4);
 int16 GetTyplen(Oid typid);
 bool GetTypbyval(Oid typid);
-char GetTyptype(Oid typid);
 
 SysScanDesc SystableBeginScan(Relation rel, Oid index_id, bool index_ok,
                               Snapshot snapshot, int n_keys, ScanKey keys);
