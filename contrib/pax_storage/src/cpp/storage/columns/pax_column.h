@@ -238,9 +238,6 @@ class PaxColumn {
   // Which require from `typalign` in `pg_type`
   virtual size_t GetAlignSize() const;
 
-  // Set the pg type
-  inline void SetAlignRows(bool align_rows) { align_rows_ = align_rows; }
-
   // Get current data part encoding type
   inline ColumnEncoding_Kind GetEncodingType() const { return encoded_type_; }
 
@@ -265,8 +262,8 @@ class PaxColumn {
     }
 
     CBDB_CHECK(pos < total_rows_, cbdb::CException::ExType::kExTypeOutOfRange,
-              fmt("Fail to check is toast [pos=%lu, total rows=%u], \n %s", pos,
-                  total_rows_, DebugString().c_str()));
+               fmt("Fail to check is toast [pos=%lu, total rows=%u], \n %s",
+                   pos, total_rows_, DebugString().c_str()));
     return !toast_flat_map_->Test(pos);
   }
 
@@ -366,9 +363,6 @@ class PaxColumn {
   //    - `ReadTuple` with/without memcpy should get a alignment datum
   // 2. datum padding: deal it in column `Append`
   size_t type_align_size_;
-
-  // Should we align the each of rows
-  size_t align_rows_;
 
   // the attributes which supplementary description of the column type
   // For example, attributes record `n` in `char(n)`
