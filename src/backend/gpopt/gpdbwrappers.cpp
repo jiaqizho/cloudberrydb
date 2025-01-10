@@ -1929,7 +1929,7 @@ gpdb::GetMVDependencies(Oid stat_oid)
 {
 	GP_WRAP_START;
 	{
-		return statext_dependencies_load(stat_oid);
+		return statext_dependencies_load(stat_oid, true);
 	}
 	GP_WRAP_END;
 }

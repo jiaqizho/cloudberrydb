@@ -619,7 +619,7 @@ dependency_is_fully_matched(MVDependency *dependency, Bitmapset *attnums)
  *		Load the functional dependencies for the indicated pg_statistic_ext tuple
  */
 MVDependencies *
-statext_dependencies_load(Oid mvoid)
+statext_dependencies_load(Oid mvoid, bool allow_null)
 {
 	MVDependencies *result;
 	bool		isnull;
@@ -633,9 +633,17 @@ statext_dependencies_load(Oid mvoid)
 	deps = SysCacheGetAttr(STATEXTDATASTXOID, htup,
 						   Anum_pg_statistic_ext_data_stxddependencies, &isnull);
 	if (isnull)
-		elog(ERROR,
-			 "requested statistics kind \"%c\" is not yet built for statistics object %u",
-			 STATS_EXT_DEPENDENCIES, mvoid);
+	{
+		if (!allow_null)
+		{
+			elog(ERROR,
+				"requested statistics kind \"%c\" is not yet built for statistics object %u",
+				STATS_EXT_DEPENDENCIES, mvoid);
+		}
+
+		ReleaseSysCache(htup);
+		return NULL;
+	}
 
 	result = statext_dependencies_deserialize(DatumGetByteaPP(deps));
 
@@ -1656,7 +1664,7 @@ dependencies_clauselist_selectivity(PlannerInfo *root,
 		if (nmatched + nexprs < 2)
 			continue;
 
-		deps = statext_dependencies_load(stat->statOid);
+		deps = statext_dependencies_load(stat->statOid, false);
 
 		/*
 		 * The expressions may be represented by different attnums in the

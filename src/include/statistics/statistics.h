@@ -95,7 +95,7 @@ typedef struct MCVList
 } MCVList;
 
 extern MVNDistinct *statext_ndistinct_load(Oid mvoid);
-extern MVDependencies *statext_dependencies_load(Oid mvoid);
+extern MVDependencies *statext_dependencies_load(Oid mvoid, bool allow_null);
 extern MCVList *statext_mcv_load(Oid mvoid);
 
 extern void BuildRelationExtStatistics(Relation onerel, double totalrows,

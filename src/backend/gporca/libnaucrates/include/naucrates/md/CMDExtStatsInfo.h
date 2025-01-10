@@ -42,6 +42,7 @@ public:
 		EstatDependencies,
 		EstatNDistinct,
 		EstatMCV,
+		EstatExpr,
 		EstatSentinel
 	};
 

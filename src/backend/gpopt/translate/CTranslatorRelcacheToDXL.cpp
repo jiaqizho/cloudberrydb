@@ -345,21 +345,24 @@ CTranslatorRelcacheToDXL::RetrieveExtStats(CMemoryPool *mp, IMDId *mdid)
 	if (list_member_int(kinds, STATS_EXT_DEPENDENCIES))
 	{
 		MVDependencies *dependencies = gpdb::GetMVDependencies(stat_oid);
+		// dependencies can be null after analyzed.
+		if (dependencies) {
 
-		for (ULONG i = 0; i < dependencies->ndeps; i++)
-		{
-			MVDependency *dep = dependencies->deps[i];
-
-			// Note: MVDependency->attributes's last index is the dependent "to"
-			//       column.
-			IntPtrArray *from_attnos = GPOS_NEW(mp) IntPtrArray(mp);
-			for (INT j = 0; j < dep->nattributes - 1; j++)
+			for (ULONG i = 0; i < dependencies->ndeps; i++)
 			{
-				from_attnos->Append(GPOS_NEW(mp) INT(dep->attributes[j]));
+				MVDependency *dep = dependencies->deps[i];
+
+				// Note: MVDependency->attributes's last index is the dependent "to"
+				//       column.
+				IntPtrArray *from_attnos = GPOS_NEW(mp) IntPtrArray(mp);
+				for (INT j = 0; j < dep->nattributes - 1; j++)
+				{
+					from_attnos->Append(GPOS_NEW(mp) INT(dep->attributes[j]));
+				}
+				deps->Append(GPOS_NEW(mp) CMDDependency(
+					mp, dep->degree, from_attnos,
+					dep->attributes[dep->nattributes - 1]));
 			}
-			deps->Append(GPOS_NEW(mp) CMDDependency(
-				mp, dep->degree, from_attnos,
-				dep->attributes[dep->nattributes - 1]));
 		}
 	}
 
@@ -442,10 +445,20 @@ CTranslatorRelcacheToDXL::RetrieveExtStatsInfo(CMemoryPool *mp, IMDId *mdid)
 				statkind = CMDExtStatsInfo::EstatMCV;
 				break;
 			}
+			case STATS_EXT_EXPRESSIONS:
+			{
+				statkind = CMDExtStatsInfo::EstatExpr;
+				break;
+			}
 			default:
 			{
 				GPOS_ASSERT(false && "Unknown extended stat type");
 			}
+		}
+
+		// CBDB_MERGE_FIXME: support expr ext stats in the feature
+		if (statkind == CMDExtStatsInfo::EstatExpr) {
+			continue;
 		}
 
 		const CWStringConst *statname = GPOS_NEW(mp)
