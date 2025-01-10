@@ -28,6 +28,8 @@ class MicroPartitionWriter {
     std::string block_id;
     TupleDesc rel_tuple_desc = nullptr;
     Oid rel_oid = InvalidOid;
+    RelFileNode node;
+    bool need_wal = false;
     std::vector<std::tuple<ColumnEncoding_Kind, int>> encoding_opts;
     std::pair<ColumnEncoding_Kind, int> lengths_encoding_opts;
     std::vector<int> enable_min_max_col_idxs;
@@ -43,6 +45,7 @@ class MicroPartitionWriter {
           block_id(std::move(wo.block_id)),
           rel_tuple_desc(wo.rel_tuple_desc),
           rel_oid(wo.rel_oid),
+          node(wo.node),
           encoding_opts(std::move(wo.encoding_opts)),
           enable_min_max_col_idxs(std::move(wo.enable_min_max_col_idxs)),
           enable_bf_col_idxs(std::move(wo.enable_bf_col_idxs)),
@@ -53,6 +56,7 @@ class MicroPartitionWriter {
       block_id = std::move(wo.block_id);
       rel_tuple_desc = wo.rel_tuple_desc;
       rel_oid = wo.rel_oid;
+      node = wo.node;
       encoding_opts = std::move(wo.encoding_opts);
       enable_min_max_col_idxs = std::move(wo.enable_min_max_col_idxs);
       enable_bf_col_idxs = std::move(wo.enable_bf_col_idxs);
