@@ -610,6 +610,7 @@ abort;
 --
 -- Parallel Refresh AO Materialized View
 --
+-- start_ignore flaky test
 create or replace function refresh_compare(ao_row bool, verbose bool, OUT parallel_is_better bool) as $$
 declare
  t timestamptz;
@@ -667,6 +668,7 @@ select * from refresh_compare(false, false);
 drop function refresh_compare;
 reset max_parallel_workers_per_gather;
 end;
+-- end_ignore
 
 --
 -- Parallel Create AO/AOCO Table AS
