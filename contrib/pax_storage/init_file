@@ -12,6 +12,10 @@ m/^NOTICE:  extension "gp_inject_fault" already exists, skipping/
 # of the test. Ignore the NOTICE if it exists already.
 m/NOTICE:  extension "gp_debug_numsegments" already exists, skipping/
 
+# flaky test in cbdb_parallel.sql, ignore the NOTICE
+m/^NOTICE: Parallel refresh.*/
+m/^NOTICE: Non-parallel refresh.*/
+
 m/^ Optimizer status:.*/
 m/^ Optimizer: Pivotal Optimizer \(GPORCA\).*/
 m/^ Optimizer: Postgres query optimizer/

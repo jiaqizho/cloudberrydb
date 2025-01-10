@@ -1723,7 +1723,7 @@ static struct CustomObjectClass pax_tables_coc = {
 void _PG_init(void) {  // NOLINT
   if (!process_shared_preload_libraries_in_progress)
     elog(ERROR, "pax extension must be loaded in shared_preload_libraries");
-    
+
   prev_object_access_hook = object_access_hook;
   object_access_hook = PaxObjectAccessHook;
 
