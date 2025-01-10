@@ -1,6 +1,11 @@
 #include "storage/paxc_smgr.h"
 
 #include "comm/paxc_wrappers.h"
+#include "storage/paxc_smgr.h"
+#include "storage/wal/paxc_wal.h"
+
+smgr_get_impl_hook_type prev_smgr_get_impl_hook = NULL;
+extern smgr_get_impl_hook_type smgr_get_impl_hook;
 
 namespace paxc {
 
@@ -12,6 +17,10 @@ static void mdunlink_pax(RelFileNodeBackend rnode, ForkNumber forkNumber,
     const char *path =
         paxc::BuildPaxDirectoryPath(rnode.node, rnode.backend, false);
     paxc::DeletePaxDirectoryPath(path, true);
+
+    if (isRedo) {
+      paxc::XLogForgetRelation(rnode.node);
+    }
   }
 
   const f_smgr *smgr = smgr_get(SMGR_MD);
@@ -38,6 +47,23 @@ static const f_smgr pax_smgr = {
     .smgr_immedsync = mdimmedsync,
 };
 
-void RegisterPaxSmgr() { smgr_register(&pax_smgr, SMGR_PAX); }
+void pax_smgr_get_impl_hook(const Relation rel, SMgrImpl *smgr_impl) {
+  Assert(rel != NULL);
+
+  if (RelationIsPAX(rel)) {
+    *smgr_impl = SMGR_PAX;
+  } else {
+    if (prev_smgr_get_impl_hook) {
+      prev_smgr_get_impl_hook(rel, smgr_impl);
+    }
+  }
+}
+
+void RegisterPaxSmgr() {
+  smgr_register(&pax_smgr, SMGR_PAX);
+
+  prev_smgr_get_impl_hook = smgr_get_impl_hook;
+  smgr_get_impl_hook = pax_smgr_get_impl_hook;
+}
 
 }  // namespace paxc

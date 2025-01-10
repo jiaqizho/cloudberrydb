@@ -24,6 +24,8 @@
 #include "storage/vec_parallel_pax.h"
 #endif
 #include "storage/paxc_smgr.h"
+#include "storage/wal/pax_wal.h"
+#include "storage/wal/paxc_wal.h"
 
 #define NOT_IMPLEMENTED_YET                        \
   ereport(ERROR,                                   \
@@ -232,6 +234,10 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
             "relfilenode [spcNode=%u, dbNode=%u, relNode=%lu, backend=%d]",
             path.c_str(), errno, newrnode->spcNode, newrnode->dbNode,
             newrnode->relNode, rel->rd_backend));
+    // only permanent table should write wal
+    if (cbdb::NeedWAL(rel)) {
+      cbdb::XLogPaxCreateDirectory(*newrnode);
+    }
   }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
@@ -1735,6 +1741,8 @@ void _PG_init(void) {  // NOLINT
   pax::common::InitResourceCallback();
 
   paxc::paxc_reg_rel_options();
+
+  paxc::RegisterPaxRmgr();
 
   paxc::RegisterPaxSmgr();
 

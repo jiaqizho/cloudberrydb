@@ -346,6 +346,12 @@ bool cbdb::IsDfsTablespaceById(Oid spcId) {
   CBDB_WRAP_END;
 }
 
+bool cbdb::NeedWAL(Relation rel) {
+  CBDB_WRAP_START;
+  { return paxc::NeedWAL(rel); }
+  CBDB_WRAP_END;
+}
+
 extern "C" {
 
 static bool paxc_extractcolumns_walker(  // NOLINT
