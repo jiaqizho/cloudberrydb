@@ -79,6 +79,9 @@ set(pax_storage_src
     storage/strategy.cc
     storage/micro_partition_iterator.cc
     storage/remote_file_system.cc
+    storage/wal/pax_wal.cc
+    storage/wal/paxc_desc.c
+    storage/wal/paxc_wal.cc
   )
 
 set(pax_clustering_src

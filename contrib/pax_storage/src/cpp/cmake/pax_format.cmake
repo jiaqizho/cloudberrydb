@@ -60,6 +60,9 @@ set(pax_storage_src
     storage/proto/protobuf_stream.cc
     storage/remote_file_system.cc
     storage/toast/pax_toast.cc
+    storage/wal/pax_wal.cc
+    storage/wal/paxc_desc.c
+    storage/wal/paxc_wal.cc
    )
 
    set(pax_clustering_src

@@ -5,6 +5,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "storage/wal/paxc_wal.h"
+
 #define PAX_MICROPARTITION_NAME_LENGTH 2048
 #define PAX_MICROPARTITION_DIR_POSTFIX "_pax"
 
@@ -441,6 +443,11 @@ bool IsDfsTablespaceById(Oid spcId) {
 
   TableSpaceCacheEntry *spc = get_tablespace(spcId);
   return spc->opts && (spc->opts->pathOffset != 0);
+}
+
+bool NeedWAL(Relation rel) {
+  return rel->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT &&
+         !IsDfsTablespaceById(rel->rd_rel->reltablespace);
 }
 
 static void PaxFileDestroyPendingRelDelete(PendingRelDelete *reldelete) {

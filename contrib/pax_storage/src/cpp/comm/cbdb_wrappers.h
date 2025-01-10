@@ -257,6 +257,8 @@ char *GetGUCConfigOptionByName(const char *name, const char **varname,
 
 bool IsDfsTablespaceById(Oid spcId);
 
+bool NeedWAL(Relation rel);
+
 // ufile operator
 UFile *UFileOpen(Oid spcId, const char *fileName, int fileFlags,
                  char *errorMessage, int errorMessageSize);
