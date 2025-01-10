@@ -167,6 +167,7 @@ s/.//gs
 
 -- start_matchignore
 m/^WARNING:  in pax table am, we recommend that gp_interconnect_queue_depth is a value greater than or equal to.*/
+m/^LOG.*pax xlog.*/
 -- end_matchignore 
 
 -- start_matchsubs

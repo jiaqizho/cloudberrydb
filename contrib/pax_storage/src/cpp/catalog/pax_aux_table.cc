@@ -14,7 +14,7 @@
 #include "storage/local_file_system.h"
 #include "storage/micro_partition_metadata.h"
 #include "storage/remote_file_system.h"
-
+#include "storage/wal/pax_wal.h"
 namespace paxc {
 
 static inline void InsertTuple(Relation rel, Datum *values, bool *nulls) {
@@ -747,7 +747,9 @@ void CCPaxAuxTable::PaxAuxRelationNontransactionalTruncate(Relation rel) {
 
   // Delete all micro partition file on non-transactional truncate  but reserve
   // top level PAX file directory.
-  PaxAuxRelationFileUnlink(rel->rd_node, rel->rd_backend, false);
+  PaxAuxRelationFileUnlink(
+      rel->rd_node, rel->rd_backend, false,
+      rel->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT);
 }
 
 void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
@@ -800,6 +802,11 @@ void CCPaxAuxTable::PaxAuxRelationCopyData(Relation rel,
     CBDB_CHECK((fs->CreateDirectory(dst_path) == 0),
                cbdb::CException::ExType::kExTypeIOError,
                fmt("Fail to create directory [path=%s]", dst_path.c_str()));
+
+    // only permanent table should write wal
+    if (cbdb::NeedWAL(rel)) {
+      cbdb::XLogPaxCreateDirectory(*newrnode);
+    }
   }
 
   // Get micropatition file source folder filename list for copying, if file
@@ -832,7 +839,8 @@ void CCPaxAuxTable::PaxAuxRelationCopyDataForCluster(Relation old_rel,
 
 void CCPaxAuxTable::PaxAuxRelationFileUnlink(RelFileNode node,
                                              BackendId backend,
-                                             bool delete_topleveldir) {
+                                             bool delete_topleveldir,
+                                             bool need_wal) {
   std::string relpath;
   FileSystem *fs;
   bool is_dfs_tablespace;
@@ -847,6 +855,10 @@ void CCPaxAuxTable::PaxAuxRelationFileUnlink(RelFileNode node,
   } else {
     fs = pax::Singleton<LocalFileSystem>::GetInstance();
     fs->DeleteDirectory(relpath, delete_topleveldir);
+    // delete directory wal log
+    if (need_wal) {
+      cbdb::XLogPaxTruncate(node);
+    }
   }
 }
 

@@ -18,6 +18,8 @@
 #include "storage/micro_partition_stats_updater.h"
 #include "storage/orc/orc_dump_reader.h"
 #include "storage/remote_file_system.h"
+#include "storage/wal/pax_wal.h"
+#include "storage/wal/paxc_wal.h"
 #ifdef VEC_BUILD
 #include "storage/vec/pax_vec_reader.h"
 #endif
@@ -170,6 +172,10 @@ std::unique_ptr<MicroPartitionWriter> TableWriter::CreateMicroPartitionWriter(
   current_blockno_ = std::stol(block_id);
 
   options.rel_oid = relation_->rd_id;
+  options.node = relation_->rd_node;
+  // only permanent table should write wal
+  options.need_wal =
+      relation_->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT;
   options.rel_tuple_desc = relation_->rd_att;
   options.block_id = std::move(block_id);
   options.file_name = std::move(file_path);
@@ -498,6 +504,7 @@ TableDeleter::TableDeleter(
     Relation rel, std::map<int, std::shared_ptr<Bitmap8>> delete_bitmap,
     Snapshot snapshot)
     : rel_(rel), snapshot_(snapshot), delete_bitmap_(delete_bitmap) {
+  need_wal_ = cbdb::NeedWAL(rel);
   if (cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace)) {
     file_system_options_ =
         std::make_shared<RemoteFileSystemOptions>(rel_->rd_rel->reltablespace);
@@ -630,6 +637,10 @@ void TableDeleter::DeleteWithVisibilityMap(
       auto visimap_file = file_system_->Open(visimap_file_path, fs::kWriteMode,
                                              file_system_options_);
       visimap_file->WriteN(raw.bitmap, raw.size);
+      if (need_wal_) {
+        cbdb::XLogPaxInsert(rel_->rd_node, visimap_file_name, 0, raw.bitmap,
+                            raw.size);
+      }
       visimap_file->Close();
     }
 

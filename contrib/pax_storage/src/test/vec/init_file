@@ -155,6 +155,7 @@ s/\s*pg_aocsseg_\d+\s*/Table "pg_aocsseg_#####/
 
 -- start_matchignore
 m/^WARNING:  in pax table am, we recommend that gp_interconnect_queue_depth is a value greater than or equal to.*/
+m/^LOG.*pax xlog.*/
 -- end_matchignore 
 
 -- start_matchsubs
