@@ -198,6 +198,7 @@ class TableDeleter final {
 
   FileSystem *file_system_ = nullptr;
   std::shared_ptr<FileSystemOptions> file_system_options_;
+  bool need_wal_;
 };
 
 }  // namespace pax

@@ -78,7 +78,7 @@ class CCPaxAuxTable final {
                                                Relation new_rel);
 
   static void PaxAuxRelationFileUnlink(RelFileNode node, BackendId backend,
-                                       bool delete_topleveldir);
+                                       bool delete_topleveldir, bool need_wal);
 };
 
 }  // namespace pax

@@ -39,6 +39,7 @@ extern "C" {
 #include "catalog/pg_amproc.h"
 #include "catalog/pg_attribute_encoding.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_database.h"
 #include "catalog/pg_directory_table.h"
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
@@ -111,6 +112,7 @@ extern "C" {
 #include "utils/syscache.h"
 #include "utils/tuplesort.h"
 #include "utils/wait_event.h"
+#include "access/xlogutils.h"
 
 // no header file in cbdb
 extern BlockNumber system_nextsampleblock(SampleScanState *node,  // NOLINT

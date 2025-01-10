@@ -3,9 +3,9 @@
 
 #include "storage/proto/proto_wrappers.h"
 
-namespace pax {
+#include "storage/paxc_define.h"
 
-#define TOAST_FILE_SUFFIX ".toast"
+namespace pax {
 
 #define VEC_BATCH_LENGTH (16384)
 #define MEMORY_ALIGN_SIZE (8)

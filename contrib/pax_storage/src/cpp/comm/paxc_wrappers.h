@@ -26,6 +26,8 @@ bool SumAGGGetProcinfo(Oid atttypid, Oid *prorettype, Oid *transtype,
 Datum SumFuncCall(FmgrInfo *flinfo, AggState *state, Datum arg1, Datum arg2);
 bool IsDfsTablespaceById(Oid spcId);
 
+bool NeedWAL(Relation rel);
+
 typedef struct PaxFileNodePendingDelete {
   char relkind;
   char *relativePath;
