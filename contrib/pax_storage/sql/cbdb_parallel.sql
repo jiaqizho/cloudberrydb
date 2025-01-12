@@ -610,7 +610,7 @@ abort;
 --
 -- Parallel Refresh AO Materialized View
 --
--- start_ignore flaky test
+-- start_ignore
 create or replace function refresh_compare(ao_row bool, verbose bool, OUT parallel_is_better bool) as $$
 declare
  t timestamptz;
