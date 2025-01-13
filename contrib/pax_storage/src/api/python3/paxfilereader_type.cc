@@ -205,7 +205,7 @@ static int paxfilereader_init(PyObject *self, PyObject *args,
 
     auto file_ptr = pax::Singleton<pax::LocalFileSystem>::GetInstance()->Open(
         pax_file_obj->filepath, pax::fs::kReadMode);
-    auto reader = new pax::OrcReader(file_ptr, toast_file);
+    auto reader = new pax::OrcReader(std::move(file_ptr), toast_file);
     reader->Open(std::move(read_options));
     pax_file_reader->reader = reader;
   } catch (cbdb::CException &e) {
@@ -322,7 +322,7 @@ static PyObject *paxfilereader_readgroup(PaxFileReaderObject *self,
 
   try {
     for (; column_index < col_nums; column_index++) {
-      auto column = (*columns)[column_index];
+      const auto &column = (*columns)[column_index];
       std::shared_ptr<pax::Bitmap8> bm;
       auto null_counts = 0;
       PyObject *schema_item = nullptr;

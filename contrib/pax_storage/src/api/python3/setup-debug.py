@@ -3,18 +3,21 @@ from setuptools import setup, Extension
 
 import os
 
+# python3 setup.py install 
+# How To Import ?
+# ```python
+# import paxpy
+# ```
 work_dir = os.path.dirname(__file__)
-top_dir = work_dir + "/../../../../../"
-pax_dir = work_dir + "/../../../"
-thirdparty_dir = top_dir + "/thirdparty"
 
 def abs_path(file_name):
        return "{}/{}".format(work_dir,file_name)
 
+gp_home = os.environ['GPHOME'] # Setup the CBDB before build the paxpy. 
+
 paxpy_src = [abs_path('paxpy_modules.cc'), abs_path('paxfile_type.cc'), abs_path('paxfilereader_type.cc'), abs_path('paxtype_cast.cc')]
-include_dirs = ["{}/src/include/".format(top_dir), "{}/src/cpp/".format(pax_dir), "{}/include".format(thirdparty_dir)];
-library_dirs = ["{}/src/backend/".format(top_dir),  # for postgres
-    "{}/build/src/cpp/".format(pax_dir)] # for paxformat
+include_dirs = ["{}/include/postgresql/server/".format(gp_home), "{}/include/pax/".format(gp_home)]
+library_dirs = ["{}/lib".format(gp_home)]
 libraries = ['paxformat', 'postgres']
 
 paxpy_module = Extension('paxpy',
