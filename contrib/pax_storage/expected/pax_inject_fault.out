@@ -1,0 +1,28 @@
+-- start_ignore
+drop table if exists t1;
+-- end_ignore
+create table t1(a int);
+select gp_inject_fault('orc_writer_write_tuple','panic',dbid) FROM gp_segment_configuration WHERE role = 'p' AND content > -1;
+HINT:  Inject an infinite 'skip' into the 'fts_probe' fault to disable FTS probing.
+WARNING:  consider disabling FTS probes while injecting a panic.
+ gp_inject_fault 
+-----------------
+ Success:
+ Success:
+ Success:
+(3 rows)
+
+-- failed because of fault injection
+insert into t1 select generate_series(1,10);
+ERROR:  fault triggered, fault name:'orc_writer_write_tuple' fault type:'panic'  (seg0 127.0.0.1:7002 pid=25534)
+-- success 
+insert into t1 select generate_series(1,10);
+select gp_inject_fault('orc_writer_write_tuple','reset',dbid) FROM gp_segment_configuration WHERE role = 'p' AND content > -1;
+ gp_inject_fault 
+-----------------
+ Success:
+ Success:
+ Success:
+(3 rows)
+
+drop table t1;
