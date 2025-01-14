@@ -193,7 +193,19 @@ std::unique_ptr<MicroPartitionWriter> TableWriter::CreateMicroPartitionWriter(
   // For partitioned writes, we need to reconstruct this part of the logic to
   // support partitioned writers on object storage.
   if (write_only) {
-    open_flags = fs::kWriteMode;
+    // FIXME: In a transaction, after obtaining a block_id from
+    // pax_fastsequence,if the next two file_system->Open() calls are
+    // successful, the block_id file and block_id.toast file will be created.
+    // when getting the incremented block_id from the pax_fastsequence table, we
+    // use heap_inplace_update which will mark the heap buffer as dirty and
+    // insert an xlog, but it does not guarantee that the page buffer or xlog
+    // has been flushed to disk. If the transation is abort, the buffer and
+    // xlog are not flushed to disk, and next insert transaction will start from
+    // the current block_id. but the data file and toast file created earlier
+    // will not be deleted. Therefore, O_CREAT | O_TRUNC is specified: if the
+    // file does not exist, it will be created; if it exists, its previous
+    // content will be truncated.
+    open_flags = fs::kWriteWithTruncMode;
   } else {
     open_flags = fs::kReadWriteMode;
   }
