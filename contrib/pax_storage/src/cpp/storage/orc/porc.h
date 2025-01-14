@@ -63,7 +63,7 @@ class OrcWriter : public MicroPartitionWriter {
   }
 #endif
 
-  std::vector<std::pair<int, Datum>> PerpareWriteTuple(TupleTableSlot *slot);
+  std::vector<std::pair<int, Datum>> PrepareWriteTuple(TupleTableSlot *slot);
   void EndWriteTuple(TupleTableSlot *slot);
 
   void BuildFooterType();

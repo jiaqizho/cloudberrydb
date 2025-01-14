@@ -300,7 +300,15 @@ void XLogRedoPaxInsert(XLogReaderState *record) {
   pfree(relpath);
 
   if (xlrec->target.offset == 0) {
-    fileFlags = O_RDWR | PG_BINARY | O_CREAT;
+    // why we need to truncate here?
+    // If the previous transaction was abnormal, the file name may be reused.
+    // If O_TRUNC is not specified, the tail of the file may be garbage data
+    // from the last wal synchronization.
+    // for example:
+    // tx1: write 1024 bytes to file, and crash
+    // tx2: write 512 bytes from offset 0 to same file, the last 512 bytes from
+    // offset 512 will be garbage data
+    fileFlags = O_RDWR | PG_BINARY | O_CREAT | O_TRUNC;
     file = PathNameOpenFile(path, fileFlags);
   } else {
     fileFlags = O_RDWR | PG_BINARY;
