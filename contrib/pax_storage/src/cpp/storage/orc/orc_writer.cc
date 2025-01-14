@@ -291,7 +291,7 @@ void OrcWriter::Flush() {
   }
 }
 
-std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(
+std::vector<std::pair<int, Datum>> OrcWriter::PrepareWriteTuple(
     TupleTableSlot *table_slot) {
   TupleDesc tuple_desc;
   int16 type_len;
@@ -392,7 +392,9 @@ void OrcWriter::WriteTuple(TupleTableSlot *table_slot) {
   Datum tts_value;
   struct varlena *tts_value_vl = nullptr;
 
-  auto detoast_map = PerpareWriteTuple(table_slot);
+  SIMPLE_FAULT_INJECTOR("orc_writer_write_tuple");
+
+  auto detoast_map = PrepareWriteTuple(table_slot);
 
   // The reason why
   tuple_desc = writer_options_.rel_tuple_desc;
