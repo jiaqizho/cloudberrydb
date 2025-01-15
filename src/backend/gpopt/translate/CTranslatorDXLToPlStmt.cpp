@@ -4254,16 +4254,16 @@ static TupleDesc
 RemapAttrsFromTupDesc(TupleDesc fromDesc, TupleDesc toDesc, Index index,
 					  List *qual, List *targetlist)
 {
-	AttrNumber *attMap;
-	attMap = convert_tuples_by_name_map_if_req(toDesc, fromDesc, "unused msg");
+	AttrMap *attMap;
+	attMap = build_attrmap_by_name_if_req(toDesc, fromDesc);
 
 	/* If attribute remapping is not necessary, then do not change the varattno */
 	if (attMap)
 	{
-		change_varattnos_of_a_varno((Node *) qual, attMap, index);
-		change_varattnos_of_a_varno((Node *) targetlist, attMap, index);
+		change_varattnos_of_a_varno((Node *) qual, attMap->attnums, index);
+		change_varattnos_of_a_varno((Node *) targetlist, attMap->attnums, index);
 		fromDesc = toDesc;
-		pfree(attMap);
+		free_attrmap(attMap);
 	}
 	return fromDesc;
 }

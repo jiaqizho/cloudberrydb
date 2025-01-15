@@ -165,7 +165,7 @@ initNextTableToScan(DynamicSeqScanState *node)
 		 * the new varnos correspond to
 		 */
 		node->lastRelOid = *pid;
-		pfree(attMap);
+		free_attrmap(attMap);
 	}
 
 	node->seqScanState = ExecInitSeqScanForPartition(&plan->seqscan, estate,

@@ -176,7 +176,7 @@ initNextTableToScan(DynamicBitmapHeapScanState *node)
 		 * the new varnos correspond to
 		 */
 		node->lastRelOid = pid;
-		pfree(attMap);
+		free_attrmap(attMap);
 	}
 
 	node->bhsState = ExecInitBitmapHeapScanForPartition(&plan->bitmapheapscan, estate, node->eflags,

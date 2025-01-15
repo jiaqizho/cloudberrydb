@@ -1602,8 +1602,6 @@ _readDefElem(void)
  *	Stuff from plannodes.h.
  */
 
-static void readForeignScanFields(ForeignScan *local_node);
-
 /*
  * _readPlannedStmt
  */
@@ -2211,6 +2209,7 @@ _readForeignScan(void)
 	readForeignScanFields(local_node);
 	READ_DONE();
 }
+
 static DynamicForeignScan *
 _readDynamicForeignScan(void)
 {
@@ -2223,6 +2222,7 @@ _readDynamicForeignScan(void)
 	READ_NODE_FIELD(fdw_private_list);
 	READ_DONE();
 }
+
 static void
 readForeignScanFields(ForeignScan *local_node)
 {
@@ -2231,6 +2231,7 @@ readForeignScanFields(ForeignScan *local_node)
 	ReadCommonScan(&local_node->scan);
 
 	READ_ENUM_FIELD(operation, CmdType);
+	READ_UINT_FIELD(resultRelation);
 	READ_OID_FIELD(fs_server);
 	READ_NODE_FIELD(fdw_exprs);
 	READ_NODE_FIELD(fdw_private);

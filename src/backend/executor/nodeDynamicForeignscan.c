@@ -70,6 +70,10 @@ ExecInitDynamicForeignScan(DynamicForeignScan *node, EState *estate, int eflags)
 	Relation scanRel = ExecOpenScanRelation(estate, node->foreignscan.scan.scanrelid, eflags);
 	ExecInitScanTupleSlot(estate, &state->ss, RelationGetDescr(scanRel), table_slot_callbacks(scanRel));
 
+	/* Dynamic foreign scan can't tell the ops of tupleslot */
+	state->ss.ps.scanopsfixed = false;
+	state->ss.ps.scanopsset = true;
+
 	/* Initialize result tuple type. */
 	ExecInitResultTypeTL(&state->ss.ps);
 	ExecAssignScanProjectionInfo(&state->ss);
@@ -127,7 +131,7 @@ initNextTableToScan(DynamicForeignScanState *node)
 	Relation	lastScannedRel;
 	TupleDesc	partTupDesc;
 	TupleDesc	lastTupDesc;
-	AttrNumber *attMap;
+	AttrMap *attMap;
 	Oid		   *pid;
 	Relation	currentRelation;
 
@@ -158,23 +162,24 @@ initNextTableToScan(DynamicForeignScanState *node)
 	 * FIXME: should we use execute_attr_map_tuple instead? Seems like a
 	 * higher level abstraction that fits the bill
 	 */
-	attMap = convert_tuples_by_name_map_if_req(partTupDesc, lastTupDesc, "unused msg");
+	attMap = build_attrmap_by_name_if_req(partTupDesc, lastTupDesc);
 	table_close(lastScannedRel, AccessShareLock);
 
 	/* If attribute remapping is not necessary, then do not change the varattno */
 	if (attMap)
 	{
-		change_varattnos_of_a_varno((Node*)scanState->ps.plan->qual, attMap, node->scanrelid);
-		change_varattnos_of_a_varno((Node*)scanState->ps.plan->targetlist, attMap, node->scanrelid);
+		change_varattnos_of_a_varno((Node*)scanState->ps.plan->qual, attMap->attnums, node->scanrelid);
+		change_varattnos_of_a_varno((Node*)scanState->ps.plan->targetlist, attMap->attnums, node->scanrelid);
 
 		/*
 		 * Now that the varattno mapping has been changed, change the relation that
 		 * the new varnos correspond to
 		 */
 		node->lastRelOid = *pid;
-		pfree(attMap);
+		free_attrmap(attMap);
 	}
-	RangeTblEntry *rte = estate->es_range_table_array[node->scanrelid-1];
+
+	RangeTblEntry *rte = exec_rt_fetch(node->scanrelid, estate);
 	rte->relid = *pid;
 	plan->foreignscan.fdw_private = node->fdw_private_array[node->whichPart];
 	node->foreignScanState = ExecInitForeignScanForPartition(&plan->foreignscan, estate, node->eflags,

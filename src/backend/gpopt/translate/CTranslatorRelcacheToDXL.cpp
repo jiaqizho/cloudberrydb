@@ -1837,6 +1837,11 @@ CTranslatorRelcacheToDXL::RetrieveColStats(CMemoryPool *mp,
 	num_rows =
 		gpdb::CdbEstimatePartitionedNumTuples(gpdb::GetRelation(rel_oid).get());
 
+	if (num_rows < 0)
+	{
+		num_rows = 0;
+	}
+
 	// extract column name and type
 	CMDName *md_colname =
 		GPOS_NEW(mp) CMDName(mp, md_col->Mdname().GetMDName());

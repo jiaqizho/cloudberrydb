@@ -847,6 +847,7 @@ outForeignScanFields(StringInfo str, const ForeignScan *node)
 	WRITE_BITMAPSET_FIELD(fs_relids);
 	WRITE_BOOL_FIELD(fsSystemCol);
 }
+
 static void
 _outForeignScan(StringInfo str, const ForeignScan *node)
 {
