@@ -350,6 +350,11 @@ void XLogRedoPaxCreateDirectory(XLogReaderState *record) {
              xlrec->node.dbNode, xlrec->node.spcNode, xlrec->node.relNode,
              dirpath);
 
+  // Like mdcreate, we need to create the directory for pax storage.
+  // We may be using the target table space for the first time in this
+  // database, so create a per-database subdirectory if needed.
+  TablespaceCreateDbspace(xlrec->node.spcNode, xlrec->node.dbNode, true);
+
   int ret = MakePGDirectory(dirpath);
   if (ret != 0) {
     // if directory already exists, skip
