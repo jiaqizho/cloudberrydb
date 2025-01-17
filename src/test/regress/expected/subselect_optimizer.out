@@ -1029,7 +1029,7 @@ select * from exists_tbl t1
          ->  Hash Left Join
                Hash Cond: (exists_tbl.c1 = exists_tbl_1.c2)
                ->  Dynamic Seq Scan on exists_tbl
-                     Number of partitions to scan: 2 
+                     Number of partitions to scan: 2 (out of 2)
                ->  Hash
                      ->  GroupAggregate
                            Group Key: exists_tbl_1.c2
@@ -1038,7 +1038,7 @@ select * from exists_tbl t1
                                  ->  Redistribute Motion 3:3  (slice2; segments: 3)
                                        Hash Key: exists_tbl_1.c2
                                        ->  Dynamic Seq Scan on exists_tbl exists_tbl_1
-                                             Number of partitions to scan: 2 
+                                             Number of partitions to scan: 2 (out of 2)
  Optimizer: Pivotal Optimizer (GPORCA)
 (17 rows)
 

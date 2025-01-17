@@ -9895,8 +9895,8 @@ select c.cid cid,
 from cust c, sales s, datedim d
 where c.cid = s.cid and s.date_sk = d.date_sk and
       ((d.year = 2001 and lower(s.type) = 't1' and plusone(d.moy) = 5) or (d.moy = 4 and upper(s.type) = 'T2'));
-                                                                                      QUERY PLAN
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                            QUERY PLAN                                                                                            
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1293.00 rows=1 width=24)
    ->  Hash Join  (cost=0.00..1293.00 rows=1 width=24)
          Hash Cond: (cust.cid = sales.cid)
@@ -14423,7 +14423,7 @@ ON t1.tradingday = t2.tradingday;
                            Hash Key: t_clientproductind2.tradingday
                            ->  Dynamic Index Scan on t_clientproductind2_pkey on t_clientproductind2
                                  Index Cond: (((tradingday)::text >= '20190715'::text) AND ((tradingday)::text <= '20190715'::text) AND ((tradingday)::text = '20190715'::text))
-                                 Number of partitions to scan: 1 
+                                 Number of partitions to scan: 1 (out of 2)
          ->  Materialize
                ->  GroupAggregate
                      Group Key: t_clientinstrumentind2.tradingday
@@ -14433,9 +14433,9 @@ ON t1.tradingday = t2.tradingday;
                                  Hash Key: t_clientinstrumentind2.tradingday
                                  ->  Dynamic Index Scan on t_clientinstrumentind2_pkey on t_clientinstrumentind2
                                        Index Cond: ((tradingday >= '20190715'::text) AND (tradingday <= '20190715'::text) AND (tradingday = '20190715'::text))
-                                       Number of partitions to scan: 1 
+                                       Number of partitions to scan: 1 (out of 2)
  Optimizer: Pivotal Optimizer (GPORCA)
-(22 rows)
+(23 rows)
 
 RESET optimizer_enable_hashjoin;
 SELECT * FROM(

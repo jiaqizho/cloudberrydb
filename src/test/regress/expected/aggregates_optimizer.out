@@ -1424,7 +1424,7 @@ explain (costs off) select * from p_t1 group by a,b,c,d;
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on p_t1
-         Number of partitions to scan: 2 
+         Number of partitions to scan: 2 (out of 2)
  Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 

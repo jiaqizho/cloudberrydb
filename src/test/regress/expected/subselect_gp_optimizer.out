@@ -2973,8 +2973,8 @@ explain (verbose, costs off) select * from (
 ) run_dt,
 extra_flow_dist1
 where dt < '2010-01-01'::date;
-                                                                    QUERY PLAN                                                                    
---------------------------------------------------------------------------------------------------------------------------------------------------
+                                                              QUERY PLAN                                                              
+--------------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Output: ((SubPlan 1)), extra_flow_dist1.a, extra_flow_dist1.b
    ->  Nested Loop
@@ -2993,53 +2993,48 @@ where dt < '2010-01-01'::date;
                      ->  Redistribute Motion 3:3  (slice2; segments: 3)
                            Output: ((SubPlan 1))
                            Hash Key: ((SubPlan 1))
-                           ->  GroupAggregate
-                                 Output: ((SubPlan 1))
-                                 Group Key: ((SubPlan 1))
-                                 ->  Sort
+                           ->  Append
+                                 ->  Result
                                        Output: ((SubPlan 1))
-                                       Sort Key: ((SubPlan 1))
-                                       ->  Append
-                                             ->  Redistribute Motion 1:3  (slice3)
-                                                   Output: ((SubPlan 1))
+                                       Filter: (((SubPlan 1)) < '01-01-2010'::date)
+                                       ->  Redistribute Motion 1:3  (slice3)
+                                             Output: ((SubPlan 1))
+                                             ->  Aggregate
+                                                   Output: (SubPlan 1)
                                                    ->  Result
-                                                         Output: ((SubPlan 1))
-                                                         Filter: (((SubPlan 1)) < '01-01-2010'::date)
-                                                         ->  Aggregate
-                                                               Output: (SubPlan 1)
-                                                               ->  Result
-                                                                     Output: true
-                                                               SubPlan 1
-                                                                 ->  Result
-                                                                       Output: extra_flow_dist.c
-                                                                       Filter: (extra_flow_dist.b = max(1))
-                                                                       ->  Materialize
+                                                         Output: true
+                                                   SubPlan 1
+                                                     ->  Result
+                                                           Output: extra_flow_dist.c
+                                                           Filter: (extra_flow_dist.b = max(1))
+                                                           ->  Materialize
+                                                                 Output: extra_flow_dist.b, extra_flow_dist.c
+                                                                 ->  Gather Motion 3:1  (slice4; segments: 3)
+                                                                       Output: extra_flow_dist.b, extra_flow_dist.c
+                                                                       ->  Seq Scan on subselect_gp.extra_flow_dist
                                                                              Output: extra_flow_dist.b, extra_flow_dist.c
-                                                                             ->  Gather Motion 3:1  (slice4; segments: 3)
-                                                                                   Output: extra_flow_dist.b, extra_flow_dist.c
-                                                                                   ->  Seq Scan on subselect_gp.extra_flow_dist
-                                                                                         Output: extra_flow_dist.b, extra_flow_dist.c
-                                             ->  Redistribute Motion 1:3  (slice5)
-                                                   Output: ((SubPlan 2))
+                                 ->  Result
+                                       Output: ((SubPlan 2))
+                                       Filter: (((SubPlan 2)) < '01-01-2010'::date)
+                                       ->  Redistribute Motion 1:3  (slice5)
+                                             Output: ((SubPlan 2))
+                                             ->  Aggregate
+                                                   Output: (SubPlan 2)
                                                    ->  Result
-                                                         Output: ((SubPlan 2))
-                                                         Filter: (((SubPlan 2)) < '01-01-2010'::date)
-                                                         ->  Aggregate
-                                                               Output: (SubPlan 2)
-                                                               ->  Result
-                                                                     Output: true
-                                                               SubPlan 2
-                                                                 ->  Result
-                                                                       Output: extra_flow_dist_1.c
-                                                                       Filter: (extra_flow_dist_1.b = max(1))
-                                                                       ->  Materialize
+                                                         Output: true
+                                                   SubPlan 2
+                                                     ->  Result
+                                                           Output: extra_flow_dist_1.c
+                                                           Filter: (extra_flow_dist_1.b = max(1))
+                                                           ->  Materialize
+                                                                 Output: extra_flow_dist_1.b, extra_flow_dist_1.c
+                                                                 ->  Gather Motion 3:1  (slice6; segments: 3)
+                                                                       Output: extra_flow_dist_1.b, extra_flow_dist_1.c
+                                                                       ->  Seq Scan on subselect_gp.extra_flow_dist extra_flow_dist_1
                                                                              Output: extra_flow_dist_1.b, extra_flow_dist_1.c
-                                                                             ->  Gather Motion 3:1  (slice6; segments: 3)
-                                                                                   Output: extra_flow_dist_1.b, extra_flow_dist_1.c
-                                                                                   ->  Seq Scan on subselect_gp.extra_flow_dist extra_flow_dist_1
-                                                                                         Output: extra_flow_dist_1.b, extra_flow_dist_1.c
+ Settings: enable_parallel = 'off', optimizer = 'on'
  Optimizer: Pivotal Optimizer (GPORCA)
-(64 rows)
+(59 rows)
 
 -- Check DISTINCT ON clause and ORDER BY clause in SubLink, See https://github.com/greenplum-db/gpdb/issues/12656.
 -- For EXISTS SubLink, we don’t need to care about the data deduplication problem, we can delete DISTINCT ON clause and

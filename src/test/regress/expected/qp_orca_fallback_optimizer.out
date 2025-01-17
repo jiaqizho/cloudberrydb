@@ -318,17 +318,17 @@ DETAIL:  Feature not supported: Insert with External/foreign partition storage t
 
 explain delete from ext_part where a=1;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Delete with External/foreign partition storage types
-                         QUERY PLAN                         
-------------------------------------------------------------
- Delete on ext_part  (cost=0.00..435.25 rows=32 width=10)
-   Delete on p1
-   ->  Seq Scan on p1  (cost=0.00..435.25 rows=32 width=10)
+DETAIL:  Feature not supported: DML(delete) on partitioned tables
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
+ Delete on ext_part  (cost=0.00..435.25 rows=0 width=0)
+   Delete on p1 ext_part_1
+   ->  Seq Scan on p1 ext_part_1  (cost=0.00..435.25 rows=32 width=14)
          Filter: (a = 1)
  Optimizer: Postgres query optimizer
 (5 rows)
 
 explain update ext_part set a=1;
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Update with External/foreign partition storage types
+DETAIL:  Feature not supported: DML(update) on partitioned tables
 ERROR:  cannot update foreign table "p2_ext"

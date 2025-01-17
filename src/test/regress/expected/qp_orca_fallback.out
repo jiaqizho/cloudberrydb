@@ -265,11 +265,11 @@ explain insert into ext_part values (1);
 (3 rows)
 
 explain delete from ext_part where a=1;
-                         QUERY PLAN                         
-------------------------------------------------------------
- Delete on ext_part  (cost=0.00..435.25 rows=32 width=10)
-   Delete on p1
-   ->  Seq Scan on p1  (cost=0.00..435.25 rows=32 width=10)
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
+ Delete on ext_part  (cost=0.00..435.25 rows=0 width=0)
+   Delete on p1 ext_part_1
+   ->  Seq Scan on p1 ext_part_1  (cost=0.00..435.25 rows=32 width=14)
          Filter: (a = 1)
  Optimizer: Postgres query optimizer
 (5 rows)

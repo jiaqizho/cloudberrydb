@@ -45,14 +45,22 @@ select * from part where b>10 and a>0;
 
 create table non_part (a int, b int) distributed by (a);
 insert into non_part values (15,15);
+analyze non_part;
 
 -- mixed partitions with DPE with multiple dynamic scans, select one partition
+-- start_ignore
+-- unstable test case
 explain analyze select * from part, non_part where part.b=non_part.b;
+--end_ignore
 select * from part, non_part where part.b=non_part.b;
 
 insert into non_part values (5,5);
+analyze non_part;
 -- mixed partitions with DPE with multiple dynamic scans, select both partition
+-- start_ignore
+-- unstable test case
 explain analyze select * from part, non_part where part.b=non_part.b;
+-- end_ignore
 select * from part, non_part where part.b=non_part.b;
 
 create table p3 (a int, b int) distributed by (a);

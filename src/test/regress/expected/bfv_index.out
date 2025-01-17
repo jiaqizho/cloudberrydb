@@ -999,23 +999,23 @@ SET enable_seqscan = OFF;
 SET optimizer_enable_dynamictablescan =OFF;
 EXPLAIN (COSTS OFF)
 SELECT * FROM hash_prt_tbl WHERE b=3;
-                                    QUERY PLAN                                     
------------------------------------------------------------------------------------
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Index Scan using hash_prt_tbl_1_prt_p1_b_idx on hash_prt_tbl_1_prt_p1
+         ->  Index Scan using hash_prt_tbl_1_prt_p1_b_idx on hash_prt_tbl_1_prt_p1 hash_prt_tbl_1
                Index Cond: (b = 3)
-         ->  Index Scan using hash_prt_tbl_1_prt_p2_b_idx on hash_prt_tbl_1_prt_p2
+         ->  Index Scan using hash_prt_tbl_1_prt_p2_b_idx on hash_prt_tbl_1_prt_p2 hash_prt_tbl_2
                Index Cond: (b = 3)
  Optimizer: Postgres query optimizer
 (7 rows)
 
 EXPLAIN (COSTS OFF)
 SELECT * FROM hash_prt_tbl WHERE b=3 and a=3;
-                                 QUERY PLAN                                  
------------------------------------------------------------------------------
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Scan using hash_prt_tbl_1_prt_p1_b_idx on hash_prt_tbl_1_prt_p1
+   ->  Index Scan using hash_prt_tbl_1_prt_p1_b_idx on hash_prt_tbl_1_prt_p1 hash_prt_tbl
          Index Cond: (b = 3)
          Filter: (a = 3)
  Optimizer: Postgres query optimizer
@@ -1027,14 +1027,14 @@ SELECT * FROM hash_prt_tbl WHERE b=3 or b=5;
 --------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Bitmap Heap Scan on hash_prt_tbl_1_prt_p1
+         ->  Bitmap Heap Scan on hash_prt_tbl_1_prt_p1 hash_prt_tbl_1
                Recheck Cond: ((b = 3) OR (b = 5))
                ->  BitmapOr
                      ->  Bitmap Index Scan on hash_prt_tbl_1_prt_p1_b_idx
                            Index Cond: (b = 3)
                      ->  Bitmap Index Scan on hash_prt_tbl_1_prt_p1_b_idx
                            Index Cond: (b = 5)
-         ->  Bitmap Heap Scan on hash_prt_tbl_1_prt_p2
+         ->  Bitmap Heap Scan on hash_prt_tbl_1_prt_p2 hash_prt_tbl_2
                Recheck Cond: ((b = 3) OR (b = 5))
                ->  BitmapOr
                      ->  Bitmap Index Scan on hash_prt_tbl_1_prt_p2_b_idx

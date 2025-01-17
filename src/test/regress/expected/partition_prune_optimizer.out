@@ -1336,7 +1336,7 @@ explain (costs off) select * from coercepart where a = any ('{ab,bc}');
 -------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on coercepart
-         Number of partitions to scan: 2 
+         Number of partitions to scan: 2 (out of 3)
          Filter: ((a)::text = ANY ('{ab,bc}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
@@ -1346,7 +1346,7 @@ explain (costs off) select * from coercepart where a = any ('{ab,null}');
 ---------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on coercepart
-         Number of partitions to scan: 1 
+         Number of partitions to scan: 1 (out of 3)
          Filter: ((a)::text = ANY ('{ab,NULL}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
@@ -1356,7 +1356,7 @@ explain (costs off) select * from coercepart where a = any (null::text[]);
 --------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on coercepart
-         Number of partitions to scan: 3 
+         Number of partitions to scan: 3 (out of 3)
          Filter: ((a)::text = ANY (NULL::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
@@ -1366,7 +1366,7 @@ explain (costs off) select * from coercepart where a = all ('{ab}');
 ----------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on coercepart
-         Number of partitions to scan: 1 
+         Number of partitions to scan: 1 (out of 3)
          Filter: ((a)::text = ALL ('{ab}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
@@ -1376,7 +1376,7 @@ explain (costs off) select * from coercepart where a = all ('{ab,bc}');
 -------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on coercepart
-         Number of partitions to scan: 2 
+         Number of partitions to scan: 2 (out of 3)
          Filter: ((a)::text = ALL ('{ab,bc}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
@@ -1386,7 +1386,7 @@ explain (costs off) select * from coercepart where a = all ('{ab,null}');
 ---------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
    ->  Dynamic Seq Scan on coercepart
-         Number of partitions to scan: 1 
+         Number of partitions to scan: 1 (out of 3)
          Filter: ((a)::text = ALL ('{ab,NULL}'::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
@@ -1396,7 +1396,7 @@ explain (costs off) select * from coercepart where a = all (null::text[]);
 --------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on coercepart
-         Number of partitions to scan: 3 
+         Number of partitions to scan: 3 (out of 3)
          Filter: ((a)::text = ALL (NULL::text[]))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
@@ -3224,7 +3224,7 @@ select * from stable_qual_pruning
 ------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
    ->  Dynamic Seq Scan on stable_qual_pruning (actual rows=0 loops=1)
-         Number of partitions to scan: 3 
+         Number of partitions to scan: 3 (out of 3)
          Filter: (a = ANY (NULL::timestamp with time zone[]))
          Partitions scanned:  Avg 3.0 x 3 workers.  Max 3 parts (seg0).
  Optimizer: Pivotal Optimizer (GPORCA)

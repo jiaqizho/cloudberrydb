@@ -6404,7 +6404,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Dynamic Seq Scan on test_rangepartition
-                     Number of partitions to scan: 2 
+                     Number of partitions to scan: 2 (out of 3)
                      Filter: ((datedday = '10-23-2022'::date) OR (datedday = 'Sat Oct 22 00:00:00 2022'::timestamp without time zone))
  Optimizer: Pivotal Optimizer (GPORCA)
 (7 rows)
@@ -6427,7 +6427,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Dynamic Seq Scan on test_rangepartition
-                     Number of partitions to scan: 2 
+                     Number of partitions to scan: 2 (out of 3)
                      Filter: ((datedday = '10-23-2022'::date) OR (datedday = '10-22-2022'::date))
  Optimizer: Pivotal Optimizer (GPORCA)
 (7 rows)
@@ -6450,7 +6450,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Dynamic Seq Scan on test_rangepartition
-                     Number of partitions to scan: 2 
+                     Number of partitions to scan: 2 (out of 3)
                      Filter: ((datedday = 'Sun Oct 23 00:00:00 2022'::timestamp without time zone) OR (datedday = 'Sat Oct 22 00:00:00 2022'::timestamp without time zone))
  Optimizer: Pivotal Optimizer (GPORCA)
 (7 rows)
@@ -6471,7 +6471,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
 ---------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on test_rangepartition
-         Number of partitions to scan: 2 
+         Number of partitions to scan: 2 (out of 3)
          Filter: ((datedday = '10-23-2022'::date) OR (datedday = 'Sat Oct 22 00:00:00 2022'::timestamp without time zone))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
@@ -6507,7 +6507,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
  Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Dynamic Seq Scan on test_listpartition
-               Number of partitions to scan: 2 
+               Number of partitions to scan: 2 (out of 3)
                Filter: ((d = '10-23-2022'::date) OR (d = 'Sat Oct 22 00:00:00 2022'::timestamp without time zone))
  Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
@@ -6529,7 +6529,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
  Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Dynamic Seq Scan on test_listpartition
-               Number of partitions to scan: 2 
+               Number of partitions to scan: 2 (out of 3)
                Filter: ((d = '10-23-2022'::date) OR (d = '10-22-2022'::date))
  Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
@@ -6551,7 +6551,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
  Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Dynamic Seq Scan on test_listpartition
-               Number of partitions to scan: 2 
+               Number of partitions to scan: 2 (out of 3)
                Filter: ((d = 'Sun Oct 23 00:00:00 2022'::timestamp without time zone) OR (d = 'Sat Oct 22 00:00:00 2022'::timestamp without time zone))
  Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
@@ -6572,7 +6572,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
 -------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Dynamic Seq Scan on test_listpartition
-         Number of partitions to scan: 2 
+         Number of partitions to scan: 2 (out of 3)
          Filter: ((d = '10-23-2022'::date) OR (d = 'Sat Oct 22 00:00:00 2022'::timestamp without time zone))
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)

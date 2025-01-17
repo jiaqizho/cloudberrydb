@@ -81,31 +81,34 @@ select * from part where b>10 and a>0;
 
 create table non_part (a int, b int) distributed by (a);
 insert into non_part values (15,15);
+analyze non_part;
 -- mixed partitions with DPE with multiple dynamic scans, select one partition
+-- start_ignore
+-- unstable test case
 explain analyze select * from part, non_part where part.b=non_part.b;
                                                                     QUERY PLAN                                                                     
 ---------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..862.00 rows=1 width=16) (actual time=6.491..6.492 rows=1 loops=1)
-   ->  Hash Join  (cost=0.00..862.00 rows=1 width=16) (actual time=4.937..6.264 rows=1 loops=1)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1163.02 rows=2000000 width=16) (actual time=9.772..9.782 rows=1 loops=1)
+   ->  Hash Join  (cost=0.00..1043.77 rows=666667 width=16) (actual time=6.506..8.801 rows=1 loops=1)
          Hash Cond: (b = non_part.b)
          Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 1 of 524288 buckets.
-         ->  Dynamic Foreign Scan on part  (cost=0.00..431.00 rows=1 width=8) (actual time=0.982..1.012 rows=4 loops=1)
+         ->  Dynamic Foreign Scan on part  (cost=0.00..446.40 rows=666667 width=8) (actual time=0.517..0.541 rows=4 loops=1)
                Number of partitions to scan: 2 (out of 2)
                Partitions scanned:  Avg 1.0 x 3 workers.  Max 1 parts (seg0).
-         ->  Hash  (cost=431.00..431.00 rows=1 width=8) (actual time=0.055..0.055 rows=1 loops=1)
+         ->  Hash  (cost=431.00..431.00 rows=1 width=8) (actual time=0.075..0.080 rows=1 loops=1)
                Buckets: 524288  Batches: 1  Memory Usage: 4097kB
-               ->  Partition Selector (selector id: $0)  (cost=0.00..431.00 rows=1 width=8) (actual time=0.034..0.048 rows=1 loops=1)
-                     ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..431.00 rows=1 width=8) (actual time=0.025..0.037 rows=1 loops=1)
-                           ->  Seq Scan on non_part  (cost=0.00..431.00 rows=1 width=8) (actual time=0.683..0.684 rows=1 loops=1)
- Optimizer: Pivotal Optimizer (GPORCA)
- Planning Time: 17.740 ms
-   (slice0)    Executor memory: 49K bytes.
-   (slice1)    Executor memory: 4253K bytes avg x 3 workers, 4297K bytes max (seg0).  Work_mem: 4097K bytes max.
-   (slice2)    Executor memory: 37K bytes avg x 3 workers, 37K bytes max (seg0).
+               ->  Partition Selector (selector id: $0)  (cost=0.00..431.00 rows=1 width=8) (actual time=0.057..0.060 rows=1 loops=1)
+                     ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..431.00 rows=1 width=8) (actual time=0.026..0.028 rows=1 loops=1)
+                           ->  Seq Scan on non_part  (cost=0.00..431.00 rows=1 width=8) (actual time=0.034..0.037 rows=1 loops=1)
+ Planning Time: 33.813 ms
+   (slice0)    Executor memory: 127K bytes.
+   (slice1)    Executor memory: 4309K bytes avg x 3x(0) workers, 4378K bytes max (seg0).  Work_mem: 4097K bytes max.
+   (slice2)    Executor memory: 112K bytes avg x 3x(0) workers, 112K bytes max (seg0).
  Memory used:  128000kB
- Execution Time: 26.191 ms
+ Optimizer: Pivotal Optimizer (GPORCA)
+ Execution Time: 20.437 ms
 (19 rows)
-
+-- end_ignore
 select * from part, non_part where part.b=non_part.b;
  a  | b  | a  | b  
 ----+----+----+----
@@ -113,31 +116,34 @@ select * from part, non_part where part.b=non_part.b;
 (1 row)
 
 insert into non_part values (5,5);
+analyze non_part;
 -- mixed partitions with DPE with multiple dynamic scans, select both partition
+-- start_ignore
+-- unstable test case
 explain analyze select * from part, non_part where part.b=non_part.b;
                                                                     QUERY PLAN                                                                     
 ---------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..862.00 rows=1 width=16) (actual time=10.232..10.233 rows=2 loops=1)
-   ->  Hash Join  (cost=0.00..862.00 rows=1 width=16) (actual time=4.907..8.663 rows=2 loops=1)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1163.02 rows=2000000 width=16) (actual time=4.645..4.650 rows=2 loops=1)
+   ->  Hash Join  (cost=0.00..1043.77 rows=666667 width=16) (actual time=2.021..4.289 rows=2 loops=1)
          Hash Cond: (b = non_part.b)
          Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 2 of 524288 buckets.
-         ->  Dynamic Foreign Scan on part  (cost=0.00..431.00 rows=1 width=8) (actual time=1.333..3.680 rows=8 loops=1)
+         ->  Dynamic Foreign Scan on part  (cost=0.00..446.40 rows=666667 width=8) (actual time=0.528..0.949 rows=8 loops=1)
                Number of partitions to scan: 2 (out of 2)
                Partitions scanned:  Avg 2.0 x 3 workers.  Max 2 parts (seg0).
-         ->  Hash  (cost=431.00..431.00 rows=1 width=8) (actual time=1.485..1.485 rows=2 loops=1)
+         ->  Hash  (cost=431.00..431.00 rows=2 width=8) (actual time=0.783..0.786 rows=2 loops=1)
                Buckets: 524288  Batches: 1  Memory Usage: 4097kB
-               ->  Partition Selector (selector id: $0)  (cost=0.00..431.00 rows=1 width=8) (actual time=0.686..1.457 rows=2 loops=1)
-                     ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..431.00 rows=1 width=8) (actual time=0.649..1.415 rows=2 loops=1)
-                           ->  Seq Scan on non_part  (cost=0.00..431.00 rows=1 width=8) (actual time=1.137..1.138 rows=1 loops=1)
- Optimizer: Pivotal Optimizer (GPORCA)
- Planning Time: 12.815 ms
-   (slice0)    Executor memory: 49K bytes.
-   (slice1)    Executor memory: 4325K bytes avg x 3 workers, 4373K bytes max (seg0).  Work_mem: 4097K bytes max.
-   (slice2)    Executor memory: 36K bytes avg x 3 workers, 36K bytes max (seg0).
+               ->  Partition Selector (selector id: $0)  (cost=0.00..431.00 rows=2 width=8) (actual time=0.770..0.776 rows=2 loops=1)
+                     ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..431.00 rows=2 width=8) (actual time=0.757..0.760 rows=2 loops=1)
+                           ->  Seq Scan on non_part  (cost=0.00..431.00 rows=1 width=8) (actual time=0.037..0.040 rows=1 loops=1)
+ Planning Time: 32.227 ms
+   (slice0)    Executor memory: 127K bytes.
+   (slice1)    Executor memory: 4382K bytes avg x 3x(0) workers, 4456K bytes max (seg0).  Work_mem: 4097K bytes max.
+   (slice2)    Executor memory: 112K bytes avg x 3x(0) workers, 112K bytes max (seg0).
  Memory used:  128000kB
- Execution Time: 11.767 ms
+ Optimizer: Pivotal Optimizer (GPORCA)
+ Execution Time: 15.233 ms
 (19 rows)
-
+-- end_ignore
 select * from part, non_part where part.b=non_part.b;
  a  | b  | a  | b  
 ----+----+----+----

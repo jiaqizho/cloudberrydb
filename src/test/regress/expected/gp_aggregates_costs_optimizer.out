@@ -130,7 +130,6 @@ select count(*) from test_operator_mem;
 (5 rows)
 
 abort;
-
 -- Test user-defined aggregate marked safe to execute on replicated slices without motion
 CREATE AGGREGATE my_unsafe_avg (float8)
 (

@@ -314,6 +314,8 @@ CREATE FOREIGN TABLE p1 partition of pt for values in (1) SERVER file_server
 OPTIONS (format 'csv', filename '@abs_srcdir@/data/list1.csv', delimiter ',');
 CREATE TABLE p2 partition of pt for values in (2);
 SELECT tableoid::regclass, * FROM pt;
+NOTICE:  One or more columns in the following table(s) do not have statistics: pt
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
  tableoid | a |  b  
 ----------+---+-----
  p1       | 1 | foo
@@ -337,6 +339,8 @@ ERROR:  cannot insert into foreign table "p1"
 CONTEXT:  COPY pt, line 2: "1,qux"
 COPY pt FROM '@abs_srcdir@/data/list2.csv' with (format 'csv', delimiter ',');
 SELECT tableoid::regclass, * FROM pt;
+NOTICE:  One or more columns in the following table(s) do not have statistics: pt
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
  tableoid | a |  b  
 ----------+---+-----
  p1       | 1 | foo
@@ -368,9 +372,11 @@ INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Insert with External/foreign partition storage types
 UPDATE pt set a = 1 where a = 2; -- ERROR
 INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Update with External/foreign partition storage types
+DETAIL:  Feature not supported: DML(update) on partitioned tables
 ERROR:  cannot insert into foreign table "p1"  (seg1 127.0.0.1:7008 pid=50091)
 SELECT tableoid::regclass, * FROM pt;
+NOTICE:  One or more columns in the following table(s) do not have statistics: pt
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
  tableoid | a |   b   
 ----------+---+-------
  p1       | 1 | foo
