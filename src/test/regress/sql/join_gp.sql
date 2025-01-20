@@ -815,7 +815,7 @@ EXPLAIN select t1.a from t1 left join (t2 join t3 on true) on t2.a=t1.a and t3.a
 -- inner table has new left join
 EXPLAIN select t1.* from t1 left join (t2 left join t3 on t3.a=t2.b) on t2.a=t1.a;
 -- inner table is a derived table
-EXPLAIN
+EXPLAIN (COSTS OFF)
 select t1.* from t1 left join
                  (
                      select t2.b as v2b, count(*) as v2c

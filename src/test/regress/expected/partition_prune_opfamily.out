@@ -281,9 +281,9 @@ explain select * from t1 where t1.b |=| 1;
 ------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..16283.50 rows=86100 width=8)
    ->  Append  (cost=0.00..15135.50 rows=28700 width=8)
-         ->  Seq Scan on t1_1_prt_p2  (cost=0.00..7496.00 rows=14350 width=8)
+         ->  Seq Scan on t1_1_prt_p2 t1_1  (cost=0.00..7496.00 rows=14350 width=8)
                Filter: (b |=| 1)
-         ->  Seq Scan on t1_1_prt_p1  (cost=0.00..7496.00 rows=14350 width=8)
+         ->  Seq Scan on t1_1_prt_p1 t1_2  (cost=0.00..7496.00 rows=14350 width=8)
                Filter: (b |=| 1)
  Optimizer: Postgres query optimizer
 (7 rows)
@@ -302,20 +302,20 @@ explain select * from t1, t2 where t1.b = t2.b and t2.b |=| 1;
 -----------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=2794.50..426963.08 rows=13414380 width=20)
    ->  Hash Join  (cost=2794.50..248104.68 rows=4471460 width=20)
-         Hash Cond: (t2_1_prt_p2.b = t1_1_prt_p2.b)
+         Hash Cond: (t2.b = t1.b)
          ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=0.00..14219.83 rows=25967 width=12)
-               Hash Key: t2_1_prt_p2.b
+               Hash Key: t2.b
                ->  Append  (cost=0.00..13700.50 rows=25967 width=12)
-                     ->  Seq Scan on t2_1_prt_p2  (cost=0.00..6785.33 rows=12983 width=12)
+                     ->  Seq Scan on t2_1_prt_p2 t2_1  (cost=0.00..6785.33 rows=12983 width=12)
                            Filter: (b |=| 1)
-                     ->  Seq Scan on t2_1_prt_p1  (cost=0.00..6785.33 rows=12983 width=12)
+                     ->  Seq Scan on t2_1_prt_p1 t2_2  (cost=0.00..6785.33 rows=12983 width=12)
                            Filter: (b |=| 1)
          ->  Hash  (cost=2077.00..2077.00 rows=57400 width=8)
                ->  Redistribute Motion 3:3  (slice3; segments: 3)  (cost=0.00..2077.00 rows=57400 width=8)
-                     Hash Key: t1_1_prt_p2.b
+                     Hash Key: t1.b
                      ->  Append  (cost=0.00..929.00 rows=57400 width=8)
-                           ->  Seq Scan on t1_1_prt_p2  (cost=0.00..321.00 rows=28700 width=8)
-                           ->  Seq Scan on t1_1_prt_p1  (cost=0.00..321.00 rows=28700 width=8)
+                           ->  Seq Scan on t1_1_prt_p2 t1_1  (cost=0.00..321.00 rows=28700 width=8)
+                           ->  Seq Scan on t1_1_prt_p1 t1_2  (cost=0.00..321.00 rows=28700 width=8)
  Optimizer: Postgres query optimizer
 (17 rows)
 
@@ -333,19 +333,19 @@ select * from t1, t2 where t1.b = t2.b and t2.b |=| 1;
 (8 rows)
 
 explain select * from t1, t2 where t1.a = t2.a and t1.b |=| t2.b;
-                                         QUERY PLAN                                          
----------------------------------------------------------------------------------------------
+                                          QUERY PLAN                                           
+-----------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=1496.17..1344006.67 rows=13414380 width=20)
    ->  Hash Join  (cost=1496.17..1165148.27 rows=4471460 width=20)
-         Hash Cond: (t1_1_prt_p2.a = t2_1_prt_p2.a)
-         Join Filter: (t1_1_prt_p2.b |=| t2_1_prt_p2.b)
+         Hash Cond: (t1.a = t2.a)
+         Join Filter: (t1.b |=| t2.b)
          ->  Append  (cost=0.00..929.00 rows=57400 width=8)
-               ->  Seq Scan on t1_1_prt_p2  (cost=0.00..321.00 rows=28700 width=8)
-               ->  Seq Scan on t1_1_prt_p1  (cost=0.00..321.00 rows=28700 width=8)
+               ->  Seq Scan on t1_1_prt_p2 t1_1  (cost=0.00..321.00 rows=28700 width=8)
+               ->  Seq Scan on t1_1_prt_p1 t1_2  (cost=0.00..321.00 rows=28700 width=8)
          ->  Hash  (cost=847.00..847.00 rows=51933 width=12)
                ->  Append  (cost=0.00..847.00 rows=51933 width=12)
-                     ->  Seq Scan on t2_1_prt_p2  (cost=0.00..293.67 rows=25967 width=12)
-                     ->  Seq Scan on t2_1_prt_p1  (cost=0.00..293.67 rows=25967 width=12)
+                     ->  Seq Scan on t2_1_prt_p2 t2_1  (cost=0.00..293.67 rows=25967 width=12)
+                     ->  Seq Scan on t2_1_prt_p1 t2_2  (cost=0.00..293.67 rows=25967 width=12)
  Optimizer: Postgres query optimizer
 (12 rows)
 
@@ -363,17 +363,17 @@ select * from t1, t2 where t1.a = t2.a and t1.b |=| t2.b;
 (8 rows)
 
 explain select * from t1, t2 where t1.a = t2.a and t1.b |=| t2.b and t2.b = 1;
-                                     QUERY PLAN                                      
--------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=358.91..1921.43 rows=6707 width=20)
-   ->  Hash Join  (cost=358.91..1832.00 rows=2236 width=20)
-         Hash Cond: (t1_1_prt_p2.a = t2_1_prt_p1.a)
-         Join Filter: (t1_1_prt_p2.b |=| t2_1_prt_p1.b)
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=358.91..1921.44 rows=6707 width=20)
+   ->  Hash Join  (cost=358.91..1832.02 rows=2236 width=20)
+         Hash Cond: (t1.a = t2.a)
+         Join Filter: (t1.b |=| t2.b)
          ->  Append  (cost=0.00..929.00 rows=57400 width=8)
-               ->  Seq Scan on t1_1_prt_p2  (cost=0.00..321.00 rows=28700 width=8)
-               ->  Seq Scan on t1_1_prt_p1  (cost=0.00..321.00 rows=28700 width=8)
+               ->  Seq Scan on t1_1_prt_p2 t1_1  (cost=0.00..321.00 rows=28700 width=8)
+               ->  Seq Scan on t1_1_prt_p1 t1_2  (cost=0.00..321.00 rows=28700 width=8)
          ->  Hash  (cost=358.58..358.58 rows=26 width=12)
-               ->  Seq Scan on t2_1_prt_p1  (cost=0.00..358.58 rows=26 width=12)
+               ->  Seq Scan on t2_1_prt_p1 t2  (cost=0.00..358.58 rows=26 width=12)
                      Filter: (b = 1)
  Optimizer: Postgres query optimizer
 (11 rows)

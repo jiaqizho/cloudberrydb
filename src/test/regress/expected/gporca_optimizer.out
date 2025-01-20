@@ -14695,17 +14695,6 @@ explain select * from ts_tbl where ts = to_timestamp('99991231'::text, 'YYYYMMDD
  Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
-WITH conf AS (
-    SELECT setting
-    FROM pg_catalog.pg_config
-    WHERE name = 'LDFLAGS_EX')
-select * from conf;
- setting 
----------
- 
-(1 row)
-
-reset optimizer_trace_fallback;
 -- Test ORCA support for implicit array coerce cast
 -- ORCA should generate a valid plan passing along the cast function as part of ArrayCoerceExpr
 -- While execution thin insert query fails due to the mismatch of column length.
@@ -14726,6 +14715,17 @@ explain insert into array_coerce_foo select * from array_coerce_bar;
 
 insert into array_coerce_foo select * from array_coerce_bar;
 ERROR:  value too long for type character varying(2)  (seg1 127.0.0.1:7003 pid=51460)
+WITH conf AS (
+    SELECT setting
+    FROM pg_catalog.pg_config
+    WHERE name = 'LDFLAGS_EX')
+select * from conf;
+ setting 
+---------
+ 
+(1 row)
+
+reset optimizer_trace_fallback;
 -- These testcases will fallback to postgres when "PexprConvert2In" is enabled if
 -- underlying issues are not fixed
 create table baz (a int,b int);

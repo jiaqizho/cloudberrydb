@@ -5105,22 +5105,12 @@ select d.* from d left join (select id from a union select id from b) s
 explain (costs off)
 select i8.* from int8_tbl i8 left join (select f1 from int4_tbl group by f1) i4
   on i8.q1 = i4.f1;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Hash Left Join
-         Hash Cond: (int8_tbl.q1 = (int4_tbl.f1)::bigint)
-         ->  Seq Scan on int8_tbl
-         ->  Hash
-               ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                     Hash Key: (int4_tbl.f1)::bigint
-                     ->  GroupAggregate
-                           Group Key: int4_tbl.f1
-                           ->  Sort
-                                 Sort Key: int4_tbl.f1
-                                 ->  Seq Scan on int4_tbl
+   ->  Seq Scan on int8_tbl
  Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+(3 rows)
 
 -- check join removal with lateral references
 explain (costs off)

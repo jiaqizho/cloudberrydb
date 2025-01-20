@@ -3837,7 +3837,7 @@ CUtils::PexprFuncElemExpr(CMemoryPool *mp, CMDAccessor *md_accessor,
 	cast_func->GetResultTypeMdid()->AddRef();
 	CScalarFunc *popCastScalarFunc =
 		GPOS_NEW(mp) CScalarFunc(mp, mdid_func, cast_func->GetResultTypeMdid(),
-								 typmod, pstrFunc, false /* funcvariadic */);
+								 typmod, pstrFunc, 1 /* Explicit Cast */, false /* funcvariadic */);
 	mdid_elem_type->AddRef();
 	CExpression *pexprCaseTest = GPOS_NEW(mp)
 		CExpression(mp, GPOS_NEW(mp) CScalarCaseTest(mp, mdid_elem_type));

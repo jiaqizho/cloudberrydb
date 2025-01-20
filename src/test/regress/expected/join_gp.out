@@ -1884,7 +1884,7 @@ EXPLAIN select t1.* from t1 left join (t2 left join t3 on t3.a=t2.b) on t2.a=t1.
 (3 rows)
 
 -- inner table is a derived table
-EXPLAIN
+EXPLAIN (COSTS OFF)
 select t1.* from t1 left join
                  (
                      select t2.b as v2b, count(*) as v2c
@@ -1892,10 +1892,10 @@ select t1.* from t1 left join
                      group by t2.b
                  ) v2
                  on v2.v2b=t1.a;
-                                    QUERY PLAN                                     
------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1639.00 rows=96300 width=4)
-   ->  Seq Scan on t1  (cost=0.00..355.00 rows=32100 width=4)
+                QUERY PLAN                
+------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on t1
  Optimizer: Postgres query optimizer
 (3 rows)
 
@@ -1925,17 +1925,17 @@ explain select fooJoinPruning.* from fooJoinPruning left join barJoinPruning on 
 
 -- Unique key of inner relation ie 'p' is present in the join condition and is equal to a column from outer relation but output columns are from inner relation --
 explain select barJoinPruning.* from fooJoinPruning left join barJoinPruning on barJoinPruning.p=fooJoinPruning.b  where fooJoinPruning.b>1000;
-                                               QUERY PLAN                                                
----------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=639.89..1587.04 rows=25967 width=12)
-   ->  Hash Right Join  (cost=639.89..1240.81 rows=8656 width=12)
-         Hash Cond: (barjoinpruning.p = foojoinpruning.b)
-         ->  Seq Scan on barjoinpruning  (cost=0.00..293.67 rows=25967 width=12)
-         ->  Hash  (cost=531.69..531.69 rows=8656 width=4)
-               ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=0.00..531.69 rows=8656 width=4)
-                     Hash Key: foojoinpruning.b
-                     ->  Seq Scan on foojoinpruning  (cost=0.00..358.58 rows=8656 width=4)
-                           Filter: (b > 1000)
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=618.25..1605.44 rows=25967 width=12)
+   ->  Hash Left Join  (cost=618.25..1259.22 rows=8656 width=12)
+         Hash Cond: (foojoinpruning.b = barjoinpruning.p)
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=0.00..531.69 rows=8656 width=4)
+               Hash Key: foojoinpruning.b
+               ->  Seq Scan on foojoinpruning  (cost=0.00..358.58 rows=8656 width=4)
+                     Filter: (b > 1000)
+         ->  Hash  (cost=293.67..293.67 rows=25967 width=12)
+               ->  Seq Scan on barjoinpruning  (cost=0.00..293.67 rows=25967 width=12)
  Optimizer: Postgres query optimizer
 (10 rows)
 
@@ -2134,19 +2134,19 @@ analyze bar_List_PT2;
 -- FOR RANGE PARTITIONED TABLE
 -- Outer table: Partitioned table, Join Condition on Partition key: Yes, Result: DPE - YES
 explain (costs off) select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a;
-                       QUERY PLAN                       
---------------------------------------------------------
+                       QUERY PLAN                        
+---------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_pt1_1_prt_1.a1_pc = foo.a)
+         Hash Cond: (bar_pt1.a1_pc = foo.a)
          ->  Append
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt1_1_prt_1
-               ->  Seq Scan on bar_pt1_1_prt_2
-               ->  Seq Scan on bar_pt1_1_prt_3
-               ->  Seq Scan on bar_pt1_1_prt_4
-               ->  Seq Scan on bar_pt1_1_prt_5
-               ->  Seq Scan on bar_pt1_1_prt_6
+               ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+               ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+               ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+               ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+               ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+               ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
          ->  Hash
                ->  Partition Selector (selector id: $0)
                      ->  Seq Scan on foo
@@ -2165,20 +2165,20 @@ select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a;
 
 -- Outer table: Partitioned table, Join Condition on Partition key: No, Result: DPE - No
 explain (costs off) select * from bar_PT1 right join foo on bar_PT1.b1 =foo.a;
-                         QUERY PLAN                         
-------------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_pt1_1_prt_1.b1 = foo.a)
+         Hash Cond: (bar_pt1.b1 = foo.a)
          ->  Redistribute Motion 3:3  (slice2; segments: 3)
-               Hash Key: bar_pt1_1_prt_1.b1
+               Hash Key: bar_pt1.b1
                ->  Append
-                     ->  Seq Scan on bar_pt1_1_prt_1
-                     ->  Seq Scan on bar_pt1_1_prt_2
-                     ->  Seq Scan on bar_pt1_1_prt_3
-                     ->  Seq Scan on bar_pt1_1_prt_4
-                     ->  Seq Scan on bar_pt1_1_prt_5
-                     ->  Seq Scan on bar_pt1_1_prt_6
+                     ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+                     ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+                     ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+                     ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+                     ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+                     ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
          ->  Hash
                ->  Seq Scan on foo
  Optimizer: Postgres query optimizer
@@ -2196,25 +2196,25 @@ select * from bar_PT1 right join foo on bar_PT1.b1 =foo.a;
 
 -- Outer,Inner table: Partitioned table, Join Condition on Partition key: Yes, Result: DPE - Yes
 explain (costs off) select * from bar_PT1 right join bar_PT3 on bar_PT1.a1_PC =bar_PT3.a3_PC;
-                             QUERY PLAN                             
---------------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_pt1_1_prt_1.a1_pc = bar_pt3_1_prt_1.a3_pc)
+         Hash Cond: (bar_pt1.a1_pc = bar_pt3.a3_pc)
          ->  Append
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt1_1_prt_1
-               ->  Seq Scan on bar_pt1_1_prt_2
-               ->  Seq Scan on bar_pt1_1_prt_3
-               ->  Seq Scan on bar_pt1_1_prt_4
-               ->  Seq Scan on bar_pt1_1_prt_5
-               ->  Seq Scan on bar_pt1_1_prt_6
+               ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+               ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+               ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+               ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+               ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+               ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
          ->  Hash
                ->  Partition Selector (selector id: $0)
                      ->  Append
-                           ->  Seq Scan on bar_pt3_1_prt_1
-                           ->  Seq Scan on bar_pt3_1_prt_2
-                           ->  Seq Scan on bar_pt3_1_prt_3
+                           ->  Seq Scan on bar_pt3_1_prt_1 bar_pt3_1
+                           ->  Seq Scan on bar_pt3_1_prt_2 bar_pt3_2
+                           ->  Seq Scan on bar_pt3_1_prt_3 bar_pt3_3
  Optimizer: Postgres query optimizer
 (18 rows)
 
@@ -2230,18 +2230,18 @@ select * from bar_PT1 right join bar_PT3 on bar_PT1.a1_PC =bar_PT3.a3_PC;
 
 -- Outer table: Not a Partitioned table, Join Condition on Partition key: Yes, Result: DPE - No
 explain (costs off) select * from foo right join bar_PT1 on foo.a=bar_PT1.a1_PC;
-                     QUERY PLAN                     
-----------------------------------------------------
+                       QUERY PLAN                        
+---------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Left Join
-         Hash Cond: (bar_pt1_1_prt_1.a1_pc = foo.a)
+         Hash Cond: (bar_pt1.a1_pc = foo.a)
          ->  Append
-               ->  Seq Scan on bar_pt1_1_prt_1
-               ->  Seq Scan on bar_pt1_1_prt_2
-               ->  Seq Scan on bar_pt1_1_prt_3
-               ->  Seq Scan on bar_pt1_1_prt_4
-               ->  Seq Scan on bar_pt1_1_prt_5
-               ->  Seq Scan on bar_pt1_1_prt_6
+               ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+               ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+               ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+               ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+               ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+               ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
          ->  Hash
                ->  Seq Scan on foo
  Optimizer: Postgres query optimizer
@@ -2266,19 +2266,19 @@ select * from foo right join bar_PT1 on foo.a=bar_PT1.a1_PC;
 -- Right join with predicate on the column of non partitioned table in 'where clause'.
 -- Result: DPE - Yes,
 explain (costs off) select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a where foo.a>2;
-                       QUERY PLAN                       
---------------------------------------------------------
+                       QUERY PLAN                        
+---------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_pt1_1_prt_1.a1_pc = foo.a)
+         Hash Cond: (bar_pt1.a1_pc = foo.a)
          ->  Append
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt1_1_prt_1
-               ->  Seq Scan on bar_pt1_1_prt_2
-               ->  Seq Scan on bar_pt1_1_prt_3
-               ->  Seq Scan on bar_pt1_1_prt_4
-               ->  Seq Scan on bar_pt1_1_prt_5
-               ->  Seq Scan on bar_pt1_1_prt_6
+               ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+               ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+               ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+               ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+               ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+               ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
          ->  Hash
                ->  Partition Selector (selector id: $0)
                      ->  Seq Scan on foo
@@ -2296,19 +2296,19 @@ select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a where foo.a>2;
 
 --Conjunction in join condition, Result: DPE - Yes
 explain (costs off) select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a and bar_PT1.b1 =foo.b;
-                                      QUERY PLAN                                       
----------------------------------------------------------------------------------------
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: ((bar_pt1_1_prt_1.a1_pc = foo.a) AND (bar_pt1_1_prt_1.b1 = foo.b))
+         Hash Cond: ((bar_pt1.a1_pc = foo.a) AND (bar_pt1.b1 = foo.b))
          ->  Append
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt1_1_prt_1
-               ->  Seq Scan on bar_pt1_1_prt_2
-               ->  Seq Scan on bar_pt1_1_prt_3
-               ->  Seq Scan on bar_pt1_1_prt_4
-               ->  Seq Scan on bar_pt1_1_prt_5
-               ->  Seq Scan on bar_pt1_1_prt_6
+               ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+               ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+               ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+               ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+               ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+               ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
          ->  Hash
                ->  Partition Selector (selector id: $0)
                      ->  Seq Scan on foo
@@ -2326,20 +2326,20 @@ select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a and bar_PT1.b1 =foo
 (5 rows)
 
 explain (costs off) select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a and foo.b>2;
-                       QUERY PLAN                       
---------------------------------------------------------
+                       QUERY PLAN                        
+---------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_pt1_1_prt_1.a1_pc = foo.a)
+         Hash Cond: (bar_pt1.a1_pc = foo.a)
          Join Filter: (foo.b > 2)
          ->  Append
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt1_1_prt_1
-               ->  Seq Scan on bar_pt1_1_prt_2
-               ->  Seq Scan on bar_pt1_1_prt_3
-               ->  Seq Scan on bar_pt1_1_prt_4
-               ->  Seq Scan on bar_pt1_1_prt_5
-               ->  Seq Scan on bar_pt1_1_prt_6
+               ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+               ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+               ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+               ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+               ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+               ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
          ->  Hash
                ->  Partition Selector (selector id: $0)
                      ->  Seq Scan on foo
@@ -2358,31 +2358,31 @@ select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a and foo.b>2;
 
 -- Multiple Right Joins, DPE- Yes
 explain (costs off) select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a right join bar_PT2 on bar_PT1.a1_PC =bar_PT2.b2_PC;
-                             QUERY PLAN                             
---------------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Left Join
-         Hash Cond: (bar_pt2_1_prt_1.b2_pc = bar_pt1_1_prt_1.a1_pc)
+         Hash Cond: (bar_pt2.b2_pc = bar_pt1.a1_pc)
          ->  Redistribute Motion 3:3  (slice2; segments: 3)
-               Hash Key: bar_pt2_1_prt_1.b2_pc
+               Hash Key: bar_pt2.b2_pc
                ->  Append
-                     ->  Seq Scan on bar_pt2_1_prt_1
-                     ->  Seq Scan on bar_pt2_1_prt_2
-                     ->  Seq Scan on bar_pt2_1_prt_3
-                     ->  Seq Scan on bar_pt2_1_prt_4
-                     ->  Seq Scan on bar_pt2_1_prt_5
-                     ->  Seq Scan on bar_pt2_1_prt_6
+                     ->  Seq Scan on bar_pt2_1_prt_1 bar_pt2_1
+                     ->  Seq Scan on bar_pt2_1_prt_2 bar_pt2_2
+                     ->  Seq Scan on bar_pt2_1_prt_3 bar_pt2_3
+                     ->  Seq Scan on bar_pt2_1_prt_4 bar_pt2_4
+                     ->  Seq Scan on bar_pt2_1_prt_5 bar_pt2_5
+                     ->  Seq Scan on bar_pt2_1_prt_6 bar_pt2_6
          ->  Hash
                ->  Hash Join
-                     Hash Cond: (bar_pt1_1_prt_1.a1_pc = foo.a)
+                     Hash Cond: (bar_pt1.a1_pc = foo.a)
                      ->  Append
                            Partition Selectors: $0
-                           ->  Seq Scan on bar_pt1_1_prt_1
-                           ->  Seq Scan on bar_pt1_1_prt_2
-                           ->  Seq Scan on bar_pt1_1_prt_3
-                           ->  Seq Scan on bar_pt1_1_prt_4
-                           ->  Seq Scan on bar_pt1_1_prt_5
-                           ->  Seq Scan on bar_pt1_1_prt_6
+                           ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+                           ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+                           ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+                           ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+                           ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+                           ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
                      ->  Hash
                            ->  Partition Selector (selector id: $0)
                                  ->  Seq Scan on foo
@@ -2408,26 +2408,26 @@ select * from bar_PT1 right join foo on bar_PT1.a1_PC =foo.a right join bar_PT2 
 -- FOR LIST PARTITIONED TABLE
 -- Outer table: List Partitioned table, Join Condition on Partition key: Yes, Result: DPE - YES
 explain (costs off) select * from bar_List_PT1 right join foo on bar_List_PT1.a1_PC =foo.a;
-                        QUERY PLAN                         
------------------------------------------------------------
+                                QUERY PLAN                                 
+---------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_list_pt1_1_prt_p1.a1_pc = foo.a)
+         Hash Cond: (bar_list_pt1.a1_pc = foo.a)
          ->  Append
                Partition Selectors: $0
-               ->  Seq Scan on bar_list_pt1_1_prt_p1
-               ->  Seq Scan on bar_list_pt1_1_prt_p2
-               ->  Seq Scan on bar_list_pt1_1_prt_p3
-               ->  Seq Scan on bar_list_pt1_1_prt_p4
-               ->  Seq Scan on bar_list_pt1_1_prt_p5
-               ->  Seq Scan on bar_list_pt1_1_prt_p6
-               ->  Seq Scan on bar_list_pt1_1_prt_p7
-               ->  Seq Scan on bar_list_pt1_1_prt_p8
-               ->  Seq Scan on bar_list_pt1_1_prt_p9
-               ->  Seq Scan on bar_list_pt1_1_prt_p10
-               ->  Seq Scan on bar_list_pt1_1_prt_p11
-               ->  Seq Scan on bar_list_pt1_1_prt_p12
-               ->  Seq Scan on bar_list_pt1_1_prt_pdefault
+               ->  Seq Scan on bar_list_pt1_1_prt_p1 bar_list_pt1_1
+               ->  Seq Scan on bar_list_pt1_1_prt_p2 bar_list_pt1_2
+               ->  Seq Scan on bar_list_pt1_1_prt_p3 bar_list_pt1_3
+               ->  Seq Scan on bar_list_pt1_1_prt_p4 bar_list_pt1_4
+               ->  Seq Scan on bar_list_pt1_1_prt_p5 bar_list_pt1_5
+               ->  Seq Scan on bar_list_pt1_1_prt_p6 bar_list_pt1_6
+               ->  Seq Scan on bar_list_pt1_1_prt_p7 bar_list_pt1_7
+               ->  Seq Scan on bar_list_pt1_1_prt_p8 bar_list_pt1_8
+               ->  Seq Scan on bar_list_pt1_1_prt_p9 bar_list_pt1_9
+               ->  Seq Scan on bar_list_pt1_1_prt_p10 bar_list_pt1_10
+               ->  Seq Scan on bar_list_pt1_1_prt_p11 bar_list_pt1_11
+               ->  Seq Scan on bar_list_pt1_1_prt_p12 bar_list_pt1_12
+               ->  Seq Scan on bar_list_pt1_1_prt_pdefault bar_list_pt1_13
          ->  Hash
                ->  Partition Selector (selector id: $0)
                      ->  Seq Scan on foo
@@ -2446,36 +2446,36 @@ select * from bar_List_PT1 right join foo on bar_List_PT1.a1_PC =foo.a;
 
 -- Outer,Inner table: Partitioned table, Join Condition on Partition key: Yes, Result: DPE - Yes
 explain (costs off) select * from bar_List_PT1 right join bar_List_PT2 on bar_List_PT1.a1_PC =bar_List_PT2.a2_PC;
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
+                                      QUERY PLAN                                      
+--------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_list_pt1_1_prt_p1.a1_pc = bar_list_pt2_1_prt_p1.a2_pc)
+         Hash Cond: (bar_list_pt1.a1_pc = bar_list_pt2.a2_pc)
          ->  Append
                Partition Selectors: $0
-               ->  Seq Scan on bar_list_pt1_1_prt_p1
-               ->  Seq Scan on bar_list_pt1_1_prt_p2
-               ->  Seq Scan on bar_list_pt1_1_prt_p3
-               ->  Seq Scan on bar_list_pt1_1_prt_p4
-               ->  Seq Scan on bar_list_pt1_1_prt_p5
-               ->  Seq Scan on bar_list_pt1_1_prt_p6
-               ->  Seq Scan on bar_list_pt1_1_prt_p7
-               ->  Seq Scan on bar_list_pt1_1_prt_p8
-               ->  Seq Scan on bar_list_pt1_1_prt_p9
-               ->  Seq Scan on bar_list_pt1_1_prt_p10
-               ->  Seq Scan on bar_list_pt1_1_prt_p11
-               ->  Seq Scan on bar_list_pt1_1_prt_p12
-               ->  Seq Scan on bar_list_pt1_1_prt_pdefault
+               ->  Seq Scan on bar_list_pt1_1_prt_p1 bar_list_pt1_1
+               ->  Seq Scan on bar_list_pt1_1_prt_p2 bar_list_pt1_2
+               ->  Seq Scan on bar_list_pt1_1_prt_p3 bar_list_pt1_3
+               ->  Seq Scan on bar_list_pt1_1_prt_p4 bar_list_pt1_4
+               ->  Seq Scan on bar_list_pt1_1_prt_p5 bar_list_pt1_5
+               ->  Seq Scan on bar_list_pt1_1_prt_p6 bar_list_pt1_6
+               ->  Seq Scan on bar_list_pt1_1_prt_p7 bar_list_pt1_7
+               ->  Seq Scan on bar_list_pt1_1_prt_p8 bar_list_pt1_8
+               ->  Seq Scan on bar_list_pt1_1_prt_p9 bar_list_pt1_9
+               ->  Seq Scan on bar_list_pt1_1_prt_p10 bar_list_pt1_10
+               ->  Seq Scan on bar_list_pt1_1_prt_p11 bar_list_pt1_11
+               ->  Seq Scan on bar_list_pt1_1_prt_p12 bar_list_pt1_12
+               ->  Seq Scan on bar_list_pt1_1_prt_pdefault bar_list_pt1_13
          ->  Hash
                ->  Partition Selector (selector id: $0)
                      ->  Append
-                           ->  Seq Scan on bar_list_pt2_1_prt_p1
-                           ->  Seq Scan on bar_list_pt2_1_prt_p2
-                           ->  Seq Scan on bar_list_pt2_1_prt_p3
-                           ->  Seq Scan on bar_list_pt2_1_prt_p4
-                           ->  Seq Scan on bar_list_pt2_1_prt_p5
-                           ->  Seq Scan on bar_list_pt2_1_prt_p6
-                           ->  Seq Scan on bar_list_pt2_1_prt_pdefault
+                           ->  Seq Scan on bar_list_pt2_1_prt_p1 bar_list_pt2_1
+                           ->  Seq Scan on bar_list_pt2_1_prt_p2 bar_list_pt2_2
+                           ->  Seq Scan on bar_list_pt2_1_prt_p3 bar_list_pt2_3
+                           ->  Seq Scan on bar_list_pt2_1_prt_p4 bar_list_pt2_4
+                           ->  Seq Scan on bar_list_pt2_1_prt_p5 bar_list_pt2_5
+                           ->  Seq Scan on bar_list_pt2_1_prt_p6 bar_list_pt2_6
+                           ->  Seq Scan on bar_list_pt2_1_prt_pdefault bar_list_pt2_7
  Optimizer: Postgres query optimizer
 (29 rows)
 
@@ -2499,20 +2499,20 @@ select * from bar_List_PT1 right join bar_List_PT2 on bar_List_PT1.a1_PC =bar_Li
 -- Case-2 : Distribution colm <> Partition Key.
 -- Outer table: Partitioned table, Join Condition on Partition key: Yes, Result: DPE - No
 explain (costs off) select * from bar_PT2 right join foo on bar_PT2.b2_PC =foo.a;
-                         QUERY PLAN                         
-------------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_pt2_1_prt_1.b2_pc = foo.a)
+         Hash Cond: (bar_pt2.b2_pc = foo.a)
          ->  Redistribute Motion 3:3  (slice2; segments: 3)
-               Hash Key: bar_pt2_1_prt_1.b2_pc
+               Hash Key: bar_pt2.b2_pc
                ->  Append
-                     ->  Seq Scan on bar_pt2_1_prt_1
-                     ->  Seq Scan on bar_pt2_1_prt_2
-                     ->  Seq Scan on bar_pt2_1_prt_3
-                     ->  Seq Scan on bar_pt2_1_prt_4
-                     ->  Seq Scan on bar_pt2_1_prt_5
-                     ->  Seq Scan on bar_pt2_1_prt_6
+                     ->  Seq Scan on bar_pt2_1_prt_1 bar_pt2_1
+                     ->  Seq Scan on bar_pt2_1_prt_2 bar_pt2_2
+                     ->  Seq Scan on bar_pt2_1_prt_3 bar_pt2_3
+                     ->  Seq Scan on bar_pt2_1_prt_4 bar_pt2_4
+                     ->  Seq Scan on bar_pt2_1_prt_5 bar_pt2_5
+                     ->  Seq Scan on bar_pt2_1_prt_6 bar_pt2_6
          ->  Hash
                ->  Seq Scan on foo
  Optimizer: Postgres query optimizer
@@ -2530,30 +2530,30 @@ select * from bar_PT2 right join foo on bar_PT2.b2_PC =foo.a;
 
 -- Outer,Inner table: Partitioned table, Join Condition on Partition key: Yes, Result: DPE - No
 explain (costs off) select * from bar_PT2 right join bar_PT1 on bar_PT2.b2_PC =bar_PT1.b1;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Left Join
-         Hash Cond: (bar_pt1_1_prt_1.b1 = bar_pt2_1_prt_1.b2_pc)
+         Hash Cond: (bar_pt1.b1 = bar_pt2.b2_pc)
          ->  Redistribute Motion 3:3  (slice2; segments: 3)
-               Hash Key: bar_pt1_1_prt_1.b1
+               Hash Key: bar_pt1.b1
                ->  Append
-                     ->  Seq Scan on bar_pt1_1_prt_1
-                     ->  Seq Scan on bar_pt1_1_prt_2
-                     ->  Seq Scan on bar_pt1_1_prt_3
-                     ->  Seq Scan on bar_pt1_1_prt_4
-                     ->  Seq Scan on bar_pt1_1_prt_5
-                     ->  Seq Scan on bar_pt1_1_prt_6
+                     ->  Seq Scan on bar_pt1_1_prt_1 bar_pt1_1
+                     ->  Seq Scan on bar_pt1_1_prt_2 bar_pt1_2
+                     ->  Seq Scan on bar_pt1_1_prt_3 bar_pt1_3
+                     ->  Seq Scan on bar_pt1_1_prt_4 bar_pt1_4
+                     ->  Seq Scan on bar_pt1_1_prt_5 bar_pt1_5
+                     ->  Seq Scan on bar_pt1_1_prt_6 bar_pt1_6
          ->  Hash
                ->  Redistribute Motion 3:3  (slice3; segments: 3)
-                     Hash Key: bar_pt2_1_prt_1.b2_pc
+                     Hash Key: bar_pt2.b2_pc
                      ->  Append
-                           ->  Seq Scan on bar_pt2_1_prt_1
-                           ->  Seq Scan on bar_pt2_1_prt_2
-                           ->  Seq Scan on bar_pt2_1_prt_3
-                           ->  Seq Scan on bar_pt2_1_prt_4
-                           ->  Seq Scan on bar_pt2_1_prt_5
-                           ->  Seq Scan on bar_pt2_1_prt_6
+                           ->  Seq Scan on bar_pt2_1_prt_1 bar_pt2_1
+                           ->  Seq Scan on bar_pt2_1_prt_2 bar_pt2_2
+                           ->  Seq Scan on bar_pt2_1_prt_3 bar_pt2_3
+                           ->  Seq Scan on bar_pt2_1_prt_4 bar_pt2_4
+                           ->  Seq Scan on bar_pt2_1_prt_5 bar_pt2_5
+                           ->  Seq Scan on bar_pt2_1_prt_6 bar_pt2_6
  Optimizer: Postgres query optimizer
 (23 rows)
 

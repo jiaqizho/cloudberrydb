@@ -407,6 +407,7 @@ explain (verbose, costs off) select count(distinct (b)::text) as b, count(distin
 -- column '(a)::integer::varchar' as part of hash-key in Redistribute-Motion.
 select count(distinct (b)::text) as b, count(distinct (a)::int::varchar) as a from dqa_f3;
 explain (verbose, costs off) select count(distinct (b)::text) as b, count(distinct (a)::int::varchar) as a from dqa_f3;
+drop table dqa_f3;
 
 -- Test 3-phase agg for DISTINCT on distribution keys
 -- or DISTINCT when GROUP BY on distribution keys
@@ -497,10 +498,10 @@ explain select id, count(distinct a), avg(b), sum(c) from num_table group by gro
 select id, count(distinct a), avg(b), sum(c) from num_table group by grouping sets ((id,c));
 
 reset optimizer_force_multistage_agg;
-reset optimizer_enable_use_distribution_in_dqa;
-drop table t_issue_659;
 
 -- DQA with Agg(Intermediate Agg)
+-- In PG optimizer Intermediate Agg have not support yet
+-- Current test cases will be changed after commit 971fa82(Support intermediate Agg in planner (#13959))
 set enable_hashagg=on;
 set enable_groupagg=off;
 

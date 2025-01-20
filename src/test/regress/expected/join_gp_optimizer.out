@@ -1865,7 +1865,7 @@ EXPLAIN select t1.* from t1 left join (t2 left join t3 on t3.a=t2.b) on t2.a=t1.
 (3 rows)
 
 -- inner table is a derived table
-EXPLAIN
+EXPLAIN (COSTS OFF)
 select t1.* from t1 left join
                  (
                      select t2.b as v2b, count(*) as v2c
@@ -1873,10 +1873,10 @@ select t1.* from t1 left join
                      group by t2.b
                  ) v2
                  on v2.v2b=t1.a;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=4)
-   ->  Seq Scan on t1  (cost=0.00..431.00 rows=1 width=4)
+                QUERY PLAN                
+------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on t1
  Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 
