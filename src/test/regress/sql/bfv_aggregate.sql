@@ -1511,6 +1511,12 @@ analyze t;
 explain (costs off) select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
 select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
 
+-- The cost of multistage agg is higher than hash agg
+set optimizer_force_multistage_agg to on;
+explain (costs off) select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
+select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
+reset optimizer_force_multistage_agg;
+
 drop table t;
 -- CLEANUP
 set client_min_messages='warning';

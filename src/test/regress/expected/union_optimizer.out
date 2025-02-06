@@ -564,22 +564,23 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) union select x from (va
 
 explain (costs off)
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
-                                             QUERY PLAN                                              
------------------------------------------------------------------------------------------------------
- Nested Loop
-   Join Filter: (NOT (("Values_1".column1)::anyarray IS DISTINCT FROM ("Values".column1)::anyarray))
-   ->  GroupAggregate
-         Group Key: "Values_1".column1
-         ->  Sort
-               Sort Key: "Values_1".column1
-               ->  Values Scan on "Values_1"
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Hash Join
+   Hash Cond: (NOT (("Values".column1)::anyarray IS DISTINCT FROM ("Values_1".column1)::anyarray))
    ->  GroupAggregate
          Group Key: "Values".column1
          ->  Sort
                Sort Key: "Values".column1
                ->  Values Scan on "Values"
+   ->  Hash
+         ->  GroupAggregate
+               Group Key: "Values_1".column1
+               ->  Sort
+                     Sort Key: "Values_1".column1
+                     ->  Values Scan on "Values_1"
  Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+(14 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -589,18 +590,19 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from
 
 explain (costs off)
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
-                                                   QUERY PLAN                                                    
------------------------------------------------------------------------------------------------------------------
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
  GroupAggregate
-   Group Key: "Values_1".column1
+   Group Key: "Values".column1
    ->  Sort
-         Sort Key: "Values_1".column1
-         ->  Nested Loop Anti Join
-               Join Filter: (NOT (("Values_1".column1)::anyarray IS DISTINCT FROM ("Values".column1)::anyarray))
-               ->  Values Scan on "Values_1"
+         Sort Key: "Values".column1
+         ->  Hash Anti Join
+               Hash Cond: (NOT (("Values".column1)::anyarray IS DISTINCT FROM ("Values_1".column1)::anyarray))
                ->  Values Scan on "Values"
+               ->  Hash
+                     ->  Values Scan on "Values_1"
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(10 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -656,22 +658,23 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) union select x from (va
 
 explain (costs off)
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
-                                             QUERY PLAN                                              
------------------------------------------------------------------------------------------------------
- Nested Loop
-   Join Filter: (NOT (("Values_1".column1)::anyarray IS DISTINCT FROM ("Values".column1)::anyarray))
-   ->  GroupAggregate
-         Group Key: "Values_1".column1
-         ->  Sort
-               Sort Key: "Values_1".column1
-               ->  Values Scan on "Values_1"
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Hash Join
+   Hash Cond: (NOT (("Values".column1)::anyarray IS DISTINCT FROM ("Values_1".column1)::anyarray))
    ->  GroupAggregate
          Group Key: "Values".column1
          ->  Sort
                Sort Key: "Values".column1
                ->  Values Scan on "Values"
+   ->  Hash
+         ->  GroupAggregate
+               Group Key: "Values_1".column1
+               ->  Sort
+                     Sort Key: "Values_1".column1
+                     ->  Values Scan on "Values_1"
  Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+(14 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -681,18 +684,19 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from
 
 explain (costs off)
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
-                                                   QUERY PLAN                                                    
------------------------------------------------------------------------------------------------------------------
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
  GroupAggregate
-   Group Key: "Values_1".column1
+   Group Key: "Values".column1
    ->  Sort
-         Sort Key: "Values_1".column1
-         ->  Nested Loop Anti Join
-               Join Filter: (NOT (("Values_1".column1)::anyarray IS DISTINCT FROM ("Values".column1)::anyarray))
-               ->  Values Scan on "Values_1"
+         Sort Key: "Values".column1
+         ->  Hash Anti Join
+               Hash Cond: (NOT (("Values".column1)::anyarray IS DISTINCT FROM ("Values_1".column1)::anyarray))
                ->  Values Scan on "Values"
+               ->  Hash
+                     ->  Values Scan on "Values_1"
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(10 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   

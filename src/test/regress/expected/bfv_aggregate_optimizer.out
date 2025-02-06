@@ -2024,6 +2024,28 @@ insert into t select 1, i, i from generate_series(1, 10)i;
 insert into t select 1, i, i from generate_series(1, 10)i;
 analyze t;
 explain (costs off) select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  GroupAggregate
+         Group Key: gp_segment_id
+         ->  Sort
+               Sort Key: gp_segment_id
+               ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                     Hash Key: gp_segment_id
+                     ->  Seq Scan on t
+ Optimizer: Pivotal Optimizer (GPORCA)
+(9 rows)
+
+select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
+ count | gp_segment_id 
+-------+---------------
+    10 |             1
+(1 row)
+
+-- The cost of multistage agg is higher than hash agg
+set optimizer_force_multistage_agg to on;
+explain (costs off) select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
                                      QUERY PLAN                                     
 ------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
@@ -2047,6 +2069,7 @@ select count(distinct(b)), gp_segment_id from t group by gp_segment_id;
     10 |             1
 (1 row)
 
+reset optimizer_force_multistage_agg;
 drop table t;
 -- CLEANUP
 set client_min_messages='warning';

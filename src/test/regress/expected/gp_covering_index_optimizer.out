@@ -260,7 +260,6 @@ SELECT b FROM test_ao WHERE a<42 AND b>42;
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=20 loops=1)
    ->  Seq Scan on test_ao (actual rows=8 loops=1)
          Filter: ((a < 42) AND (b > 42))
-         Rows Removed by Filter: 30
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
@@ -272,7 +271,6 @@ SELECT b, c FROM test_ao WHERE a<42 AND b>42;
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=20 loops=1)
    ->  Seq Scan on test_ao (actual rows=8 loops=1)
          Filter: ((a < 42) AND (b > 42))
-         Rows Removed by Filter: 30
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
@@ -284,7 +282,6 @@ SELECT a, b, c FROM test_ao WHERE c>42;
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=94 loops=1)
    ->  Seq Scan on test_ao (actual rows=36 loops=1)
          Filter: (c > 42)
-         Rows Removed by Filter: 1
  Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
@@ -550,7 +547,6 @@ SELECT b FROM test_backward_index_scan WHERE a>42 AND b>42 ORDER BY a DESC;
          ->  Sort (actual rows=25 loops=1)
                Sort Key: a DESC
                Sort Method:  quicksort  Memory: 77kB
-               Executor Memory: 177kB  Segments: 3  Max: 59kB (segment 0)
                ->  Index Only Scan using i_test_backward_index_scan on test_backward_index_scan (actual rows=25 loops=1)
                      Index Cond: (a > 42)
                      Filter: (b > 42)

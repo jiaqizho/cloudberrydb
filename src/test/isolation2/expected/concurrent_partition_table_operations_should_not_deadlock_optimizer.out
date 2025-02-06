@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS gp_inject_fault;
-CREATE EXTENSION
+CREATE
 
 
 -- Two concurrent transactions on partitioned table
@@ -7,9 +7,9 @@ CREATE EXTENSION
 --    2) truncate
 -- should not cause deadlock
 CREATE TABLE pt(a int, b text) DISTRIBUTED BY (a) PARTITION BY range(a) (start (0) end(10) every(2));
-CREATE TABLE
+CREATE
 INSERT INTO pt SELECT i%10, 'text'||i FROM generate_series(1, 10)i;
-INSERT 0 10
+INSERT 10
 VACUUM ANALYZE pt;
 VACUUM
 
@@ -73,9 +73,9 @@ BEGIN
  1 | text1  
 (4 rows)
 1: END;
-COMMIT
+END
 2<:  <... completed>
-TRUNCATE TABLE
+TRUNCATE
 
 
 -- Two concurrent transactions on partitioned table
@@ -83,7 +83,7 @@ TRUNCATE TABLE
 --    2) truncate
 -- should not cause deadlock
 CREATE INDEX idx ON pt(a);
-CREATE INDEX
+CREATE
 VACUUM ANALYZE pt;
 VACUUM
 
@@ -143,9 +143,9 @@ BEGIN
  3 | text3 
 (2 rows)
 1: END;
-COMMIT
+END
 2<:  <... completed>
-TRUNCATE TABLE
+TRUNCATE
 
 
 -- ORCA_FEATURE_NOT_SUPPORTED: dynamic index only scan
@@ -212,6 +212,6 @@ BEGIN
  3 
 (2 rows)
 1: END;
-COMMIT
+END
 2<:  <... completed>
-TRUNCATE TABLE
+TRUNCATE

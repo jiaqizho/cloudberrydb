@@ -36,6 +36,8 @@ end;
 $$;
 
 -- Ensure we get a memoize node on the inner side of the nested loop
+SET optimizer_enable_hashjoin TO off;
+SET optimizer_enable_bitmapscan TO off;
 SET enable_hashjoin TO off;
 SET enable_bitmapscan TO off;
 
@@ -133,6 +135,8 @@ RESET enable_mergejoin;
 RESET work_mem;
 RESET enable_bitmapscan;
 RESET enable_hashjoin;
+RESET optimizer_enable_hashjoin;
+RESET optimizer_enable_bitmapscan;
 
 -- Test parallel plans with Memoize
 SET min_parallel_table_scan_size TO 0;

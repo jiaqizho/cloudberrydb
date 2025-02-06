@@ -2499,6 +2499,11 @@ explain SELECT 1 FROM inverse WHERE NOT (cidr <<= ANY(SELECT * FROM inverse));
  Optimizer: Pivotal Optimizer (GPORCA)
 (16 rows)
 
+SELECT 1 FROM inverse WHERE NOT (cidr <<= ANY(SELECT * FROM inverse));
+ ?column? 
+----------
+(0 rows)
+
 create table foo_varchar (a varchar(5)) distributed by (a);
 create table bar_char (p char(5)) distributed by (p);
 create table random_dis_varchar (x varchar(5)) distributed randomly;

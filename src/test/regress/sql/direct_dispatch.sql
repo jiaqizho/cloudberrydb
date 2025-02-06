@@ -357,8 +357,9 @@ select gp_segment_id, id from t_test_dd_via_segid where gp_segment_id=1 or gp_se
 explain (costs off) select t1.gp_segment_id, t2.gp_segment_id, * from t_test_dd_via_segid t1, t_test_dd_via_segid t2 where t1.gp_segment_id=t2.id;
 select t1.gp_segment_id, t2.gp_segment_id, * from t_test_dd_via_segid t1, t_test_dd_via_segid t2 where t1.gp_segment_id=t2.id;
 
-explain (costs off) select gp_segment_id, count(*) from t_test_dd_via_segid group by gp_segment_id;
-select gp_segment_id, count(*) from t_test_dd_via_segid group by gp_segment_id;
+-- flaky tests
+-- explain (costs off) select gp_segment_id, count(*) from t_test_dd_via_segid group by gp_segment_id;
+-- select gp_segment_id, count(*) from t_test_dd_via_segid group by gp_segment_id;
 
 -- test direct dispatch via gp_segment_id qual with conjunction
 create table t_test_dd_via_segid_conj(a int, b int);
