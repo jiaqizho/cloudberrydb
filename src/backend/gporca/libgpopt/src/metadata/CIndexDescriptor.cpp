@@ -146,7 +146,30 @@ BOOL
 CIndexDescriptor::SupportsIndexOnlyScan(CTableDescriptor *ptabdesc) const
 {
 	// index only scan is not supported on GPDB 6 append-only tables.
-	return !((ptabdesc->IsAORowOrColTable() ||
+	// CBDB_MERGE_FIXME: GIST/GIN will generated a wrong plan(with index only scan) 
+	// util commit 42ba0dd2cf3c3564b96dae71aba894a886e25ed4([ORCA] Fix bug checking 
+	// index_can_return() (#16575))
+	// Temporarily disable indexonlyscan on non-btree indexes.
+	// 
+	// example:
+	//	CREATE TABLE IF NOT EXISTS test_tsvector(t text,a tsvector);
+	//  create index wowidx on test_tsvector using gist (a);
+	//  analyze test_tsvector;
+	//  set optimizer_enable_indexscan to off;
+	//  set optimizer_enable_indexonlyscan to on;
+	//  explain SELECT count(*) FROM test_tsvector WHERE a @@ 'pl <-> yh'; -- should not be Index Only Scan
+	// 	                                              QUERY PLAN
+	// ------------------------------------------------------------------------------------------------------
+	//  Finalize Aggregate  (cost=0.00..6.06 rows=1 width=8)
+	//    ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.06 rows=1 width=8)
+	//          ->  Partial Aggregate  (cost=0.00..6.06 rows=1 width=8)
+	//                ->  Index Only Scan using wowidx on test_tsvector  (cost=0.00..6.01 rows=68 width=358)
+	//                      Index Cond: (a @@ '''pl'' <-> ''yh'''::tsquery)
+	//  Optimizer: Pivotal Optimizer (GPORCA)
+	// (6 rows)
+	// 
+	return m_index_type == IMDIndex::EmdindBtree &&
+		   !((ptabdesc->IsAORowOrColTable() ||
 			  IMDRelation::ErelstorageMixedPartitioned ==
 				  ptabdesc->RetrieveRelStorageType()) &&
 			 ptabdesc->GetRelAOVersion() < IMDRelation::AORelationVersion_GP7);

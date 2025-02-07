@@ -4951,7 +4951,7 @@ set_deparse_plan(deparse_namespace *dpns, Plan *plan)
 		dpns->index_tlist = ((ForeignScan *) plan)->fdw_scan_tlist;
 	else if (IsA(plan, CustomScan))
 		dpns->index_tlist = ((CustomScan *) plan)->custom_scan_tlist;
-	else if (IsA(ps->plan, DynamicIndexOnlyScan))
+	else if (IsA(plan, DynamicIndexOnlyScan))
 		dpns->index_tlist = ((DynamicIndexOnlyScan *) plan)->indexscan.indextlist;
 	else
 		dpns->index_tlist = NIL;

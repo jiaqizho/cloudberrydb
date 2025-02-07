@@ -508,8 +508,7 @@ get_ao_version(gpdb::RelationWrapper &rel)
 		return low_ao_version;
 	}
 	// non-partitioned AO table or leaf AO table
-	else if ((rel->rd_rel->relam == AO_ROW_TABLE_AM_OID ||
-			  rel->rd_rel->relam == AO_COLUMN_TABLE_AM_OID))
+	else if (RelationStorageIsAO(rel))
 	{
 		return static_cast<IMDRelation::Erelaoversion>(
 			AORelationVersion_Get(rel.get()));
@@ -3051,12 +3050,6 @@ CTranslatorRelcacheToDXL::RetrieveStorageTypeForPartitionedTable(Relation rel)
 		gpdb::RelationWrapper child_rel = gpdb::GetRelation(oid);
 		IMDRelation::Erelstoragetype child_storage =
 			RetrieveRelStorageType(child_rel.get());
-		// Child rel with partdesc means it's not leaf partition, we don't care about it
-		if (child_rel->rd_partdesc)
-		{
-			continue;
-		}
-
 		if (child_storage == IMDRelation::ErelstorageForeign)
 		{
 			// for partitioned tables with foreign partitions, we want to ignore the foreign partitions
