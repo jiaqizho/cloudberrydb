@@ -13,7 +13,7 @@
 
 #include "nodes/execnodes.h"
 
-extern AttrNumber *GetColumnMapping(Oid oldOid, Oid newOid);
+extern AttrMap *GetColumnMapping(Oid oldOid, Oid newOid);
 extern TupleTableSlot *ExecNextDynamicIndexScan(DynamicIndexScanState *node);
 extern void ExecEndDynamicIndexScan(DynamicIndexScanState *node);
 extern void ExecReScanDynamicIndex(DynamicIndexScanState *node);

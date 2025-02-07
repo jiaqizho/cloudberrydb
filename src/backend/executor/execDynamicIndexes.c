@@ -39,7 +39,7 @@
  *
  *             Returns NULL for identical mapping.
  */
-AttrNumber *
+AttrMap *
 GetColumnMapping(Oid oldOid, Oid newOid)
 {
 	Assert(OidIsValid(newOid));
@@ -53,7 +53,7 @@ GetColumnMapping(Oid oldOid, Oid newOid)
 		return NULL;
 	}
 
-	AttrNumber *attMap;
+	AttrMap    *attMap;
 
 	Relation	oldRel = heap_open(oldOid, AccessShareLock);
 	Relation	newRel = heap_open(newOid, AccessShareLock);
@@ -61,7 +61,7 @@ GetColumnMapping(Oid oldOid, Oid newOid)
 	TupleDesc	oldTupDesc = oldRel->rd_att;
 	TupleDesc	newTupDesc = newRel->rd_att;
 
-	attMap = convert_tuples_by_name_map_if_req(oldTupDesc, newTupDesc, "unused msg");
+	attMap = build_attrmap_by_name_if_req(oldTupDesc, newTupDesc);
 
 	heap_close(oldRel, AccessShareLock);
 	heap_close(newRel, AccessShareLock);
@@ -72,8 +72,8 @@ GetColumnMapping(Oid oldOid, Oid newOid)
 static void
 DynamicIndexScan_ReMapColumns(DynamicIndexScan *dIndexScan, Oid oldOid, Oid newOid)
 {
-	IndexScan  *indexScan = &dIndexScan->indexscan;
-	AttrNumber *attMap;
+	IndexScan *indexScan = &dIndexScan->indexscan;
+	AttrMap   *attMap;
 
 	attMap = GetColumnMapping(oldOid, newOid);
 
@@ -81,15 +81,15 @@ DynamicIndexScan_ReMapColumns(DynamicIndexScan *dIndexScan, Oid oldOid, Oid newO
 	{
 		/* Also map attrnos in targetlist and quals */
 		change_varattnos_of_a_varno((Node *) indexScan->scan.plan.targetlist,
-									attMap, indexScan->scan.scanrelid);
+									attMap->attnums, indexScan->scan.scanrelid);
 		change_varattnos_of_a_varno((Node *) indexScan->scan.plan.qual,
-									attMap, indexScan->scan.scanrelid);
+									attMap->attnums, indexScan->scan.scanrelid);
 		change_varattnos_of_a_varno((Node *) indexScan->indexqual,
-									attMap, indexScan->scan.scanrelid);
+									attMap->attnums, indexScan->scan.scanrelid);
 		change_varattnos_of_a_varno((Node *) indexScan->indexqualorig,
-									attMap, indexScan->scan.scanrelid);
+									attMap->attnums, indexScan->scan.scanrelid);
 
-		pfree(attMap);
+		free_attrmap(attMap);
 	}
 }
 
@@ -97,7 +97,7 @@ static void
 DynamicIndexOnlyScan_ReMapColumns(DynamicIndexOnlyScan *dIndexOnlyScan, Oid oldOid, Oid newOid)
 {
 	IndexOnlyScan *indexScan = &dIndexOnlyScan->indexscan;
-	AttrNumber *attMap;
+	AttrMap       *attMap;
 
 	attMap = GetColumnMapping(oldOid, newOid);
 
@@ -105,13 +105,13 @@ DynamicIndexOnlyScan_ReMapColumns(DynamicIndexOnlyScan *dIndexOnlyScan, Oid oldO
 	{
 		/* Also map attrnos in targetlist and quals */
 		change_varattnos_of_a_varno((Node *) indexScan->scan.plan.targetlist,
-									attMap, indexScan->scan.scanrelid);
+									attMap->attnums, indexScan->scan.scanrelid);
 		change_varattnos_of_a_varno((Node *) indexScan->scan.plan.qual,
-									attMap, indexScan->scan.scanrelid);
+									attMap->attnums, indexScan->scan.scanrelid);
 		change_varattnos_of_a_varno((Node *) indexScan->indexqual,
-									attMap, indexScan->scan.scanrelid);
+									attMap->attnums, indexScan->scan.scanrelid);
 
-		pfree(attMap);
+		free_attrmap(attMap);
 	}
 }
 
@@ -150,7 +150,7 @@ beginCurrentIndexScan(DynamicIndexScanState *node, EState *estate,
 		 * Just get the direct parent, we don't support multi-level
 		 * partitioning
 		 */
-		node->columnLayoutOid = get_partition_parent(tableOid);
+		node->columnLayoutOid = get_partition_parent(tableOid, true /* even_if_detached */);
 	}
 	if (is_indexonly_scan)
 	{
