@@ -2491,7 +2491,7 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                               QUERY PLAN                               
 -----------------------------------------------------------------------
- Aggregate
+ Finalize Aggregate
    Output: count(DISTINCT ((b)::text)), count(DISTINCT ((a)::integer))
    ->  Gather Motion 3:1  (slice1; segments: 3)
          Output: (PARTIAL count(DISTINCT ((b)::text))), (PARTIAL count(DISTINCT ((a)::integer)))
@@ -2527,7 +2527,7 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multiple Distinct Qualified Aggregates are disabled in the optimizer
                                          QUERY PLAN                                         
 --------------------------------------------------------------------------------------------
- Aggregate
+ Finalize Aggregate
    Output: count(DISTINCT ((b)::text)), count(DISTINCT (((a)::integer)::character varying))
    ->  Gather Motion 3:1  (slice1; segments: 3)
          Output: (PARTIAL count(DISTINCT ((b)::text))), (PARTIAL count(DISTINCT (((a)::integer)::character varying)))

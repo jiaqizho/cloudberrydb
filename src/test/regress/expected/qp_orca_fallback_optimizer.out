@@ -318,7 +318,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 
 explain delete from ext_part where a=1;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Delete with External/foreign partition storage types
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: DML(delete) on partitioned tables
                               QUERY PLAN                               
 -----------------------------------------------------------------------
  Delete on ext_part  (cost=0.00..435.25 rows=0 width=0)
@@ -330,5 +330,10 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 
 explain update ext_part set a=1;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Update with External/foreign partition storage types
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: DML(update) on partitioned tables
 ERROR:  cannot update foreign table "p2_ext"
+-- start_ignore
+-- FIXME: gpcheckcat fails due to mismatching distribution policy if this table isn't dropped
+-- Keep this table around once this is fixed
+drop table ext_part;
+-- end_ignore

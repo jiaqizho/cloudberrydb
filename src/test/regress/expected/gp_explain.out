@@ -315,7 +315,9 @@ explain (format json, costs off) SELECT * FROM dummy_ext_tab;
          }                                    +
        ]                                      +
      },                                       +
-     "Optimizer": "Postgres-based planner"    +
+     "Settings": {                            +
+       "Optimizer": "Postgres query optimizer"+
+     }                                        +
    }                                          +
  ]
 (1 row)
@@ -346,12 +348,13 @@ explain (format yaml, costs off) SELECT * FROM dummy_aotab;
          Async Capable: false             +
          Relation Name: "dummy_aotab"     +
          Alias: "dummy_aotab"             +
-   Optimizer: "Postgres-based planner"
+   Settings:                              +
+     Optimizer: "Postgres query optimizer"
 (1 row)
 
 -- DML node (with ORCA)
 explain (format xml, costs off) insert into dummy_aotab values (1);
-                         QUERY PLAN
+                         QUERY PLAN                         
 ------------------------------------------------------------
  <explain xmlns="http://www.postgresql.org/2009/explain">  +
    <Query>                                                 +
@@ -377,7 +380,9 @@ explain (format xml, costs off) insert into dummy_aotab values (1);
          </Plan>                                           +
        </Plans>                                            +
      </Plan>                                               +
-     <Optimizer>Postgres-based planner</Optimizer>         +
+     <Settings>                                            +
+       <Optimizer>Postgres query optimizer</Optimizer>     +
+     </Settings>                                           +
    </Query>                                                +
  </explain>
 (1 row)
@@ -473,7 +478,9 @@ explain (slicetable, costs off, format json) SELECT * FROM explaintest;
          }                                    +
        ]                                      +
      },                                       +
-     "Optimizer": "Postgres-based planner",   +
+     "Settings": {                            +
+       "Optimizer": "Postgres query optimizer"+
+     },                                       +
      "Slice Table": [                         +
        {                                      +
          "Slice ID": 0,                       +

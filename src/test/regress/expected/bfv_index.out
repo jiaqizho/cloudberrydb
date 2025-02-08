@@ -1176,17 +1176,17 @@ explain (costs off)
 SELECT key1 FROM pt_with_multikey_index
 WHERE key1 IN ('KEY55', 'KEY65', 'KEY5')
 ORDER BY key1;
-                                                        QUERY PLAN                                                        
---------------------------------------------------------------------------------------------------------------------------
+                                                                    QUERY PLAN                                                                     
+---------------------------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: pt_with_multikey_index_1_prt_p2.key1
+   Merge Key: pt_with_multikey_index.key1
    ->  Merge Append
-         Sort Key: pt_with_multikey_index_1_prt_p2.key1
-         ->  Index Only Scan using pt_with_multikey_index_1_prt_p2_key1_key2_idx on pt_with_multikey_index_1_prt_p2
+         Sort Key: pt_with_multikey_index.key1
+         ->  Index Only Scan using pt_with_multikey_index_1_prt_p2_key1_key2_idx on pt_with_multikey_index_1_prt_p2 pt_with_multikey_index_1
                Index Cond: (key1 = ANY ('{KEY55,KEY65,KEY5}'::bpchar[]))
-         ->  Index Only Scan using pt_with_multikey_index_1_prt_p1_key1_key2_idx on pt_with_multikey_index_1_prt_p1
+         ->  Index Only Scan using pt_with_multikey_index_1_prt_p1_key1_key2_idx on pt_with_multikey_index_1_prt_p1 pt_with_multikey_index_2
                Index Cond: (key1 = ANY ('{KEY55,KEY65,KEY5}'::bpchar[]))
-         ->  Index Only Scan using pt_with_multikey_index_1_prt_other_key1_key2_idx on pt_with_multikey_index_1_prt_other
+         ->  Index Only Scan using pt_with_multikey_index_1_prt_other_key1_key2_idx on pt_with_multikey_index_1_prt_other pt_with_multikey_index_3
                Index Cond: (key1 = ANY ('{KEY55,KEY65,KEY5}'::bpchar[]))
  Optimizer: Postgres query optimizer
 (11 rows)
@@ -1211,16 +1211,16 @@ EXPLAIN (costs off)
 SELECT * FROM  pt_with_multikey_index
 WHERE key1 = 'KEY55' AND key2 IN ('R', 'G')
 ORDER BY key2;
-                                                     QUERY PLAN                                                      
----------------------------------------------------------------------------------------------------------------------
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: pt_with_multikey_index_1_prt_p2.key2
+   Merge Key: pt_with_multikey_index.key2
    ->  Sort
-         Sort Key: pt_with_multikey_index_1_prt_p2.key2
+         Sort Key: pt_with_multikey_index.key2
          ->  Append
-               ->  Index Scan using pt_with_multikey_index_1_prt_p2_key1_key2_idx on pt_with_multikey_index_1_prt_p2
+               ->  Index Scan using pt_with_multikey_index_1_prt_p2_key1_key2_idx on pt_with_multikey_index_1_prt_p2 pt_with_multikey_index_1
                      Index Cond: ((key1 = 'KEY55'::bpchar) AND (key2 = ANY ('{R,G}'::bpchar[])))
-               ->  Index Scan using pt_with_multikey_index_1_prt_p1_key1_key2_idx on pt_with_multikey_index_1_prt_p1
+               ->  Index Scan using pt_with_multikey_index_1_prt_p1_key1_key2_idx on pt_with_multikey_index_1_prt_p1 pt_with_multikey_index_2
                      Index Cond: ((key1 = 'KEY55'::bpchar) AND (key2 = ANY ('{R,G}'::bpchar[])))
  Optimizer: Postgres query optimizer
 (10 rows)
@@ -1238,11 +1238,11 @@ EXPLAIN (costs off)
 SELECT * FROM  pt_with_multikey_index
 WHERE key1 IN ('KEY55', 'KEY65') AND key2 = 'R'
 ORDER BY key1;
-                                               QUERY PLAN                                                
----------------------------------------------------------------------------------------------------------
+                                                           QUERY PLAN                                                           
+--------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: pt_with_multikey_index_1_prt_p1.key1
-   ->  Index Scan using pt_with_multikey_index_1_prt_p1_key1_key2_idx on pt_with_multikey_index_1_prt_p1
+   Merge Key: pt_with_multikey_index.key1
+   ->  Index Scan using pt_with_multikey_index_1_prt_p1_key1_key2_idx on pt_with_multikey_index_1_prt_p1 pt_with_multikey_index
          Index Cond: ((key1 = ANY ('{KEY55,KEY65}'::bpchar[])) AND (key2 = 'R'::bpchar))
  Optimizer: Postgres query optimizer
 (5 rows)
@@ -1265,13 +1265,13 @@ CREATE TABLE bfv_index_only_ao(a int, b int) WITH (appendonly =true);
 CREATE INDEX bfv_index_only_ao_a_b on bfv_index_only_ao(a) include (b);
 insert into bfv_index_only_ao select i,i from generate_series(1, 10000) i;
 explain select count(*) from bfv_index_only_ao where a < 100;
-                                                      QUERY PLAN                                                       
------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=5.37..5.38 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=5.31..5.36 rows=3 width=8)
-         ->  Partial Aggregate  (cost=5.31..5.32 rows=1 width=8)
-               ->  Index Only Scan using bfv_index_only_ao_a_b on bfv_index_only_ao  (cost=0.16..5.23 rows=33 width=0)
-                     Index Cond: (a < 100)
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=340000382.72..340000382.73 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=340000382.67..340000382.72 rows=3 width=8)
+         ->  Partial Aggregate  (cost=340000382.67..340000382.68 rows=1 width=8)
+               ->  Seq Scan on bfv_index_only_ao  (cost=0.00..340000358.75 rows=9567 width=0)
+                     Filter: (a < 100)
  Optimizer: Postgres query optimizer
 (6 rows)
 
@@ -1282,13 +1282,13 @@ select count(*) from bfv_index_only_ao where a < 100;
 (1 row)
 
 explain select count(*) from bfv_index_only_ao where a < 1000;
-                                                       QUERY PLAN                                                        
--------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=19.87..19.88 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=19.81..19.86 rows=3 width=8)
-         ->  Partial Aggregate  (cost=19.81..19.82 rows=1 width=8)
-               ->  Index Only Scan using bfv_index_only_ao_a_b on bfv_index_only_ao  (cost=0.16..18.98 rows=333 width=0)
-                     Index Cond: (a < 1000)
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=340000382.72..340000382.73 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=340000382.67..340000382.72 rows=3 width=8)
+         ->  Partial Aggregate  (cost=340000382.67..340000382.68 rows=1 width=8)
+               ->  Seq Scan on bfv_index_only_ao  (cost=0.00..340000358.75 rows=9567 width=0)
+                     Filter: (a < 1000)
  Optimizer: Postgres query optimizer
 (6 rows)
 
@@ -1302,13 +1302,13 @@ CREATE TABLE bfv_index_only_aocs(a int, b int) WITH (appendonly =true, orientati
 CREATE INDEX bfv_index_only_aocs_a_b on bfv_index_only_aocs(a) include (b);
 insert into bfv_index_only_aocs select i,i from generate_series(1, 10000) i;
 explain select count(*) from bfv_index_only_aocs where a < 100;
-                                                        QUERY PLAN                                                         
----------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=5.37..5.38 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=5.31..5.36 rows=3 width=8)
-         ->  Partial Aggregate  (cost=5.31..5.32 rows=1 width=8)
-               ->  Index Only Scan using bfv_index_only_aocs_a_b on bfv_index_only_aocs  (cost=0.16..5.23 rows=33 width=0)
-                     Index Cond: (a < 100)
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=340000382.72..340000382.73 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=340000382.67..340000382.72 rows=3 width=8)
+         ->  Partial Aggregate  (cost=340000382.67..340000382.68 rows=1 width=8)
+               ->  Seq Scan on bfv_index_only_aocs  (cost=0.00..340000358.75 rows=9567 width=0)
+                     Filter: (a < 100)
  Optimizer: Postgres query optimizer
 (6 rows)
 
@@ -1319,13 +1319,13 @@ select count(*) from bfv_index_only_aocs where a < 100;
 (1 row)
 
 explain select count(*) from bfv_index_only_aocs where a < 1000;
-                                                         QUERY PLAN                                                          
------------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=19.87..19.88 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=19.81..19.86 rows=3 width=8)
-         ->  Partial Aggregate  (cost=19.81..19.82 rows=1 width=8)
-               ->  Index Only Scan using bfv_index_only_aocs_a_b on bfv_index_only_aocs  (cost=0.16..18.98 rows=333 width=0)
-                     Index Cond: (a < 1000)
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=340000382.72..340000382.73 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=340000382.67..340000382.72 rows=3 width=8)
+         ->  Partial Aggregate  (cost=340000382.67..340000382.68 rows=1 width=8)
+               ->  Seq Scan on bfv_index_only_aocs  (cost=0.00..340000358.75 rows=9567 width=0)
+                     Filter: (a < 1000)
  Optimizer: Postgres query optimizer
 (6 rows)
 

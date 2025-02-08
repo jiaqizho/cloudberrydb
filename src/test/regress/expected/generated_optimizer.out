@@ -2,7 +2,7 @@ set optimizer_trace_fallback=on;
 -- sanity check of system catalog
 SELECT attrelid, attname, attgenerated FROM pg_attribute WHERE attgenerated NOT IN ('', 's');
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
  attrelid | attname | attgenerated 
 ----------+---------+--------------
 (0 rows)
@@ -32,7 +32,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -42,11 +42,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                             Table "public.gtest1"
@@ -56,6 +56,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
  b      | integer |           |          | generated always as (a * 2) stored
 Indexes:
     "gtest1_pkey" PRIMARY KEY, btree (a)
+Distributed by: (a)
 
 -- duplicate generated
 CREATE TABLE gtest_err_1 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED GENERATED ALWAYS AS (a * 3) STORED);
@@ -284,7 +285,7 @@ SELECT * FROM gtest1_1;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -292,11 +293,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                            Table "public.gtest1_1"
@@ -305,6 +306,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
  a      | integer |           | not null | 
  b      | integer |           |          | generated always as (a * 2) stored
 Inherits: gtest1
+Distributed by: (a)
 
 INSERT INTO gtest1_1 VALUES (4);
 SELECT * FROM gtest1_1;
@@ -330,7 +332,7 @@ NOTICE:  merging column "b" with inherited definition
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -338,11 +340,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                       Table "public.gtest_normal_child"
@@ -351,6 +353,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
  a      | integer |           |          | 
  b      | integer |           |          | generated always as (a * 2) stored
 Inherits: gtest_normal
+Distributed by: (a)
 
 INSERT INTO gtest_normal (a) VALUES (1);
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -564,7 +567,7 @@ ALTER TABLE gtest10 DROP COLUMN b;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -574,11 +577,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
               Table "public.gtest10"
@@ -587,6 +590,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
  a      | integer |           | not null | 
 Indexes:
     "gtest10_pkey" PRIMARY KEY, btree (a)
+Distributed by: (a)
 
 CREATE TABLE gtest10a (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED);
 ALTER TABLE gtest10a DROP COLUMN b;
@@ -676,7 +680,7 @@ CREATE INDEX gtest22c_pred_idx ON gtest22c (a) WHERE b > 0;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -686,11 +690,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                            Table "public.gtest22c"
@@ -702,6 +706,7 @@ Indexes:
     "gtest22c_b_idx" btree (b)
     "gtest22c_expr_idx" btree ((b * 3))
     "gtest22c_pred_idx" btree (a) WHERE b > 0
+Distributed by: (a)
 
 INSERT INTO gtest22c VALUES (1), (2), (3);
 SET enable_seqscan TO off;
@@ -766,7 +771,7 @@ CREATE TABLE gtest23b (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STOR
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -774,19 +779,19 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                            Table "public.gtest23b"
@@ -798,6 +803,7 @@ Indexes:
     "gtest23b_pkey" PRIMARY KEY, btree (a)
 Foreign-key constraints:
     "gtest23b_b_fkey" FOREIGN KEY (b) REFERENCES gtest23a(x)
+Distributed by: (a)
 
 INSERT INTO gtest23b VALUES (1);  -- ok
 -- GPDB doesn't enforce foreign key constraints, so this doesn't error out.
@@ -888,7 +894,7 @@ SELECT * FROM gtest25 ORDER BY a;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -898,11 +904,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                                          Table "public.gtest25"
@@ -916,6 +922,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
  y      | double precision |           |          | generated always as (d * 4::double precision) stored
 Indexes:
     "gtest25_pkey" PRIMARY KEY, btree (a)
+Distributed by: (a)
 
 -- ALTER TABLE ... ALTER COLUMN
 CREATE TABLE gtest27 (
@@ -933,7 +940,7 @@ ALTER TABLE gtest27 ALTER COLUMN x TYPE numeric;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -941,11 +948,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                                 Table "public.gtest27"
@@ -954,6 +961,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
  a      | integer |           |          | 
  b      | integer |           |          | 
  x      | numeric |           |          | generated always as (((a + b) * 2)) stored
+Distributed randomly
 
 SELECT * FROM gtest27;
  a | b  | x  
@@ -977,7 +985,7 @@ ALTER TABLE gtest27
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -985,11 +993,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                               Table "public.gtest27"
@@ -998,6 +1006,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
  a      | bigint |           |          | 
  b      | bigint |           |          | 
  x      | bigint |           |          | generated always as ((a + b) * 2) stored
+Distributed randomly
 
 -- Ideally you could just do this, but not today (and should x change type?):
 ALTER TABLE gtest27
@@ -1009,7 +1018,7 @@ DETAIL:  Column "a" is used by generated column "x".
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -1017,11 +1026,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                               Table "public.gtest27"
@@ -1030,6 +1039,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
  a      | bigint |           |          | 
  b      | bigint |           |          | 
  x      | bigint |           |          | generated always as ((a + b) * 2) stored
+Distributed randomly
 
 SELECT * FROM gtest27;
  a | b  | x  
@@ -1061,55 +1071,57 @@ SELECT * FROM gtest29;
 (4 rows)
 
 \d gtest29
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
               Table "public.gtest29"
  Column |  Type   | Collation | Nullable | Default 
 --------+---------+-----------+----------+---------
  a      | integer |           |          | 
  b      | integer |           |          | 
+Distributed by: (a)
 
 -- check that dependencies between columns have also been removed
 ALTER TABLE gtest29 DROP COLUMN a;  -- should not drop b
 \d gtest29
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
               Table "public.gtest29"
  Column |  Type   | Collation | Nullable | Default 
 --------+---------+-----------+----------+---------
  b      | integer |           |          | 
+Distributed randomly
 
 -- with inheritance
 CREATE TABLE gtest30 (
@@ -1119,56 +1131,58 @@ CREATE TABLE gtest30 (
 CREATE TABLE gtest30_1 () INHERITS (gtest30);
 ALTER TABLE gtest30 ALTER COLUMN b DROP EXPRESSION;
 \d gtest30
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
               Table "public.gtest30"
  Column |  Type   | Collation | Nullable | Default 
 --------+---------+-----------+----------+---------
  a      | integer |           |          | 
  b      | integer |           |          | 
 Number of child tables: 1 (Use \d+ to list them.)
+Distributed by: (a)
 
 \d gtest30_1
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
              Table "public.gtest30_1"
  Column |  Type   | Collation | Nullable | Default 
 --------+---------+-----------+----------+---------
  a      | integer |           |          | 
  b      | integer |           |          | 
 Inherits: gtest30
+Distributed by: (a)
 
 DROP TABLE gtest30 CASCADE;
 NOTICE:  drop cascades to table gtest30_1
@@ -1180,56 +1194,58 @@ CREATE TABLE gtest30_1 () INHERITS (gtest30);
 ALTER TABLE ONLY gtest30 ALTER COLUMN b DROP EXPRESSION;  -- error
 ERROR:  ALTER TABLE / DROP EXPRESSION must be applied to child tables too
 \d gtest30
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                             Table "public.gtest30"
  Column |  Type   | Collation | Nullable |              Default               
 --------+---------+-----------+----------+------------------------------------
  a      | integer |           |          | 
  b      | integer |           |          | generated always as (a * 2) stored
 Number of child tables: 1 (Use \d+ to list them.)
+Distributed by: (a)
 
 \d gtest30_1
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Queries on master-only tables
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                            Table "public.gtest30_1"
  Column |  Type   | Collation | Nullable |              Default               
 --------+---------+-----------+----------+------------------------------------
  a      | integer |           |          | 
  b      | integer |           |          | generated always as (a * 2) stored
 Inherits: gtest30
+Distributed by: (a)
 
 ALTER TABLE gtest30_1 ALTER COLUMN b DROP EXPRESSION;  -- error
 ERROR:  cannot drop generation expression from inherited column
@@ -1413,7 +1429,7 @@ CREATE TABLE gtest28b (LIKE gtest28a INCLUDING GENERATED);
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -1421,11 +1437,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                            Table "public.gtest28a"
@@ -1437,7 +1453,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 Distributed randomly
 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -1445,11 +1461,11 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
                            Table "public.gtest28b"

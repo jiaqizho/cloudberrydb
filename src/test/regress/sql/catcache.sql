@@ -8,7 +8,7 @@ create table dml_14027_union_s_1_prt_2 partition of dml_14027_union_s for values
 create table dml_14027_union_s_1_prt_def partition of dml_14027_union_s default;
 
 insert into dml_14027_union_s select generate_series(1,1), generate_series(1,1);
-
+analyze dml_14027_union_s;
 begin;
 drop table dml_14027_union_s_1_prt_def;
 explain select count(distinct(b)) from dml_14027_union_s;

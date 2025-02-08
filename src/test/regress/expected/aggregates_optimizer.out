@@ -2709,32 +2709,32 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 (1 row)
 
 select cleast_agg(q1,q2) from int8_tbl;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
     cleast_agg     
 -------------------
  -4567890123456789
 (1 row)
 
 select cleast_agg(4.5,f1) from int4_tbl;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
  cleast_agg  
 -------------
  -2147483647
 (1 row)
 
 select cleast_agg(variadic array[4.5,f1]) from int4_tbl;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
  cleast_agg  
 -------------
  -2147483647
 (1 row)
 
 select pg_typeof(cleast_agg(variadic array[4.5,f1])) from int4_tbl;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
  pg_typeof 
 -----------
  numeric
@@ -2809,6 +2809,7 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  avg_transfn called with 1
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
@@ -2816,6 +2817,7 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -2837,6 +2839,7 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  avg_transfn called with 1
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
@@ -2844,6 +2847,7 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -2876,6 +2880,8 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  avg_transfn called with 1
+NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -2938,13 +2944,13 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 NOTICE:  avg_transfn called with 3
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 NOTICE:  avg_transfn called with 3
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -2963,22 +2969,22 @@ discard plans;
 select my_avg(one),my_sum(two) from (values(1,2),(3,4)) t(one,two);
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-NOTICE:  avg_transfn called with 2
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 NOTICE:  avg_transfn called with 1
-NOTICE:  avg_transfn called with 4
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  avg_transfn called with 2
 NOTICE:  avg_transfn called with 3
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  avg_transfn called with 4
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -3058,6 +3064,8 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  avg_transfn called with 1
+NOTICE:  avg_transfn called with 3
 NOTICE:  avg_transfn called with 3
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
@@ -3074,28 +3082,10 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 
 -- Varying INITCONDs should cause the states not to be shared.
 select my_sum_init(one),my_avg_init2(one) from (values(1),(3)) t(one);
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 NOTICE:  avg_transfn called with 1
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 NOTICE:  avg_transfn called with 1
 NOTICE:  avg_transfn called with 3
 NOTICE:  avg_transfn called with 3
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
-INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
  my_sum_init | my_avg_init2 
 -------------+--------------
           14 |            4
@@ -3157,12 +3147,16 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  sum_transfn called with 1
 NOTICE:  sum_transfn called with 2
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
+NOTICE:  sum_transfn called with 2
 NOTICE:  sum_transfn called with 3
+NOTICE:  sum_transfn called with 3
+NOTICE:  sum_transfn called with 4
 NOTICE:  sum_transfn called with 4
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query Parameter
@@ -3614,7 +3608,7 @@ drop table agg_hash_4;
 -- numsegments of the general locus should be -1 on create_minmaxagg_path
 explain analyze select count(*) from pg_class, (select count(*) > 0 from (select count(*) from pg_class where relnatts > 8) x) y;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
                                                       QUERY PLAN                                                       
 -----------------------------------------------------------------------------------------------------------------------
  Aggregate  (cost=10000000017.74..10000000017.75 rows=1 width=8) (actual time=0.142..0.142 rows=1 loops=1)

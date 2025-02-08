@@ -811,7 +811,7 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 			ExplainPropertyStringInfo("Optimizer", es, "Postgres query optimizer");
 #ifdef USE_ORCA
 		else
-			ExplainPropertyStringInfo("Optimizer", es, "Pivotal Optimizer (GPORCA)");
+			ExplainPropertyStringInfo("Optimizer", es, "GPORCA");
 #endif
 
 		ExplainCloseGroup("Settings", "Settings", true, es);

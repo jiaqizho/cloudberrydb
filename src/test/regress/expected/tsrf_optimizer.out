@@ -108,8 +108,8 @@ SELECT unnest(ARRAY[1, 2]) FROM few WHERE false;
 explain (verbose, costs off)
 SELECT * FROM few f1,
   (SELECT unnest(ARRAY[1,2]) FROM few f2 WHERE false OFFSET 0) ss;
-                                                            QUERY PLAN                                                            
-----------------------------------------------------------------------------------------------------------------------------------
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Output: id, dataa, datab, (unnest('{1,2}'::integer[]))
    ->  Nested Loop
@@ -118,19 +118,13 @@ SELECT * FROM few f1,
          ->  ProjectSet
                Output: unnest('{1,2}'::integer[])
                ->  Result
-                     Output: NULL::integer, NULL::tid, NULL::xid, NULL::cid, NULL::xid, NULL::cid, NULL::oid, NULL::integer
+                     Output: NULL::integer, NULL::tid, NULL::xid, NULL::cid, NULL::xid, NULL::cid, NULL::oid, NULL::integer, NULL::oid
                      One-Time Filter: false
          ->  Seq Scan on public.few
                Output: id, dataa, datab
-         ->  Materialize
-               Output: (unnest('{1,2}'::integer[]))
-               ->  ProjectSet
-                     Output: unnest('{1,2}'::integer[])
-                     ->  Result
-                           Output: NULL::integer, NULL::tid, NULL::xid, NULL::cid, NULL::xid, NULL::cid, NULL::oid, NULL::integer, NULL::oid
-                           One-Time Filter: false
+ Settings: enable_parallel = 'off', optimizer = 'on'
  Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+(14 rows)
 
 SELECT * FROM few f1,
   (SELECT unnest(ARRAY[1,2]) FROM few f2 WHERE false OFFSET 0) ss;

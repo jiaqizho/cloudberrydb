@@ -7,23 +7,17 @@ NOTICE:  table has parent, setting distribution columns to match parent table
 create table dml_14027_union_s_1_prt_def partition of dml_14027_union_s default;
 NOTICE:  table has parent, setting distribution columns to match parent table
 insert into dml_14027_union_s select generate_series(1,1), generate_series(1,1);
+analyze dml_14027_union_s;
 begin;
 drop table dml_14027_union_s_1_prt_def;
 explain select count(distinct(b)) from dml_14027_union_s;
-                                                              QUERY PLAN                                                              
---------------------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=321.22..321.23 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=321.17..321.22 rows=3 width=8)
-         ->  Partial Aggregate  (cost=321.17..321.18 rows=1 width=8)
-               ->  HashAggregate  (cost=317.00..320.33 rows=333 width=32)
-                     Group Key: dml_14027_union_s.b
-                     ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=282.00..312.00 rows=1000 width=32)
-                           Hash Key: dml_14027_union_s.b
-                           ->  Streaming HashAggregate  (cost=282.00..292.00 rows=1000 width=32)
-                                 Group Key: dml_14027_union_s.b
-                                 ->  Seq Scan on dml_14027_union_s_1_prt_2 dml_14027_union_s  (cost=0.00..199.33 rows=16533 width=32)
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=1.03..1.04 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1.03 rows=1 width=5)
+         ->  Seq Scan on dml_14027_union_s_1_prt_2 dml_14027_union_s  (cost=0.00..1.01 rows=1 width=5)
  Optimizer: Postgres query optimizer
-(11 rows)
+(4 rows)
 
 select count(distinct(b)) from dml_14027_union_s;
  count 

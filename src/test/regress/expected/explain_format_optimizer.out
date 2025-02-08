@@ -247,7 +247,7 @@ QUERY PLAN
             Plan Width: 12
             Index Cond: "(id = boxes.apple_id)"
   Settings: 
-    Optimizer: "Pivotal Optimizer (GPORCA)"
+    Optimizer: "GPORCA"
 (1 row)
 --- Check Explain Analyze YAML output that include the slices information
 -- explain_processing_off
@@ -408,7 +408,8 @@ QUERY PLAN
             Actual Loops: 0
             Index Cond: "(id = boxes.apple_id)"
             Rows Removed by Index Recheck: 0
-  Optimizer: "GPORCA"
+  Settings: 
+    Optimizer: "GPORCA"
   Planning Time: 14.827
   Triggers: 
   Slice statistics: 
@@ -463,7 +464,9 @@ QUERY PLAN
       "Function Name": "generate_series",
       "Alias": "generate_series"
     },
-    "Optimizer": "GPORCA"
+    "Settings": {
+      "Optimizer": "GPORCA"
+    }
   }
 ]
 (1 row)
@@ -481,7 +484,9 @@ QUERY PLAN
       <Function-Name>generate_series</Function-Name>
       <Alias>generate_series</Alias>
     </Plan>
-    <Optimizer>GPORCA</Optimizer>
+    <Settings>
+      <Optimizer>GPORCA</Optimizer>
+    </Settings>
   </Query>
 </explain>
 (1 row)
@@ -519,7 +524,9 @@ QUERY PLAN
         }
       ]
     },
-    "Optimizer": "GPORCA"
+    "Settings": {
+      "Optimizer": "GPORCA"
+    }
   }
 ]
 (1 row)

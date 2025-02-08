@@ -406,24 +406,6 @@ BEGIN
 	END LOOP;
 END;
 $x$;
-WARNING:  ORCA did not produce a bitmap indexscan plan for (cidrcol,<,cidr,255.255.255.255,100)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (cidrcol,<=,cidr,255.255.255.255,100)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (cidrcol,>,cidr,0.0.0.0,125)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (cidrcol,>=,cidr,0.0.0.0,125)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (cidrcol,<,inet,255.255.255.255,100)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (cidrcol,<=,inet,255.255.255.255,100)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (cidrcol,>,inet,0.0.0.0,125)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (cidrcol,>=,inet,0.0.0.0,125)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (inetcol,<,cidr,255.255.255.255,100)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (inetcol,<=,cidr,255.255.255.255,100)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (inetcol,>,cidr,0.0.0.0,125)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (inetcol,>=,cidr,0.0.0.0,125)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (inetcol,<,inet,255.255.255.255,100)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (inetcol,<=,inet,255.255.255.255,100)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (inetcol,>,inet,0.0.0.0,125)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (inetcol,>=,inet,0.0.0.0,125)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (lsncol,IS,pg_lsn,,25)
-WARNING:  ORCA did not produce a bitmap indexscan plan for (lsncol,"IS NOT",pg_lsn,,100)
 -- Note: ORCA does not support all of the above operators:
 --       - standard comparison operators on inet and cidr columns
 --         because ORCA does not look at the second occurrence of a column in an index,

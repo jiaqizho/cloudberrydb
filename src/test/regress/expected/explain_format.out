@@ -266,7 +266,8 @@ QUERY PLAN
                 Total Cost: 596.00
                 Plan Rows: 49600
                 Plan Width: 36
-  Optimizer: "Postgres-based planner"
+  Settings: 
+    Optimizer: "Postgres query optimizer"
 (1 row)
 --- Check Explain Analyze YAML output that include the slices information
 -- explain_processing_off
@@ -459,7 +460,8 @@ QUERY PLAN
                 Actual Total Time: 0.000
                 Actual Rows: 0
                 Actual Loops: 0
-  Optimizer: "Postgres-based planner"
+  Settings: 
+    Optimizer: "Postgres query optimizer"
   Planning Time: 1.121
   Triggers: 
   Slice statistics: 
@@ -516,7 +518,9 @@ QUERY PLAN
       "Function Name": "generate_series",
       "Alias": "generate_series"
     },
-    "Optimizer": "Postgres-based planner"
+    "Settings": {
+      "Optimizer": "Postgres query optimizer"
+    }
   }
 ]
 (1 row)
@@ -534,7 +538,9 @@ QUERY PLAN
       <Function-Name>generate_series</Function-Name>
       <Alias>generate_series</Alias>
     </Plan>
-    <Optimizer>Postgres-based planner</Optimizer>
+    <Settings>
+      <Optimizer>Postgres query optimizer</Optimizer>
+    </Settings>
   </Query>
 </explain>
 (1 row)
@@ -571,7 +577,9 @@ QUERY PLAN
         }
       ]
     },
-    "Optimizer": "Postgres-based planner"
+    "Settings": {
+      "Optimizer": "Postgres query optimizer"
+    }
   }
 ]
 (1 row)

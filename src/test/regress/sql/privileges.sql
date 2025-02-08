@@ -130,6 +130,9 @@ GRANT ALL ON atest1 TO PUBLIC; -- fail
 -- checks in subquery, both ok
 SELECT * FROM atest1 WHERE ( b IN ( SELECT col1 FROM atest2 ) );
 SELECT * FROM atest2 WHERE ( col1 IN ( SELECT b FROM atest1 ) );
+-- test ctas
+create table atest2_ctas_ok as select col1 from atest2
+where col1 in (select distinct b from atest1); -- ok 
 
 SET SESSION AUTHORIZATION regress_priv_user6;
 SELECT * FROM atest1; -- ok
@@ -147,9 +150,6 @@ DELETE FROM atest2; -- ok
 UPDATE pg_catalog.pg_class SET relname = '123'; -- fail
 DELETE FROM pg_catalog.pg_class; -- fail
 UPDATE pg_toast.pg_toast_1213 SET chunk_id = 1; -- fail
--- test ctas
-create table atest2_ctas_ok as select col1 from atest2
-where col1 in (select distinct b from atest1); -- ok 
 
 SET SESSION AUTHORIZATION regress_priv_user3;
 SELECT session_user, current_user;

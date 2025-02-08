@@ -132,3 +132,4 @@ SELECT (SELECT b FROM correlated_subquery_test LIMIT 1)=ALL(SELECT a FROM correl
 (1 row)
 
 ROLLBACK;
+reset optimizer_trace_fallback;

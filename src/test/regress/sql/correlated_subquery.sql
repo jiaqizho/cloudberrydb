@@ -30,3 +30,5 @@ BEGIN;
 CREATE CAST (integer AS text) WITH INOUT AS IMPLICIT;
 SELECT (SELECT b FROM correlated_subquery_test LIMIT 1)=ALL(SELECT a FROM correlated_subquery_test);
 ROLLBACK;
+
+reset optimizer_trace_fallback;

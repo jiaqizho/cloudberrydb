@@ -67,18 +67,14 @@ set optimizer_enable_hashjoin = on;
 -- hash the much smaller universal table, instead of
 -- the much larger distributed table.
 explain (analyze, costs off, timing off, summary off) select * from dist join const_tvf(1) ct(c1) on dist.c1 = ct.c1;
-                                        QUERY PLAN                                         
--------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3) (actual rows=1 loops=1)
-   ->  Hash Join (actual rows=1 loops=1)
-         Hash Cond: (dist.c1 = ct.c1)
-         Extra Text: (seg1)   Hash chain length 1.0 avg, 1 max, using 1 of 262144 buckets.
-         ->  Seq Scan on dist (actual rows=340 loops=1)
-         ->  Hash (actual rows=1 loops=1)
-               Buckets: 262144  Batches: 1  Memory Usage: 2049kB
-               ->  Function Scan on ct (actual rows=1 loops=1)
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Gather Motion 1:1  (slice1; segments: 1) (actual rows=1 loops=1)
+   ->  Seq Scan on dist (actual rows=1 loops=1)
+         Filter: (c1 = 1)
+         Rows Removed by Filter: 321
  Optimizer: Postgres query optimizer
-(9 rows)
+(5 rows)
 
 explain (analyze, costs off, timing off, summary off) select * from dist join unnest_arr on dist.c1 = unnest_arr.c1;
                                         QUERY PLAN                                         
@@ -119,18 +115,14 @@ explain (analyze, costs off, timing off, summary off) select * from dist join ge
 -- operations are expected to fluctuate in randomly 
 -- distributed tables.)
 explain (analyze, timing off, summary off) select * from rand join const_tvf(1) ct(c1) on rand.c1 = ct.c1;
-                                             QUERY PLAN                                              
------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.02..5.35 rows=10 width=8) (actual rows=1 loops=1)
-   ->  Hash Join  (cost=0.02..5.22 rows=3 width=8) (actual rows=1 loops=1)
-         Hash Cond: (rand.c1 = ct.c1)
-         Extra Text: (seg2)   Hash chain length 1.0 avg, 1 max, using 1 of 262144 buckets.
-         ->  Seq Scan on rand  (cost=0.00..4.33 rows=333 width=4) (actual rows=346 loops=1)
-         ->  Hash  (cost=0.01..0.01 rows=1 width=4) (actual rows=1 loops=1)
-               Buckets: 262144  Batches: 1  Memory Usage: 2049kB
-               ->  Function Scan on ct  (cost=0.00..0.01 rows=1 width=4) (actual rows=1 loops=1)
+                                             QUERY PLAN                                             
+----------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..5.18 rows=1 width=8) (actual rows=1 loops=1)
+   ->  Seq Scan on rand  (cost=0.00..5.16 rows=1 width=8) (actual rows=1 loops=1)
+         Filter: (c1 = 1)
+         Rows Removed by Filter: 346
  Optimizer: Postgres query optimizer
-(9 rows)
+(5 rows)
 
 explain (analyze, timing off, summary off) select * from rand join unnest_arr on rand.c1 = unnest_arr.c1;
                                              QUERY PLAN                                              
@@ -168,18 +160,14 @@ explain (analyze, timing off, summary off) select * from rand join gen_series on
 -- This is achieved by a one-time segment filter
 -- (duplicate-sensitive random motion).
 explain (analyze, costs off, timing off, summary off) select * from rep join const_tvf(1) ct(c1) on rep.c1 = ct.c1;
-                                    QUERY PLAN                                    
-----------------------------------------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1) (actual rows=1 loops=1)
-   ->  Hash Join (actual rows=1 loops=1)
-         Hash Cond: (rep.c1 = ct.c1)
-         Extra Text: Hash chain length 1.0 avg, 1 max, using 1 of 262144 buckets.
-         ->  Seq Scan on rep (actual rows=999 loops=1)
-         ->  Hash (actual rows=1 loops=1)
-               Buckets: 262144  Batches: 1  Memory Usage: 2049kB
-               ->  Function Scan on ct (actual rows=1 loops=1)
+   ->  Seq Scan on rep (actual rows=1 loops=1)
+         Filter: (c1 = 1)
+         Rows Removed by Filter: 998
  Optimizer: Postgres query optimizer
-(9 rows)
+(5 rows)
 
 explain (analyze, costs off, timing off, summary off) select * from rep join unnest_arr on rep.c1 = unnest_arr.c1;
                                     QUERY PLAN                                     
@@ -217,36 +205,27 @@ explain (analyze, costs off, timing off, summary off) select * from rep join gen
 -- when the inner side is universal. This allows the
 -- propagation of the partition selector, and enables DPE. 
 explain (analyze, costs off, timing off, summary off) select * from part join const_tvf(1) ct(c1) on part.c2 = ct.c1;
-                                        QUERY PLAN                                         
--------------------------------------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=100 loops=1)
-   ->  Hash Join (actual rows=43 loops=1)
-         Hash Cond: (part_1_prt_part3.c2 = ct.c1)
-         Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 1 of 262144 buckets.
-         ->  Append (actual rows=150 loops=1)
-               Partition Selectors: $0
-               ->  Seq Scan on part_1_prt_part3 (never executed)
-               ->  Seq Scan on part_1_prt_part1 (actual rows=150 loops=1)
-               ->  Seq Scan on part_1_prt_part2 (never executed)
-         ->  Hash (actual rows=1 loops=1)
-               Buckets: 262144  Batches: 1  Memory Usage: 2049kB
-               ->  Partition Selector (selector id: $0) (actual rows=1 loops=1)
-                     ->  Function Scan on ct (actual rows=1 loops=1)
+   ->  Seq Scan on part_1_prt_part1 part (actual rows=43 loops=1)
+         Filter: (c2 = 1)
+         Rows Removed by Filter: 107
  Optimizer: Postgres query optimizer
-(14 rows)
+(5 rows)
 
 explain (analyze, costs off, timing off, summary off) select * from part join unnest_arr on part.c2 = unnest_arr.c1;
-                                           QUERY PLAN                                           
-------------------------------------------------------------------------------------------------
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=399 loops=1)
    ->  Hash Join (actual rows=150 loops=1)
-         Hash Cond: (part_1_prt_part3.c2 = (((unnest('{-3,-2,-1,0,1,2,3}'::text[])))::integer))
+         Hash Cond: (part.c2 = (((unnest('{-3,-2,-1,0,1,2,3}'::text[])))::integer))
          Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 7 of 524288 buckets.
          ->  Append (actual rows=245 loops=1)
                Partition Selectors: $0
-               ->  Seq Scan on part_1_prt_part3 (actual rows=106 loops=1)
-               ->  Seq Scan on part_1_prt_part1 (actual rows=150 loops=1)
-               ->  Seq Scan on part_1_prt_part2 (never executed)
+               ->  Seq Scan on part_1_prt_part3 part_1 (actual rows=106 loops=1)
+               ->  Seq Scan on part_1_prt_part1 part_2 (actual rows=150 loops=1)
+               ->  Seq Scan on part_1_prt_part2 part_3 (never executed)
          ->  Hash (actual rows=7 loops=1)
                Buckets: 524288  Batches: 1  Memory Usage: 4097kB
                ->  Partition Selector (selector id: $0) (actual rows=7 loops=1)
@@ -261,13 +240,13 @@ explain (analyze, costs off, timing off, summary off) select * from part join ge
 --------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=999 loops=1)
    ->  Hash Join (actual rows=340 loops=1)
-         Hash Cond: (part_1_prt_part3.c2 = (generate_series('-10'::integer, 10)))
+         Hash Cond: (part.c2 = (generate_series('-10'::integer, 10)))
          Extra Text: (seg2)   Hash chain length 1.0 avg, 1 max, using 21 of 524288 buckets.
          ->  Append (actual rows=340 loops=1)
                Partition Selectors: $0
-               ->  Seq Scan on part_1_prt_part3 (actual rows=106 loops=1)
-               ->  Seq Scan on part_1_prt_part1 (actual rows=150 loops=1)
-               ->  Seq Scan on part_1_prt_part2 (actual rows=113 loops=1)
+               ->  Seq Scan on part_1_prt_part3 part_1 (actual rows=106 loops=1)
+               ->  Seq Scan on part_1_prt_part1 part_2 (actual rows=150 loops=1)
+               ->  Seq Scan on part_1_prt_part2 part_3 (actual rows=113 loops=1)
          ->  Hash (actual rows=21 loops=1)
                Buckets: 524288  Batches: 1  Memory Usage: 4097kB
                ->  Partition Selector (selector id: $0) (actual rows=21 loops=1)
@@ -280,18 +259,17 @@ explain (analyze, costs off, timing off, summary off) select * from part join ge
 -- We get the same plans as those of the inner join, 
 -- since the outer table is deduplicated.
 explain (analyze, costs off, timing off, summary off) select * from dist left join const_tvf(1) ct(c1) on dist.c1 = ct.c1;
-                                        QUERY PLAN                                         
--------------------------------------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=999 loops=1)
-   ->  Hash Left Join (actual rows=340 loops=1)
-         Hash Cond: (dist.c1 = ct.c1)
-         Extra Text: (seg2)   Hash chain length 1.0 avg, 1 max, using 1 of 262144 buckets.
+   ->  Nested Loop Left Join (actual rows=340 loops=1)
+         Join Filter: (dist.c1 = 1)
+         Rows Removed by Join Filter: 340
          ->  Seq Scan on dist (actual rows=340 loops=1)
-         ->  Hash (actual rows=1 loops=1)
-               Buckets: 262144  Batches: 1  Memory Usage: 2049kB
-               ->  Function Scan on ct (actual rows=1 loops=1)
+         ->  Materialize (actual rows=1 loops=340)
+               ->  Result (actual rows=1 loops=1)
  Optimizer: Postgres query optimizer
-(9 rows)
+(8 rows)
 
 explain (analyze, costs off, timing off, summary off) select * from dist left join unnest_arr on dist.c1 = unnest_arr.c1;
                                         QUERY PLAN                                         
@@ -432,12 +410,11 @@ explain (analyze, costs off, timing off, summary off) select * from dist join co
                             QUERY PLAN                            
 ------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-   ->  Nested Loop (actual rows=0 loops=1)
-         Join Filter: (dist.c1 < ct.c1)
-         ->  Function Scan on ct (actual rows=1 loops=1)
-         ->  Seq Scan on dist (actual rows=340 loops=1)
+   ->  Seq Scan on dist (actual rows=0 loops=1)
+         Filter: (c1 < 1)
+         Rows Removed by Filter: 337
  Optimizer: Postgres query optimizer
-(6 rows)
+(5 rows)
 
 explain (analyze, costs off, timing off, summary off) select * from dist join unnest_arr on dist.c1 < unnest_arr.c1;
                                       QUERY PLAN                                      

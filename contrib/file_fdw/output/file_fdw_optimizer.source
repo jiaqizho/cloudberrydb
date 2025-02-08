@@ -289,7 +289,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 UPDATE agg SET a = 1;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Inherited tables
-ERROR:  ModifyTable mixes distributed and entry-only tables
+ERROR:  can't split update for inherit table: agg (preptlist.c:139)
 DELETE FROM agg WHERE a = 100;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Inherited tables
@@ -372,7 +372,7 @@ INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Insert with External/foreign partition storage types
 UPDATE pt set a = 1 where a = 2; -- ERROR
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Update with External/foreign partition storage types
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: DML(update) on partitioned tables
 ERROR:  cannot insert into foreign table "p1"  (seg1 127.0.0.1:7008 pid=50091)
 SELECT tableoid::regclass, * FROM pt;
 NOTICE:  One or more columns in the following table(s) do not have statistics: pt

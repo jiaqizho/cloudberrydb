@@ -486,10 +486,10 @@ SELECT a, b, c FROM test_cover_index_on_pt WHERE b<10;
 -- Expect static eliminated partitions due to predicate on column 'b'
 EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY OFF)
 SELECT a, b FROM test_cover_index_on_pt WHERE a<10 and b=2;
-                                                          QUERY PLAN                                                          
-------------------------------------------------------------------------------------------------------------------------------
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=1 loops=1)
-   ->  Index Only Scan using test_cover_index_on_pt_1_prt_3_a_b_idx on test_cover_index_on_pt_1_prt_3 (actual rows=1 loops=1)
+   ->  Index Only Scan using test_cover_index_on_pt_1_prt_3_a_b_idx on test_cover_index_on_pt_1_prt_3 test_cover_index_on_pt (actual rows=1 loops=1)
          Index Cond: (a < 10)
          Filter: (b = 2)
          Heap Fetches: 0
@@ -617,13 +617,15 @@ CREATE INDEX idx_ao_pt_a ON ao_pt USING btree (a);
 VACUUM ANALYZE ao_pt;
 -- Allow dynamic index-only scan on mixed partitioned AO table
 EXPLAIN SELECT a FROM ao_pt WHERE a=29;
-                                             QUERY PLAN                                             
-----------------------------------------------------------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)  (cost=0.14..4.17 rows=1 width=8)
-   ->  Index Only Scan using ao_pt_1_prt_3_a_idx on ao_pt_1_prt_3  (cost=0.14..4.15 rows=1 width=8)
-         Index Cond: (a = 29)
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Gather Motion 1:1  (slice1; segments: 1)  (cost=4.14..8.18 rows=1 width=8)
+   ->  Bitmap Heap Scan on ao_pt_1_prt_3 ao_pt  (cost=4.14..8.16 rows=1 width=8)
+         Recheck Cond: (a = 29)
+         ->  Bitmap Index Scan on ao_pt_1_prt_3_a_idx  (cost=0.00..4.14 rows=1 width=0)
+               Index Cond: (a = 29)
  Optimizer: Postgres query optimizer
-(4 rows)
+(6 rows)
 
 -- imitate child partition has GPDB 6 version file via catalog
 -- start_ignore
@@ -636,7 +638,7 @@ EXPLAIN SELECT a FROM ao_pt WHERE a=29;
                                        QUERY PLAN                                       
 ----------------------------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)  (cost=4.14..8.18 rows=1 width=8)
-   ->  Bitmap Heap Scan on ao_pt_1_prt_3  (cost=4.14..8.16 rows=1 width=8)
+   ->  Bitmap Heap Scan on ao_pt_1_prt_3 ao_pt  (cost=4.14..8.16 rows=1 width=8)
          Recheck Cond: (a = 29)
          ->  Bitmap Index Scan on ao_pt_1_prt_3_a_idx  (cost=0.00..4.14 rows=1 width=0)
                Index Cond: (a = 29)
@@ -658,13 +660,15 @@ CREATE INDEX idx_aocs_pt_a ON aocs_pt USING btree (a);
 VACUUM ANALYZE aocs_pt;
 -- Allow dynamic index-only scan on mixed partitioned AO/CO table
 EXPLAIN SELECT a FROM aocs_pt WHERE a=29;
-                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)  (cost=0.14..4.17 rows=1 width=8)
-   ->  Index Only Scan using aocs_pt_1_prt_3_a_idx on aocs_pt_1_prt_3  (cost=0.14..4.15 rows=1 width=8)
-         Index Cond: (a = 29)
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
+ Gather Motion 1:1  (slice1; segments: 1)  (cost=4.14..8.18 rows=1 width=8)
+   ->  Bitmap Heap Scan on aocs_pt_1_prt_3 aocs_pt  (cost=4.14..8.16 rows=1 width=8)
+         Recheck Cond: (a = 29)
+         ->  Bitmap Index Scan on aocs_pt_1_prt_3_a_idx  (cost=0.00..4.14 rows=1 width=0)
+               Index Cond: (a = 29)
  Optimizer: Postgres query optimizer
-(4 rows)
+(6 rows)
 
 -- imitate child partition has GPDB 6 version file via catalog
 -- start_ignore
@@ -677,7 +681,7 @@ EXPLAIN SELECT a FROM aocs_pt WHERE a=29;
                                         QUERY PLAN                                        
 ------------------------------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)  (cost=4.14..8.18 rows=1 width=8)
-   ->  Bitmap Heap Scan on aocs_pt_1_prt_3  (cost=4.14..8.16 rows=1 width=8)
+   ->  Bitmap Heap Scan on aocs_pt_1_prt_3 aocs_pt  (cost=4.14..8.16 rows=1 width=8)
          Recheck Cond: (a = 29)
          ->  Bitmap Index Scan on aocs_pt_1_prt_3_a_idx  (cost=0.00..4.14 rows=1 width=0)
                Index Cond: (a = 29)
@@ -725,10 +729,11 @@ SELECT count(*) FROM tsvector_table WHERE a @@ 'w:*|q:*';
          ->  Partial Aggregate (actual rows=1 loops=1)
                ->  Bitmap Heap Scan on tsvector_table (actual rows=0 loops=1)
                      Recheck Cond: (a @@ '''w'':* | ''q'':*'::tsquery)
+                     Rows Removed by Index Recheck: 1
                      ->  Bitmap Index Scan on a_gist_index (actual rows=1 loops=1)
                            Index Cond: (a @@ '''w'':* | ''q'':*'::tsquery)
- Optimizer: Postgres-based planner
-(8 rows)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 SELECT count(*) FROM tsvector_table WHERE a @@ 'w:*|q:*';
  count 
@@ -753,20 +758,20 @@ INSERT INTO test_partition_table_with_gist_index VALUES (3, '(1.0,1.0,3.0,3.0)')
 VACUUM ANALYZE test_partition_table_with_gist_index;
 EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY OFF)
 SELECT a, b_box FROM test_partition_table_with_gist_index WHERE b_box<@ box '(0,0,3,3)';
-                                                                             QUERY PLAN                                                                             
---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                QUERY PLAN                                                                                                 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=2 loops=1)
    ->  Append (actual rows=2 loops=1)
-         ->  Index Only Scan using test_partition_table_with_gist_index_1_prt_1_b_box_a_idx on test_partition_table_with_gist_index_1_prt_1 (actual rows=0 loops=1)
+         ->  Index Only Scan using test_partition_table_with_gist_index_1_prt_1_b_box_a_idx on test_partition_table_with_gist_index_1_prt_1 test_partition_table_with_gist_index_1 (actual rows=0 loops=1)
                Index Cond: (b_box <@ '(3,3),(0,0)'::box)
                Heap Fetches: 0
-         ->  Index Only Scan using test_partition_table_with_gist_index_1_prt_2_b_box_a_idx on test_partition_table_with_gist_index_1_prt_2 (actual rows=0 loops=1)
+         ->  Index Only Scan using test_partition_table_with_gist_index_1_prt_2_b_box_a_idx on test_partition_table_with_gist_index_1_prt_2 test_partition_table_with_gist_index_2 (actual rows=0 loops=1)
                Index Cond: (b_box <@ '(3,3),(0,0)'::box)
                Heap Fetches: 0
-         ->  Index Only Scan using test_partition_table_with_gist_index_1_prt_3_b_box_a_idx on test_partition_table_with_gist_index_1_prt_3 (actual rows=1 loops=1)
+         ->  Index Only Scan using test_partition_table_with_gist_index_1_prt_3_b_box_a_idx on test_partition_table_with_gist_index_1_prt_3 test_partition_table_with_gist_index_3 (actual rows=1 loops=1)
                Index Cond: (b_box <@ '(3,3),(0,0)'::box)
                Heap Fetches: 0
-         ->  Index Only Scan using test_partition_table_with_gist_index_1_prt_4_b_box_a_idx on test_partition_table_with_gist_index_1_prt_4 (actual rows=1 loops=1)
+         ->  Index Only Scan using test_partition_table_with_gist_index_1_prt_4_b_box_a_idx on test_partition_table_with_gist_index_1_prt_4 test_partition_table_with_gist_index_4 (actual rows=1 loops=1)
                Index Cond: (b_box <@ '(3,3),(0,0)'::box)
                Heap Fetches: 0
  Optimizer: Postgres query optimizer

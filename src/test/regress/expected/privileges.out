@@ -162,6 +162,9 @@ SELECT * FROM atest2 WHERE ( col1 IN ( SELECT b FROM atest1 ) );
 ------+------
 (0 rows)
 
+-- test ctas
+create table atest2_ctas_ok as select col1 from atest2
+where col1 in (select distinct b from atest1); -- ok 
 SET SESSION AUTHORIZATION regress_priv_user6;
 SELECT * FROM atest1; -- ok
  a |  b  
@@ -192,9 +195,6 @@ DELETE FROM pg_catalog.pg_class; -- fail
 ERROR:  permission denied: "pg_class" is a system catalog
 UPDATE pg_toast.pg_toast_1213 SET chunk_id = 1; -- fail
 ERROR:  permission denied: "pg_toast_1213" is a system catalog
--- test ctas
-create table atest2_ctas_ok as select col1 from atest2
-where col1 in (select distinct b from atest1); -- ok 
 SET SESSION AUTHORIZATION regress_priv_user3;
 SELECT session_user, current_user;
     session_user    |    current_user    

@@ -445,10 +445,11 @@ explain (analyze, costs off, timing off, summary off) select * from dist join co
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
    ->  Nested Loop (actual rows=0 loops=1)
          Join Filter: (c1 < (1))
+         Rows Removed by Join Filter: 337
          ->  Result (actual rows=1 loops=1)
          ->  Seq Scan on dist (actual rows=170 loops=2)
  Optimizer: Pivotal Optimizer (GPORCA)
-(6 rows)
+(7 rows)
 
 explain (analyze, costs off, timing off, summary off) select * from dist join unnest_arr on dist.c1 < unnest_arr.c1;
                                    QUERY PLAN                                    

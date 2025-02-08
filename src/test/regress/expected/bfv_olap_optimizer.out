@@ -790,7 +790,7 @@ group by a.code;
 ------------------------------------------------------------------------------------------------------------------------
  WindowAgg  (cost=0.00..1324055.31 rows=1 width=16)
    ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1324055.31 rows=1 width=16)
-         ->  GroupAggregate  (cost=0.00..431.00 rows=1 width=14)
+         ->  HashAggregate  (cost=0.00..431.00 rows=1 width=14)
                Group Key: t2_github_issue_10143.code
                ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=0.00..431.00 rows=1 width=11)
                      Hash Key: t2_github_issue_10143.code

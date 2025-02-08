@@ -9518,7 +9518,7 @@ and country.indepyear > 1900
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
@@ -9528,7 +9528,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Non-default collation
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
                            View "qp_with_clause.view_with_shared_scans"
        Column        |       Type       | Collation | Nullable | Default | Storage  | Description 
 ---------------------+------------------+-----------+----------+---------+----------+-------------
