@@ -44,7 +44,7 @@ static void mdunlink_pax(RelFileNodeBackend rnode, ForkNumber forkNumber,
   // FIXME(gongxun): can work well with dfs_tablespace
   if (forkNumber == MAIN_FORKNUM) {
     const char *path =
-        paxc::BuildPaxDirectoryPath(rnode.node, rnode.backend, false);
+        paxc::BuildPaxDirectoryPath(rnode.node, rnode.backend);
     paxc::DeletePaxDirectoryPath(path, true);
 
     if (isRedo) {

@@ -96,18 +96,12 @@ void PaxCopyAllDataFiles(Relation rel, const RelFileNode *newrnode,
 
   Assert(rel && newrnode);
 
-  bool is_dfs_tblspace = cbdb::IsDfsTablespaceById(rel->rd_rel->reltablespace);
-  CBDB_CHECK(!cbdb::IsDfsTablespaceById(is_dfs_tblspace),
-             cbdb::CException::kExTypeUnImplements,
-             "remote filesystem not support copy data");
-
   FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
-  src_path = cbdb::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend,
-                                         is_dfs_tblspace);
+  src_path = cbdb::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend);
   Assert(!src_path.empty());
 
   dst_path =
-      cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend, is_dfs_tblspace);
+      cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
   Assert(!dst_path.empty());
 
   CBDB_CHECK(!src_path.empty() && !dst_path.empty(),
@@ -129,10 +123,6 @@ void PaxCopyAllDataFiles(Relation rel, const RelFileNode *newrnode,
   //    created with a new temp table by previously calling
   //    PaxAuxRelationSetNewFilenode.
   if (createnewpath) {
-    // create pg_pax_table relfilenode file and dbid directory.
-    // cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
-    //                                      SMGR_PAX, rel);
-
     // create micropartition file destination folder for copying.
     CBDB_CHECK((fs->CreateDirectory(dst_path) == 0),
                cbdb::CException::ExType::kExTypeIOError,
@@ -403,8 +393,7 @@ void GetMicroPartitionMetadata(Relation rel, Snapshot snapshot, int block_id,
   CBDB_TRY();
   {
     auto rel_path = cbdb::BuildPaxDirectoryPath(rel->rd_node,
-                                               rel->rd_backend,
-                                               rel->rd_rel->reltablespace);
+                                               rel->rd_backend);
     info = pax::ManifestTupleToValue(rel_path, mrel, tuple);
   }
   CBDB_CATCH_DEFAULT();

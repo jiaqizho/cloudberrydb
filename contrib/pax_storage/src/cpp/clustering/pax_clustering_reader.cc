@@ -29,7 +29,6 @@
 
 #include "storage/local_file_system.h"
 #include "storage/micro_partition_file_factory.h"
-#include "storage/remote_file_system.h"
 
 namespace pax {
 namespace clustering {
@@ -37,17 +36,7 @@ PaxClusteringReader::PaxClusteringReader(
     Relation relation,
     std::unique_ptr<IteratorBase<MicroPartitionMetadata>> &&iterator)
     : relation_(relation), iter_(std::move(iterator)) {
-  bool is_dfs_table_space_ =
-      relation_->rd_rel->reltablespace != InvalidOid &&
-      cbdb::IsDfsTablespaceById(relation_->rd_rel->reltablespace);
-
-  if (is_dfs_table_space_) {
-    file_system_options_ =
-        std::make_shared<RemoteFileSystemOptions>(relation_->rd_rel->reltablespace);
-    file_system_ = Singleton<RemoteFileSystem>::GetInstance();
-  } else {
-    file_system_ = Singleton<LocalFileSystem>::GetInstance();
-  }
+  file_system_ = Singleton<LocalFileSystem>::GetInstance();
 }
 
 PaxClusteringReader::~PaxClusteringReader() {}
