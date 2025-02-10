@@ -182,15 +182,6 @@ static bool manifest_new_filenode(Relation rel,
   systable_endscan(scan);
   table_close(pax_tables_rel, NoLock);
 
-  // if table in dfs_tablespace, need not create relfilenode file on s3
-  if (paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace)) {
-    // FIXME(gongxun): currently it is not possible to delete files in
-    // dfs_tablespace through mdunlink_pax, so pending delete logic is
-    // retained for the tables under dfs_tablespace
-    paxc::PaxAddPendingDelete(rel, newrnode, false);
-
-    return false;
-  }
   return true;
 }
 
@@ -199,7 +190,7 @@ static void manifest_create_data_dir(Relation rel, const RelFileNode &newrnode) 
   auto srel = paxc::PaxRelationCreateStorage(newrnode, rel);
   smgrclose(srel);
 
-  char *path = paxc::BuildPaxDirectoryPath(newrnode, rel->rd_backend, false);
+  char *path = paxc::BuildPaxDirectoryPath(newrnode, rel->rd_backend);
   Assert(path);
 
   int rc;
