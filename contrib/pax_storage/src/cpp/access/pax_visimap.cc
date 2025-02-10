@@ -38,7 +38,6 @@
 #include "storage/file_system.h"
 #include "storage/local_file_system.h"
 #include "storage/pax_itemptr.h"
-#include "storage/remote_file_system.h"
 
 namespace pax {
 
@@ -139,21 +138,9 @@ std::shared_ptr<std::vector<uint8>> LoadVisimap(
 bool TestVisimap(Relation rel, const char *visimap_name, int offset) {
   FileSystem *fs;
   std::shared_ptr<FileSystemOptions> options;
-  static std::shared_ptr<RemoteFileSystemOptions> remote_options = std::make_shared<RemoteFileSystemOptions>();
-  // FIXME(gongxun): mount the is_dfs_tablespace in the PaxIndexScanDesc
-  bool is_dfs_tablespace =
-      cbdb::IsDfsTablespaceById(rel->rd_rel->reltablespace);
-  auto rel_path = cbdb::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend,
-                                              is_dfs_tablespace);
+  auto rel_path = cbdb::BuildPaxDirectoryPath(rel->rd_node, rel->rd_backend);
   auto file_path = cbdb::BuildPaxFilePath(rel_path, visimap_name);
-
-  if (is_dfs_tablespace) {
-    fs = Singleton<RemoteFileSystem>::GetInstance();
-    remote_options->tablespace_id_ = rel->rd_rel->reltablespace;
-    options = remote_options;
-  } else {
-    fs = Singleton<LocalFileSystem>::GetInstance();
-  }
+  fs = Singleton<LocalFileSystem>::GetInstance();
 
   auto visimap = LoadVisimap(fs, options, file_path);
   auto bm = Bitmap8(BitmapRaw<uint8>(visimap->data(), visimap->size()),

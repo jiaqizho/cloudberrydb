@@ -566,7 +566,6 @@ void manifest_create(Relation rel, RelFileNode relnode) {
   Relation aux_rel;
   Oid aux_oid;
   bool exists;
-  bool is_dfs;
 
   get_aux_table_name_info(RelationGetRelid(rel), aux_relname);
   aux_oid = get_relname_relid(aux_relname, PG_EXTAUX_NAMESPACE);
@@ -585,8 +584,7 @@ void manifest_create(Relation rel, RelFileNode relnode) {
     Assert(OidIsValid(aux_oid));
     aux_rel = table_open(aux_oid, AccessExclusiveLock);
   }
-  is_dfs = paxc_is_dfs(relnode.spcNode);
-  paxc_create_pax_directory(rel, relnode, is_dfs);
+  paxc_create_pax_directory(rel, relnode);
 
   table_close(aux_rel, NoLock);
 
@@ -721,8 +719,7 @@ ManifestRelation manifest_open(Relation rel) {
     mrel->desc = manifest_descriptors;
     mrel->heap = NULL;
     mrel->dirty = false;
-    mrel->is_dfs = paxc_is_dfs(rel->rd_node.spcNode);
-    mrel->paxdir = paxc_get_pax_dir(rel->rd_node, rel->rd_backend, mrel->is_dfs);
+    mrel->paxdir = paxc_get_pax_dir(rel->rd_node, rel->rd_backend);
   }
   MemoryContextSwitchTo(oldctx);
   return mrel;

@@ -39,7 +39,6 @@
 #include "storage/orc/orc_defined.h"
 #include "storage/orc/orc_format_reader.h"
 #include "storage/orc/orc_group.h"
-#include "storage/remote_file_system.h"
 
 namespace pax::tools {
 
@@ -98,12 +97,7 @@ bool OrcDumpReader::Open() {
   assert(config_);
   assert(config_->file_name);
 
-  if (config_->dfs_tblspcid != InvalidOid) {
-    fs_opt = std::make_shared<RemoteFileSystemOptions>(config_->dfs_tblspcid);
-    fs = pax::Singleton<RemoteFileSystem>::GetInstance();
-  } else {
-    fs = pax::Singleton<LocalFileSystem>::GetInstance();
-  }
+  fs = pax::Singleton<LocalFileSystem>::GetInstance();
 
   open_file = fs->Open(config_->file_name, fs::kReadMode, fs_opt);
   if (open_file->FileLength() == 0) {

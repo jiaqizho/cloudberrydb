@@ -58,7 +58,6 @@ set(pax_storage_src
     storage/orc/orc_writer.cc
     storage/pax_buffer.cc
     storage/proto/protobuf_stream.cc
-    storage/remote_file_system.cc
     storage/toast/pax_toast.cc
     storage/wal/pax_wal.cc
     storage/wal/paxc_desc.c

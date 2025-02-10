@@ -39,7 +39,6 @@
 #include "storage/file_system.h"
 #include "storage/local_file_system.h"
 #include "storage/micro_partition_metadata.h"
-#include "storage/remote_file_system.h"
 #include "storage/wal/pax_wal.h"
 namespace paxc {
 
@@ -626,8 +625,7 @@ static void FetchMicroPartitionAuxRowCallback(Datum *values, bool *isnull,
   auto ctx = reinterpret_cast<struct FetchMicroPartitionAuxRowContext *>(arg);
   auto rel = ctx->rel;
   auto rel_path = cbdb::BuildPaxDirectoryPath(
-      rel->rd_node, rel->rd_backend,
-      cbdb::IsDfsTablespaceById(rel->rd_rel->reltablespace));
+      rel->rd_node, rel->rd_backend);
 
   Assert(!isnull[ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME]);
   {
@@ -758,22 +756,14 @@ void CCPaxAuxTable::PaxAuxRelationFileUnlink(RelFileNode node,
                                              bool need_wal) {
   std::string relpath;
   FileSystem *fs;
-  bool is_dfs_tablespace;
 
-  is_dfs_tablespace = cbdb::IsDfsTablespaceById(node.spcNode);
-  relpath = cbdb::BuildPaxDirectoryPath(node, backend, is_dfs_tablespace);
+  relpath = cbdb::BuildPaxDirectoryPath(node, backend);
 
-  if (is_dfs_tablespace) {
-    fs = pax::Singleton<RemoteFileSystem>::GetInstance();
-    auto options = std::make_shared<RemoteFileSystemOptions>(node.spcNode);
-    fs->DeleteDirectory(relpath, delete_topleveldir, options);
-  } else {
-    fs = pax::Singleton<LocalFileSystem>::GetInstance();
-    fs->DeleteDirectory(relpath, delete_topleveldir);
-    // delete directory wal log
-    if (need_wal) {
-      cbdb::XLogPaxTruncate(node);
-    }
+  fs = pax::Singleton<LocalFileSystem>::GetInstance();
+  fs->DeleteDirectory(relpath, delete_topleveldir);
+  // delete directory wal log
+  if (need_wal) {
+    cbdb::XLogPaxTruncate(node);
   }
 }
 
