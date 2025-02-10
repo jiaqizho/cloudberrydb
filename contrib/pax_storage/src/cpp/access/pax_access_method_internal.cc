@@ -40,6 +40,16 @@
 #define RELATION_IS_PAX(rel) \
   (OidIsValid((rel)->rd_rel->relam) && RelationIsPAX(rel))
 
+namespace paxc {
+static void pax_disallow_dfs_tablespace(Oid reltablespace) {
+  if (!OidIsValid(reltablespace))
+    reltablespace = MyDatabaseTableSpace;
+
+  if (paxc::IsDfsTablespaceById(reltablespace))
+    ereport(ERROR, (errmsg("pax unsupport dfs tablespace:%u", reltablespace)));
+}
+}
+
 #ifdef USE_MANIFEST_API
 namespace pax {
 
@@ -49,6 +59,8 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
                                                TransactionId *freeze_xid,
                                                MultiXactId *minmulti) {
   *freeze_xid = *minmulti = InvalidTransactionId;
+
+  paxc::pax_disallow_dfs_tablespace(rel->rd_rel->reltablespace);
 
   manifest_create(rel, *newrnode);
 }
@@ -190,6 +202,8 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
 
   *freeze_xid = *minmulti = InvalidTransactionId;
 
+  paxc::pax_disallow_dfs_tablespace(rel->rd_rel->reltablespace);
+
   pax_tables_rel = table_open(PAX_TABLES_RELATION_ID, RowExclusiveLock);
   pax_relid = RelationGetRelid(rel);
 
@@ -226,14 +240,6 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
   systable_endscan(scan);
   table_close(pax_tables_rel, NoLock);
 
-  // if table in dfs_tablespace, need not create relfilenode file on s3
-  if (paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace)) {
-    // add pending delete for pax
-    paxc::PaxAddPendingDelete(rel, *newrnode, false);
-
-    return;
-  }
-
   // create relfilenode file for pax table
   auto srel = paxc::PaxRelationCreateStorage(*newrnode, rel);
   smgrclose(srel);
@@ -242,7 +248,7 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
   CBDB_TRY();
   {
     FileSystem *fs = pax::Singleton<LocalFileSystem>::GetInstance();
-    auto path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend, false);
+    auto path = cbdb::BuildPaxDirectoryPath(*newrnode, rel->rd_backend);
     Assert(!path.empty());
     CBDB_CHECK(
         (fs->CreateDirectory(path) == 0),

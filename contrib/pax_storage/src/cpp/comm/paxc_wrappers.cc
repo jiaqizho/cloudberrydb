@@ -99,18 +99,12 @@ void DeletePaxDirectoryPath(const char *dirname, bool delete_topleveldir) {
 // parameter rd_node IN relfilenode information.
 // parameter rd_backend IN backend transaction id.
 // return palloc'd pax storage directory path.
-char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend,
-                            bool is_dfs_path) {
+char *BuildPaxDirectoryPath(RelFileNode rd_node, BackendId rd_backend) {
   char *relpath = NULL;
   char *paxrelpath = NULL;
   relpath = relpathbackend(rd_node, rd_backend, MAIN_FORKNUM);
   Assert(relpath[0] != '\0');
-  if (is_dfs_path) {
-    paxrelpath = psprintf("/%s%s/%d", relpath, PAX_MICROPARTITION_DIR_POSTFIX,
-                          GpIdentity.segindex);
-  } else {
-    paxrelpath = psprintf("%s%s", relpath, PAX_MICROPARTITION_DIR_POSTFIX);
-  }
+  paxrelpath = psprintf("%s%s", relpath, PAX_MICROPARTITION_DIR_POSTFIX);
   pfree(relpath);
   return paxrelpath;
 }
@@ -473,64 +467,7 @@ bool IsDfsTablespaceById(Oid spcId) {
 }
 
 bool NeedWAL(Relation rel) {
-  return rel->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT &&
-         !IsDfsTablespaceById(rel->rd_rel->reltablespace);
-}
-
-static void PaxFileDestroyPendingRelDelete(PendingRelDelete *reldelete) {
-  PendingRelDeletePaxFile *filedelete;
-
-  Assert(reldelete);
-  filedelete = (PendingRelDeletePaxFile *)reldelete;
-
-  pfree(filedelete->filenode.relativePath);
-  pfree(filedelete);
-}
-
-static void PaxFileDoPendingRelDelete(PendingRelDelete *reldelete) {
-  PendingRelDeletePaxFile *filedelete;
-  Assert(reldelete);
-  filedelete = (PendingRelDeletePaxFile *)reldelete;
-  paxc::DeletePaxDirectoryPath(filedelete->filenode.relativePath, true);
-}
-
-static struct PendingRelDeleteAction pax_file_pending_rel_deletes_action = {
-    .flags = PENDING_REL_DELETE_NEED_PRESERVE | PENDING_REL_DELETE_NEED_XLOG |
-             PENDING_REL_DELETE_NEED_SYNC,
-    .destroy_pending_rel_delete = PaxFileDestroyPendingRelDelete,
-    .do_pending_rel_delete = PaxFileDoPendingRelDelete};
-
-void PaxAddPendingDelete(Relation rel, RelFileNode rn_node, bool atCommit) {
-  // UFile
-  bool is_dfs_tablespace =
-      paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace);
-  char *relativePath =
-      paxc::BuildPaxDirectoryPath(rn_node, rel->rd_backend, is_dfs_tablespace);
-  if (is_dfs_tablespace) {
-    UFileAddPendingDelete(rel, rel->rd_rel->reltablespace, relativePath,
-                          atCommit);
-  } else {
-    // LocalFile
-    PendingRelDeletePaxFile *pending;
-    /* Add the relation to the list of stuff to delete at abort */
-    pending = (PendingRelDeletePaxFile *)MemoryContextAlloc(
-        TopMemoryContext, sizeof(PendingRelDeletePaxFile));
-    pending->filenode.relkind = rel->rd_rel->relkind;
-    pending->filenode.relativePath =
-        MemoryContextStrdup(TopMemoryContext, relativePath);
-
-    pending->reldelete.atCommit = atCommit; /* delete if abort */
-    pending->reldelete.nestLevel = GetCurrentTransactionNestLevel();
-
-    pending->reldelete.relnode.node = rn_node;
-    pending->reldelete.relnode.isTempRelation =
-        rel->rd_backend == TempRelBackendId;
-    pending->reldelete.relnode.smgr_which = SMGR_PAX;
-
-    pending->reldelete.action = &pax_file_pending_rel_deletes_action;
-    RegisterPendingDelete(&pending->reldelete);
-  }
-  pfree(relativePath);
+  return rel->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT;
 }
 
 /**

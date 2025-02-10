@@ -285,7 +285,7 @@ void XLogRedoPaxInsert(XLogReaderState *record) {
   }
 
   // in dfs mode, no wal log for pax storage
-  relpath = BuildPaxDirectoryPath(xlrec->target.node, InvalidBackendId, false);
+  relpath = BuildPaxDirectoryPath(xlrec->target.node, InvalidBackendId);
 
   Assert(xlrec->target.file_name_len < MAX_PATH_FILE_NAME_LEN);
 
@@ -379,7 +379,7 @@ void XLogRedoPaxCreateDirectory(XLogReaderState *record) {
   xl_pax_directory *xlrec = (xl_pax_directory *)rec;
 
   TablespaceCreateDbspace(xlrec->node.spcNode, xlrec->node.dbNode, true);
-  dirpath = paxc::BuildPaxDirectoryPath(xlrec->node, InvalidBackendId, false);
+  dirpath = paxc::BuildPaxDirectoryPath(xlrec->node, InvalidBackendId);
 
   PAX_LOG_IF(pax::pax_enable_debug,
              "pax xlog redo create directory, node: %u/%u/%lu, dirpath: %s",
@@ -412,7 +412,7 @@ void XLogRedoPaxTruncate(XLogReaderState *record) {
   char *dirpath = NULL;
   char *rec = XLogRecGetData(record);
   xl_pax_directory *xlrec = (xl_pax_directory *)rec;
-  dirpath = paxc::BuildPaxDirectoryPath(xlrec->node, InvalidBackendId, false);
+  dirpath = paxc::BuildPaxDirectoryPath(xlrec->node, InvalidBackendId);
 
   PAX_LOG_IF(pax::pax_enable_debug,
              "pax xlog redo truncate, node: %u/%u/%lu, dirpath: %s",

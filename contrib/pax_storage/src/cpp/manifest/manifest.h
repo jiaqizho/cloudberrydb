@@ -67,7 +67,6 @@ typedef struct ManifestRelationData {
   ManifestDescData *desc;
   char *paxdir;
   ManifestHeap *heap;
-  bool is_dfs;
   bool dirty;
 } ManifestRelationData;
 

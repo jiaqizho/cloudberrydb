@@ -306,8 +306,7 @@ std::unique_ptr<IteratorBase<MicroPartitionMetadata>> MicroPartitionManifestPara
 std::unique_ptr<IteratorBase<MicroPartitionMetadata>> MicroPartitionIterator::New(
       Relation pax_rel, Snapshot snapshot) {
   auto rel_path = cbdb::BuildPaxDirectoryPath(
-                    pax_rel->rd_node, pax_rel->rd_backend,
-                    cbdb::IsDfsTablespaceById(pax_rel->rd_rel->reltablespace));
+                    pax_rel->rd_node, pax_rel->rd_backend);
   return internal::MicroPartitionManifestIterator::New(pax_rel, snapshot, rel_path);
 }
 
@@ -315,8 +314,7 @@ std::unique_ptr<IteratorBase<MicroPartitionMetadata>>
 MicroPartitionIterator::NewParallelIterator(
       Relation pax_rel, Snapshot snapshot, ParallelBlockTableScanDesc pscan) {
   auto rel_path = cbdb::BuildPaxDirectoryPath(
-                    pax_rel->rd_node, pax_rel->rd_backend,
-                    cbdb::IsDfsTablespaceById(pax_rel->rd_rel->reltablespace));
+                    pax_rel->rd_node, pax_rel->rd_backend);
   return internal::MicroPartitionManifestParallelIterator::New(pax_rel,
                                              snapshot, pscan, rel_path);
 }

@@ -35,27 +35,21 @@ extern "C" {
 #include "storage/local_file_system.h"
 #include "storage/wal/paxc_wal.h"
 
-bool paxc_is_dfs(Oid tablespace) {
-  return paxc::IsDfsTablespaceById(tablespace);
-}
-
 bool paxc_need_wal(Relation rel) {
   return paxc::NeedWAL(rel);
 }
 
-char *paxc_get_pax_dir(RelFileNode rnode, BackendId backend, bool is_dfs) {
-  return paxc::BuildPaxDirectoryPath(rnode, backend, is_dfs);
+char *paxc_get_pax_dir(RelFileNode rnode, BackendId backend) {
+  return paxc::BuildPaxDirectoryPath(rnode, backend);
 }
 char *paxc_build_path(const char *filename);
 
-void paxc_create_pax_directory(Relation rel, RelFileNode newrnode, bool is_dfs) {
+void paxc_create_pax_directory(Relation rel, RelFileNode newrnode) {
   // create relfilenode file for pax table
   auto srel = paxc::PaxRelationCreateStorage(newrnode, rel);
   smgrclose(srel);
 
-  if (is_dfs) return;
-  
-  char *path = paxc::BuildPaxDirectoryPath(newrnode, rel->rd_backend, false);
+  char *path = paxc::BuildPaxDirectoryPath(newrnode, rel->rd_backend);
   Assert(path);
 
   int rc;

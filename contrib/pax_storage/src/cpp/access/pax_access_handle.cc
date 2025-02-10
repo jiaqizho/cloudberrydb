@@ -816,33 +816,6 @@ static void cluster_pax_rel(ClusterStmt *stmt, Relation rel,
   CBDB_END_TRY();
 }
 
-static void validateVacuumStmt(VacuumStmt *stmt) {
-  if (!stmt->is_vacuumcmd) return;
-
-  ListCell *option = NULL;
-  foreach (option, stmt->options) {
-    DefElem *defel = (DefElem *)lfirst(option);
-    /* only check vacuum full [table] */
-    if (pg_strcasecmp(defel->defname, "full") == 0) {
-      ListCell *lc;
-
-      foreach (lc, stmt->rels) {
-        VacuumRelation *vrel = lfirst_node(VacuumRelation, lc);
-
-        Assert(vrel->relation);
-
-        Relation rel = table_openrv(vrel->relation, AccessShareLock);
-        if (paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace)) {
-          elog(ERROR,
-               "vacuum full is not supported for tables which in tablespaces "
-               "of type dfs_tablespace.");
-        }
-        table_close(rel, AccessShareLock);
-      }
-    }
-  }
-}
-
 static void validateAlterTableStmt(AlterTableStmt *stmt) {
   ListCell *lcmd = NULL;
 
@@ -852,14 +825,6 @@ static void validateAlterTableStmt(AlterTableStmt *stmt) {
     AlterTableCmd *cmd = (AlterTableCmd *)lfirst(lcmd);
     /*only check set tablespace command*/
     if (cmd->subtype == AT_SetTableSpace) {
-      Relation rel = table_openrv(stmt->relation, AccessShareLock);
-      if (paxc::IsDfsTablespaceById(rel->rd_rel->reltablespace)) {
-        elog(ERROR,
-             "changing the dfs tablespace type in alter table stmt is not "
-             "supported");
-      }
-      table_close(rel, AccessShareLock);
-
       Oid tablespaceId;
 
       /* Check that the tablespace exists */
@@ -901,9 +866,6 @@ static void checkUnsupportDfsTableSpaceStmt(Node *stmt) {
   switch (nodeTag(stmt)) {
     case T_AlterTableStmt:
       validateAlterTableStmt((AlterTableStmt *)stmt);
-      break;
-    case T_VacuumStmt:
-      validateVacuumStmt((VacuumStmt *)stmt);
       break;
     case T_AlterDatabaseStmt:
       validateAlterDatabaseStmt((AlterDatabaseStmt *)stmt);

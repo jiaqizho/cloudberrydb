@@ -73,7 +73,6 @@ set(pax_storage_src
     storage/paxc_smgr.cc
     storage/toast/pax_toast.cc
     storage/strategy.cc
-    storage/remote_file_system.cc
     storage/wal/pax_wal.cc
     storage/wal/paxc_desc.c
     storage/wal/paxc_wal.cc
