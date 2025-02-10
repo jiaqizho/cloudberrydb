@@ -43,7 +43,6 @@
 #include "storage/micro_partition_stats.h"
 #include "storage/micro_partition_stats_updater.h"
 #include "storage/orc/orc_dump_reader.h"
-#include "storage/remote_file_system.h"
 #include "storage/wal/pax_wal.h"
 #include "storage/wal/paxc_wal.h"
 #ifdef VEC_BUILD
@@ -137,17 +136,8 @@ namespace pax {
 TableWriter::TableWriter(Relation relation)
     : relation_(relation), summary_callback_(nullptr), options_cached_(false) {
   Assert(relation);
-  is_dfs_table_space_ =
-      relation_->rd_rel->reltablespace != InvalidOid &&
-      cbdb::IsDfsTablespaceById(relation_->rd_rel->reltablespace);
 
-  if (is_dfs_table_space_) {
-    file_system_options_ = std::make_shared<RemoteFileSystemOptions>(
-        relation_->rd_rel->reltablespace);
-    file_system_ = Singleton<RemoteFileSystem>::GetInstance();
-  } else {
-    file_system_ = Singleton<LocalFileSystem>::GetInstance();
-  }
+  file_system_ = Singleton<LocalFileSystem>::GetInstance();
 }
 
 TableWriter *TableWriter::SetWriteSummaryCallback(
@@ -272,7 +262,7 @@ void TableWriter::InitOptionsCaches() {
 
 void TableWriter::Open() {
   rel_path_ = cbdb::BuildPaxDirectoryPath(
-      relation_->rd_node, relation_->rd_backend, is_dfs_table_space_);
+      relation_->rd_node, relation_->rd_backend);
 
   InitOptionsCaches();
 
@@ -325,16 +315,7 @@ TableReader::TableReader(
       reader_(nullptr),
       is_empty_(false),
       reader_options_(options) {
-  is_dfs_table_space_ =
-      cbdb::IsDfsTablespaceById(reader_options_.table_space_id);
-
-  if (is_dfs_table_space_) {
-    file_system_ = Singleton<RemoteFileSystem>::GetInstance();
-    file_system_options_ = std::make_shared<RemoteFileSystemOptions>(
-        reader_options_.table_space_id);
-  } else {
-    file_system_ = Singleton<LocalFileSystem>::GetInstance();
-  }
+  file_system_ = Singleton<LocalFileSystem>::GetInstance();
 }
 
 TableReader::~TableReader() {}
@@ -462,8 +443,7 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
   std::string visibility_bitmap_file =
       current_block_metadata_.GetVisibilityBitmapFile();
   if (!visibility_bitmap_file.empty()) {
-    auto file = file_system_->Open(visibility_bitmap_file, fs::kReadMode,
-                                   file_system_options_);
+    auto file = file_system_->Open(visibility_bitmap_file, fs::kReadMode);
     auto file_length = file->FileLength();
     auto bm = std::make_shared<Bitmap8>(file_length * 8);
     file->ReadN(bm->Raw().bitmap, file_length);
@@ -474,13 +454,12 @@ bool TableReader::GetTuple(TupleTableSlot *slot, ScanDirection direction,
   if (current_block_metadata_.GetExistToast()) {
     toast_file = file_system_->Open(
         current_block_metadata_.GetFileName() + TOAST_FILE_SUFFIX,
-        fs::kReadMode, file_system_options_);
+        fs::kReadMode);
   }
 
   reader_ = MicroPartitionFileFactory::CreateMicroPartitionReader(
       std::move(options), reader_flags,
-      file_system_->Open(current_block_metadata_.GetFileName(), fs::kReadMode,
-                         file_system_options_),
+      file_system_->Open(current_block_metadata_.GetFileName(), fs::kReadMode),
       toast_file);
 
   // row_index start from 0, so row_index = offset -1
@@ -509,8 +488,7 @@ void TableReader::OpenFile() {
   // load visibility map
   std::string visibility_bitmap_file = it.GetVisibilityBitmapFile();
   if (!visibility_bitmap_file.empty()) {
-    auto file = file_system_->Open(visibility_bitmap_file, fs::kReadMode,
-                                   file_system_options_);
+    auto file = file_system_->Open(visibility_bitmap_file, fs::kReadMode);
     auto file_length = file->FileLength();
     auto bm = std::make_shared<Bitmap8>(file_length * 8);
     file->ReadN(bm->Raw().bitmap, file_length);
@@ -532,12 +510,12 @@ void TableReader::OpenFile() {
   if (it.GetExistToast()) {
     // must exist the file in disk
     toast_file = file_system_->Open(it.GetFileName() + TOAST_FILE_SUFFIX,
-                                    fs::kReadMode, file_system_options_);
+                                    fs::kReadMode);
   }
 
   reader_ = MicroPartitionFileFactory::CreateMicroPartitionReader(
       std::move(options), reader_flags,
-      file_system_->Open(it.GetFileName(), fs::kReadMode, file_system_options_),
+      file_system_->Open(it.GetFileName(), fs::kReadMode),
       toast_file);
 }
 
@@ -546,13 +524,7 @@ TableDeleter::TableDeleter(
     Snapshot snapshot)
     : rel_(rel), snapshot_(snapshot), delete_bitmap_(delete_bitmap) {
   need_wal_ = cbdb::NeedWAL(rel);
-  if (cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace)) {
-    file_system_options_ =
-        std::make_shared<RemoteFileSystemOptions>(rel_->rd_rel->reltablespace);
-    file_system_ = Singleton<RemoteFileSystem>::GetInstance();
-  } else {
-    file_system_ = Singleton<LocalFileSystem>::GetInstance();
-  }
+  file_system_ = Singleton<LocalFileSystem>::GetInstance();
 }
 
 void TableDeleter::UpdateStatsInAuxTable(
@@ -617,8 +589,7 @@ void TableDeleter::DeleteWithVisibilityMap(
   std::unique_ptr<Bitmap8> visi_bitmap;
   auto catalog_update = pax::PaxCatalogUpdater::Begin(rel_);
   auto rel_path = cbdb::BuildPaxDirectoryPath(
-      rel_->rd_node, rel_->rd_backend,
-      cbdb::IsDfsTablespaceById(rel_->rd_rel->reltablespace));
+      rel_->rd_node, rel_->rd_backend);
 
   min_max_col_idxs = cbdb::GetMinMaxColumnIndexes(rel_);
   stats_updater_projection->SetColumnProjection(min_max_col_idxs,

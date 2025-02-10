@@ -187,8 +187,6 @@ class TableReader final {
   // only for analyze scan
   size_t current_block_row_index_ = 0;
   FileSystem *file_system_ = nullptr;
-  std::shared_ptr<FileSystemOptions> file_system_options_;
-  bool is_dfs_table_space_;
 };
 
 class TableDeleter final {

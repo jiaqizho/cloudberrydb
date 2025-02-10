@@ -267,24 +267,6 @@ void cbdb::SlotGetMissingAttrs(TupleTableSlot *slot, int start_attno,
   CBDB_WRAP_END;
 }
 
-void cbdb::RelationCreateStorageDirectory(RelFileNode rnode,
-                                          char relpersistence,
-                                          SMgrImpl smgr_which, Relation rel) {
-  CBDB_WRAP_START;
-  {
-    SMgrRelation srel =
-        RelationCreateStorage(rnode, relpersistence, smgr_which, rel);
-    smgrclose(srel);
-  }
-  CBDB_WRAP_END;
-}
-
-void cbdb::RelationDropStorageDirectory(Relation rel) {
-  CBDB_WRAP_START;
-  { RelationDropStorage(rel); }
-  CBDB_WRAP_END;
-}
-
 int cbdb::PathNameCreateDir(const char *path) {
   // no need to wrap, it calls only posix API.
   { return MakePGDirectory(path); }
@@ -321,12 +303,11 @@ void cbdb::MakedirRecursive(const char *path) {
 }
 
 std::string cbdb::BuildPaxDirectoryPath(RelFileNode rd_node,
-                                        BackendId rd_backend,
-                                        bool is_dfs_path) {
+                                        BackendId rd_backend) {
   CBDB_WRAP_START;
   {
     char *tmp_str =
-        paxc::BuildPaxDirectoryPath(rd_node, rd_backend, is_dfs_path);
+        paxc::BuildPaxDirectoryPath(rd_node, rd_backend);
     std::string ret_str(tmp_str);
     pfree(tmp_str);
     return ret_str;
@@ -364,12 +345,6 @@ bool cbdb::IsSystemAttrNumExist(struct PaxcExtractcolumnContext *context,
                                 AttrNumber number) {
   Assert(number < 0 && number > FirstLowInvalidHeapAttributeNumber && context);
   return context->system_attr_number_mask[~number];
-}
-
-bool cbdb::IsDfsTablespaceById(Oid spcId) {
-  CBDB_WRAP_START;
-  { return paxc::IsDfsTablespaceById(spcId); }
-  CBDB_WRAP_END;
 }
 
 bool cbdb::NeedWAL(Relation rel) {
@@ -626,108 +601,6 @@ char *cbdb::GetGUCConfigOptionByName(const char *name, const char **varname,
                                      bool missing_ok) {
   CBDB_WRAP_START;
   { return GetConfigOptionByName(name, varname, missing_ok); }
-  CBDB_WRAP_END;
-}
-
-// ::UFile Operator
-UFile *cbdb::UFileOpen(Oid spcId, const char *fileName, int fileFlags,
-                       char *errorMessage, int errorMessageSize) {
-  CBDB_WRAP_START;
-  {
-    return ::UFileOpen(spcId, fileName, fileFlags, errorMessage,
-                       errorMessageSize);
-  }
-  CBDB_WRAP_END;
-}
-
-int cbdb::UFileClose(UFile *file) {
-  CBDB_WRAP_START;
-  { return ::UFileClose(file); }
-  CBDB_WRAP_END;
-}
-
-int cbdb::UFileSync(UFile *fiLe) {
-  CBDB_WRAP_START;
-  { return ::UFileSync(fiLe); }
-  CBDB_WRAP_END;
-}
-
-int cbdb::UFileRead(UFile *file, char *buffer, int amount) {
-  CBDB_WRAP_START;
-  { return ::UFileRead(file, buffer, amount); }
-  CBDB_WRAP_END;
-}
-
-int cbdb::UFilePRead(UFile *file, char *buffer, int amount, off_t offset) {
-  CBDB_WRAP_START;
-  { return ::UFilePRead(file, buffer, amount, offset); }
-  CBDB_WRAP_END;
-}
-
-int cbdb::UFileWrite(UFile *file, char *buffer, int amount) {
-  CBDB_WRAP_START;
-  { return ::UFileWrite(file, buffer, amount); }
-  CBDB_WRAP_END;
-}
-
-int cbdb::UFilePWrite(UFile *file, char *buffer, int amount, off_t offset) {
-  CBDB_WRAP_START;
-  { return ::UFilePWrite(file, buffer, amount, offset); }
-  CBDB_WRAP_END;
-}
-
-int64_t cbdb::UFileSize(UFile *file) {
-  CBDB_WRAP_START;
-  { return ::UFileSize(file); }
-  CBDB_WRAP_END;
-}
-
-const char *cbdb::UFileName(UFile *file) {
-  CBDB_WRAP_START;
-  { return ::UFileName(file); }
-  CBDB_WRAP_END;
-}
-
-int cbdb::UFileUnlink(Oid spcId, const char *fileName) {
-  CBDB_WRAP_START;
-  { return ::UFileUnlink(spcId, fileName); }
-  CBDB_WRAP_END;
-}
-
-int cbdb::UFileRmdir(Oid spcId, const char *dirName) {
-  CBDB_WRAP_START;
-  { return ::UFileRmdir(spcId, dirName); }
-  CBDB_WRAP_END;
-}
-
-char *cbdb::UFileFormatPathName(RelFileNode *relFileNode) {
-  CBDB_WRAP_START;
-  { return ::UFileFormatPathName(relFileNode); }
-  CBDB_WRAP_END;
-}
-
-bool cbdb::UFileEnsurePath(Oid spcId, const char *pathName) {
-  CBDB_WRAP_START;
-  { return ::UFileEnsurePath(spcId, pathName); }
-  CBDB_WRAP_END;
-}
-
-bool cbdb::UFileExists(Oid spcId, const char *fileName) {
-  CBDB_WRAP_START;
-  { return ::UFileExists(spcId, fileName); }
-  CBDB_WRAP_END;
-}
-
-const char *cbdb::UFileGetLastError(UFile *file) {
-  CBDB_WRAP_START;
-  { return ::UFileGetLastError(file); }
-  CBDB_WRAP_END;
-}
-
-void cbdb::PaxAddPendingDelete(Relation rel, RelFileNode rn_node,
-                               bool atCommit) {
-  CBDB_WRAP_START;
-  { paxc::PaxAddPendingDelete(rel, rn_node, atCommit); }
   CBDB_WRAP_END;
 }
 

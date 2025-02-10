@@ -112,8 +112,7 @@ PaxIndexScanDesc::PaxIndexScanDesc(Relation rel) : base_{.rel = rel} {
   Assert(rel);
   Assert(&base_ == reinterpret_cast<IndexFetchTableData *>(this));
   rel_path_ = cbdb::BuildPaxDirectoryPath(
-      rel->rd_node, rel->rd_backend,
-      cbdb::IsDfsTablespaceById(rel->rd_rel->reltablespace));
+      rel->rd_node, rel->rd_backend);
 }
 
 PaxIndexScanDesc::~PaxIndexScanDesc() {}
@@ -153,10 +152,6 @@ bool PaxIndexScanDesc::OpenMicroPartition(BlockNumber block,
   bool ok;
 
   Assert(block != current_block_);
-
-  CBDB_CHECK(!cbdb::IsDfsTablespaceById(base_.rel->rd_rel->reltablespace),
-             cbdb::CException::kExTypeUnImplements,
-             "remote filesystem not support index scan");
 
   ok = cbdb::IsMicroPartitionVisible(base_.rel, block, snapshot);
   if (ok) {
