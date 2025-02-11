@@ -361,14 +361,17 @@ std::vector<std::pair<int, Datum>> OrcWriter::PerpareWriteTuple(
     }
 
     if (pax_enable_toast && type_storage != TYPSTORAGE_PLAIN) {
+      Datum pax_toast_datum;
       // only make toast here
       std::shared_ptr<MemoryObject> mobj = nullptr;
 
-      std::tie(table_slot->tts_values[i], mobj) =
+      std::tie(pax_toast_datum, mobj) =
           pax_make_toast(PointerGetDatum(detoast_vl), type_storage);
 
       if (mobj) {
+        Assert(pax_toast_datum != 0);
         toast_memory_holder_.emplace_back(std::move(mobj));
+        table_slot->tts_values[i] = pax_toast_datum;
         save_origin_datum = true;
       }
     }
