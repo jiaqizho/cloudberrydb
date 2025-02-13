@@ -53,7 +53,7 @@ class MicroPartitionInfo : public MicroPartitionInfoProvider {
   MicroPartitionMetadata md_;
 };
 
-arrow::Status PaxDatasetInterface::Initialize(uint32_t tableoid, const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options) {
+arrow::Status PaxDatasetInterface::Initialize(uint32_t tableoid, void *context, const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options) {
   relation_ = cbdb::TableOpen(tableoid, AccessShareLock);
   desc_ = std::make_shared<ParallelScanDesc>();
   auto fs = Singleton<LocalFileSystem>::GetInstance();
