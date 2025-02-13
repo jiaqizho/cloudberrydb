@@ -744,7 +744,7 @@ cdb_estimate_partitioned_numpages(Relation rel)
 	ListCell   *lc;
 
 	PageEstimate estimate = {
-		.totalpages = rel->rd_rel->relpages,
+		.totalpages = rel->rd_rel->relpages >= 0 ? (BlockNumber) rel->rd_rel->relpages : 0,
 		.totalallvisiblepages = rel->rd_rel->relallvisible
 	};
 
