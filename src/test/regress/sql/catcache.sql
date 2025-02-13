@@ -2,7 +2,7 @@
 -- Discussion: https://groups.google.com/a/greenplum.org/g/gpdb-dev/c/u3-D7isdvmM
 
 set optimizer_force_multistage_agg = 1;
-
+SET optimizer_trace_fallback = on;
 create table dml_14027_union_s (a int not null, b numeric default 10.00) distributed by (a) partition by range(b);
 create table dml_14027_union_s_1_prt_2 partition of dml_14027_union_s for values from (1) to (1001);
 create table dml_14027_union_s_1_prt_def partition of dml_14027_union_s default;
@@ -23,3 +23,4 @@ update dml_14027_union_s set a = (select null union select null)::numeric;
 drop table dml_14027_union_s;
 
 reset optimizer_force_multistage_agg;
+reset optimizer_trace_fallback;

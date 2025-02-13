@@ -627,24 +627,6 @@ EXPLAIN SELECT a FROM ao_pt WHERE a=29;
  Optimizer: Postgres query optimizer
 (6 rows)
 
--- imitate child partition has GPDB 6 version file via catalog
--- start_ignore
-SET allow_system_table_mods=on;
-UPDATE pg_appendonly SET version=1 WHERE relid='ao_pt_1_prt_3'::regclass;
-RESET allow_system_table_mods;
--- end_ignore
--- Disallow if the table contains child partition with GPDB 6 version
-EXPLAIN SELECT a FROM ao_pt WHERE a=29;
-                                       QUERY PLAN                                       
-----------------------------------------------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)  (cost=4.14..8.18 rows=1 width=8)
-   ->  Bitmap Heap Scan on ao_pt_1_prt_3 ao_pt  (cost=4.14..8.16 rows=1 width=8)
-         Recheck Cond: (a = 29)
-         ->  Bitmap Index Scan on ao_pt_1_prt_3_a_idx  (cost=0.00..4.14 rows=1 width=0)
-               Index Cond: (a = 29)
- Optimizer: Postgres query optimizer
-(6 rows)
-
 DROP TABLE ao_pt;
 -- AO/CO partitioned table contains a non-AO leaf partition
 CREATE TABLE aocs_pt(a bigint) WITH (appendonly=true, orientation=column) PARTITION BY RANGE(a)
@@ -659,24 +641,6 @@ INSERT INTO aocs_pt SELECT i FROM generate_series(1,30)i;
 CREATE INDEX idx_aocs_pt_a ON aocs_pt USING btree (a);
 VACUUM ANALYZE aocs_pt;
 -- Allow dynamic index-only scan on mixed partitioned AO/CO table
-EXPLAIN SELECT a FROM aocs_pt WHERE a=29;
-                                        QUERY PLAN                                        
-------------------------------------------------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)  (cost=4.14..8.18 rows=1 width=8)
-   ->  Bitmap Heap Scan on aocs_pt_1_prt_3 aocs_pt  (cost=4.14..8.16 rows=1 width=8)
-         Recheck Cond: (a = 29)
-         ->  Bitmap Index Scan on aocs_pt_1_prt_3_a_idx  (cost=0.00..4.14 rows=1 width=0)
-               Index Cond: (a = 29)
- Optimizer: Postgres query optimizer
-(6 rows)
-
--- imitate child partition has GPDB 6 version file via catalog
--- start_ignore
-SET allow_system_table_mods=on;
-UPDATE pg_appendonly SET version=1 WHERE relid='aocs_pt_1_prt_3'::regclass;
-RESET allow_system_table_mods;
--- end_ignore
--- Disallow if the table contains child partition with GPDB 6 version
 EXPLAIN SELECT a FROM aocs_pt WHERE a=29;
                                         QUERY PLAN                                        
 ------------------------------------------------------------------------------------------

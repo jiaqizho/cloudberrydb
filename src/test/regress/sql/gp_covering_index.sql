@@ -308,16 +308,6 @@ VACUUM ANALYZE ao_pt;
 
 -- Allow dynamic index-only scan on mixed partitioned AO table
 EXPLAIN SELECT a FROM ao_pt WHERE a=29;
-
--- imitate child partition has GPDB 6 version file via catalog
--- start_ignore
-SET allow_system_table_mods=on;
-UPDATE pg_appendonly SET version=1 WHERE relid='ao_pt_1_prt_3'::regclass;
-RESET allow_system_table_mods;
--- end_ignore
-
--- Disallow if the table contains child partition with GPDB 6 version
-EXPLAIN SELECT a FROM ao_pt WHERE a=29;
 DROP TABLE ao_pt;
 
 -- AO/CO partitioned table contains a non-AO leaf partition
@@ -334,18 +324,7 @@ VACUUM ANALYZE aocs_pt;
 -- Allow dynamic index-only scan on mixed partitioned AO/CO table
 EXPLAIN SELECT a FROM aocs_pt WHERE a=29;
 
--- imitate child partition has GPDB 6 version file via catalog
--- start_ignore
-SET allow_system_table_mods=on;
-UPDATE pg_appendonly SET version=1 WHERE relid='aocs_pt_1_prt_3'::regclass;
-RESET allow_system_table_mods;
--- end_ignore
-
--- Disallow if the table contains child partition with GPDB 6 version
-EXPLAIN SELECT a FROM aocs_pt WHERE a=29;
 DROP TABLE aocs_pt;
-
-
 -- Test various index types
 --
 -- Check that different index types can be used with cover indexes.

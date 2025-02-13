@@ -91,7 +91,6 @@ static Node *convert_testexpr_mutator(Node *node,
 
 static bool subplan_is_hashable(Plan *plan);
 static bool subpath_is_hashable(Path *path);
-static bool testexpr_is_hashable(Node *testexpr, List *param_ids);
 static bool test_opexpr_is_hashable(OpExpr *testexpr, List *param_ids);
 static bool hash_ok_operator(OpExpr *expr);
 #if 0

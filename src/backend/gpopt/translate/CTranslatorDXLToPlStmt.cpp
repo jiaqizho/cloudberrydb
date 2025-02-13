@@ -5480,11 +5480,11 @@ update_unknown_locale_walker(Node *node, void *context)
 
 		return gpdb::WalkExpressionTree(
 			(Node *) query->targetList,
-			(bool (*)()) update_unknown_locale_walker, (void *) context);
+			(bool (*)(Node *, void *)) update_unknown_locale_walker, (void *) context);
 	}
 
 	return gpdb::WalkExpressionTree(
-		node, (bool (*)()) update_unknown_locale_walker, (void *) context);
+		node, (bool (*)(Node *, void *)) update_unknown_locale_walker, (void *) context);
 }
 
 //---------------------------------------------------------------------------

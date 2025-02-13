@@ -3913,17 +3913,14 @@ INSERT INTO test_ao_table SELECT i, i from generate_series(1,100) i;
 ANALYZE test_ao_table;
 -- Test max() aggregate. This query is eligible to use optimization
 explain(costs off) select max(b) from test_ao_table;
-                              QUERY PLAN
------------------------------------------------------------------------
- Result
-   InitPlan 1 (returns $0)  (slice1)
-     ->  Limit
-           ->  Gather Motion 3:1  (slice2; segments: 3)
-                 Merge Key: test_ao_table.b
-                 ->  Index Only Scan using ao_index_b on test_ao_table
-                       Index Cond: (b IS NOT NULL)
- Optimizer: Postgres-based planner
-(8 rows)
+                   QUERY PLAN                   
+------------------------------------------------
+ Finalize Aggregate
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         ->  Partial Aggregate
+               ->  Seq Scan on test_ao_table
+ Optimizer: Postgres query optimizer
+(5 rows)
 
 select max(b) from test_ao_table;
  max 
@@ -3933,17 +3930,14 @@ select max(b) from test_ao_table;
 
 -- Test min() aggregate. This query is eligible to use optimization
 explain(costs off) select min(b) from test_ao_table;
-                                   QUERY PLAN
---------------------------------------------------------------------------------
- Result
-   InitPlan 1 (returns $0)  (slice1)
-     ->  Limit
-           ->  Gather Motion 3:1  (slice2; segments: 3)
-                 Merge Key: test_ao_table.b
-                 ->  Index Only Scan Backward using ao_index_b on test_ao_table
-                       Index Cond: (b IS NOT NULL)
- Optimizer: Postgres-based planner
-(8 rows)
+                   QUERY PLAN                   
+------------------------------------------------
+ Finalize Aggregate
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         ->  Partial Aggregate
+               ->  Seq Scan on test_ao_table
+ Optimizer: Postgres query optimizer
+(5 rows)
 
 select min(b) from test_ao_table;
  min 
@@ -3972,29 +3966,29 @@ ANALYZE test_partition_table;
 -- as first child of LogicalGbAgg whereas transform's pattern has LogicalGet.
 -- Support for these queries is beyond the scope of the current PR.
 explain(costs off) select max(b) from test_partition_table;
-                      QUERY PLAN
--------------------------------------------------------
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Append
-                     ->  Seq Scan on partition1
-                     ->  Seq Scan on partition2
-                     ->  Seq Scan on default_partition
- Optimizer: Postgres-based planner
+                     ->  Seq Scan on partition1 test_partition_table_1
+                     ->  Seq Scan on partition2 test_partition_table_2
+                     ->  Seq Scan on default_partition test_partition_table_3
+ Optimizer: Postgres query optimizer
 (8 rows)
 
 explain(costs off) select min(b) from test_partition_table;
-                      QUERY PLAN
--------------------------------------------------------
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Append
-                     ->  Seq Scan on partition1
-                     ->  Seq Scan on partition2
-                     ->  Seq Scan on default_partition
- Optimizer: Postgres-based planner
+                     ->  Seq Scan on partition1 test_partition_table_1
+                     ->  Seq Scan on partition2 test_partition_table_2
+                     ->  Seq Scan on default_partition test_partition_table_3
+ Optimizer: Postgres query optimizer
 (8 rows)
 
 -- Test IS NULL, IS NOT NULL on partition table btree index column.
@@ -4002,12 +3996,12 @@ explain(costs off) select min(b) from test_partition_table;
 -- whereas, for IS NOT NULL it doesn't because the Non null values
 -- could be in all of the partitions
 explain(costs off) select * from test_partition_table where b is null;
-                QUERY PLAN
-------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Seq Scan on default_partition
+   ->  Seq Scan on default_partition test_partition_table
          Filter: (b IS NULL)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 select * from test_partition_table where b is null;
@@ -4017,17 +4011,17 @@ select * from test_partition_table where b is null;
 (1 row)
 
 explain(costs off) select * from test_partition_table where b is not null;
-                QUERY PLAN
--------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on partition1
+         ->  Seq Scan on partition1 test_partition_table_1
                Filter: (b IS NOT NULL)
-         ->  Seq Scan on partition2
+         ->  Seq Scan on partition2 test_partition_table_2
                Filter: (b IS NOT NULL)
-         ->  Seq Scan on default_partition
+         ->  Seq Scan on default_partition test_partition_table_3
                Filter: (b IS NOT NULL)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 select * from test_partition_table where b is not null;

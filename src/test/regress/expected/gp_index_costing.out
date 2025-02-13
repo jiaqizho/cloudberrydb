@@ -88,19 +88,19 @@ explain select * from bar_PT join foo on bar_PT.a =foo.a;
 -------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=1.04..7.23 rows=5 width=24)
    ->  Hash Join  (cost=1.04..7.16 rows=2 width=24)
-         Hash Cond: (bar_pt_1_prt_1.a = foo.a)
+         Hash Cond: (bar_pt.a = foo.a)
          ->  Append  (cost=0.00..6.09 rows=6 width=12)
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt_1_prt_1  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_2  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_3  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_4  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_5  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_6  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_1 bar_pt_1  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_2 bar_pt_2  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_3 bar_pt_3  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_4 bar_pt_4  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_5 bar_pt_5  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_6 bar_pt_6  (cost=0.00..1.01 rows=1 width=12)
          ->  Hash  (cost=1.02..1.02 rows=2 width=12)
                ->  Partition Selector (selector id: $0)  (cost=0.00..1.02 rows=2 width=12)
                      ->  Seq Scan on foo  (cost=0.00..1.02 rows=2 width=12)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (15 rows)
 
     --  Index idx_bar_PT_ba should be selected
@@ -109,18 +109,18 @@ explain select * from bar_PT join foo on bar_PT.b =foo.b;
 --------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=1.15..7.34 rows=5 width=24)
    ->  Hash Join  (cost=1.15..7.27 rows=2 width=24)
-         Hash Cond: (bar_pt_1_prt_1.b = foo.b)
+         Hash Cond: (bar_pt.b = foo.b)
          ->  Append  (cost=0.00..6.09 rows=6 width=12)
-               ->  Seq Scan on bar_pt_1_prt_1  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_2  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_3  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_4  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_5  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_6  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_1 bar_pt_1  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_2 bar_pt_2  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_3 bar_pt_3  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_4 bar_pt_4  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_5 bar_pt_5  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_6 bar_pt_6  (cost=0.00..1.01 rows=1 width=12)
          ->  Hash  (cost=1.08..1.08 rows=5 width=12)
                ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..1.08 rows=5 width=12)
                      ->  Seq Scan on foo  (cost=0.00..1.02 rows=2 width=12)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (14 rows)
 
 drop index idx_bar_PT_ab;
@@ -135,19 +135,19 @@ explain select * from bar_PT join foo on bar_PT.a =foo.a;
 -------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=1.04..7.23 rows=5 width=24)
    ->  Hash Join  (cost=1.04..7.16 rows=2 width=24)
-         Hash Cond: (bar_pt_1_prt_1.a = foo.a)
+         Hash Cond: (bar_pt.a = foo.a)
          ->  Append  (cost=0.00..6.09 rows=6 width=12)
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt_1_prt_1  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_2  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_3  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_4  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_5  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_6  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_1 bar_pt_1  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_2 bar_pt_2  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_3 bar_pt_3  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_4 bar_pt_4  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_5 bar_pt_5  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_6 bar_pt_6  (cost=0.00..1.01 rows=1 width=12)
          ->  Hash  (cost=1.02..1.02 rows=2 width=12)
                ->  Partition Selector (selector id: $0)  (cost=0.00..1.02 rows=2 width=12)
                      ->  Seq Scan on foo  (cost=0.00..1.02 rows=2 width=12)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (15 rows)
 
     --  Index idx_bar_PT_cba should be selected
@@ -156,18 +156,18 @@ explain select * from bar_PT join foo on bar_PT.c =foo.c;
 --------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=1.15..7.34 rows=5 width=24)
    ->  Hash Join  (cost=1.15..7.27 rows=2 width=24)
-         Hash Cond: (bar_pt_1_prt_1.c = foo.c)
+         Hash Cond: (bar_pt.c = foo.c)
          ->  Append  (cost=0.00..6.09 rows=6 width=12)
-               ->  Seq Scan on bar_pt_1_prt_1  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_2  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_3  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_4  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_5  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_6  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_1 bar_pt_1  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_2 bar_pt_2  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_3 bar_pt_3  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_4 bar_pt_4  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_5 bar_pt_5  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_6 bar_pt_6  (cost=0.00..1.01 rows=1 width=12)
          ->  Hash  (cost=1.08..1.08 rows=5 width=12)
                ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..1.08 rows=5 width=12)
                      ->  Seq Scan on foo  (cost=0.00..1.02 rows=2 width=12)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (14 rows)
 
 drop table if exists foo;
@@ -228,40 +228,40 @@ explain select * from bar_PT join foo on bar_PT.a =foo.a ;
 -------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=1.04..7.23 rows=5 width=24)
    ->  Hash Join  (cost=1.04..7.16 rows=2 width=24)
-         Hash Cond: (bar_pt_1_prt_1.a = foo.a)
+         Hash Cond: (bar_pt.a = foo.a)
          ->  Append  (cost=0.00..6.09 rows=6 width=12)
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt_1_prt_1  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_2  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_3  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_4  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_5  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_6  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_1 bar_pt_1  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_2 bar_pt_2  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_3 bar_pt_3  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_4 bar_pt_4  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_5 bar_pt_5  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_6 bar_pt_6  (cost=0.00..1.01 rows=1 width=12)
          ->  Hash  (cost=1.02..1.02 rows=2 width=12)
                ->  Partition Selector (selector id: $0)  (cost=0.00..1.02 rows=2 width=12)
                      ->  Seq Scan on foo  (cost=0.00..1.02 rows=2 width=12)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (15 rows)
 
 -- Query2 : Index idx_bar_PT_abc should be selected.
 explain select * from bar_PT join foo on bar_PT.a =foo.a and bar_PT.b =foo.b and bar_PT.c =foo.c;
-                                                  QUERY PLAN                                                   
----------------------------------------------------------------------------------------------------------------
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=1.05..7.25 rows=3 width=24)
    ->  Hash Join  (cost=1.05..7.20 rows=1 width=24)
-         Hash Cond: ((bar_pt_1_prt_1.a = foo.a) AND (bar_pt_1_prt_1.b = foo.b) AND (bar_pt_1_prt_1.c = foo.c))
+         Hash Cond: ((bar_pt.a = foo.a) AND (bar_pt.b = foo.b) AND (bar_pt.c = foo.c))
          ->  Append  (cost=0.00..6.09 rows=6 width=12)
                Partition Selectors: $0
-               ->  Seq Scan on bar_pt_1_prt_1  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_2  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_3  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_4  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_5  (cost=0.00..1.01 rows=1 width=12)
-               ->  Seq Scan on bar_pt_1_prt_6  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_1 bar_pt_1  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_2 bar_pt_2  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_3 bar_pt_3  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_4 bar_pt_4  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_5 bar_pt_5  (cost=0.00..1.01 rows=1 width=12)
+               ->  Seq Scan on bar_pt_1_prt_6 bar_pt_6  (cost=0.00..1.01 rows=1 width=12)
          ->  Hash  (cost=1.02..1.02 rows=2 width=12)
                ->  Partition Selector (selector id: $0)  (cost=0.00..1.02 rows=2 width=12)
                      ->  Seq Scan on foo  (cost=0.00..1.02 rows=2 width=12)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (15 rows)
 
 drop table if exists foo;
