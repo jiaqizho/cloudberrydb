@@ -9,7 +9,7 @@ class PaxDatasetInterface : public arrow::dataset::DatasetInterface {
   // Initialize should be able to call postgres functions, if error happens, will raise
   // the PG ERROR
   PaxDatasetInterface(std::shared_ptr<arrow::Schema> table_schema): DatasetInterface(table_schema) {}
-  arrow::Status Initialize(uint32_t tableoid, const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options) override;
+  arrow::Status Initialize(uint32_t tableoid, void *context, const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options) override;
 
   void Release() override;
   std::string type_name() const override { return "pax-parallel-scan"; }
