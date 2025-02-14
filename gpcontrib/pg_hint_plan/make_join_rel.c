@@ -129,7 +129,7 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 	 * goes with this particular joining.
 	 */
 	joinrel = build_join_rel(root, joinrelids, rel1, rel2, sjinfo,
-							 &restrictlist);
+							 &restrictlist, NULL);
 
 	/* !!! START: HERE IS THE PART WHICH ADDED FOR PG_HINT_PLAN !!! */
 	{

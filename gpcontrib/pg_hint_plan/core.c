@@ -48,6 +48,11 @@
 static void populate_joinrel_with_paths(PlannerInfo *root, RelOptInfo *rel1,
 										RelOptInfo *rel2, RelOptInfo *joinrel,
 										SpecialJoinInfo *sjinfo, List *restrictlist);
+static void
+make_rels_by_clause_joins(PlannerInfo *root,
+						  RelOptInfo *old_rel,
+						  List *other_rels_list,
+						  ListCell *other_rels);
 
 /*
  * set_plain_rel_pathlist
@@ -66,7 +71,7 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	required_outer = rel->lateral_relids;
 
 	/* Consider sequential scan */
-	add_path(rel, create_seqscan_path(root, rel, required_outer, 0));
+	add_path(rel, create_seqscan_path(root, rel, required_outer, 0), root);
 
 	/* If appropriate, consider parallel sequential scan */
 	if (rel->consider_parallel && required_outer == NULL)
@@ -131,12 +136,6 @@ set_append_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
 		 */
 		if (IS_DUMMY_REL(childrel))
 			continue;
-
-		/* Bubble up childrel's partitioned children. */
-		if (rel->part_scheme)
-			rel->partitioned_child_rels =
-				list_concat(rel->partitioned_child_rels,
-							list_copy(childrel->partitioned_child_rels));
 
 		/*
 		 * Child is live, so add it to the live_childrels list for use below.
@@ -273,7 +272,7 @@ create_plain_partial_paths(PlannerInfo *root, RelOptInfo *rel)
 {
 	int			parallel_workers;
 
-	parallel_workers = compute_parallel_worker(rel, rel->pages, -1,
+	parallel_workers = compute_parallel_worker(root, rel, rel->pages, -1,
 											   max_parallel_workers_per_gather);
 
 	/* If any limit was set to zero, the user doesn't want a parallel scan. */
@@ -337,15 +336,23 @@ join_search_one_level(PlannerInfo *root, int level)
 			 * to each initial rel they don't already include but have a join
 			 * clause or restriction with.
 			 */
+			List	   *other_rels_list;
 			ListCell   *other_rels;
 
 			if (level == 2)		/* consider remaining initial rels */
-				other_rels = lnext(r);
+			{
+				other_rels_list = joinrels[level - 1];
+				other_rels = lnext(other_rels_list, r);
+			}
 			else				/* consider all initial rels */
-				other_rels = list_head(joinrels[1]);
+			{
+				other_rels_list = joinrels[1];
+				other_rels = list_head(other_rels_list);
+			}
 
 			make_rels_by_clause_joins(root,
 									  old_rel,
+									  other_rels_list,
 									  other_rels);
 		}
 		else
@@ -364,7 +371,7 @@ join_search_one_level(PlannerInfo *root, int level)
 			 */
 			make_rels_by_clauseless_joins(root,
 										  old_rel,
-										  list_head(joinrels[1]));
+										  joinrels[1]);
 		}
 	}
 
@@ -403,11 +410,11 @@ join_search_one_level(PlannerInfo *root, int level)
 				continue;
 
 			if (k == other_level)
-				other_rels = lnext(r);	/* only consider remaining rels */
+				other_rels = lnext(joinrels[k], r);	/* only consider remaining rels */
 			else
 				other_rels = list_head(joinrels[other_level]);
 
-			for_each_cell(r2, other_rels)
+			for_each_cell(r2, joinrels[k], other_rels)
 			{
 				RelOptInfo *new_rel = (RelOptInfo *) lfirst(r2);
 
@@ -459,7 +466,7 @@ join_search_one_level(PlannerInfo *root, int level)
 
 			make_rels_by_clauseless_joins(root,
 										  old_rel,
-										  list_head(joinrels[1]));
+										  joinrels[1]);
 		}
 
 		/*----------
@@ -511,11 +518,12 @@ join_search_one_level(PlannerInfo *root, int level)
 static void
 make_rels_by_clause_joins(PlannerInfo *root,
 						  RelOptInfo *old_rel,
+						  List *other_rels_list,
 						  ListCell *other_rels)
 {
 	ListCell   *l;
 
-	for_each_cell(l, other_rels)
+	for_each_cell(l, other_rels_list, other_rels)
 	{
 		RelOptInfo *other_rel = (RelOptInfo *) lfirst(l);
 
@@ -546,11 +554,11 @@ make_rels_by_clause_joins(PlannerInfo *root,
 static void
 make_rels_by_clauseless_joins(PlannerInfo *root,
 							  RelOptInfo *old_rel,
-							  ListCell *other_rels)
+							  List *other_rels)
 {
 	ListCell   *l;
 
-	for_each_cell(l, other_rels)
+	foreach(l, other_rels)
 	{
 		RelOptInfo *other_rel = (RelOptInfo *) lfirst(l);
 

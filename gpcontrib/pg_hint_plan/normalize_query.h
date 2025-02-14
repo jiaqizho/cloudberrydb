@@ -48,7 +48,8 @@ typedef struct pgssJumbleState
 static char *
 generate_normalized_query(pgssJumbleState *jstate, const char *query,
 						  int query_loc, int *query_len_p, int encoding);
-static void JumbleQuery(pgssJumbleState *jstate, Query *query);
+/* JumbleQuery conflicts with the naming of kernel methods, change to PGHintPlanJumbleQuery */
+static void PGHintPlanJumbleQuery(pgssJumbleState *jstate, Query *query);
 
 #define JUMBLE_SIZE		1024
 

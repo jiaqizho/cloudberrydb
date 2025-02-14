@@ -17,7 +17,7 @@
 
 static void AppendJumble(pgssJumbleState *jstate,
 			 const unsigned char *item, Size size);
-static void JumbleQuery(pgssJumbleState *jstate, Query *query);
+static void PGHintPlanJumbleQuery(pgssJumbleState *jstate, Query *query);
 static void JumbleRangeTable(pgssJumbleState *jstate, List *rtable);
 static void JumbleExpr(pgssJumbleState *jstate, Node *node);
 static void RecordConstLocation(pgssJumbleState *jstate, int location);
@@ -74,7 +74,7 @@ AppendJumble(pgssJumbleState *jstate, const unsigned char *item, Size size)
 	AppendJumble(jstate, (const unsigned char *) (str), strlen(str) + 1)
 
 /*
- * JumbleQuery: Selectively serialize the query tree, appending significant
+ * PGHintPlanJumbleQuery: Selectively serialize the query tree, appending significant
  * data to the "query jumble" while ignoring nonsignificant data.
  *
  * Rule of thumb for what to include is that we should ignore anything not
@@ -83,7 +83,7 @@ AppendJumble(pgssJumbleState *jstate, const unsigned char *item, Size size)
  * of information).
  */
 static void
-JumbleQuery(pgssJumbleState *jstate, Query *query)
+PGHintPlanJumbleQuery(pgssJumbleState *jstate, Query *query)
 {
 	Assert(IsA(query, Query));
 	Assert(query->utilityStmt == NULL);
@@ -128,7 +128,7 @@ JumbleRangeTable(pgssJumbleState *jstate, List *rtable)
 				JumbleExpr(jstate, (Node *) rte->tablesample);
 				break;
 			case RTE_SUBQUERY:
-				JumbleQuery(jstate, rte->subquery);
+				PGHintPlanJumbleQuery(jstate, rte->subquery);
 				break;
 			case RTE_JOIN:
 				APP_JUMB(rte->jointype);
@@ -317,7 +317,7 @@ JumbleExpr(pgssJumbleState *jstate, Node *node)
 				APP_JUMB(sublink->subLinkType);
 				APP_JUMB(sublink->subLinkId);
 				JumbleExpr(jstate, (Node *) sublink->testexpr);
-				JumbleQuery(jstate, castNode(Query, sublink->subselect));
+				PGHintPlanJumbleQuery(jstate, castNode(Query, sublink->subselect));
 			}
 			break;
 		case T_FieldSelect:
@@ -606,7 +606,7 @@ JumbleExpr(pgssJumbleState *jstate, Node *node)
 				/* we store the string name because RTE_CTE RTEs need it */
 				APP_JUMB_STRING(cte->ctename);
 				APP_JUMB(cte->ctematerialized);
-				JumbleQuery(jstate, castNode(Query, cte->ctequery));
+				PGHintPlanJumbleQuery(jstate, castNode(Query, cte->ctequery));
 			}
 			break;
 		case T_SetOperationStmt:

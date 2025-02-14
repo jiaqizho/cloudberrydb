@@ -406,16 +406,17 @@ void		_PG_fini(void);
 static void push_hint(HintState *hstate);
 static void pop_hint(void);
 
-static void pg_hint_plan_post_parse_analyze(ParseState *pstate, Query *query);
+static void pg_hint_plan_post_parse_analyze(ParseState *pstate, Query *query, JumbleState *jstate);
 static void pg_hint_plan_ProcessUtility(PlannedStmt *pstmt,
 					const char *queryString,
+					bool readOnlyTree,
 					ProcessUtilityContext context,
 					ParamListInfo params, QueryEnvironment *queryEnv,
-					DestReceiver *dest, char *completionTag);
+					DestReceiver *dest, QueryCompletion *qc);
 #ifdef USE_ORCA
 static void *external_plan_hint_hook(Query *parse);
 #endif
-static PlannedStmt *pg_hint_plan_planner(Query *parse, int cursorOptions,
+static PlannedStmt *pg_hint_plan_planner(Query *parse, const char *query_string, int cursorOptions,
 										 ParamListInfo boundParams);
 static RelOptInfo *pg_hint_plan_join_search(PlannerInfo *root,
 											int levels_needed,
@@ -488,11 +489,9 @@ void pg_hint_plan_set_rel_pathlist(PlannerInfo * root, RelOptInfo *rel,
 								   Index rti, RangeTblEntry *rte);
 static void create_plain_partial_paths(PlannerInfo *root,
 													RelOptInfo *rel);
-static void make_rels_by_clause_joins(PlannerInfo *root, RelOptInfo *old_rel,
-									  ListCell *other_rels);
 static void make_rels_by_clauseless_joins(PlannerInfo *root,
-										  RelOptInfo *old_rel,
-										  ListCell *other_rels);
+							  RelOptInfo *old_rel,
+							  List *other_rels);
 static bool has_join_restriction(PlannerInfo *root, RelOptInfo *rel);
 static void set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
 								   RangeTblEntry *rte);
@@ -722,9 +721,9 @@ _PG_init(void)
 
 	/* Install hooks. */
 	prev_post_parse_analyze_hook = post_parse_analyze_hook;
-	post_parse_analyze_hook = pg_hint_plan_post_parse_analyze;
+	post_parse_analyze_hook = pg_hint_plan_post_parse_analyze; /* call get_current_hint_string get the hint string */
 	prev_planner = planner_hook;
-	planner_hook = pg_hint_plan_planner;
+	planner_hook = pg_hint_plan_planner; /* get the hint string in sql, decided hints */
 	prev_join_search = join_search_hook;
 	join_search_hook = pg_hint_plan_join_search;
 	prev_set_rel_pathlist = set_rel_pathlist_hook;
@@ -1859,7 +1858,7 @@ get_hints_from_table(const char *client_query, const char *client_application)
 
 /*
  * Get client-supplied query string. Addtion to that the jumbled query is
- * supplied if the caller requested. From the restriction of JumbleQuery, some
+ * supplied if the caller requested. From the restriction of PGHintPlanJumbleQuery, some
  * kind of query needs special amendments. Reutrns NULL if this query doesn't
  * change the current hint. This function returns NULL also when something
  * wrong has happend and let the caller continue using the current hints.
@@ -1961,7 +1960,7 @@ get_query_string(ParseState *pstate, Query *query, Query **jumblequery)
 			}
 		}
 
-		/* JumbleQuery accespts only a non-utility Query */
+		/* PGHintPlanJumbleQuery accespts only a non-utility Query */
 		if (target_query &&
 			(!IsA(target_query, Query) ||
 			 target_query->utilityStmt != NULL))
@@ -2956,7 +2955,7 @@ get_current_hint_string(ParseState *pstate, Query *query)
 				palloc(jstate.clocations_buf_size * sizeof(pgssLocationLen));
 			jstate.clocations_count = 0;
 
-			JumbleQuery(&jstate, jumblequery);
+			PGHintPlanJumbleQuery(&jstate, jumblequery);
 
 			/*
 			 * Normalize the query string by replacing constants with '?'
@@ -3069,10 +3068,12 @@ get_current_hint_string(ParseState *pstate, Query *query)
  * Retrieve hint string from the current query.
  */
 static void
-pg_hint_plan_post_parse_analyze(ParseState *pstate, Query *query)
+pg_hint_plan_post_parse_analyze(ParseState *pstate,
+								Query *query,
+								JumbleState *jstate)
 {
 	if (prev_post_parse_analyze_hook)
-		prev_post_parse_analyze_hook(pstate, query);
+		prev_post_parse_analyze_hook(pstate, query, jstate);
 
 	/* always retrieve hint from the top-level query string */
 	if (plpgsql_recurse_level == 0)
@@ -3088,16 +3089,16 @@ pg_hint_plan_post_parse_analyze(ParseState *pstate, Query *query)
  */
 static void
 pg_hint_plan_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
-					ProcessUtilityContext context,
+					bool readOnlyTree, ProcessUtilityContext context,
 					ParamListInfo params, QueryEnvironment *queryEnv,
-					DestReceiver *dest, char *completionTag)
+					DestReceiver *dest, QueryCompletion *qc)
 {
 	if (prev_ProcessUtility_hook)
-		prev_ProcessUtility_hook(pstmt, queryString, context, params, queryEnv,
-								 dest, completionTag);
+		prev_ProcessUtility_hook(pstmt, queryString, readOnlyTree, context, params, queryEnv,
+								 dest, qc);
 	else
-		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv,
-								 dest, completionTag);
+		standard_ProcessUtility(pstmt, queryString, readOnlyTree, context, params, queryEnv,
+								 dest, qc);
 
 	if (plpgsql_recurse_level == 0)
 		current_hint_retrieved = false;
@@ -3107,7 +3108,8 @@ pg_hint_plan_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
  * Read and set up hint information
  */
 static PlannedStmt *
-pg_hint_plan_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
+pg_hint_plan_planner(Query *parse, const char *query_string,
+	int cursorOptions, ParamListInfo boundParams)
 {
 	int				save_nestlevel;
 	PlannedStmt	   *result;
@@ -3226,9 +3228,9 @@ pg_hint_plan_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 		}
 
 		if (prev_planner)
-			result = (*prev_planner) (parse, cursorOptions, boundParams);
+			result = (*prev_planner) (parse, query_string, cursorOptions, boundParams);
 		else
-			result = standard_planner(parse, cursorOptions, boundParams);
+			result = standard_planner(parse, query_string, cursorOptions, boundParams);
 
 		current_hint_str = prev_hint_str;
 		recurse_level--;
@@ -3284,9 +3286,9 @@ standard_planner_proc:
 	}
 	current_hint_state = NULL;
 	if (prev_planner)
-		result =  (*prev_planner) (parse, cursorOptions, boundParams);
+		result =  (*prev_planner) (parse, query_string, cursorOptions, boundParams);
 	else
-		result = standard_planner(parse, cursorOptions, boundParams);
+		result = standard_planner(parse, query_string, cursorOptions, boundParams);
 
 	/* The upper-level planner still needs the current hint state */
 	if (HintStateStack != NIL)
@@ -3514,7 +3516,7 @@ restrict_indexes(PlannerInfo *root, ScanMethodHint *hint, RelOptInfo *rel,
 		ListCell	   *l;
 		bool			use_index = false;
 
-		next = lnext(cell);
+		next = lnext(rel->indexlist, cell);
 
 		foreach(l, hint->indexnames)
 		{
@@ -3698,7 +3700,7 @@ restrict_indexes(PlannerInfo *root, ScanMethodHint *hint, RelOptInfo *rel,
 		}
 
 		if (!use_index)
-			rel->indexlist = list_delete_cell(rel->indexlist, cell, prev);
+			rel->indexlist = list_delete_cell(rel->indexlist, cell);
 		else
 			prev = cell;
 
@@ -3881,50 +3883,18 @@ setup_hint_enforcement(PlannerInfo *root, RelOptInfo *rel,
 		return 0;
 	}
 
-	/*
-	 * Forget about the parent of another subquery, but don't forget if the
-	 * inhTargetkind of the root is not INHKIND_NONE, which signals the root
-	 * contains only appendrel members. See inheritance_planner for details.
-	 *
-	 * (PG12.0) 428b260f87 added one more planning cycle for updates on
-	 * partitioned tables and hints set up in the cycle are overriden by the
-	 * second cycle. Since I didn't find no apparent distinction between the
-	 * PlannerRoot of the cycle and that of ordinary CMD_SELECT, pg_hint_plan
-	 * accepts both cycles and the later one wins. In the second cycle root
-	 * doesn't have inheritance information at all so use the parent_relid set
-	 * in the first cycle.
-	 */
-	if (root->inhTargetKind == INHKIND_NONE)
+	if (bms_num_members(rel->top_parent_relids) == 1)
 	{
-		if (root != current_hint_state->current_root)
-			current_hint_state->parent_relid = 0;
-
-		/* Find the parent for this relation other than the registered parent */
-		foreach (l, root->append_rel_list)
-		{
-			AppendRelInfo *appinfo = (AppendRelInfo *) lfirst(l);
-
-			if (appinfo->child_relid == rel->relid)
-			{
-				if (current_hint_state->parent_relid != appinfo->parent_relid)
-				{
-					new_parent_relid = appinfo->parent_relid;
-					current_hint_state->current_root = root;
-				}
-				break;
-			}
-		}
-
-		if (!l)
-		{
-			/*
-			 * This relation doesn't have a parent. Cancel
-			 * current_hint_state.
-			 */
-			current_hint_state->parent_relid = 0;
-			current_hint_state->parent_scan_hint = NULL;
-			current_hint_state->parent_parallel_hint = NULL;
-		}
+		new_parent_relid = bms_next_member(rel->top_parent_relids, -1);
+		current_hint_state->current_root = root;
+		Assert(new_parent_relid > 0);
+	}
+	else
+	{
+		/* This relation doesn't have a parent. Cancel current_hint_state. */
+		current_hint_state->parent_relid = 0;
+		current_hint_state->parent_scan_hint = NULL;
+		current_hint_state->parent_parallel_hint = NULL;
 	}
 
 	if (new_parent_relid > 0)
@@ -4165,8 +4135,8 @@ OuterInnerJoinCreate(OuterInnerRels *outer_inner, LeadingHint *leading_hint,
 										 leading_hint->base.hint_str));
 	}
 
-	outer_rels = lfirst(outer_inner->outer_inner_pair->head);
-	inner_rels = lfirst(outer_inner->outer_inner_pair->tail);
+	outer_rels = linitial(outer_inner->outer_inner_pair);
+	inner_rels = llast(outer_inner->outer_inner_pair);
 
 	outer_relids = OuterInnerJoinCreate(outer_rels,
 										leading_hint,
@@ -4480,7 +4450,7 @@ transform_join_hints(HintState *hstate, PlannerInfo *root, int nbaserel,
 
 					JoinMethodHint *hint = (JoinMethodHint *)lfirst(l);
 
-					next = lnext(l);
+					next = lnext(hstate->join_hint_level[i], l);
 
 					if (hint->inner_nrels == 0 &&
 						!(bms_intersect(hint->joinrelids, joinrelids) == NULL ||
@@ -4488,8 +4458,7 @@ transform_join_hints(HintState *hstate, PlannerInfo *root, int nbaserel,
 						  hint->joinrelids)))
 					{
 						hstate->join_hint_level[i] =
-							list_delete_cell(hstate->join_hint_level[i], l,
-											 prev);
+							list_delete_cell(hstate->join_hint_level[i], l);
 					}
 					else
 						prev = l;
