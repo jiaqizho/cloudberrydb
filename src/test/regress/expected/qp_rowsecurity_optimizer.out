@@ -501,31 +501,31 @@ set session authorization new_user;
 explain (costs off ) select * from foo_part_rls where foo_part_rls.b <15;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Query has row level security enabled and security quals contain sublinks
-                                       QUERY PLAN                                        
------------------------------------------------------------------------------------------
+                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on foo_part_rls_1_prt_2
+         ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
                Filter: ((hashed SubPlan 1 (copy 2)) AND (b < 15))
                SubPlan 1 (copy 2)
                  ->  Broadcast Motion 3:3  (slice2; segments: 3)
                        ->  Append
-                             ->  Seq Scan on bar_part_rls_1_prt_1
-                             ->  Seq Scan on bar_part_rls_1_prt_2
-                             ->  Seq Scan on bar_part_rls_1_prt_3
-                             ->  Seq Scan on bar_part_rls_1_prt_4
-                             ->  Seq Scan on bar_part_rls_1_prt_5
-         ->  Seq Scan on foo_part_rls_1_prt_other_part
+                             ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls_1
+                             ->  Seq Scan on bar_part_rls_1_prt_2 bar_part_rls_2
+                             ->  Seq Scan on bar_part_rls_1_prt_3 bar_part_rls_3
+                             ->  Seq Scan on bar_part_rls_1_prt_4 bar_part_rls_4
+                             ->  Seq Scan on bar_part_rls_1_prt_5 bar_part_rls_5
+         ->  Seq Scan on foo_part_rls_1_prt_other_part foo_part_rls_2
                Filter: ((hashed SubPlan 1 (copy 3)) AND (b < 15))
                SubPlan 1 (copy 3)
                  ->  Broadcast Motion 3:3  (slice3; segments: 3)
                        ->  Append
-                             ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls_1_prt_1_1
-                             ->  Seq Scan on bar_part_rls_1_prt_2 bar_part_rls_1_prt_2_1
-                             ->  Seq Scan on bar_part_rls_1_prt_3 bar_part_rls_1_prt_3_1
-                             ->  Seq Scan on bar_part_rls_1_prt_4 bar_part_rls_1_prt_4_1
-                             ->  Seq Scan on bar_part_rls_1_prt_5 bar_part_rls_1_prt_5_1
- Optimizer: Postgres-based planner
+                             ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls_7
+                             ->  Seq Scan on bar_part_rls_1_prt_2 bar_part_rls_8
+                             ->  Seq Scan on bar_part_rls_1_prt_3 bar_part_rls_9
+                             ->  Seq Scan on bar_part_rls_1_prt_4 bar_part_rls_10
+                             ->  Seq Scan on bar_part_rls_1_prt_5 bar_part_rls_11
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 reset session authorization;
@@ -652,13 +652,13 @@ set session authorization new_user;
 explain (costs off) select * from roottab;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Multi-level partitioned tables
-                QUERY PLAN                
-------------------------------------------
+                   QUERY PLAN                   
+------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on roottableaf1
-         ->  Seq Scan on roottableaf2
- Optimizer: Postgres-based planner
+         ->  Seq Scan on roottableaf1 roottab_1
+         ->  Seq Scan on roottableaf2 roottab_2
+ Optimizer: Postgres query optimizer
 (5 rows)
 
 explain (costs off) select * from roottabmid1;
@@ -712,13 +712,13 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on parent
+         ->  Seq Scan on parent parent_1
                Filter: (a >= 7)
-         ->  Seq Scan on child1
+         ->  Seq Scan on child1 parent_2
                Filter: (a >= 7)
-         ->  Seq Scan on child2
+         ->  Seq Scan on child2 parent_3
                Filter: (a >= 7)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 -- Below queries will error out as no SELECT permission for user on child
@@ -836,36 +836,29 @@ set session authorization new_user;
 explain (costs off) update foo_part_rls set a=10 where foo_part_rls.c = 800;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: View with WITH CHECK OPTION
-                          QUERY PLAN                           
----------------------------------------------------------------
+                               QUERY PLAN                                
+-------------------------------------------------------------------------
  Update on foo_part_rls
-   Update on foo_part_rls_1_prt_1
-   Update on foo_part_rls_1_prt_2
-   Update on foo_part_rls_1_prt_3
-   Update on foo_part_rls_1_prt_4
-   Update on foo_part_rls_1_prt_5
+   Update on foo_part_rls_1_prt_1 foo_part_rls_1
+   Update on foo_part_rls_1_prt_2 foo_part_rls_2
+   Update on foo_part_rls_1_prt_3 foo_part_rls_3
+   Update on foo_part_rls_1_prt_4 foo_part_rls_4
+   Update on foo_part_rls_1_prt_5 foo_part_rls_5
    ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
          ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_1
-                     Filter: ((c >= 500) AND (c = 800))
-   ->  Explicit Redistribute Motion 3:3  (slice2; segments: 3)
-         ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_2
-                     Filter: ((c >= 500) AND (c = 800))
-   ->  Explicit Redistribute Motion 3:3  (slice3; segments: 3)
-         ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_3
-                     Filter: ((c >= 500) AND (c = 800))
-   ->  Explicit Redistribute Motion 3:3  (slice4; segments: 3)
-         ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_4
-                     Filter: ((c >= 500) AND (c = 800))
-   ->  Explicit Redistribute Motion 3:3  (slice5; segments: 3)
-         ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_5
-                     Filter: ((c >= 500) AND (c = 800))
- Optimizer: Postgres-based planner
-(27 rows)
+               ->  Append
+                     ->  Seq Scan on foo_part_rls_1_prt_1 foo_part_rls_1
+                           Filter: ((c >= 500) AND (c = 800))
+                     ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_2
+                           Filter: ((c >= 500) AND (c = 800))
+                     ->  Seq Scan on foo_part_rls_1_prt_3 foo_part_rls_3
+                           Filter: ((c >= 500) AND (c = 800))
+                     ->  Seq Scan on foo_part_rls_1_prt_4 foo_part_rls_4
+                           Filter: ((c >= 500) AND (c = 800))
+                     ->  Seq Scan on foo_part_rls_1_prt_5 foo_part_rls_5
+                           Filter: ((c >= 500) AND (c = 800))
+ Optimizer: Postgres query optimizer
+(20 rows)
 
 reset session authorization;
 drop policy p1 on foo_part_rls;
@@ -904,13 +897,15 @@ alter table foo_part_rls enable row level security;
 create policy p1 on foo_part_rls using (c>=300);
 set session authorization new_user;
 explain (costs off) delete from foo_part_rls where foo_part_rls.b=30;
-                     QUERY PLAN                     
-----------------------------------------------------
+INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: DML(delete) on partitioned tables
+                      QUERY PLAN                       
+-------------------------------------------------------
  Delete on foo_part_rls
-   ->  Dynamic Seq Scan on foo_part_rls
-         Number of partitions to scan: 1 (out of 5)
+   Delete on foo_part_rls_1_prt_2 foo_part_rls_1
+   ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
          Filter: ((c >= 300) AND (b = 30))
- Optimizer: GPORCA
+ Optimizer: Postgres query optimizer
 (5 rows)
 
 reset session authorization;

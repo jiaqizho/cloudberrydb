@@ -48,14 +48,15 @@ WHERE t2.unique1 < 1000;', false);
          ->  Partial Aggregate (actual rows=1 loops=N)
                ->  Nested Loop (actual rows=400 loops=N)
                      Join Filter: true
-                     ->  Broadcast Motion 3:3  (slice2; segments: 3) (actual rows=1000 loops=N)
+                     ->  Redistribute Motion 3:3  (slice2; segments: 3) (actual rows=400 loops=N)
+                           Hash Key: tenk1.twenty
                            ->  Index Scan using tenk1_unique1 on tenk1 (actual rows=340 loops=N)
                                  Index Cond: (unique1 < 1000)
-                     ->  Index Only Scan using tenk1_unique1 on tenk1 tenk1_1 (actual rows=0 loops=N)
+                     ->  Index Only Scan using tenk1_unique1 on tenk1 tenk1_1 (actual rows=1 loops=N)
                            Index Cond: (unique1 = tenk1.twenty)
                            Heap Fetches: N
- Optimizer: Pivotal Optimizer (GPORCA)
-(12 rows)
+ Optimizer: GPORCA
+(13 rows)
 
 -- And check we get the expected results.
 SELECT COUNT(*),AVG(t1.unique1) FROM tenk1 t1
@@ -117,14 +118,15 @@ WHERE t2.unique1 < 1200;', true);
          ->  Partial Aggregate (actual rows=1 loops=N)
                ->  Nested Loop (actual rows=407 loops=N)
                      Join Filter: true
-                     ->  Broadcast Motion 3:3  (slice2; segments: 3) (actual rows=1200 loops=N)
+                     ->  Redistribute Motion 3:3  (slice2; segments: 3) (actual rows=407 loops=N)
+                           Hash Key: tenk1.thousand
                            ->  Index Scan using tenk1_unique1 on tenk1 (actual rows=407 loops=N)
                                  Index Cond: (unique1 < 1200)
-                     ->  Index Only Scan using tenk1_unique1 on tenk1 tenk1_1 (actual rows=0 loops=N)
+                     ->  Index Only Scan using tenk1_unique1 on tenk1 tenk1_1 (actual rows=1 loops=N)
                            Index Cond: (unique1 = tenk1.thousand)
                            Heap Fetches: N
- Optimizer: Pivotal Optimizer (GPORCA)
-(12 rows)
+ Optimizer: GPORCA
+(13 rows)
 
 CREATE TABLE flt (f float);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f' as the Cloudberry Database data distribution key for this table.

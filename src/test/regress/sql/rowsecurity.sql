@@ -846,6 +846,8 @@ CREATE POLICY p1 ON z1 TO regress_rls_group1 USING (a % 2 = 0);
 CREATE POLICY p2 ON z1 TO regress_rls_group2 USING (a % 2 = 1);
 
 ALTER TABLE z1 ENABLE ROW LEVEL SECURITY;
+analyze z1;
+analyze z2;
 
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM z1 WHERE f_leak(b);

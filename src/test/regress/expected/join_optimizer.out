@@ -3683,12 +3683,13 @@ where x = unique1;
    ->  Nested Loop
          Join Filter: true
          ->  Result
-               Filter: ((1) = 1)
                ->  Result
+                     Filter: ((1) = 1)
+                     ->  Result
          ->  Index Only Scan using tenk1_unique1 on tenk1
                Index Cond: ((unique1 = (1)) AND (unique1 = 1))
- Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+ Optimizer: GPORCA
+(10 rows)
 
 explain (verbose, costs off)
 select unique1, x.*
@@ -3709,7 +3710,7 @@ where x = unique1;
                      Filter: ((1) = 1)
                      ->  Result
                            Output: 1
-         ->  Index Scan using tenk1_unique1 on public.tenk1
+         ->  Index Only Scan using tenk1_unique1 on public.tenk1
                Output: unique1
                Index Cond: ((tenk1.unique1 = (1)) AND (tenk1.unique1 = 1))
  Settings: enable_nestloop = 'on', enable_parallel = 'off', optimizer = 'on'
@@ -3724,12 +3725,13 @@ select unique1 from tenk1, f_immutable_int4(1) x where x = unique1;
    ->  Nested Loop
          Join Filter: true
          ->  Result
-               Filter: ((1) = 1)
                ->  Result
+                     Filter: ((1) = 1)
+                     ->  Result
          ->  Index Only Scan using tenk1_unique1 on tenk1
                Index Cond: ((unique1 = (1)) AND (unique1 = 1))
- Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+ Optimizer: GPORCA
+(10 rows)
 
 explain (costs off)
 select unique1 from tenk1, lateral f_immutable_int4(1) x where x = unique1;
@@ -3757,12 +3759,13 @@ select unique1, x from tenk1 join f_immutable_int4(1) x on unique1 = x;
    ->  Nested Loop
          Join Filter: true
          ->  Result
-               Filter: ((1) = 1)
                ->  Result
+                     Filter: ((1) = 1)
+                     ->  Result
          ->  Index Only Scan using tenk1_unique1 on tenk1
                Index Cond: ((unique1 = (1)) AND (unique1 = 1))
- Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+ Optimizer: GPORCA
+(10 rows)
 
 explain (costs off)
 select unique1, x from tenk1 left join f_immutable_int4(1) x on unique1 = x;
@@ -3786,7 +3789,7 @@ select unique1, x from tenk1 right join f_immutable_int4(1) x on unique1 = x;
          Join Filter: true
          ->  Result
                ->  Result
-         ->  Index Scan using tenk1_unique1 on tenk1
+         ->  Index Only Scan using tenk1_unique1 on tenk1
                Index Cond: ((unique1 = (1)) AND (unique1 = 1))
  Optimizer: GPORCA
 (8 rows)

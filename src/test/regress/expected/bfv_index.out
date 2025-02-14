@@ -1484,16 +1484,20 @@ explain select t1.a from index_only_join_test t1, index_only_join_test t2 where 
 
 reset optimizer_enable_indexscan;
 explain select t1.a from index_only_join_test_aocs t1, index_only_join_test_aocs t2 where t1.a = t2.a and t1.b < 10;
-                                                             QUERY PLAN                                                              
--------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.31..12.48 rows=13 width=4)
-   ->  Nested Loop  (cost=0.31..12.31 rows=4 width=4)
-         ->  Index Only Scan using index_only_join_test_aocs_b_idx on index_only_join_test_aocs t1  (cost=0.15..4.49 rows=3 width=4)
-               Index Cond: (b < 10)
-         ->  Index Only Scan using index_only_join_test_aocs_a_idx on index_only_join_test_aocs t2  (cost=0.15..2.59 rows=1 width=4)
-               Index Cond: (a = t1.a)
- Optimizer: Postgres-based planner
-(7 rows)
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=6.83..26.27 rows=8 width=4)
+   ->  Nested Loop  (cost=6.83..26.16 rows=3 width=4)
+         ->  Bitmap Heap Scan on index_only_join_test_aocs t1  (cost=4.20..8.24 rows=3 width=4)
+               Recheck Cond: (b < 10)
+               ->  Bitmap Index Scan on index_only_join_test_aocs_b_idx  (cost=0.00..4.20 rows=3 width=0)
+                     Index Cond: (b < 10)
+         ->  Bitmap Heap Scan on index_only_join_test_aocs t2  (cost=2.62..6.63 rows=1 width=4)
+               Recheck Cond: (a = t1.a)
+               ->  Bitmap Index Scan on index_only_join_test_aocs_a_idx  (cost=0.00..2.62 rows=1 width=0)
+                     Index Cond: (a = t1.a)
+ Optimizer: Postgres query optimizer
+(11 rows)
 
 reset enable_nestloop;
 reset enable_seqscan;

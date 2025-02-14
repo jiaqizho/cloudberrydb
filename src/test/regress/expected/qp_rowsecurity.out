@@ -327,19 +327,19 @@ explain (costs off ) select * from foo_part_rls where leak_data(a);
 -----------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on foo_part_rls_1_prt_2
+         ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
                Filter: ((c > 300) AND ((a * 10) = b) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_3
+         ->  Seq Scan on foo_part_rls_1_prt_3 foo_part_rls_2
                Filter: ((c > 300) AND ((a * 10) = b) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_4
+         ->  Seq Scan on foo_part_rls_1_prt_4 foo_part_rls_3
                Filter: ((c > 300) AND ((a * 10) = b) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_5
+         ->  Seq Scan on foo_part_rls_1_prt_5 foo_part_rls_4
                Filter: ((c > 300) AND ((a * 10) = b) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_6
+         ->  Seq Scan on foo_part_rls_1_prt_6 foo_part_rls_5
                Filter: ((c > 300) AND ((a * 10) = b) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_other_part
+         ->  Seq Scan on foo_part_rls_1_prt_other_part foo_part_rls_6
                Filter: ((c > 300) AND ((a * 10) = b) AND leak_data(a))
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (15 rows)
 
 select * from foo_part_rls where leak_data(a);
@@ -365,19 +365,19 @@ explain (costs off )select * from foo_part_rls where leak_data(c);
 -----------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on foo_part_rls_1_prt_2
+         ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
                Filter: (((LEAST(a, b) >= 2) OR ((a * 10) >= 30)) AND leak_data(c))
-         ->  Seq Scan on foo_part_rls_1_prt_3
+         ->  Seq Scan on foo_part_rls_1_prt_3 foo_part_rls_2
                Filter: (((LEAST(a, b) >= 2) OR ((a * 10) >= 30)) AND leak_data(c))
-         ->  Seq Scan on foo_part_rls_1_prt_4
+         ->  Seq Scan on foo_part_rls_1_prt_4 foo_part_rls_3
                Filter: (((LEAST(a, b) >= 2) OR ((a * 10) >= 30)) AND leak_data(c))
-         ->  Seq Scan on foo_part_rls_1_prt_5
+         ->  Seq Scan on foo_part_rls_1_prt_5 foo_part_rls_4
                Filter: (((LEAST(a, b) >= 2) OR ((a * 10) >= 30)) AND leak_data(c))
-         ->  Seq Scan on foo_part_rls_1_prt_6
+         ->  Seq Scan on foo_part_rls_1_prt_6 foo_part_rls_5
                Filter: (((LEAST(a, b) >= 2) OR ((a * 10) >= 30)) AND leak_data(c))
-         ->  Seq Scan on foo_part_rls_1_prt_other_part
+         ->  Seq Scan on foo_part_rls_1_prt_other_part foo_part_rls_6
                Filter: (((LEAST(a, b) >= 2) OR ((a * 10) >= 30)) AND leak_data(c))
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (15 rows)
 
 select * from foo_part_rls where leak_data(c);
@@ -427,17 +427,17 @@ explain (costs off ) select * from foo_part_rls where leak_data(a);
 -----------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on foo_part_rls_1_prt_3
+         ->  Seq Scan on foo_part_rls_1_prt_3 foo_part_rls_1
                Filter: ((a > 3) AND (b > 35) AND ((c % 100) = 0) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_4
+         ->  Seq Scan on foo_part_rls_1_prt_4 foo_part_rls_2
                Filter: ((a > 3) AND (b > 35) AND ((c % 100) = 0) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_5
+         ->  Seq Scan on foo_part_rls_1_prt_5 foo_part_rls_3
                Filter: ((a > 3) AND (b > 35) AND ((c % 100) = 0) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_6
+         ->  Seq Scan on foo_part_rls_1_prt_6 foo_part_rls_4
                Filter: ((a > 3) AND (b > 35) AND ((c % 100) = 0) AND leak_data(a))
-         ->  Seq Scan on foo_part_rls_1_prt_other_part
+         ->  Seq Scan on foo_part_rls_1_prt_other_part foo_part_rls_5
                Filter: ((a > 3) AND (b > 35) AND ((c % 100) = 0) AND leak_data(a))
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (13 rows)
 
 select * from foo_part_rls where leak_data(a);
@@ -465,33 +465,33 @@ where t1.a=bar_part_rls.p and bar_part_rls.q is not null and leak_data(c);
 ------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
-         Hash Cond: (bar_part_rls_1_prt_1.p = foo_part_rls_1_prt_2.a)
+         Hash Cond: (bar_part_rls.p = foo_part_rls.a)
          ->  Append
-               ->  Seq Scan on bar_part_rls_1_prt_1
+               ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls_1
                      Filter: (q IS NOT NULL)
-               ->  Seq Scan on bar_part_rls_1_prt_2
+               ->  Seq Scan on bar_part_rls_1_prt_2 bar_part_rls_2
                      Filter: (q IS NOT NULL)
-               ->  Seq Scan on bar_part_rls_1_prt_3
+               ->  Seq Scan on bar_part_rls_1_prt_3 bar_part_rls_3
                      Filter: (q IS NOT NULL)
-               ->  Seq Scan on bar_part_rls_1_prt_4
+               ->  Seq Scan on bar_part_rls_1_prt_4 bar_part_rls_4
                      Filter: (q IS NOT NULL)
-               ->  Seq Scan on bar_part_rls_1_prt_5
+               ->  Seq Scan on bar_part_rls_1_prt_5 bar_part_rls_5
                      Filter: (q IS NOT NULL)
          ->  Hash
                ->  Append
-                     ->  Seq Scan on foo_part_rls_1_prt_2
+                     ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_3
+                     ->  Seq Scan on foo_part_rls_1_prt_3 foo_part_rls_2
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_4
+                     ->  Seq Scan on foo_part_rls_1_prt_4 foo_part_rls_3
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_5
+                     ->  Seq Scan on foo_part_rls_1_prt_5 foo_part_rls_4
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_6
+                     ->  Seq Scan on foo_part_rls_1_prt_6 foo_part_rls_5
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_other_part
+                     ->  Seq Scan on foo_part_rls_1_prt_other_part foo_part_rls_6
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND leak_data(c))
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (29 rows)
 
 -- The RTE of the relation containing security quals is present inside a
@@ -503,33 +503,33 @@ bar_part_rls.q is not null;
 -------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Semi Join
-         Hash Cond: (bar_part_rls_1_prt_1.p = foo_part_rls_1_prt_2.a)
+         Hash Cond: (bar_part_rls.p = foo_part_rls.a)
          ->  Append
-               ->  Seq Scan on bar_part_rls_1_prt_1
+               ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls_1
                      Filter: (q IS NOT NULL)
-               ->  Seq Scan on bar_part_rls_1_prt_2
+               ->  Seq Scan on bar_part_rls_1_prt_2 bar_part_rls_2
                      Filter: (q IS NOT NULL)
-               ->  Seq Scan on bar_part_rls_1_prt_3
+               ->  Seq Scan on bar_part_rls_1_prt_3 bar_part_rls_3
                      Filter: (q IS NOT NULL)
-               ->  Seq Scan on bar_part_rls_1_prt_4
+               ->  Seq Scan on bar_part_rls_1_prt_4 bar_part_rls_4
                      Filter: (q IS NOT NULL)
-               ->  Seq Scan on bar_part_rls_1_prt_5
+               ->  Seq Scan on bar_part_rls_1_prt_5 bar_part_rls_5
                      Filter: (q IS NOT NULL)
          ->  Hash
                ->  Append
-                     ->  Seq Scan on foo_part_rls_1_prt_2
+                     ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND (abs(a) >= 10) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_3
+                     ->  Seq Scan on foo_part_rls_1_prt_3 foo_part_rls_2
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND (abs(a) >= 10) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_4
+                     ->  Seq Scan on foo_part_rls_1_prt_4 foo_part_rls_3
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND (abs(a) >= 10) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_5
+                     ->  Seq Scan on foo_part_rls_1_prt_5 foo_part_rls_4
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND (abs(a) >= 10) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_6
+                     ->  Seq Scan on foo_part_rls_1_prt_6 foo_part_rls_5
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND (abs(a) >= 10) AND leak_data(c))
-                     ->  Seq Scan on foo_part_rls_1_prt_other_part
+                     ->  Seq Scan on foo_part_rls_1_prt_other_part foo_part_rls_6
                            Filter: (((b IS DISTINCT FROM c) OR ((b + 1) = 4)) AND (abs(a) >= 10) AND leak_data(c))
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (29 rows)
 
 -- The RTE of the relation containing security quals is present inside a CTE
@@ -540,25 +540,25 @@ cte.a=bar_part_rls.p and q = 10 and leak_data(cte.a);
 -----------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Right Join
-         Hash Cond: (bar_part_rls_1_prt_1.p = foo_part_rls_1_prt_2.a)
-         Join Filter: leak_data(foo_part_rls_1_prt_2.a)
-         ->  Seq Scan on bar_part_rls_1_prt_1
+         Hash Cond: (bar_part_rls.p = foo_part_rls.a)
+         Join Filter: leak_data(foo_part_rls.a)
+         ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls
                Filter: (q = 10)
          ->  Hash
                ->  Append
-                     ->  Seq Scan on foo_part_rls_1_prt_2
+                     ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
                            Filter: ((a > LEAST(a, b)) AND ((b IS DISTINCT FROM c) OR ((b + 1) = 4)))
-                     ->  Seq Scan on foo_part_rls_1_prt_3
+                     ->  Seq Scan on foo_part_rls_1_prt_3 foo_part_rls_2
                            Filter: ((a > LEAST(a, b)) AND ((b IS DISTINCT FROM c) OR ((b + 1) = 4)))
-                     ->  Seq Scan on foo_part_rls_1_prt_4
+                     ->  Seq Scan on foo_part_rls_1_prt_4 foo_part_rls_3
                            Filter: ((a > LEAST(a, b)) AND ((b IS DISTINCT FROM c) OR ((b + 1) = 4)))
-                     ->  Seq Scan on foo_part_rls_1_prt_5
+                     ->  Seq Scan on foo_part_rls_1_prt_5 foo_part_rls_4
                            Filter: ((a > LEAST(a, b)) AND ((b IS DISTINCT FROM c) OR ((b + 1) = 4)))
-                     ->  Seq Scan on foo_part_rls_1_prt_6
+                     ->  Seq Scan on foo_part_rls_1_prt_6 foo_part_rls_5
                            Filter: ((a > LEAST(a, b)) AND ((b IS DISTINCT FROM c) OR ((b + 1) = 4)))
-                     ->  Seq Scan on foo_part_rls_1_prt_other_part
+                     ->  Seq Scan on foo_part_rls_1_prt_other_part foo_part_rls_6
                            Filter: ((a > LEAST(a, b)) AND ((b IS DISTINCT FROM c) OR ((b + 1) = 4)))
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (21 rows)
 
 reset session authorization;
@@ -569,31 +569,31 @@ create policy p1 on foo_part_rls as permissive for select using (a in
 (select p from bar_part_rls));
 set session authorization new_user;
 explain (costs off ) select * from foo_part_rls where foo_part_rls.b <15;
-                                       QUERY PLAN                                        
------------------------------------------------------------------------------------------
+                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on foo_part_rls_1_prt_2
+         ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
                Filter: ((hashed SubPlan 1 (copy 2)) AND (b < 15))
                SubPlan 1 (copy 2)
                  ->  Broadcast Motion 3:3  (slice2; segments: 3)
                        ->  Append
-                             ->  Seq Scan on bar_part_rls_1_prt_1
-                             ->  Seq Scan on bar_part_rls_1_prt_2
-                             ->  Seq Scan on bar_part_rls_1_prt_3
-                             ->  Seq Scan on bar_part_rls_1_prt_4
-                             ->  Seq Scan on bar_part_rls_1_prt_5
-         ->  Seq Scan on foo_part_rls_1_prt_other_part
+                             ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls_1
+                             ->  Seq Scan on bar_part_rls_1_prt_2 bar_part_rls_2
+                             ->  Seq Scan on bar_part_rls_1_prt_3 bar_part_rls_3
+                             ->  Seq Scan on bar_part_rls_1_prt_4 bar_part_rls_4
+                             ->  Seq Scan on bar_part_rls_1_prt_5 bar_part_rls_5
+         ->  Seq Scan on foo_part_rls_1_prt_other_part foo_part_rls_2
                Filter: ((hashed SubPlan 1 (copy 3)) AND (b < 15))
                SubPlan 1 (copy 3)
                  ->  Broadcast Motion 3:3  (slice3; segments: 3)
                        ->  Append
-                             ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls_1_prt_1_1
-                             ->  Seq Scan on bar_part_rls_1_prt_2 bar_part_rls_1_prt_2_1
-                             ->  Seq Scan on bar_part_rls_1_prt_3 bar_part_rls_1_prt_3_1
-                             ->  Seq Scan on bar_part_rls_1_prt_4 bar_part_rls_1_prt_4_1
-                             ->  Seq Scan on bar_part_rls_1_prt_5 bar_part_rls_1_prt_5_1
- Optimizer: Postgres-based planner
+                             ->  Seq Scan on bar_part_rls_1_prt_1 bar_part_rls_7
+                             ->  Seq Scan on bar_part_rls_1_prt_2 bar_part_rls_8
+                             ->  Seq Scan on bar_part_rls_1_prt_3 bar_part_rls_9
+                             ->  Seq Scan on bar_part_rls_1_prt_4 bar_part_rls_10
+                             ->  Seq Scan on bar_part_rls_1_prt_5 bar_part_rls_11
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 reset session authorization;
@@ -606,35 +606,35 @@ create index btindex on foo_part_rls using btree(a);
 -- the query
 set enable_seqscan to off;
 explain (costs off) select * from foo_part_rls where a is null;
-                                            QUERY PLAN                                             
----------------------------------------------------------------------------------------------------
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
    ->  Append
-         ->  Index Scan using foo_part_rls_1_prt_2_a_idx on foo_part_rls_1_prt_2
+         ->  Index Scan using foo_part_rls_1_prt_2_a_idx on foo_part_rls_1_prt_2 foo_part_rls_1
                Index Cond: (a IS NULL)
-         ->  Index Scan using foo_part_rls_1_prt_3_a_idx on foo_part_rls_1_prt_3
+         ->  Index Scan using foo_part_rls_1_prt_3_a_idx on foo_part_rls_1_prt_3 foo_part_rls_2
                Index Cond: (a IS NULL)
-         ->  Index Scan using foo_part_rls_1_prt_4_a_idx on foo_part_rls_1_prt_4
+         ->  Index Scan using foo_part_rls_1_prt_4_a_idx on foo_part_rls_1_prt_4 foo_part_rls_3
                Index Cond: (a IS NULL)
-         ->  Index Scan using foo_part_rls_1_prt_5_a_idx on foo_part_rls_1_prt_5
+         ->  Index Scan using foo_part_rls_1_prt_5_a_idx on foo_part_rls_1_prt_5 foo_part_rls_4
                Index Cond: (a IS NULL)
-         ->  Index Scan using foo_part_rls_1_prt_6_a_idx on foo_part_rls_1_prt_6
+         ->  Index Scan using foo_part_rls_1_prt_6_a_idx on foo_part_rls_1_prt_6 foo_part_rls_5
                Index Cond: (a IS NULL)
-         ->  Index Scan using foo_part_rls_1_prt_other_part_a_idx on foo_part_rls_1_prt_other_part
+         ->  Index Scan using foo_part_rls_1_prt_other_part_a_idx on foo_part_rls_1_prt_other_part foo_part_rls_6
                Index Cond: (a IS NULL)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (15 rows)
 
 -- Dynamic Index Scan is not generated by ORCA when RLS is enabled
 set session authorization new_user;
 explain (costs off) select * from foo_part_rls where a is null;
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
-   ->  Index Scan using foo_part_rls_1_prt_2_a_idx on foo_part_rls_1_prt_2
+   ->  Index Scan using foo_part_rls_1_prt_2_a_idx on foo_part_rls_1_prt_2 foo_part_rls
          Index Cond: (a IS NULL)
          Filter: (b = 10)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (5 rows)
 
 reset session authorization;
@@ -655,13 +655,13 @@ alter table rootpart_1_prt_2 enable row level security;
 create policy p1 on rootpart_1_prt_2 using (a>=7);
 set session authorization new_user;
 explain (costs off) select * from rootpart;
-                QUERY PLAN                
-------------------------------------------
+                     QUERY PLAN                      
+-----------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on rootpart_1_prt_1
-         ->  Seq Scan on rootpart_1_prt_2
- Optimizer: Postgres-based planner
+         ->  Seq Scan on rootpart_1_prt_1 rootpart_1
+         ->  Seq Scan on rootpart_1_prt_2 rootpart_2
+ Optimizer: Postgres query optimizer
 (5 rows)
 
 -- Issue #16961
@@ -673,7 +673,7 @@ explain (costs off) select * from rootpart_1_prt_2;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on rootpart_1_prt_2
          Filter: (a >= 7)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 reset session authorization;
@@ -727,23 +727,23 @@ set session authorization new_user;
 -- Querying the root will fallback to planner as ORCA doesn't supports
 -- Multi-level partitioned tables
 explain (costs off) select * from roottab;
-                QUERY PLAN                
-------------------------------------------
+                   QUERY PLAN                   
+------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on roottableaf1
-         ->  Seq Scan on roottableaf2
- Optimizer: Postgres-based planner
+         ->  Seq Scan on roottableaf1 roottab_1
+         ->  Seq Scan on roottableaf2 roottab_2
+ Optimizer: Postgres query optimizer
 (5 rows)
 
 explain (costs off) select * from roottabmid1;
-                QUERY PLAN                
-------------------------------------------
+                     QUERY PLAN                     
+----------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on roottableaf1
-         ->  Seq Scan on roottableaf2
- Optimizer: Postgres-based planner
+         ->  Seq Scan on roottableaf1 roottabmid1_1
+         ->  Seq Scan on roottableaf2 roottabmid1_2
+ Optimizer: Postgres query optimizer
 (5 rows)
 
 explain (costs off) select * from roottableaf1;
@@ -786,11 +786,11 @@ explain (costs off) select * from parent;
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on parent
+         ->  Seq Scan on parent parent_1
                Filter: (a >= 7)
-         ->  Seq Scan on child1
+         ->  Seq Scan on child1 parent_2
                Filter: (a >= 7)
-         ->  Seq Scan on child2
+         ->  Seq Scan on child2 parent_3
                Filter: (a >= 7)
  Optimizer: Postgres-based planner
 (9 rows)
@@ -902,36 +902,29 @@ alter table foo_part_rls enable row level security;
 create policy p1 on foo_part_rls using (c>=500);
 set session authorization new_user;
 explain (costs off) update foo_part_rls set a=10 where foo_part_rls.c = 800;
-                          QUERY PLAN                           
----------------------------------------------------------------
+                               QUERY PLAN                                
+-------------------------------------------------------------------------
  Update on foo_part_rls
-   Update on foo_part_rls_1_prt_1
-   Update on foo_part_rls_1_prt_2
-   Update on foo_part_rls_1_prt_3
-   Update on foo_part_rls_1_prt_4
-   Update on foo_part_rls_1_prt_5
+   Update on foo_part_rls_1_prt_1 foo_part_rls_1
+   Update on foo_part_rls_1_prt_2 foo_part_rls_2
+   Update on foo_part_rls_1_prt_3 foo_part_rls_3
+   Update on foo_part_rls_1_prt_4 foo_part_rls_4
+   Update on foo_part_rls_1_prt_5 foo_part_rls_5
    ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
          ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_1
-                     Filter: ((c >= 500) AND (c = 800))
-   ->  Explicit Redistribute Motion 3:3  (slice2; segments: 3)
-         ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_2
-                     Filter: ((c >= 500) AND (c = 800))
-   ->  Explicit Redistribute Motion 3:3  (slice3; segments: 3)
-         ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_3
-                     Filter: ((c >= 500) AND (c = 800))
-   ->  Explicit Redistribute Motion 3:3  (slice4; segments: 3)
-         ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_4
-                     Filter: ((c >= 500) AND (c = 800))
-   ->  Explicit Redistribute Motion 3:3  (slice5; segments: 3)
-         ->  Split
-               ->  Seq Scan on foo_part_rls_1_prt_5
-                     Filter: ((c >= 500) AND (c = 800))
- Optimizer: Postgres-based planner
-(27 rows)
+               ->  Append
+                     ->  Seq Scan on foo_part_rls_1_prt_1 foo_part_rls_1
+                           Filter: ((c >= 500) AND (c = 800))
+                     ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_2
+                           Filter: ((c >= 500) AND (c = 800))
+                     ->  Seq Scan on foo_part_rls_1_prt_3 foo_part_rls_3
+                           Filter: ((c >= 500) AND (c = 800))
+                     ->  Seq Scan on foo_part_rls_1_prt_4 foo_part_rls_4
+                           Filter: ((c >= 500) AND (c = 800))
+                     ->  Seq Scan on foo_part_rls_1_prt_5 foo_part_rls_5
+                           Filter: ((c >= 500) AND (c = 800))
+ Optimizer: Postgres query optimizer
+(20 rows)
 
 reset session authorization;
 drop policy p1 on foo_part_rls;
@@ -970,13 +963,13 @@ alter table foo_part_rls enable row level security;
 create policy p1 on foo_part_rls using (c>=300);
 set session authorization new_user;
 explain (costs off) delete from foo_part_rls where foo_part_rls.b=30;
-                QUERY PLAN                 
--------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Delete on foo_part_rls
-   Delete on foo_part_rls_1_prt_2
-   ->  Seq Scan on foo_part_rls_1_prt_2
+   Delete on foo_part_rls_1_prt_2 foo_part_rls_1
+   ->  Seq Scan on foo_part_rls_1_prt_2 foo_part_rls_1
          Filter: ((c >= 300) AND (b = 30))
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (5 rows)
 
 reset session authorization;

@@ -5888,7 +5888,7 @@ CTranslatorDXLToPlStmt::FetchSecurityQuals(
 	{
 		return gpdb::WalkQueryTree(
 			parsetree,
-			(BOOL(*)()) CTranslatorDXLToPlStmt::FetchSecurityQualsWalker,
+			(bool (*)(Node *, void *)) CTranslatorDXLToPlStmt::FetchSecurityQualsWalker,
 			ctxt_security_quals, QTW_IGNORE_RC_SUBQUERIES);
 	}
 
@@ -5930,7 +5930,7 @@ CTranslatorDXLToPlStmt::FetchSecurityQualsWalker(
 	}
 
 	return gpdb::WalkExpressionTree(
-		node, (BOOL(*)()) CTranslatorDXLToPlStmt::FetchSecurityQualsWalker,
+		node, (bool (*)(Node *, void *)) CTranslatorDXLToPlStmt::FetchSecurityQualsWalker,
 		ctxt_security_quals);
 }
 
@@ -5963,7 +5963,7 @@ CTranslatorDXLToPlStmt::SetSecurityQualsVarnoWalker(Node *node, Index *index)
 	}
 
 	return gpdb::WalkExpressionTree(
-		node, (BOOL(*)()) CTranslatorDXLToPlStmt::SetSecurityQualsVarnoWalker,
+		node, (bool (*)(Node *, void *)) CTranslatorDXLToPlStmt::SetSecurityQualsVarnoWalker,
 		index);
 }
 

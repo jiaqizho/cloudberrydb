@@ -1470,12 +1470,12 @@ HINT:  To uniquely identify a row within a distributed table, use the "gp_segmen
 EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Operator Unsupported plan hint: IndexScanRegexp not supported
-                QUERY PLAN                
-------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Seq Scan on my_table t1
-         Filter: (a < 42)
- Optimizer: Postgres-based planner
+   ->  Index Scan using my_incredible_index on my_table t1
+         Index Cond: (a < 42)
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -1484,12 +1484,12 @@ DETAIL:  Operator Unsupported plan hint: IndexScanRegexp not supported
 EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Operator Unsupported plan hint: IndexOnlyScanRegexp not supported
-                QUERY PLAN                
-------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Seq Scan on my_table t1
-         Filter: (a < 42)
- Optimizer: Postgres-based planner
+   ->  Index Only Scan using my_incredible_index on my_table t1
+         Index Cond: (a < 42)
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -1498,13 +1498,15 @@ DETAIL:  Operator Unsupported plan hint: IndexOnlyScanRegexp not supported
 EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
 DETAIL:  Operator Unsupported plan hint: BitmapScanRegexp not supported
-                QUERY PLAN                
-------------------------------------------
+                      QUERY PLAN                      
+------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Seq Scan on my_table t1
-         Filter: (a < 42)
- Optimizer: Postgres-based planner
-(4 rows)
+   ->  Bitmap Heap Scan on my_table t1
+         Recheck Cond: (a < 42)
+         ->  Bitmap Index Scan on my_incredible_index
+               Index Cond: (a < 42)
+ Optimizer: Postgres query optimizer
+(6 rows)
 
 --------------------------------------------------------------------
 --

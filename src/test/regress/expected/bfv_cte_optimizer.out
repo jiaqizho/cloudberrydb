@@ -307,7 +307,7 @@ SELECT sum(t.b) OVER(PARTITION BY t.a ) AS e FROM (select 1 as a, 2 as b from pg
 ) as cup
 GROUP BY cup.e;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
  e 
 ---
  2
@@ -439,7 +439,7 @@ WHERE y.b = z.b - 1;
 -- which is stored in shared memory is initialized by the SISC READER (slice2 or slice4)
 select gp_inject_fault('get_shareinput_reference_delay_writer', 'suspend', dbid) from gp_segment_configuration where content = 2 and role = 'p';
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
  gp_inject_fault 
 -----------------
  Success:
@@ -447,7 +447,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 
 select gp_inject_fault('get_shareinput_reference_done', 'skip', dbid) from gp_segment_configuration where content = 2 and role = 'p';
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
  gp_inject_fault 
 -----------------
  Success:
@@ -464,7 +464,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 -- Wait for both SISC READERs to be initialized and squelched
 select gp_wait_until_triggered_fault('get_shareinput_reference_done', 1, dbid) from gp_segment_configuration where content = 2 and role = 'p';
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
  gp_wait_until_triggered_fault 
 -------------------------------
  Success:
@@ -472,7 +472,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 
 select gp_inject_fault('get_shareinput_reference_done', 'reset', dbid) from gp_segment_configuration where content = 2 and role = 'p';
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
  gp_inject_fault 
 -----------------
  Success:
@@ -480,7 +480,7 @@ DETAIL:  Falling back to Postgres-based planner because GPORCA does not support 
 
 select gp_inject_fault('get_shareinput_reference_delay_writer', 'reset', dbid) from gp_segment_configuration where content = 2 and role = 'p';
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
  gp_inject_fault 
 -----------------
  Success:
@@ -531,7 +531,7 @@ LOG:  SISC (shareid=0, slice=1): removed xslice state  (seg2 slice1 127.0.1.1:70
 -- cleanup
 select gp_inject_fault_infinite('all', 'reset', dbid) from gp_segment_configuration;
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
  gp_inject_fault_infinite 
 --------------------------
  Success:
@@ -744,7 +744,7 @@ create view cte_view as
 set allow_system_table_mods=true;
 update pg_class set relpages = 1::int, reltuples = 12.0::real where relname = 'a_table';
 INFO:  GPORCA failed to produce a plan, falling back to Postgres-based planner
-DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on coordinator-only tables
+DETAIL:  Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables
 reset allow_system_table_mods;
 explain select * from a_table join cte_view on a_table.a = (select a from cte_view) where cte_view.a = 2024;
                                                                     QUERY PLAN                                                                     

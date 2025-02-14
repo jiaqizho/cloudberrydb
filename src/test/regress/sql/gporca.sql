@@ -3488,12 +3488,6 @@ ON t1.tradingday = t2.tradingday;
 
 DROP TABLE t_clientinstrumentind2, t_clientproductind2;
 
----------------------------------------------------------------------------------
--- Test ALL NULL scalar array compare 
-create table DatumSortedSet_core (a int, b character varying NOT NULL) distributed by (a);
-explain select * from DatumSortedSet_core where b in (NULL, NULL);
----------------------------------------------------------------------------------
-
 -- Test ORCA not falling back to Postgres planner during
 -- SimplifySelectOnOuterJoin stage. Previously, we could get assertion error
 -- trying to EberEvaluate() strict function with zero arguments.

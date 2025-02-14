@@ -43,13 +43,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Seq Scan on our_table_1_prt_p1_1 t3
+                     ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                            Filter: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -58,7 +58,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 --------------------------------------------------------------------
@@ -81,13 +81,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Seq Scan on our_table_1_prt_p1_1 t3
+                     ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                            Filter: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -96,7 +96,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 -- NB: IndexScan on AO table is invalid because AO tables do not support index
@@ -115,13 +115,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -130,7 +130,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 -- NB: IndexScan on AO table is invalid because AO tables do not support index
@@ -149,13 +149,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -164,7 +164,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -173,31 +173,31 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
     IndexOnlyScan(t3 our_amazing_index)
  */
 EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table AS t2 ON t1.a=t2.a JOIN our_table AS t3 ON t3.a=t2.a WHERE t1.a<42;
-                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
-         Hash Cond: (t1.a = t2.a)
-         ->  Hash Join
-               Hash Cond: (t3.a = t1.a)
-               ->  Append
-                     Partition Selectors: $0
-                     ->  Index Only Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_1
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_2
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_3
-                           Index Cond: (a < 42)
-               ->  Hash
-                     ->  Partition Selector (selector id: $0)
+         Hash Cond: (t3.a = t1.a)
+         ->  Append
+               Partition Selectors: $0
+               ->  Index Only Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3_1
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_2
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_3
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_4
+                     Index Cond: (a < 42)
+         ->  Hash
+               ->  Partition Selector (selector id: $0)
+                     ->  Hash Join
+                           Hash Cond: (t1.a = t2.a)
                            ->  Index Only Scan using my_incredible_index on my_table t1
                                  Index Cond: (a < 42)
-         ->  Hash
-               ->  Index Only Scan using your_amazing_index on your_table t2
-                     Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+                           ->  Hash
+                                 ->  Seq Scan on your_table t2
+                                       Filter: (a < 42)
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -215,13 +215,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -230,7 +230,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Index Scan using your_bitmap_index on your_table t2
                      Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -248,19 +248,19 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3_1
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_1_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_2
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_2_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_3
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_3_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_4
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_4_a_idx3
                                  Index Cond: (a < 42)
@@ -275,7 +275,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                      Recheck Cond: (a < 42)
                      ->  Bitmap Index Scan on your_bitmap_index
                            Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (35 rows)
 
 /*+
@@ -293,19 +293,19 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3_1
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_1_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_2
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_2_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_3
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_3_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_4
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_4_a_idx3
                                  Index Cond: (a < 42)
@@ -320,7 +320,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                      Recheck Cond: (a < 42)
                      ->  Bitmap Index Scan on your_bitmap_index
                            Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (35 rows)
 
 --------------------------------------------------------------------
@@ -337,7 +337,7 @@ EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -349,7 +349,7 @@ EXPLAIN (costs off) SELECT t2.a FROM your_table AS t2 WHERE t2.a<42;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on your_table t2
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -360,15 +360,15 @@ EXPLAIN (costs off) SELECT t3.a FROM our_table AS t3 WHERE t3.a<42;
 ---------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on our_table_1_prt_p1_1 t3
+         ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+         ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+         ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+         ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 /*+
@@ -380,7 +380,7 @@ EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Index Scan using my_incredible_index on my_table t1
          Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -392,7 +392,7 @@ EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Index Scan using my_bitmap_index on my_table t1
          Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 -- NB: IndexScan on AO table is invalid because AO tables do not support index
@@ -415,15 +415,15 @@ EXPLAIN (costs off) SELECT t3.a FROM our_table AS t3 WHERE t3.a<42;
 ---------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Index Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3
+         ->  Index Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3_1
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_1
+         ->  Index Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_2
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_2
+         ->  Index Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_3
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_3
+         ->  Index Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_4
                Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 /*+
@@ -434,15 +434,15 @@ EXPLAIN (costs off) SELECT t3.a FROM our_table AS t3 WHERE t3.a<42;
 ---------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+         ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+         ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+         ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+         ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 /*+
@@ -454,7 +454,7 @@ EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Index Only Scan using my_incredible_index on my_table t1
          Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -466,19 +466,19 @@ EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Index Scan using my_bitmap_index on my_table t1
          Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
     IndexOnlyScan(t2 your_amazing_index)
  */
 EXPLAIN (costs off) SELECT t2.a FROM your_table AS t2 WHERE t2.a<42;
-                           QUERY PLAN                            
------------------------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Only Scan using your_amazing_index on your_table t2
-         Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+   ->  Seq Scan on your_table t2
+         Filter: (a < 42)
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -490,7 +490,7 @@ EXPLAIN (costs off) SELECT t2.a FROM your_table AS t2 WHERE t2.a<42;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Index Scan using your_bitmap_index on your_table t2
          Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -501,15 +501,15 @@ EXPLAIN (costs off) SELECT t3.a FROM our_table AS t3 WHERE t3.a<42;
 --------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Index Only Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3
+         ->  Index Only Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3_1
                Index Cond: (a < 42)
-         ->  Index Only Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_1
+         ->  Index Only Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_2
                Index Cond: (a < 42)
-         ->  Index Only Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_2
+         ->  Index Only Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_3
                Index Cond: (a < 42)
-         ->  Index Only Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_3
+         ->  Index Only Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_4
                Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 /*+
@@ -520,15 +520,15 @@ EXPLAIN (costs off) SELECT t3.a FROM our_table AS t3 WHERE t3.a<42;
 ---------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+         ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+         ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+         ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                Index Cond: (a < 42)
-         ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+         ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 /*+
@@ -542,7 +542,7 @@ EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
          Recheck Cond: (a < 42)
          ->  Bitmap Index Scan on my_bitmap_index
                Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (6 rows)
 
 /*+
@@ -556,7 +556,7 @@ EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
          Recheck Cond: (a < 42)
          ->  Bitmap Index Scan on my_bitmap_index
                Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (6 rows)
 
 /*+
@@ -570,7 +570,7 @@ EXPLAIN (costs off) SELECT t2.a FROM your_table AS t2 WHERE t2.a<42;
          Recheck Cond: (a < 42)
          ->  Bitmap Index Scan on your_bitmap_index
                Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (6 rows)
 
 /*+
@@ -584,7 +584,7 @@ EXPLAIN (costs off) SELECT t2.a FROM your_table AS t2 WHERE t2.a<42;
          Recheck Cond: (a < 42)
          ->  Bitmap Index Scan on your_bitmap_index
                Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (6 rows)
 
 /*+
@@ -595,23 +595,23 @@ EXPLAIN (costs off) SELECT t3.a FROM our_table AS t3 WHERE t3.a<42;
 --------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3
+         ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3_1
                Recheck Cond: (a < 42)
                ->  Bitmap Index Scan on our_table_1_prt_p1_1_a_idx3
                      Index Cond: (a < 42)
-         ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_1
+         ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_2
                Recheck Cond: (a < 42)
                ->  Bitmap Index Scan on our_table_1_prt_p1_2_a_idx3
                      Index Cond: (a < 42)
-         ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_2
+         ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_3
                Recheck Cond: (a < 42)
                ->  Bitmap Index Scan on our_table_1_prt_p1_3_a_idx3
                      Index Cond: (a < 42)
-         ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_3
+         ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_4
                Recheck Cond: (a < 42)
                ->  Bitmap Index Scan on our_table_1_prt_p1_4_a_idx3
                      Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (19 rows)
 
 /*+
@@ -622,23 +622,23 @@ EXPLAIN (costs off) SELECT t3.a FROM our_table AS t3 WHERE t3.a<42;
 --------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3
+         ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3_1
                Recheck Cond: (a < 42)
                ->  Bitmap Index Scan on our_table_1_prt_p1_1_a_idx3
                      Index Cond: (a < 42)
-         ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_1
+         ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_2
                Recheck Cond: (a < 42)
                ->  Bitmap Index Scan on our_table_1_prt_p1_2_a_idx3
                      Index Cond: (a < 42)
-         ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_2
+         ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_3
                Recheck Cond: (a < 42)
                ->  Bitmap Index Scan on our_table_1_prt_p1_3_a_idx3
                      Index Cond: (a < 42)
-         ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_3
+         ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_4
                Recheck Cond: (a < 42)
                ->  Bitmap Index Scan on our_table_1_prt_p1_4_a_idx3
                      Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (19 rows)
 
 --------------------------------------------------------------------
@@ -661,13 +661,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -676,7 +676,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Index Scan using your_bitmap_index on your_table t2
                      Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -694,13 +694,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Seq Scan on our_table_1_prt_p1_1 t3
+                     ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                            Filter: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -709,7 +709,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -727,13 +727,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Seq Scan on our_table_1_prt_p1_1 t3
+                     ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                            Filter: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -742,7 +742,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -760,13 +760,13 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Seq Scan on our_table_1_prt_p1_1 t3
+                     ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                            Filter: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -775,7 +775,7 @@ EXPLAIN (costs off) SELECT t1.a, t2.a, t3.a FROM my_table AS t1 JOIN your_table 
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 --------------------------------------------------------------------
@@ -809,7 +809,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -832,7 +832,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on your_table t2
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -854,15 +854,15 @@ DETAIL:  Conflict scan method hint.
 ---------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on our_table_1_prt_p1_1 t3
+         ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+         ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+         ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+         ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 --
@@ -888,7 +888,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -911,7 +911,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on your_table t2
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -933,15 +933,15 @@ DETAIL:  Conflict scan method hint.
 ---------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on our_table_1_prt_p1_1 t3
+         ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+         ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+         ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+         ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 --
@@ -967,7 +967,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -990,7 +990,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on your_table t2
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -1012,15 +1012,15 @@ DETAIL:  Conflict scan method hint.
 ---------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on our_table_1_prt_p1_1 t3
+         ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+         ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+         ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+         ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 --
@@ -1046,7 +1046,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -1069,7 +1069,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on your_table t2
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -1091,15 +1091,15 @@ DETAIL:  Conflict scan method hint.
 ---------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
-         ->  Seq Scan on our_table_1_prt_p1_1 t3
+         ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+         ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+         ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                Filter: (a < 42)
-         ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+         ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (11 rows)
 
 --------------------------------------------------------------------
@@ -1123,13 +1123,13 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Seq Scan on our_table_1_prt_p1_1 t3
+                     ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                            Filter: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -1138,7 +1138,7 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 -- NB: IndexScan on AO table is invalid because AO tables do not support index
@@ -1157,13 +1157,13 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -1172,7 +1172,7 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 -- NB: IndexScan on AO table is invalid because AO tables do not support index
@@ -1191,13 +1191,13 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -1206,7 +1206,7 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -1215,31 +1215,31 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
     IndexOnlyScan(t3 our_amazing_index)
  */
 EXPLAIN (costs off) SELECT * FROM everybody_view;
-                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
-         Hash Cond: (t1.a = t2.a)
-         ->  Hash Join
-               Hash Cond: (t3.a = t1.a)
-               ->  Append
-                     Partition Selectors: $0
-                     ->  Index Only Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_1
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_2
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_3
-                           Index Cond: (a < 42)
-               ->  Hash
-                     ->  Partition Selector (selector id: $0)
+         Hash Cond: (t3.a = t1.a)
+         ->  Append
+               Partition Selectors: $0
+               ->  Index Only Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3_1
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_2
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_3
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_4
+                     Index Cond: (a < 42)
+         ->  Hash
+               ->  Partition Selector (selector id: $0)
+                     ->  Hash Join
+                           Hash Cond: (t1.a = t2.a)
                            ->  Index Only Scan using my_incredible_index on my_table t1
                                  Index Cond: (a < 42)
-         ->  Hash
-               ->  Index Only Scan using your_amazing_index on your_table t2
-                     Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+                           ->  Hash
+                                 ->  Seq Scan on your_table t2
+                                       Filter: (a < 42)
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -1257,13 +1257,13 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -1272,7 +1272,7 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
          ->  Hash
                ->  Index Scan using your_bitmap_index on your_table t2
                      Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -1290,19 +1290,19 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3_1
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_1_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_2
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_2_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_3
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_3_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_4
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_4_a_idx3
                                  Index Cond: (a < 42)
@@ -1317,7 +1317,7 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
                      Recheck Cond: (a < 42)
                      ->  Bitmap Index Scan on your_bitmap_index
                            Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (35 rows)
 
 /*+
@@ -1335,19 +1335,19 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3_1
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_1_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_2
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_2_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_3
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_3_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_4
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_4_a_idx3
                                  Index Cond: (a < 42)
@@ -1362,7 +1362,7 @@ EXPLAIN (costs off) SELECT * FROM everybody_view;
                      Recheck Cond: (a < 42)
                      ->  Bitmap Index Scan on your_bitmap_index
                            Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (35 rows)
 
 --------------------------------------------------------------------
@@ -1389,13 +1389,13 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Seq Scan on our_table_1_prt_p1_1 t3
+                     ->  Seq Scan on our_table_1_prt_p1_1 t3_1
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Seq Scan on our_table_1_prt_p1_2 t3_2
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Seq Scan on our_table_1_prt_p1_3 t3_3
                            Filter: (a < 42)
-                     ->  Seq Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Seq Scan on our_table_1_prt_p1_4 t3_4
                            Filter: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -1404,7 +1404,7 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 -- NB: IndexScan on AO table is invalid because AO tables do not support index
@@ -1427,13 +1427,13 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -1442,7 +1442,7 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 -- NB: IndexScan on AO table is invalid because AO tables do not support index
@@ -1465,13 +1465,13 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -1480,7 +1480,7 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
          ->  Hash
                ->  Seq Scan on your_table t2
                      Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -1493,31 +1493,31 @@ EXPLAIN (costs off) WITH cte AS
     SELECT t1.a AS a1, t2.a AS a2, t3.a AS a3 FROM my_table AS t1 JOIN your_table AS t2 ON t1.a=t2.a JOIN our_table AS t3 ON t3.a=t2.a
 )
 SELECT a1, a2, a3 FROM cte WHERE a1<42;
-                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
-         Hash Cond: (t1.a = t2.a)
-         ->  Hash Join
-               Hash Cond: (t3.a = t1.a)
-               ->  Append
-                     Partition Selectors: $0
-                     ->  Index Only Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_1
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_2
-                           Index Cond: (a < 42)
-                     ->  Index Only Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_3
-                           Index Cond: (a < 42)
-               ->  Hash
-                     ->  Partition Selector (selector id: $0)
+         Hash Cond: (t3.a = t1.a)
+         ->  Append
+               Partition Selectors: $0
+               ->  Index Only Scan using our_table_1_prt_p1_1_a_idx2 on our_table_1_prt_p1_1 t3_1
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_2_a_idx2 on our_table_1_prt_p1_2 t3_2
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_3_a_idx2 on our_table_1_prt_p1_3 t3_3
+                     Index Cond: (a < 42)
+               ->  Index Only Scan using our_table_1_prt_p1_4_a_idx2 on our_table_1_prt_p1_4 t3_4
+                     Index Cond: (a < 42)
+         ->  Hash
+               ->  Partition Selector (selector id: $0)
+                     ->  Hash Join
+                           Hash Cond: (t1.a = t2.a)
                            ->  Index Only Scan using my_incredible_index on my_table t1
                                  Index Cond: (a < 42)
-         ->  Hash
-               ->  Index Only Scan using your_amazing_index on your_table t2
-                     Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+                           ->  Hash
+                                 ->  Seq Scan on your_table t2
+                                       Filter: (a < 42)
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -1539,13 +1539,13 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3
+                     ->  Index Scan using our_table_1_prt_p1_1_a_idx3 on our_table_1_prt_p1_1 t3_1
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_1
+                     ->  Index Scan using our_table_1_prt_p1_2_a_idx3 on our_table_1_prt_p1_2 t3_2
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_2
+                     ->  Index Scan using our_table_1_prt_p1_3_a_idx3 on our_table_1_prt_p1_3 t3_3
                            Index Cond: (a < 42)
-                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_3
+                     ->  Index Scan using our_table_1_prt_p1_4_a_idx3 on our_table_1_prt_p1_4 t3_4
                            Index Cond: (a < 42)
                ->  Hash
                      ->  Partition Selector (selector id: $0)
@@ -1554,7 +1554,7 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
          ->  Hash
                ->  Index Scan using your_bitmap_index on your_table t2
                      Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (23 rows)
 
 /*+
@@ -1576,19 +1576,19 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3_1
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_1_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_2
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_2_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_3
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_3_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_4
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_4_a_idx3
                                  Index Cond: (a < 42)
@@ -1603,7 +1603,7 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
                      Recheck Cond: (a < 42)
                      ->  Bitmap Index Scan on your_bitmap_index
                            Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (35 rows)
 
 /*+
@@ -1625,19 +1625,19 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
                Hash Cond: (t3.a = t1.a)
                ->  Append
                      Partition Selectors: $0
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_1 t3_1
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_1_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_1
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_2 t3_2
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_2_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_2
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_3 t3_3
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_3_a_idx3
                                  Index Cond: (a < 42)
-                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_3
+                     ->  Bitmap Heap Scan on our_table_1_prt_p1_4 t3_4
                            Recheck Cond: (a < 42)
                            ->  Bitmap Index Scan on our_table_1_prt_p1_4_a_idx3
                                  Index Cond: (a < 42)
@@ -1652,7 +1652,7 @@ SELECT a1, a2, a3 FROM cte WHERE a1<42;
                      Recheck Cond: (a < 42)
                      ->  Bitmap Index Scan on your_bitmap_index
                            Index Cond: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (35 rows)
 
 --------------------------------------------------------------------
@@ -1671,7 +1671,7 @@ HINT:  To uniquely identify a row within a distributed table, use the "gp_segmen
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Tid Scan on my_table t1
          TID Cond: (ctid = '(0,1)'::tid)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -1685,44 +1685,46 @@ HINT:  To uniquely identify a row within a distributed table, use the "gp_segmen
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (ctid >= '(0,1)'::tid)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
     IndexScanRegexp(t1 '*awesome*')
  */
 EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
-                QUERY PLAN                
-------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Seq Scan on my_table t1
-         Filter: (a < 42)
- Optimizer: Postgres-based planner
+   ->  Index Scan using my_incredible_index on my_table t1
+         Index Cond: (a < 42)
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
     IndexOnlyScanRegexp(t1 '*awesome*')
  */
 EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
-                QUERY PLAN                
-------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Seq Scan on my_table t1
-         Filter: (a < 42)
- Optimizer: Postgres-based planner
+   ->  Index Only Scan using my_incredible_index on my_table t1
+         Index Cond: (a < 42)
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
     BitmapScanRegexp(t1 '*awesome*')
  */
 EXPLAIN (costs off) SELECT t1.a FROM my_table AS t1 WHERE t1.a<42;
-                QUERY PLAN                
-------------------------------------------
+                      QUERY PLAN                      
+------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Seq Scan on my_table t1
-         Filter: (a < 42)
- Optimizer: Postgres-based planner
-(4 rows)
+   ->  Bitmap Heap Scan on my_table t1
+         Recheck Cond: (a < 42)
+         ->  Bitmap Index Scan on my_incredible_index
+               Index Cond: (a < 42)
+ Optimizer: Postgres query optimizer
+(6 rows)
 
 --------------------------------------------------------------------
 --
@@ -1742,7 +1744,7 @@ DETAIL:  SeqScan hint requires a relation.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 -- Mixing NoIndexScan and SeqScan hints
@@ -1758,7 +1760,7 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 /*+
@@ -1773,6 +1775,6 @@ DETAIL:  Conflict scan method hint.
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on my_table t1
          Filter: (a < 42)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (4 rows)
 

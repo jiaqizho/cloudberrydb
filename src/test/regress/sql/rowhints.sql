@@ -1,7 +1,7 @@
 -- Test Optimizer Row Hints Feature
 --
 -- Purpose: Test that row hints may be used to edit cardinality estimates
-
+-- Row hints have not implments in Postgres-based planner
 LOAD 'pg_hint_plan';
 
 DROP SCHEMA IF EXISTS rowhints CASCADE;

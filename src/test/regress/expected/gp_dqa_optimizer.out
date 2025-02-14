@@ -2797,33 +2797,30 @@ select id, count(distinct a), avg(b), sum(c) from num_table group by grouping se
 (3 rows)
 
 explain (verbose on, costs off) select count(distinct b) from num_table group by c;
-                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Output: (count(b))
-   ->  GroupAggregate
-         Output: count(b)
+   Output: (count(DISTINCT b))
+   ->  Finalize HashAggregate
+         Output: count(DISTINCT b)
          Group Key: num_table.c
-         ->  Sort
-               Output: b, c
-               Sort Key: num_table.c
-               ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                     Output: b, c
-                     Hash Key: c
-                     ->  GroupAggregate
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)
+               Output: c, (PARTIAL count(DISTINCT b))
+               Hash Key: c
+               ->  Partial GroupAggregate
+                     Output: c, PARTIAL count(DISTINCT b)
+                     Group Key: num_table.c
+                     ->  Sort
                            Output: b, c
-                           Group Key: num_table.c, num_table.b
-                           ->  Sort
+                           Sort Key: num_table.c, num_table.b
+                           ->  Redistribute Motion 3:3  (slice3; segments: 3)
                                  Output: b, c
-                                 Sort Key: num_table.c, num_table.b
-                                 ->  Redistribute Motion 3:3  (slice3; segments: 3)
+                                 Hash Key: c, b
+                                 ->  Seq Scan on public.num_table
                                        Output: b, c
-                                       Hash Key: c, b
-                                       ->  Seq Scan on public.num_table
-                                             Output: b, c
+ Settings: enable_groupagg = 'off', enable_hashagg = 'on', enable_parallel = 'off', gp_motion_cost_per_row = '2', optimizer = 'on'
  Optimizer: GPORCA
- Settings: enable_groupagg = 'off', gp_motion_cost_per_row = '1', optimizer_force_multistage_agg = 'on'
-(24 rows)
+(21 rows)
 
 select count(distinct b) from num_table group by c;
  count 

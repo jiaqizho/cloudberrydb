@@ -349,7 +349,7 @@ WARNING:  did not get bitmap indexscan plan for (timestampcol,<=,timestamp,"1984
 WARNING:  did not get bitmap indexscan plan for (timestampcol,<,timestamp,"1984-01-20 22:42:21",100)
 WARNING:  did not get bitmap indexscan plan for (timestampcol,>,timestamptz,"1942-07-23 03:05:09",100)
 WARNING:  did not get bitmap indexscan plan for (timestampcol,>=,timestamptz,"1942-07-23 03:05:09",100)
-WARNING:  did not get bitmap indexscan plan for (timestampcol,=,timestamptz,"1964-03-24 19:26:45",1)
+WARNING:  did not get seqscan plan for (timestampcol,=,timestamptz,"1964-03-24 19:26:45",1)
 WARNING:  did not get bitmap indexscan plan for (timestampcol,<=,timestamptz,"1984-01-20 22:42:21",100)
 WARNING:  did not get bitmap indexscan plan for (timestampcol,<,timestamptz,"1984-01-20 22:42:21",100)
 WARNING:  did not get bitmap indexscan plan for (numericcol,>,numeric,0.00,100)

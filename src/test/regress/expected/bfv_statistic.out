@@ -578,20 +578,20 @@ analyze t1, t2;
 --
 -- inequality predicates (2 out of 7 partitions):
 explain select * from t1, t2 where t1.a = t2.a and t1.b = t2.b and t1.b < '2015-01-05'::date;
-                                     QUERY PLAN                                     
-------------------------------------------------------------------------------------
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=34.71..151.40 rows=5 width=16)
    ->  Hash Join  (cost=34.71..151.33 rows=2 width=16)
-         Hash Cond: ((t2.a = t1_1_prt_2.a) AND (t2.b = t1_1_prt_2.b))
+         Hash Cond: ((t2.a = t1.a) AND (t2.b = t1.b))
          ->  Seq Scan on t2  (cost=0.00..116.54 rows=13 width=8)
                Filter: (b < '01-05-2015'::date)
          ->  Hash  (cost=34.49..34.49 rows=14 width=8)
                ->  Append  (cost=0.00..34.49 rows=14 width=8)
-                     ->  Seq Scan on t1_1_prt_2  (cost=0.00..17.21 rows=13 width=8)
+                     ->  Seq Scan on t1_1_prt_2 t1_1  (cost=0.00..17.21 rows=13 width=8)
                            Filter: (b < '01-05-2015'::date)
-                     ->  Seq Scan on t1_1_prt_d  (cost=0.00..17.21 rows=1 width=8)
+                     ->  Seq Scan on t1_1_prt_d t1_2  (cost=0.00..17.21 rows=1 width=8)
                            Filter: (b < '01-05-2015'::date)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (12 rows)
 
 explain select * from t1, t2 where t1.a = t2.a and t1.b = t2.b and t1.b < '2015-01-05'::timestamp;
@@ -599,16 +599,16 @@ explain select * from t1, t2 where t1.a = t2.a and t1.b = t2.b and t1.b < '2015-
 -------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=34.71..151.40 rows=5 width=16)
    ->  Hash Join  (cost=34.71..151.33 rows=2 width=16)
-         Hash Cond: ((t2.a = t1_1_prt_2.a) AND (t2.b = t1_1_prt_2.b))
+         Hash Cond: ((t2.a = t1.a) AND (t2.b = t1.b))
          ->  Seq Scan on t2  (cost=0.00..116.54 rows=13 width=8)
                Filter: (b < 'Mon Jan 05 00:00:00 2015'::timestamp without time zone)
          ->  Hash  (cost=34.49..34.49 rows=14 width=8)
                ->  Append  (cost=0.00..34.49 rows=14 width=8)
-                     ->  Seq Scan on t1_1_prt_2  (cost=0.00..17.21 rows=13 width=8)
+                     ->  Seq Scan on t1_1_prt_2 t1_1  (cost=0.00..17.21 rows=13 width=8)
                            Filter: (b < 'Mon Jan 05 00:00:00 2015'::timestamp without time zone)
-                     ->  Seq Scan on t1_1_prt_d  (cost=0.00..17.21 rows=1 width=8)
+                     ->  Seq Scan on t1_1_prt_d t1_2  (cost=0.00..17.21 rows=1 width=8)
                            Filter: (b < 'Mon Jan 05 00:00:00 2015'::timestamp without time zone)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (12 rows)
 
 -- equality predicates (1 out of 7 partitions):
@@ -617,13 +617,13 @@ explain select * from t1, t2 where t1.a = t2.a and t1.b = t2.b and t1.b = '2015-
 ---------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=17.25..133.97 rows=10 width=16)
    ->  Hash Join  (cost=17.25..133.83 rows=3 width=16)
-         Hash Cond: (t2.a = t1_1_prt_2.a)
+         Hash Cond: (t2.a = t1.a)
          ->  Seq Scan on t2  (cost=0.00..116.54 rows=3 width=8)
                Filter: (b = '01-05-2015'::date)
          ->  Hash  (cost=17.21..17.21 rows=3 width=8)
-               ->  Seq Scan on t1_1_prt_2  (cost=0.00..17.21 rows=3 width=8)
+               ->  Seq Scan on t1_1_prt_2 t1  (cost=0.00..17.21 rows=3 width=8)
                      Filter: (b = '01-05-2015'::date)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 explain select * from t1, t2 where t1.a = t2.a and t1.b = t2.b and t1.b = '2015-01-05'::timestamp;
@@ -631,13 +631,13 @@ explain select * from t1, t2 where t1.a = t2.a and t1.b = t2.b and t1.b = '2015-
 -------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=17.25..133.97 rows=10 width=16)
    ->  Hash Join  (cost=17.25..133.83 rows=3 width=16)
-         Hash Cond: (t2.a = t1_1_prt_2.a)
+         Hash Cond: (t2.a = t1.a)
          ->  Seq Scan on t2  (cost=0.00..116.54 rows=3 width=8)
                Filter: (b = 'Mon Jan 05 00:00:00 2015'::timestamp without time zone)
          ->  Hash  (cost=17.21..17.21 rows=3 width=8)
-               ->  Seq Scan on t1_1_prt_2  (cost=0.00..17.21 rows=3 width=8)
+               ->  Seq Scan on t1_1_prt_2 t1  (cost=0.00..17.21 rows=3 width=8)
                      Filter: (b = 'Mon Jan 05 00:00:00 2015'::timestamp without time zone)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 RESET optimizer_join_order;

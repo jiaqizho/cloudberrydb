@@ -422,7 +422,7 @@ pg_hint_plan_add_paths_to_joinrel(PlannerInfo *root,
 							 JoinType jointype,
 							 SpecialJoinInfo *sjinfo,
 							 List *restrictlist);
-#ifdef DISABLE_ORCA_HOOK
+#ifdef USE_ORCA
 static void *external_plan_hint_hook(Query *parse);
 #endif
 static PlannedStmt *pg_hint_plan_planner(Query *parse, const char *query_string, int cursorOptions,
@@ -580,7 +580,7 @@ static ExecutorEnd_hook_type prev_ExecutorEnd = NULL;
 static make_join_rel_hook_type prev_make_join_rel_hook = NULL;
 static add_paths_to_joinrel_hook_type prev_add_paths_to_joinrel_hook = NULL;
 
-#ifdef DISABLE_ORCA_HOOK
+#ifdef USE_ORCA
 static plan_hint_hook_type prev_plan_hint_hook = NULL;
 #endif
 
@@ -743,7 +743,7 @@ _PG_init(void)
 	prev_add_paths_to_joinrel_hook = add_paths_to_joinrel_hook;
 	add_paths_to_joinrel_hook = pg_hint_plan_add_paths_to_joinrel;
 	
-#ifdef DISABLE_ORCA_HOOK
+#ifdef USE_ORCA
 	prev_plan_hint_hook = plan_hint_hook;
 	plan_hint_hook = external_plan_hint_hook;
 #endif
@@ -773,7 +773,7 @@ _PG_fini(void)
 	ExecutorEnd_hook = prev_ExecutorEnd;
 	make_join_rel_hook = prev_make_join_rel_hook;
 	add_paths_to_joinrel_hook = prev_add_paths_to_joinrel_hook;
-#ifdef DISABLE_ORCA_HOOK
+#ifdef USE_ORCA
 	plan_hint_hook = prev_plan_hint_hook;
 #endif
 
@@ -5232,7 +5232,7 @@ void plpgsql_query_erase_callback(ResourceReleasePhase phase,
 	}
 }
 
-#ifdef DISABLE_ORCA_HOOK
+#ifdef USE_ORCA
 /*
  * This function hook allows external code (i.e. backend) to parse a query into
  * hint structures.

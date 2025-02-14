@@ -560,7 +560,7 @@ CTranslatorQueryToDXL::CheckSublinkInSecurityQuals(Node *node, void *context)
 	}
 
 	return gpdb::WalkExpressionTree(
-		node, (BOOL(*)()) CTranslatorQueryToDXL::CheckSublinkInSecurityQuals,
+		node, (bool (*)(Node *, void *)) CTranslatorQueryToDXL::CheckSublinkInSecurityQuals,
 		context);
 }
 

@@ -1,6 +1,7 @@
 -- Test Optimizer Row Hints Feature
 --
 -- Purpose: Test that row hints may be used to edit cardinality estimates
+-- Row hints have not implments in Postgres-based planner
 LOAD 'pg_hint_plan';
 DROP SCHEMA IF EXISTS rowhints CASCADE;
 CREATE SCHEMA rowhints;
@@ -40,15 +41,15 @@ EXPLAIN SELECT t1.a, t2.a FROM my_table AS t1, your_table AS t2, our_table AS t3
                ->  Nested Loop  (cost=10000000000.00..10000000051.79 rows=3333 width=4)
                      ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=0.00..7.87 rows=102 width=0)
                            ->  Append  (cost=0.00..6.51 rows=34 width=0)
-                                 ->  Seq Scan on our_table_1_prt_p1_1 t3  (cost=0.00..1.06 rows=6 width=0)
-                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_1  (cost=0.00..1.07 rows=7 width=0)
-                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_2  (cost=0.00..1.07 rows=7 width=0)
-                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_3  (cost=0.00..1.07 rows=7 width=0)
-                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_4  (cost=0.00..1.07 rows=7 width=0)
-                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_5  (cost=0.00..1.01 rows=1 width=0)
+                                 ->  Seq Scan on our_table_1_prt_p1_1 t3_1  (cost=0.00..1.06 rows=6 width=0)
+                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_2  (cost=0.00..1.07 rows=7 width=0)
+                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_3  (cost=0.00..1.07 rows=7 width=0)
+                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_4  (cost=0.00..1.07 rows=7 width=0)
+                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_5  (cost=0.00..1.07 rows=7 width=0)
+                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_6  (cost=0.00..1.01 rows=1 width=0)
                      ->  Materialize  (cost=0.00..1.50 rows=33 width=4)
                            ->  Seq Scan on my_table t1  (cost=0.00..1.33 rows=33 width=4)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 (17 rows)
 
 \o results/pg_hint_plan.tmpout
@@ -60,23 +61,23 @@ EXPLAIN SELECT t1.a, t2.a FROM my_table AS t1, your_table AS t2, our_table AS t3
 \! sql/maskout.sh results/pg_hint_plan.tmpout
   QUERY PLAN
 ----------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=123 width=xxx)
-   ->  Nested Loop  (cost=xxx..xxx rows=41 width=xxx)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=1000000 width=xxx)
+   ->  Nested Loop  (cost=xxx..xxx rows=333333 width=xxx)
          ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
                ->  Seq Scan on your_table t2  (cost=xxx..xxx rows=33 width=xxx)
          ->  Materialize  (cost={inf}..{inf} rows=3333 width=xxx)
                ->  Nested Loop  (cost={inf}..{inf} rows=3333 width=xxx)
                      ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=xxx..xxx rows=102 width=xxx)
                            ->  Append  (cost=xxx..xxx rows=34 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_1 t3  (cost=xxx..xxx rows=6 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_1  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_2  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_3  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_4  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_5  (cost=xxx..xxx rows=1 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_1 t3_1  (cost=xxx..xxx rows=6 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_2  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_3  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_4  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_5  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_6  (cost=xxx..xxx rows=1 width=xxx)
                      ->  Materialize  (cost=xxx..xxx rows=33 width=xxx)
                            ->  Seq Scan on my_table t1  (cost=xxx..xxx rows=33 width=xxx)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 
 \o results/pg_hint_plan.tmpout
 /*+
@@ -87,23 +88,23 @@ EXPLAIN SELECT t1.a, t2.a FROM my_table AS t1, your_table AS t2, our_table AS t3
 \! sql/maskout.sh results/pg_hint_plan.tmpout
   QUERY PLAN
 ----------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=1000123 width=xxx)
-   ->  Nested Loop  (cost=xxx..xxx rows=333374 width=xxx)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=1000000 width=xxx)
+   ->  Nested Loop  (cost=xxx..xxx rows=333333 width=xxx)
          ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
                ->  Seq Scan on your_table t2  (cost=xxx..xxx rows=33 width=xxx)
          ->  Materialize  (cost={inf}..{inf} rows=3333 width=xxx)
                ->  Nested Loop  (cost={inf}..{inf} rows=3333 width=xxx)
                      ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=xxx..xxx rows=102 width=xxx)
                            ->  Append  (cost=xxx..xxx rows=34 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_1 t3  (cost=xxx..xxx rows=6 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_1  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_2  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_3  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_4  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_5  (cost=xxx..xxx rows=1 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_1 t3_1  (cost=xxx..xxx rows=6 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_2  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_3  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_4  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_5  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_6  (cost=xxx..xxx rows=1 width=xxx)
                      ->  Materialize  (cost=xxx..xxx rows=33 width=xxx)
                            ->  Seq Scan on my_table t1  (cost=xxx..xxx rows=33 width=xxx)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 
 \o results/pg_hint_plan.tmpout
 /*+
@@ -114,23 +115,23 @@ EXPLAIN SELECT t1.a, t2.a FROM my_table AS t1, your_table AS t2, our_table AS t3
 \! sql/maskout.sh results/pg_hint_plan.tmpout
   QUERY PLAN
 ----------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=999877 width=xxx)
-   ->  Nested Loop  (cost=xxx..xxx rows=333292 width=xxx)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=1000000 width=xxx)
+   ->  Nested Loop  (cost=xxx..xxx rows=333333 width=xxx)
          ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
                ->  Seq Scan on your_table t2  (cost=xxx..xxx rows=33 width=xxx)
          ->  Materialize  (cost={inf}..{inf} rows=3333 width=xxx)
                ->  Nested Loop  (cost={inf}..{inf} rows=3333 width=xxx)
                      ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=xxx..xxx rows=102 width=xxx)
                            ->  Append  (cost=xxx..xxx rows=34 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_1 t3  (cost=xxx..xxx rows=6 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_1  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_2  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_3  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_4  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_5  (cost=xxx..xxx rows=1 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_1 t3_1  (cost=xxx..xxx rows=6 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_2  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_3  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_4  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_5  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_6  (cost=xxx..xxx rows=1 width=xxx)
                      ->  Materialize  (cost=xxx..xxx rows=33 width=xxx)
                            ->  Seq Scan on my_table t1  (cost=xxx..xxx rows=33 width=xxx)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 
 \o results/pg_hint_plan.tmpout
 /*+
@@ -141,23 +142,23 @@ EXPLAIN SELECT t1.a, t2.a FROM my_table AS t1, your_table AS t2, our_table AS t3
 \! sql/maskout.sh results/pg_hint_plan.tmpout
   QUERY PLAN
 ----------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=123000000 width=xxx)
-   ->  Nested Loop  (cost=xxx..xxx rows=41000000 width=xxx)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=1000000 width=xxx)
+   ->  Nested Loop  (cost=xxx..xxx rows=333333 width=xxx)
          ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
                ->  Seq Scan on your_table t2  (cost=xxx..xxx rows=33 width=xxx)
          ->  Materialize  (cost={inf}..{inf} rows=3333 width=xxx)
                ->  Nested Loop  (cost={inf}..{inf} rows=3333 width=xxx)
                      ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=xxx..xxx rows=102 width=xxx)
                            ->  Append  (cost=xxx..xxx rows=34 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_1 t3  (cost=xxx..xxx rows=6 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_1  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_2  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_3  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_4  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_5  (cost=xxx..xxx rows=1 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_1 t3_1  (cost=xxx..xxx rows=6 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_2  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_3  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_4  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_5  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_6  (cost=xxx..xxx rows=1 width=xxx)
                      ->  Materialize  (cost=xxx..xxx rows=33 width=xxx)
                            ->  Seq Scan on my_table t1  (cost=xxx..xxx rows=33 width=xxx)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 
 --------------------------------------------------------------------
 --
@@ -173,13 +174,13 @@ EXPLAIN SELECT * FROM my_table, (SELECT * FROM your_table) AS q;
 \! sql/maskout.sh results/pg_hint_plan.tmpout
   QUERY PLAN
 ----------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost={inf}..{inf} rows=123 width=xxx)
-   ->  Nested Loop  (cost={inf}..{inf} rows=41 width=xxx)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost={inf}..{inf} rows=10000 width=xxx)
+   ->  Nested Loop  (cost={inf}..{inf} rows=3333 width=xxx)
          ->  Seq Scan on my_table  (cost=xxx..xxx rows=33 width=xxx)
          ->  Materialize  (cost=xxx..xxx rows=100 width=xxx)
                ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
                      ->  Seq Scan on your_table  (cost=xxx..xxx rows=33 width=xxx)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 
 --------------------------------------------------------------------
 --
@@ -195,13 +196,13 @@ EXPLAIN WITH cte AS (SELECT * FROM my_table, (SELECT * FROM your_table) as q) SE
 \! sql/maskout.sh results/pg_hint_plan.tmpout
   QUERY PLAN
 ----------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost={inf}..{inf} rows=123 width=xxx)
-   ->  Nested Loop  (cost={inf}..{inf} rows=41 width=xxx)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost={inf}..{inf} rows=10000 width=xxx)
+   ->  Nested Loop  (cost={inf}..{inf} rows=3333 width=xxx)
          ->  Seq Scan on my_table  (cost=xxx..xxx rows=33 width=xxx)
          ->  Materialize  (cost=xxx..xxx rows=100 width=xxx)
                ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
                      ->  Seq Scan on your_table  (cost=xxx..xxx rows=33 width=xxx)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 
 --------------------------------------------------------------------
 -- Test updating lower join row hint
@@ -217,23 +218,23 @@ EXPLAIN SELECT t1.a, t2.a FROM my_table AS t1, your_table AS t2, our_table AS t3
 \! sql/maskout.sh results/pg_hint_plan.tmpout
   QUERY PLAN
 ----------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=12300 width=xxx)
-   ->  Nested Loop  (cost=xxx..xxx rows=4100 width=xxx)
-         ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=102 width=xxx)
-               ->  Append  (cost=xxx..xxx rows=34 width=xxx)
-                     ->  Seq Scan on our_table_1_prt_p1_1 t3  (cost=xxx..xxx rows=6 width=xxx)
-                     ->  Seq Scan on our_table_1_prt_p1_2 t3_1  (cost=xxx..xxx rows=7 width=xxx)
-                     ->  Seq Scan on our_table_1_prt_p1_3 t3_2  (cost=xxx..xxx rows=7 width=xxx)
-                     ->  Seq Scan on our_table_1_prt_p1_4 t3_3  (cost=xxx..xxx rows=7 width=xxx)
-                     ->  Seq Scan on our_table_1_prt_p1_5 t3_4  (cost=xxx..xxx rows=7 width=xxx)
-                     ->  Seq Scan on our_table_1_prt_p1_6 t3_5  (cost=xxx..xxx rows=1 width=xxx)
-         ->  Materialize  (cost={inf}..{inf} rows=41 width=xxx)
-               ->  Nested Loop  (cost={inf}..{inf} rows=41 width=xxx)
-                     ->  Seq Scan on my_table t1  (cost=xxx..xxx rows=33 width=xxx)
-                     ->  Materialize  (cost=xxx..xxx rows=100 width=xxx)
-                           ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
-                                 ->  Seq Scan on your_table t2  (cost=xxx..xxx rows=33 width=xxx)
- Optimizer: Postgres-based planner
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=1000000 width=xxx)
+   ->  Nested Loop  (cost=xxx..xxx rows=333333 width=xxx)
+         ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
+               ->  Seq Scan on your_table t2  (cost=xxx..xxx rows=33 width=xxx)
+         ->  Materialize  (cost={inf}..{inf} rows=3333 width=xxx)
+               ->  Nested Loop  (cost={inf}..{inf} rows=3333 width=xxx)
+                     ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=xxx..xxx rows=102 width=xxx)
+                           ->  Append  (cost=xxx..xxx rows=34 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_1 t3_1  (cost=xxx..xxx rows=6 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_2  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_3  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_4  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_5  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_6  (cost=xxx..xxx rows=1 width=xxx)
+                     ->  Materialize  (cost=xxx..xxx rows=33 width=xxx)
+                           ->  Seq Scan on my_table t1  (cost=xxx..xxx rows=33 width=xxx)
+ Optimizer: Postgres query optimizer
 
 \o results/pg_hint_plan.tmpout
 /*+
@@ -244,21 +245,21 @@ EXPLAIN SELECT t1.a, t2.a FROM my_table AS t1, your_table AS t2, our_table AS t3
 \! sql/maskout.sh results/pg_hint_plan.tmpout
   QUERY PLAN
 ----------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=123000000 width=xxx)
-   ->  Nested Loop  (cost=xxx..xxx rows=41000000 width=xxx)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=xxx..xxx rows=1000000 width=xxx)
+   ->  Nested Loop  (cost=xxx..xxx rows=333333 width=xxx)
          ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=xxx..xxx rows=100 width=xxx)
                ->  Seq Scan on your_table t2  (cost=xxx..xxx rows=33 width=xxx)
          ->  Materialize  (cost={inf}..{inf} rows=3333 width=xxx)
                ->  Nested Loop  (cost={inf}..{inf} rows=3333 width=xxx)
                      ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=xxx..xxx rows=102 width=xxx)
                            ->  Append  (cost=xxx..xxx rows=34 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_1 t3  (cost=xxx..xxx rows=6 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_1  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_2  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_3  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_4  (cost=xxx..xxx rows=7 width=xxx)
-                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_5  (cost=xxx..xxx rows=1 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_1 t3_1  (cost=xxx..xxx rows=6 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_2 t3_2  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_3 t3_3  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_4 t3_4  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_5 t3_5  (cost=xxx..xxx rows=7 width=xxx)
+                                 ->  Seq Scan on our_table_1_prt_p1_6 t3_6  (cost=xxx..xxx rows=1 width=xxx)
                      ->  Materialize  (cost=xxx..xxx rows=33 width=xxx)
                            ->  Seq Scan on my_table t1  (cost=xxx..xxx rows=33 width=xxx)
- Optimizer: Postgres-based planner
+ Optimizer: Postgres query optimizer
 
