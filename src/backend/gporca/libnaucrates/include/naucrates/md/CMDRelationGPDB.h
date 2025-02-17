@@ -62,9 +62,6 @@ private:
 	// storage type
 	Erelstoragetype m_rel_storage_type;
 
-	// append only table version
-	Erelaoversion m_rel_ao_version;
-
 	// distribution policy
 	Ereldistrpolicy m_rel_distr_policy;
 
@@ -128,7 +125,7 @@ public:
 	// ctor
 	CMDRelationGPDB(
 		CMemoryPool *mp, IMDId *mdid, CMDName *mdname, BOOL is_temp_table,
-		Erelstoragetype rel_storage_type, Erelaoversion rel_ao_version,
+		Erelstoragetype rel_storage_type, 
 		Ereldistrpolicy rel_distr_policy, CMDColumnArray *mdcol_array,
 		ULongPtrArray *distr_col_array, IMdIdArray *distr_opfamilies,
 		ULongPtrArray *partition_cols_array, CharPtrArray *str_part_types_array,
@@ -154,9 +151,6 @@ public:
 
 	// storage type (heap, appendonly, ...)
 	Erelstoragetype RetrieveRelStorageType() const override;
-
-	// append only table version
-	Erelaoversion GetRelAOVersion() const override;
 
 	// distribution policy (none, hash, random)
 	Ereldistrpolicy GetRelDistribution() const override;

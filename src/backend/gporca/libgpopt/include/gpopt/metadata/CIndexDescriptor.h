@@ -114,8 +114,6 @@ public:
 		return m_index_type;
 	}
 
-	BOOL SupportsIndexOnlyScan(CTableDescriptor *ptabdesc) const;
-
 	// create an index descriptor
 	static CIndexDescriptor *Pindexdesc(CMemoryPool *mp,
 										const CTableDescriptor *ptabdesc,

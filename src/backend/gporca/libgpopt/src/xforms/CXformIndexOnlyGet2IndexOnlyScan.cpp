@@ -50,16 +50,6 @@ CXformIndexOnlyGet2IndexOnlyScan::CXformIndexOnlyGet2IndexOnlyScan(
 CXform::EXformPromise
 CXformIndexOnlyGet2IndexOnlyScan::Exfp(CExpressionHandle &exprhdl) const
 {
-	CLogicalIndexOnlyGet *popGet =
-		CLogicalIndexOnlyGet::PopConvert(exprhdl.Pop());
-	CIndexDescriptor *pindexdesc = popGet->Pindexdesc();
-	CTableDescriptor *ptabdesc = popGet->Ptabdesc();
-
-	if (!pindexdesc->SupportsIndexOnlyScan(ptabdesc))
-	{
-		return CXform::ExfpNone;
-	}
-
 	if (exprhdl.DeriveHasSubquery(0))
 	{
 		return CXform::ExfpNone;

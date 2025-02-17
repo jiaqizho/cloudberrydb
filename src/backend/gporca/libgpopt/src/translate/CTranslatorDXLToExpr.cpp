@@ -2141,13 +2141,10 @@ CTranslatorDXLToExpr::Ptabdesc(CDXLTableDescr *table_descr)
 	IMDRelation::Erelstoragetype rel_storage_type =
 		pmdrel->RetrieveRelStorageType();
 
-	// get append only table version
-	IMDRelation::Erelaoversion rel_ao_version = pmdrel->GetRelAOVersion();
-
 	mdid->AddRef();
 	CTableDescriptor *ptabdesc = GPOS_NEW(m_mp) CTableDescriptor(
 		m_mp, mdid, CName(m_mp, &strName), pmdrel->ConvertHashToRandom(),
-		rel_distr_policy, rel_storage_type, rel_ao_version,
+		rel_distr_policy, rel_storage_type,
 		table_descr->GetExecuteAsUserId(), table_descr->LockMode(),
 		table_descr->GetAclMode(),
 		table_descr->GetAssignedQueryIdForTargetRel());
@@ -2345,7 +2342,7 @@ CTranslatorDXLToExpr::PtabdescFromCTAS(CDXLLogicalCTAS *pdxlopCTAS)
 	mdid->AddRef();
 	CTableDescriptor *ptabdesc = GPOS_NEW(m_mp) CTableDescriptor(
 		m_mp, mdid, CName(m_mp, &strName), pmdrel->ConvertHashToRandom(),
-		rel_distr_policy, rel_storage_type, IMDRelation::GetCurrentAOVersion(),
+		rel_distr_policy, rel_storage_type, 
 		0,	// ulExecuteAsUser, use permissions of current user
 		3,	// CTAS always uses a RowExclusiveLock on the table. See createas.c
 		2,	// CTAS always requires SELECT and SELECT only privilege

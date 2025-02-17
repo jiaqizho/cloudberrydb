@@ -31,7 +31,7 @@ using namespace gpmd;
 //---------------------------------------------------------------------------
 CMDRelationGPDB::CMDRelationGPDB(
 	CMemoryPool *mp, IMDId *mdid, CMDName *mdname, BOOL fTemporary,
-	Erelstoragetype rel_storage_type, Erelaoversion rel_ao_version,
+	Erelstoragetype rel_storage_type,
 	Ereldistrpolicy rel_distr_policy, CMDColumnArray *mdcol_array,
 	ULongPtrArray *distr_col_array, IMdIdArray *distr_opfamilies,
 	ULongPtrArray *partition_cols_array, CharPtrArray *str_part_types_array,
@@ -44,7 +44,6 @@ CMDRelationGPDB::CMDRelationGPDB(
 	  m_mdname(mdname),
 	  m_is_temp_table(fTemporary),
 	  m_rel_storage_type(rel_storage_type),
-	  m_rel_ao_version(rel_ao_version),
 	  m_rel_distr_policy(rel_distr_policy),
 	  m_md_col_array(mdcol_array),
 	  m_dropped_cols(0),
@@ -212,12 +211,6 @@ IMDRelation::Erelstoragetype
 CMDRelationGPDB::RetrieveRelStorageType() const
 {
 	return m_rel_storage_type;
-}
-
-IMDRelation::Erelaoversion
-CMDRelationGPDB::GetRelAOVersion() const
-{
-	return m_rel_ao_version;
 }
 
 //---------------------------------------------------------------------------
@@ -622,13 +615,6 @@ CMDRelationGPDB::Serialize(CXMLSerializer *xml_serializer) const
 	xml_serializer->AddAttribute(
 		CDXLTokens::GetDXLTokenStr(EdxltokenRelStorageType),
 		IMDRelation::GetStorageTypeStr(m_rel_storage_type));
-	if (IsAORowOrColTable() ||
-		IMDRelation::ErelstorageMixedPartitioned == RetrieveRelStorageType())
-	{
-		xml_serializer->AddAttribute(
-			CDXLTokens::GetDXLTokenStr(EdxltokenRelAppendOnlyVersion),
-			m_rel_ao_version);
-	}
 	xml_serializer->AddAttribute(
 		CDXLTokens::GetDXLTokenStr(EdxltokenRelDistrPolicy),
 		GetDistrPolicyStr(m_rel_distr_policy));
@@ -804,8 +790,6 @@ CMDRelationGPDB::DebugPrint(IOstream &os) const
 	os << "Storage type: "
 	   << IMDRelation::GetStorageTypeStr(m_rel_storage_type)->GetBuffer()
 	   << std::endl;
-
-	os << "AO version: " << m_rel_ao_version << std::endl;
 
 	os << "Distribution policy: "
 	   << GetDistrPolicyStr(m_rel_distr_policy)->GetBuffer() << std::endl;

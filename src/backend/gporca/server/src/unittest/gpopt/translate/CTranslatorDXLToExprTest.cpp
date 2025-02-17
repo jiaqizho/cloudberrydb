@@ -253,7 +253,7 @@ public:
 			mp, mdid, CName(&strTableName), convert_hash_to_random,
 			CMDRelationGPDB::EreldistrMasterOnly,
 			CMDRelationGPDB::ErelstorageHeap,
-			IMDRelation::GetCurrentAOVersion(), ulExecuteAsUser,
+			ulExecuteAsUser,
 			-1, /* lockmode */
 			2,	/* aclmode SELECT */
 			0 /* UNASSIGNED_QUERYID */);
