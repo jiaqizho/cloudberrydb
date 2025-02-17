@@ -11,6 +11,7 @@
 
 #include "postgres.h"
 #include "access/genam.h"
+#include "access/hash.h"
 #include "access/heapam.h"
 #include "access/relation.h"
 #include "catalog/pg_collation.h"
@@ -41,6 +42,7 @@
 #include "parser/analyze.h"
 #include "parser/parsetree.h"
 #include "parser/scansup.h"
+#include "parser/scanner.h"
 #include "partitioning/partbounds.h"
 #include "tcop/utility.h"
 #include "utils/builtins.h"
@@ -51,16 +53,13 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/resowner.h"
-
+#include "utils/queryjumble.h"
 #include "catalog/pg_class.h"
 
 #include "executor/spi.h"
 #include "catalog/pg_type.h"
 
 #include "plpgsql.h"
-
-/* partially copied from pg_stat_statements */
-#include "normalize_query.h"
 
 /* PostgreSQL */
 #include "access/htup_details.h"
@@ -413,7 +412,17 @@ static void pg_hint_plan_ProcessUtility(PlannedStmt *pstmt,
 					ProcessUtilityContext context,
 					ParamListInfo params, QueryEnvironment *queryEnv,
 					DestReceiver *dest, QueryCompletion *qc);
-#ifdef USE_ORCA
+static RelOptInfo *
+pg_hint_plan_make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2);
+static void
+pg_hint_plan_add_paths_to_joinrel(PlannerInfo *root,
+							 RelOptInfo *joinrel,
+							 RelOptInfo *outerrel,
+							 RelOptInfo *innerrel,
+							 JoinType jointype,
+							 SpecialJoinInfo *sjinfo,
+							 List *restrictlist);
+#ifdef DISABLE_ORCA_HOOK
 static void *external_plan_hint_hook(Query *parse);
 #endif
 static PlannedStmt *pg_hint_plan_planner(Query *parse, const char *query_string, int cursorOptions,
@@ -480,23 +489,11 @@ static void quote_value(StringInfo buf, const char *value);
 
 static const char *parse_quoted_value(const char *str, char **word,
 									  bool truncate);
-
-RelOptInfo *pg_hint_plan_standard_join_search(PlannerInfo *root,
-											  int levels_needed,
-											  List *initial_rels);
+static void
+set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte);
 void pg_hint_plan_join_search_one_level(PlannerInfo *root, int level);
 void pg_hint_plan_set_rel_pathlist(PlannerInfo * root, RelOptInfo *rel,
 								   Index rti, RangeTblEntry *rte);
-static void create_plain_partial_paths(PlannerInfo *root,
-													RelOptInfo *rel);
-static void make_rels_by_clauseless_joins(PlannerInfo *root,
-							  RelOptInfo *old_rel,
-							  List *other_rels);
-static bool has_join_restriction(PlannerInfo *root, RelOptInfo *rel);
-static void set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
-								   RangeTblEntry *rte);
-static void set_append_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
-									Index rti, RangeTblEntry *rte);
 RelOptInfo *pg_hint_plan_make_join_rel(PlannerInfo *root, RelOptInfo *rel1,
 									   RelOptInfo *rel2);
 
@@ -517,6 +514,12 @@ static int set_config_int32_option(const char *name, int32 value,
 									GucContext context);
 static int set_config_double_option(const char *name, double value,
 									GucContext context);
+
+static char *generate_normalized_query(JumbleState *jstate, const char *query,
+						  int query_loc, int *query_len_p, int encoding);
+static void fill_in_constant_lengths(JumbleState *jstate, const char *query,
+						 int query_loc);
+static int	comp_location(const void *a, const void *b);
 
 /* GUC variables */
 static bool	pg_hint_plan_enable_hint = true;
@@ -574,7 +577,10 @@ static join_search_hook_type prev_join_search = NULL;
 static set_rel_pathlist_hook_type prev_set_rel_pathlist = NULL;
 static ProcessUtility_hook_type prev_ProcessUtility_hook = NULL;
 static ExecutorEnd_hook_type prev_ExecutorEnd = NULL;
-#ifdef USE_ORCA
+static make_join_rel_hook_type prev_make_join_rel_hook = NULL;
+static add_paths_to_joinrel_hook_type prev_add_paths_to_joinrel_hook = NULL;
+
+#ifdef DISABLE_ORCA_HOOK
 static plan_hint_hook_type prev_plan_hint_hook = NULL;
 #endif
 
@@ -732,7 +738,12 @@ _PG_init(void)
 	ProcessUtility_hook = pg_hint_plan_ProcessUtility;
 	prev_ExecutorEnd = ExecutorEnd_hook;
 	ExecutorEnd_hook = pg_hint_ExecutorEnd;
-#ifdef USE_ORCA
+	prev_make_join_rel_hook = make_join_rel_hook;
+	make_join_rel_hook = pg_hint_plan_make_join_rel;
+	prev_add_paths_to_joinrel_hook = add_paths_to_joinrel_hook;
+	add_paths_to_joinrel_hook = pg_hint_plan_add_paths_to_joinrel;
+	
+#ifdef DISABLE_ORCA_HOOK
 	prev_plan_hint_hook = plan_hint_hook;
 	plan_hint_hook = external_plan_hint_hook;
 #endif
@@ -760,7 +771,9 @@ _PG_fini(void)
 	set_rel_pathlist_hook = prev_set_rel_pathlist;
 	ProcessUtility_hook = prev_ProcessUtility_hook;
 	ExecutorEnd_hook = prev_ExecutorEnd;
-#ifdef USE_ORCA
+	make_join_rel_hook = prev_make_join_rel_hook;
+	add_paths_to_joinrel_hook = prev_add_paths_to_joinrel_hook;
+#ifdef DISABLE_ORCA_HOOK
 	plan_hint_hook = prev_plan_hint_hook;
 #endif
 
@@ -2902,6 +2915,10 @@ get_current_hint_string(ParseState *pstate, Query *query)
 	if (current_hint_retrieved)
 		return;
 
+	/* Not support utility mode yet */
+	if (query->utilityStmt)
+		return;
+
 	/* Don't parse the current query hereafter */
 	current_hint_retrieved = true;
 
@@ -2925,7 +2942,7 @@ get_current_hint_string(ParseState *pstate, Query *query)
 	if (pg_hint_plan_enable_hint_table)
 	{
 		int				query_len;
-		pgssJumbleState	jstate;
+		JumbleState    *jstate = NULL;
 		Query		   *jumblequery;
 		char		   *normalized_query = NULL;
 
@@ -2944,18 +2961,7 @@ get_current_hint_string(ParseState *pstate, Query *query)
 
 		if (jumblequery)
 		{
-			/*
-			 * XXX: normalization code is copied from pg_stat_statements.c.
-			 * Make sure to keep up-to-date with it.
-			 */
-			jstate.jumble = (unsigned char *) palloc(JUMBLE_SIZE);
-			jstate.jumble_len = 0;
-			jstate.clocations_buf_size = 32;
-			jstate.clocations = (pgssLocationLen *)
-				palloc(jstate.clocations_buf_size * sizeof(pgssLocationLen));
-			jstate.clocations_count = 0;
-
-			PGHintPlanJumbleQuery(&jstate, jumblequery);
+			jstate = JumbleQueryDirect(query, query_str);
 
 			/*
 			 * Normalize the query string by replacing constants with '?'
@@ -2970,7 +2976,7 @@ get_current_hint_string(ParseState *pstate, Query *query)
 			 */
 			query_len = strlen(query_str) + 1;
 			normalized_query =
-				generate_normalized_query(&jstate, query_str, 0, &query_len,
+				generate_normalized_query(jstate, query_str, 0, &query_len,
 										  GetDatabaseEncoding());
 
 			/*
@@ -3475,8 +3481,6 @@ restrict_indexes(PlannerInfo *root, ScanMethodHint *hint, RelOptInfo *rel,
 			   bool using_parent_hint)
 {
 	ListCell	   *cell;
-	ListCell	   *prev;
-	ListCell	   *next;
 	StringInfoData	buf;
 	RangeTblEntry  *rte = root->simple_rte_array[rel->relid];
 	Oid				relationObjectId = rte->relid;
@@ -3505,18 +3509,15 @@ restrict_indexes(PlannerInfo *root, ScanMethodHint *hint, RelOptInfo *rel,
 	 * Leaving only an specified index, we delete it from a IndexOptInfo list
 	 * other than it.
 	 */
-	prev = NULL;
 	if (debug_level > 0)
 		initStringInfo(&buf);
 
-	for (cell = list_head(rel->indexlist); cell; cell = next)
+	foreach (cell, rel->indexlist)
 	{
 		IndexOptInfo   *info = (IndexOptInfo *) lfirst(cell);
 		char		   *indexname = get_rel_name(info->indexoid);
 		ListCell	   *l;
 		bool			use_index = false;
-
-		next = lnext(rel->indexlist, cell);
 
 		foreach(l, hint->indexnames)
 		{
@@ -3701,8 +3702,6 @@ restrict_indexes(PlannerInfo *root, ScanMethodHint *hint, RelOptInfo *rel,
 
 		if (!use_index)
 			rel->indexlist = list_delete_cell(rel->indexlist, cell);
-		else
-			prev = cell;
 
 		pfree(indexname);
 	}
@@ -4443,15 +4442,8 @@ transform_join_hints(HintState *hstate, PlannerInfo *root, int nbaserel,
 		{
 			if (hstate->join_hint_level[i] != NIL)
 			{
-				ListCell *prev = NULL;
-				ListCell *next = NULL;
-				for(l = list_head(hstate->join_hint_level[i]); l; l = next)
-				{
-
+				foreach(l, hstate->join_hint_level[i]) {
 					JoinMethodHint *hint = (JoinMethodHint *)lfirst(l);
-
-					next = lnext(hstate->join_hint_level[i], l);
-
 					if (hint->inner_nrels == 0 &&
 						!(bms_intersect(hint->joinrelids, joinrelids) == NULL ||
 						  bms_equal(bms_union(hint->joinrelids, joinrelids),
@@ -4460,8 +4452,6 @@ transform_join_hints(HintState *hstate, PlannerInfo *root, int nbaserel,
 						hstate->join_hint_level[i] =
 							list_delete_cell(hstate->join_hint_level[i], l);
 					}
-					else
-						prev = l;
 				}
 			}
 		}
@@ -4477,26 +4467,274 @@ transform_join_hints(HintState *hstate, PlannerInfo *root, int nbaserel,
 	return false;
 }
 
+
 /*
- * wrapper of make_join_rel()
+ * Generate a normalized version of the query string that will be used to
+ * represent all similar queries.
+ *
+ * Note that the normalized representation may well vary depending on
+ * just which "equivalent" query is used to create the hashtable entry.
+ * We assume this is OK.
+ *
+ * If query_loc > 0, then "query" has been advanced by that much compared to
+ * the original string start, so we need to translate the provided locations
+ * to compensate.  (This lets us avoid re-scanning statements before the one
+ * of interest, so it's worth doing.)
+ *
+ * *query_len_p contains the input string length, and is updated with
+ * the result string length on exit.  The resulting string might be longer
+ * or shorter depending on what happens with replacement of constants.
+ *
+ * Returns a palloc'd string.
+ */
+static char *
+generate_normalized_query(JumbleState *jstate, const char *query,
+						  int query_loc, int *query_len_p, int encoding)
+{
+	char	   *norm_query;
+	int			query_len = *query_len_p;
+	int			i,
+				norm_query_buflen,	/* Space allowed for norm_query */
+				len_to_wrt,		/* Length (in bytes) to write */
+				quer_loc = 0,	/* Source query byte location */
+				n_quer_loc = 0, /* Normalized query byte location */
+				last_off = 0,	/* Offset from start for previous tok */
+				last_tok_len = 0;	/* Length (in bytes) of that tok */
+
+	/*
+	 * Get constants' lengths (core system only gives us locations).  Note
+	 * this also ensures the items are sorted by location.
+	 */
+	fill_in_constant_lengths(jstate, query, query_loc);
+
+	/*
+	 * Allow for $n symbols to be longer than the constants they replace.
+	 * Constants must take at least one byte in text form, while a $n symbol
+	 * certainly isn't more than 11 bytes, even if n reaches INT_MAX.  We
+	 * could refine that limit based on the max value of n for the current
+	 * query, but it hardly seems worth any extra effort to do so.
+	 */
+	norm_query_buflen = query_len + jstate->clocations_count * 10;
+
+	/* Allocate result buffer */
+	norm_query = palloc(norm_query_buflen + 1);
+
+	for (i = 0; i < jstate->clocations_count; i++)
+	{
+		int			off,		/* Offset from start for cur tok */
+					tok_len;	/* Length (in bytes) of that tok */
+
+		off = jstate->clocations[i].location;
+		/* Adjust recorded location if we're dealing with partial string */
+		off -= query_loc;
+
+		tok_len = jstate->clocations[i].length;
+
+		if (tok_len < 0)
+			continue;			/* ignore any duplicates */
+
+		/* Copy next chunk (what precedes the next constant) */
+		len_to_wrt = off - last_off;
+		len_to_wrt -= last_tok_len;
+
+		Assert(len_to_wrt >= 0);
+		memcpy(norm_query + n_quer_loc, query + quer_loc, len_to_wrt);
+		n_quer_loc += len_to_wrt;
+
+		/*
+		 * PG_HINT_PLAN: DON'T TAKE IN a6f22e8356 so that the designed behavior
+		 * is kept stable.
+		 */
+		/* And insert a '?' in place of the constant token */
+		norm_query[n_quer_loc++] = '?';
+
+		quer_loc = off + tok_len;
+		last_off = off;
+		last_tok_len = tok_len;
+	}
+
+	/*
+	 * We've copied up until the last ignorable constant.  Copy over the
+	 * remaining bytes of the original query string.
+	 */
+	len_to_wrt = query_len - quer_loc;
+
+	Assert(len_to_wrt >= 0);
+	memcpy(norm_query + n_quer_loc, query + quer_loc, len_to_wrt);
+	n_quer_loc += len_to_wrt;
+
+	Assert(n_quer_loc <= norm_query_buflen);
+	norm_query[n_quer_loc] = '\0';
+
+	*query_len_p = n_quer_loc;
+	return norm_query;
+}
+
+/*
+ * Given a valid SQL string and an array of constant-location records,
+ * fill in the textual lengths of those constants.
+ *
+ * The constants may use any allowed constant syntax, such as float literals,
+ * bit-strings, single-quoted strings and dollar-quoted strings.  This is
+ * accomplished by using the public API for the core scanner.
+ *
+ * It is the caller's job to ensure that the string is a valid SQL statement
+ * with constants at the indicated locations.  Since in practice the string
+ * has already been parsed, and the locations that the caller provides will
+ * have originated from within the authoritative parser, this should not be
+ * a problem.
+ *
+ * Duplicate constant pointers are possible, and will have their lengths
+ * marked as '-1', so that they are later ignored.  (Actually, we assume the
+ * lengths were initialized as -1 to start with, and don't change them here.)
+ *
+ * If query_loc > 0, then "query" has been advanced by that much compared to
+ * the original string start, so we need to translate the provided locations
+ * to compensate.  (This lets us avoid re-scanning statements before the one
+ * of interest, so it's worth doing.)
+ *
+ * N.B. There is an assumption that a '-' character at a Const location begins
+ * a negative numeric constant.  This precludes there ever being another
+ * reason for a constant to start with a '-'.
+ */
+static void
+fill_in_constant_lengths(JumbleState *jstate, const char *query,
+						 int query_loc)
+{
+	LocationLen *locs;
+	core_yyscan_t yyscanner;
+	core_yy_extra_type yyextra;
+	core_YYSTYPE yylval;
+	YYLTYPE		yylloc;
+	int			last_loc = -1;
+	int			i;
+
+	/*
+	 * Sort the records by location so that we can process them in order while
+	 * scanning the query text.
+	 */
+	if (jstate->clocations_count > 1)
+		qsort(jstate->clocations, jstate->clocations_count,
+			  sizeof(LocationLen), comp_location);
+	locs = jstate->clocations;
+
+	/* initialize the flex scanner --- should match raw_parser() */
+	yyscanner = scanner_init(query,
+							 &yyextra,
+							 &ScanKeywords,
+							 ScanKeywordTokens);
+
+	/* we don't want to re-emit any escape string warnings */
+	yyextra.escape_string_warning = false;
+
+	/* Search for each constant, in sequence */
+	for (i = 0; i < jstate->clocations_count; i++)
+	{
+		int			loc = locs[i].location;
+		int			tok;
+
+		/* Adjust recorded location if we're dealing with partial string */
+		loc -= query_loc;
+
+		Assert(loc >= 0);
+
+		if (loc <= last_loc)
+			continue;			/* Duplicate constant, ignore */
+
+		/* Lex tokens until we find the desired constant */
+		for (;;)
+		{
+			tok = core_yylex(&yylval, &yylloc, yyscanner);
+
+			/* We should not hit end-of-string, but if we do, behave sanely */
+			if (tok == 0)
+				break;			/* out of inner for-loop */
+
+			/*
+			 * We should find the token position exactly, but if we somehow
+			 * run past it, work with that.
+			 */
+			if (yylloc >= loc)
+			{
+				if (query[loc] == '-')
+				{
+					/*
+					 * It's a negative value - this is the one and only case
+					 * where we replace more than a single token.
+					 *
+					 * Do not compensate for the core system's special-case
+					 * adjustment of location to that of the leading '-'
+					 * operator in the event of a negative constant.  It is
+					 * also useful for our purposes to start from the minus
+					 * symbol.  In this way, queries like "select * from foo
+					 * where bar = 1" and "select * from foo where bar = -2"
+					 * will have identical normalized query strings.
+					 */
+					tok = core_yylex(&yylval, &yylloc, yyscanner);
+					if (tok == 0)
+						break;	/* out of inner for-loop */
+				}
+
+				/*
+				 * We now rely on the assumption that flex has placed a zero
+				 * byte after the text of the current token in scanbuf.
+				 */
+				locs[i].length = strlen(yyextra.scanbuf + loc);
+				break;			/* out of inner for-loop */
+			}
+		}
+
+		/* If we hit end-of-string, give up, leaving remaining lengths -1 */
+		if (tok == 0)
+			break;
+
+		last_loc = loc;
+	}
+
+	scanner_finish(yyscanner);
+}
+
+/*
+ * comp_location: comparator for qsorting LocationLen structs by location
+ */
+static int
+comp_location(const void *a, const void *b)
+{
+	int			l = ((const LocationLen *) a)->location;
+	int			r = ((const LocationLen *) b)->location;
+
+	if (l < r)
+		return -1;
+	else if (l > r)
+		return +1;
+	else
+		return 0;
+}
+
+/*
+ * hook of make_join_rel()
  *
  * call make_join_rel() after changing enable_* parameters according to given
  * hints.
  */
 static RelOptInfo *
-make_join_rel_wrapper(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
+pg_hint_plan_make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 {
 	Relids			joinrelids;
 	JoinMethodHint *hint;
 	RelOptInfo	   *rel;
 	int				save_nestlevel;
 
+	if (!current_hint_state) {
+		return prev_make_join_rel_hook ? prev_make_join_rel_hook(root, rel1, rel2) : make_join_relation(root, rel1, rel2);
+	}
+
 	joinrelids = bms_union(rel1->relids, rel2->relids);
 	hint = find_join_hint(joinrelids);
 	bms_free(joinrelids);
 
 	if (!hint)
-		return pg_hint_plan_make_join_rel(root, rel1, rel2);
+		return prev_make_join_rel_hook ? prev_make_join_rel_hook(root, rel1, rel2) : make_join_relation(root, rel1, rel2);
 
 	if (hint->inner_nrels == 0)
 	{
@@ -4505,7 +4743,7 @@ make_join_rel_wrapper(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 		set_join_config_options(hint->enforce_mask,
 								current_hint_state->context);
 
-		rel = pg_hint_plan_make_join_rel(root, rel1, rel2);
+		rel = prev_make_join_rel_hook ? prev_make_join_rel_hook(root, rel1, rel2) : make_join_relation(root, rel1, rel2);
 		hint->base.state = HINT_STATE_USED;
 
 		/*
@@ -4514,16 +4752,13 @@ make_join_rel_wrapper(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 		AtEOXact_GUC(true, save_nestlevel);
 	}
 	else
-		rel = pg_hint_plan_make_join_rel(root, rel1, rel2);
+		rel = prev_make_join_rel_hook ? prev_make_join_rel_hook(root, rel1, rel2) : make_join_relation(root, rel1, rel2);
 
 	return rel;
 }
 
-/*
- * TODO : comment
- */
 static void
-add_paths_to_joinrel_wrapper(PlannerInfo *root,
+pg_hint_plan_add_paths_to_joinrel(PlannerInfo *root,
 							 RelOptInfo *joinrel,
 							 RelOptInfo *outerrel,
 							 RelOptInfo *innerrel,
@@ -4534,6 +4769,18 @@ add_paths_to_joinrel_wrapper(PlannerInfo *root,
 	Relids			joinrelids;
 	JoinMethodHint *join_hint;
 	int				save_nestlevel;
+
+	// no hint 
+	if (!current_hint_state) {
+		if(prev_add_paths_to_joinrel_hook) {
+			prev_add_paths_to_joinrel_hook(root, joinrel, outerrel, innerrel, jointype,
+								 sjinfo, restrictlist);
+		} else {
+			add_paths_to_join_relation(root, joinrel, outerrel, innerrel, jointype,
+								 sjinfo, restrictlist);
+		}
+		return;
+	}
 
 	joinrelids = bms_union(outerrel->relids, innerrel->relids);
 	join_hint = find_join_hint(joinrelids);
@@ -4549,16 +4796,26 @@ add_paths_to_joinrel_wrapper(PlannerInfo *root,
 			set_join_config_options(join_hint->enforce_mask,
 									current_hint_state->context);
 
-			add_paths_to_joinrel(root, joinrel, outerrel, innerrel, jointype,
+			if(prev_add_paths_to_joinrel_hook) {
+				prev_add_paths_to_joinrel_hook(root, joinrel, outerrel, innerrel, jointype,
 								 sjinfo, restrictlist);
+			} else {
+				add_paths_to_join_relation(root, joinrel, outerrel, innerrel, jointype,
+								 sjinfo, restrictlist);
+			}
 			join_hint->base.state = HINT_STATE_USED;
 		}
 		else
 		{
 			set_join_config_options(DISABLE_ALL_JOIN,
 									current_hint_state->context);
-			add_paths_to_joinrel(root, joinrel, outerrel, innerrel, jointype,
+			if(prev_add_paths_to_joinrel_hook) {
+				prev_add_paths_to_joinrel_hook(root, joinrel, outerrel, innerrel, jointype,
 								 sjinfo, restrictlist);
+			} else {
+				add_paths_to_join_relation(root, joinrel, outerrel, innerrel, jointype,
+								 sjinfo, restrictlist);
+			}
 		}
 
 		/*
@@ -4566,9 +4823,15 @@ add_paths_to_joinrel_wrapper(PlannerInfo *root,
 		 */
 		AtEOXact_GUC(true, save_nestlevel);
 	}
-	else
-		add_paths_to_joinrel(root, joinrel, outerrel, innerrel, jointype,
-							 sjinfo, restrictlist);
+	else {
+		if(prev_add_paths_to_joinrel_hook) {
+			prev_add_paths_to_joinrel_hook(root, joinrel, outerrel, innerrel, jointype,
+							sjinfo, restrictlist);
+		} else {
+			add_paths_to_join_relation(root, joinrel, outerrel, innerrel, jointype,
+							sjinfo, restrictlist);
+		}
+	}
 }
 
 static int
@@ -4640,7 +4903,7 @@ pg_hint_plan_join_search(PlannerInfo *root, int levels_needed,
 											   root, nbaserel,
 											   initial_rels, join_method_hints);
 
-	rel = pg_hint_plan_standard_join_search(root, levels_needed, initial_rels);
+	rel = standard_join_search(root, levels_needed, initial_rels);
 
 	/*
 	 * Adjust number of parallel workers of the result rel to the largest
@@ -4691,6 +4954,32 @@ pg_hint_plan_join_search(PlannerInfo *root, int levels_needed,
 								current_hint_state->context);
 
 	return rel;
+}
+
+static void
+set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
+{
+	Relids		required_outer;
+
+	/*
+	 * We don't support pushing join clauses into the quals of a seqscan, but
+	 * it could still have required parameterization due to LATERAL refs in
+	 * its tlist.
+	 */
+	required_outer = rel->lateral_relids;
+
+	/* Consider sequential scan */
+	add_path(rel, create_seqscan_path(root, rel, required_outer, 0), root);
+
+	/* If appropriate, consider parallel sequential scan */
+	if (rel->consider_parallel && required_outer == NULL)
+		create_plain_partial_paths(root, rel);
+
+	/* Consider index scans */
+	create_index_paths(root, rel);
+
+	/* Consider TID scans */
+	create_tidscan_paths(root, rel);
 }
 
 /*
@@ -4886,57 +5175,6 @@ pg_hint_plan_set_rel_pathlist(PlannerInfo * root, RelOptInfo *rel,
 	reset_hint_enforcement();
 }
 
-/*
- * set_rel_pathlist
- *	  Build access paths for a base relation
- *
- * This function was copied and edited from set_rel_pathlist() in
- * src/backend/optimizer/path/allpaths.c in order not to copy other static
- * functions not required here.
- */
-static void
-set_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
-				 Index rti, RangeTblEntry *rte)
-{
-	if (IS_DUMMY_REL(rel))
-	{
-		/* We already proved the relation empty, so nothing more to do */
-	}
-	else if (rte->inh)
-	{
-		/* It's an "append relation", process accordingly */
-		set_append_rel_pathlist(root, rel, rti, rte);
-	}
-	else
-	{
-		if (rel->rtekind == RTE_RELATION)
-		{
-			if (rte->relkind == RELKIND_RELATION)
-			{
-				if(rte->tablesample != NULL)
-					elog(ERROR, "sampled relation is not supported");
-
-				/* Plain relation */
-				set_plain_rel_pathlist(root, rel, rte);
-			}
-			else
-				elog(ERROR, "unexpected relkind: %c", rte->relkind);
-		}
-		else
-			elog(ERROR, "unexpected rtekind: %d", (int) rel->rtekind);
-	}
-
-	/*
-	 * Allow a plugin to editorialize on the set of Paths for this base
-	 * relation.  It could add new paths (such as CustomPaths) by calling
-	 * add_path(), or delete or modify paths added by the core code.
-	 */
-	if (set_rel_pathlist_hook)
-		(*set_rel_pathlist_hook) (root, rel, rti, rte);
-
-	/* Now find the cheapest of the paths for this rel */
-	set_cheapest(rel);
-}
 
 /*
  * stmt_beg callback is called when each query in PL/pgSQL function is about
@@ -4994,20 +5232,7 @@ void plpgsql_query_erase_callback(ResourceReleasePhase phase,
 	}
 }
 
-#define standard_join_search pg_hint_plan_standard_join_search
-#define join_search_one_level pg_hint_plan_join_search_one_level
-#define make_join_rel make_join_rel_wrapper
-#include "core.c"
-
-#undef make_join_rel
-#define make_join_rel pg_hint_plan_make_join_rel
-#define add_paths_to_joinrel add_paths_to_joinrel_wrapper
-#include "make_join_rel.c"
-
-#include "pg_stat_statements.c"
-
-
-#ifdef USE_ORCA
+#ifdef DISABLE_ORCA_HOOK
 /*
  * This function hook allows external code (i.e. backend) to parse a query into
  * hint structures.

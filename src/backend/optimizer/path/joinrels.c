@@ -26,6 +26,8 @@
 #include "partitioning/partbounds.h"
 #include "utils/memutils.h"
 
+make_join_rel_hook_type make_join_rel_hook = NULL;
+
 static void make_rels_by_clause_joins(PlannerInfo *root,
 									  RelOptInfo *old_rel,
 									  List *other_rels_list,
@@ -693,7 +695,7 @@ join_is_legal(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2,
  * turned into joins.
  */
 RelOptInfo *
-make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
+make_join_relation(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 {
 	Relids		joinrelids;
 	SpecialJoinInfo *sjinfo;
@@ -784,6 +786,13 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 		make_grouped_join_rel(root, rel1, rel2, joinrel, sjinfo, restrictlist);
 
 	return joinrel;
+}
+
+RelOptInfo *
+make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
+{
+	return make_join_rel_hook != NULL ? make_join_rel_hook(root, rel1, rel2)
+		: make_join_relation(root, rel1, rel2);
 }
 
 /*

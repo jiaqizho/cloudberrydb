@@ -6,7 +6,6 @@
 
 MODULES = pg_hint_plan
 HINTPLANVER = 1.3.9
-
 REGRESS = init base_plan pg_hint_plan ut-init ut-A ut-S ut-J ut-L ut-G ut-R \
 	ut-fdw ut-W ut-T ut-fini plpgsql oldextversions
 REGRESS_OPTS = --encoding=UTF8
@@ -48,9 +47,6 @@ TARSOURCES = Makefile *.c  *.h COPYRIGHT* \
 	data/data.csv input/*.source output/*.source SPECS/*.spec
 
 rpms: rpm12
-
-# pg_hint_plan.c includes core.c and make_join_rel.c
-pg_hint_plan.o: core.c make_join_rel.c # pg_stat_statements.c
 
 $(STARBALLS): $(TARSOURCES)
 	if [ -h $(subst .tar.gz,,$@) ]; then rm $(subst .tar.gz,,$@); fi

@@ -97,7 +97,6 @@ static void set_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
 							 Index rti, RangeTblEntry *rte);
 static void set_plain_rel_size(PlannerInfo *root, RelOptInfo *rel,
 							   RangeTblEntry *rte);
-static void create_plain_partial_paths(PlannerInfo *root, RelOptInfo *rel);
 static void set_rel_consider_parallel(PlannerInfo *root, RelOptInfo *rel,
 									  RangeTblEntry *rte);
 static void set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
@@ -1081,7 +1080,7 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
  * create_plain_partial_paths
  *	  Build partial access paths for parallel scan of a plain relation
  */
-static void
+void
 create_plain_partial_paths(PlannerInfo *root, RelOptInfo *rel)
 {
 	int			parallel_workers;

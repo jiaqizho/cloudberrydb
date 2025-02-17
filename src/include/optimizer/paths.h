@@ -44,6 +44,16 @@ typedef void (*set_join_pathlist_hook_type) (PlannerInfo *root,
 											 JoinPathExtraData *extra);
 extern PGDLLIMPORT set_join_pathlist_hook_type set_join_pathlist_hook;
 
+/* Hook for plugins to replace make_join_rels() */
+typedef RelOptInfo *(*make_join_rel_hook_type) (PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2);
+extern PGDLLIMPORT make_join_rel_hook_type make_join_rel_hook;
+
+typedef void (*add_paths_to_joinrel_hook_type) (PlannerInfo *root, RelOptInfo *joinrel,
+								 RelOptInfo *outerrel, RelOptInfo *innerrel,
+								 JoinType jointype, SpecialJoinInfo *sjinfo,
+								 List *restrictlist);
+extern PGDLLIMPORT add_paths_to_joinrel_hook_type add_paths_to_joinrel_hook;
+
 /* Hook for plugins to replace standard_join_search() */
 typedef RelOptInfo *(*join_search_hook_type) (PlannerInfo *root,
 											  int levels_needed,
@@ -63,6 +73,7 @@ extern void generate_grouping_paths(PlannerInfo *root,
 									RelAggInfo *agg_info);
 extern void generate_useful_gather_paths(PlannerInfo *root, RelOptInfo *rel,
 										 bool override_rows);
+extern void create_plain_partial_paths(PlannerInfo *root, RelOptInfo *rel);
 extern int	compute_parallel_worker(PlannerInfo *root, RelOptInfo *rel, double heap_pages,
 									double index_pages, int max_workers);
 extern void create_partial_bitmap_paths(PlannerInfo *root, RelOptInfo *rel,
@@ -105,6 +116,10 @@ extern void add_paths_to_joinrel(PlannerInfo *root, RelOptInfo *joinrel,
 								 RelOptInfo *outerrel, RelOptInfo *innerrel,
 								 JoinType jointype, SpecialJoinInfo *sjinfo,
 								 List *restrictlist);
+extern void add_paths_to_join_relation(PlannerInfo *root, RelOptInfo *joinrel,
+								 RelOptInfo *outerrel, RelOptInfo *innerrel,
+								 JoinType jointype, SpecialJoinInfo *sjinfo,
+								 List *restrictlist);
 
 /*
  * joinrels.c
@@ -113,6 +128,8 @@ extern void add_paths_to_joinrel(PlannerInfo *root, RelOptInfo *joinrel,
 extern void join_search_one_level(PlannerInfo *root, int level);
 extern RelOptInfo *make_join_rel(PlannerInfo *root,
 								 RelOptInfo *rel1, RelOptInfo *rel2);
+extern RelOptInfo *make_join_relation(PlannerInfo *root, 
+										  RelOptInfo *rel1, RelOptInfo *rel2);
 extern bool have_join_order_restriction(PlannerInfo *root,
 										RelOptInfo *rel1, RelOptInfo *rel2);
 extern bool have_dangerous_phv(PlannerInfo *root,
