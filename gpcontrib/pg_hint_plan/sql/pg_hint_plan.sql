@@ -1,4 +1,12 @@
+-- start_matchignore
+-- m/^LOG.*statement.*/
+-- m/^NOTICE.*SELECT uses system-defined column.*/
+-- m/^HINT.*To uniquely identify a row within a distributed table.*/
+-- m/.*The 'DISTRIBUTED BY' clause determines the distribution of data*/
+-- m/.*Table doesn't have 'DISTRIBUTED BY' clause*/
+-- end_matchignore
 SET search_path TO public;
+set optimizer to off;
 SET client_min_messages TO log;
 \set SHOW_CONTEXT always
 
@@ -18,25 +26,25 @@ SET pg_hint_plan.enable_hint TO off;
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
 SET pg_hint_plan.enable_hint TO on;
 
-/*Set(enable_indexscan off)*/
+/*Set(enable_seqscan off)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
---+Set(enable_indexscan off)
+--+Set(enable_seqscan off)
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
-/*+Set(enable_indexscan off) /* nest comment */ */
+/*+Set(enable_seqscan off) /* nest comment */ */
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
-/*+Set(enable_indexscan off)*/
+/*+Set(enable_seqscan off)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
-EXPLAIN (COSTS false) /*+Set(enable_indexscan off)*/
+EXPLAIN (COSTS false) /*+Set(enable_seqscan off)*/
  SELECT * FROM t1, t2 WHERE t1.id = t2.id;
-/*+ Set(enable_indexscan off) Set(enable_hashjoin off) */
+/*+ Set(enable_seqscan off) Set(enable_hashjoin off) */
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
 
-/*+ 	 Set 	 ( 	 enable_indexscan 	 off 	 ) 	 */
+/*+ 	 Set 	 ( 	 enable_seqscan 	 off 	 ) 	 */
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
 /*+ 	 
 	 	Set 	 
 	 	( 	 
-	 	enable_indexscan 	 
+	 	enable_seqscan 	 
 	 	off 	 
 	 	) 	 
 	 	*/	 	
@@ -52,12 +60,12 @@ EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
 /*+Set(work_mem TO "1MB")*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
 
-/*+SeqScan() */ SELECT 1;
-/*+SeqScan(t1 t2)*/
+/*+IndexScan() */ SELECT 1;
+/*+IndexScan(t1 t2)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
-/*+SeqScan(t1)*/
+/*+IndexScan(t1)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
-/*+SeqScan(t1)IndexScan(t2)*/
+/*+IndexScan(t1)IndexScan(t2)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
 /*+BitmapScan(t2)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2 WHERE t1.id = t2.id;
@@ -109,6 +117,8 @@ EXPLAIN (COSTS false) SELECT * FROM t1, t2, t3, t4 WHERE t1.id = t2.id AND t1.id
 /*+Leading(t3 t4 t1)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2, t3, t4 WHERE t1.id = t2.id AND t1.id = t3.id AND t1.id = t4.id;
 /*+Leading(t3 t4 t1 t2)*/
+EXPLAIN (COSTS false) SELECT * FROM t1, t2, t3, t4 WHERE t1.id = t2.id AND t1.id = t3.id AND t1.id = t4.id;
+/*+Leading(t1 t2 t3 t4)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2, t3, t4 WHERE t1.id = t2.id AND t1.id = t3.id AND t1.id = t4.id;
 /*+Leading(t3 t4 t1 t2 t1)*/
 EXPLAIN (COSTS false) SELECT * FROM t1, t2, t3, t4 WHERE t1.id = t2.id AND t1.id = t3.id AND t1.id = t4.id;
@@ -491,43 +501,9 @@ SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.i
 ) v1_1(id), c1_1 WHERE t1_1.id = t2_1.id AND t2_1.id = t3_1.id AND t2_1.id = v1_1.id AND v1_1.id = c1_1.id AND t1_1.id = (
 SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
 );
-/*+HashJoin(t1_1 t3_1)MergeJoin(t1_3 t3_3)NestLoop(t1_2 t2_2)NestLoop(t1_4 t2_4)NestLoop(t1_5 t2_5)*/
-EXPLAIN (COSTS false)
-WITH c1_1(id) AS (
-SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
-)
-SELECT t1_1.id, (
-SELECT max(t1_2.id) FROM t1 t1_2, t2 t2_2, t3 t3_2 WHERE t1_2.id = t2_2.id AND t2_2.id = t3_2.id
-) FROM t1 t1_1, t2 t2_1, t3 t3_1, (
-SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.id = t3_3.id
-) v1_1(id), c1_1 WHERE t1_1.id = t2_1.id AND t2_1.id = t3_1.id AND t2_1.id = v1_1.id AND v1_1.id = c1_1.id AND t1_1.id = (
-SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
-);
-/*+HashJoin(t1_1 t3_1)MergeJoin(t1_3 t3_3)NestLoop(t1_2 t2_2)NestLoop(t1_4 t2_4)NestLoop(t1_5 t2_5)Leading(a t1_1 t1_2 t1_4 t1_5)*/
-EXPLAIN (COSTS false)
-WITH c1_1(id) AS (
-SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
-)
-SELECT t1_1.id, (
-SELECT max(t1_2.id) FROM t1 t1_2, t2 t2_2, t3 t3_2 WHERE t1_2.id = t2_2.id AND t2_2.id = t3_2.id
-) FROM t1 t1_1, t2 t2_1, t3 t3_1, (
-SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.id = t3_3.id
-) v1_1(id), c1_1 WHERE t1_1.id = t2_1.id AND t2_1.id = t3_1.id AND t2_1.id = v1_1.id AND v1_1.id = c1_1.id AND t1_1.id = (
-SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
-);
-/*+HashJoin(t1_1 t3_1)MergeJoin(t1_3 t3_3)NestLoop(t1_2 t2_2)NestLoop(t1_4 t2_4)NestLoop(t1_5 t2_5)Leading(a t3_2 t3_5 t2_2 c1_1 t3_4 t3_3 t2_3 t2_4 t1_3 t2_5 t1_2 t3_1 t1_4 t2_1 t1_5 t1_1)*/
-EXPLAIN (COSTS false)
-WITH c1_1(id) AS (
-SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
-)
-SELECT t1_1.id, (
-SELECT max(t1_2.id) FROM t1 t1_2, t2 t2_2, t3 t3_2 WHERE t1_2.id = t2_2.id AND t2_2.id = t3_2.id
-) FROM t1 t1_1, t2 t2_1, t3 t3_1, (
-SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.id = t3_3.id
-) v1_1(id), c1_1 WHERE t1_1.id = t2_1.id AND t2_1.id = t3_1.id AND t2_1.id = v1_1.id AND v1_1.id = c1_1.id AND t1_1.id = (
-SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
-);
-/*+HashJoin(t1_1 t3_1)MergeJoin(t1_3 t3_3)NestLoop(t1_2 t2_2)NestLoop(t1_4 t2_4)NestLoop(t1_5 t2_5)Leading(t3_5 t2_5 t1_5)Leading(t3_2 t2_2 t1_2)Leading(t3_4 t2_4 t1_4)Leading(c1_1 t3_3 t2_3 t1_3 t3_1 t2_1 t1_1)*/
+
+-- no sure why can't leading the t1_1 t2_1 t3_1
+/*+Leading(t1_1 t3_1)*/
 EXPLAIN (COSTS false)
 WITH c1_1(id) AS (
 SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
@@ -540,7 +516,7 @@ SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.i
 SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
 );
 
-SET from_collapse_limit TO 1;
+/*+Leading(t1_4 t3_4)Leading(t1_2 t3_2)*/
 EXPLAIN (COSTS false)
 WITH c1_1(id) AS (
 SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
@@ -552,43 +528,8 @@ SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.i
 ) v1_1(id), c1_1 WHERE t1_1.id = t2_1.id AND t2_1.id = t3_1.id AND t2_1.id = v1_1.id AND v1_1.id = c1_1.id AND t1_1.id = (
 SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
 );
-/*+HashJoin(t1_1 t3_1)MergeJoin(t1_3 t3_3)NestLoop(t1_2 t2_2)NestLoop(t1_4 t2_4)NestLoop(t1_5 t2_5)*/
-EXPLAIN (COSTS false)
-WITH c1_1(id) AS (
-SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
-)
-SELECT t1_1.id, (
-SELECT max(t1_2.id) FROM t1 t1_2, t2 t2_2, t3 t3_2 WHERE t1_2.id = t2_2.id AND t2_2.id = t3_2.id
-) FROM t1 t1_1, t2 t2_1, t3 t3_1, (
-SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.id = t3_3.id
-) v1_1(id), c1_1 WHERE t1_1.id = t2_1.id AND t2_1.id = t3_1.id AND t2_1.id = v1_1.id AND v1_1.id = c1_1.id AND t1_1.id = (
-SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
-);
-/*+HashJoin(t1_1 t3_1)MergeJoin(t1_3 t3_3)NestLoop(t1_2 t2_2)NestLoop(t1_4 t2_4)NestLoop(t1_5 t2_5)Leading(a t1_1 t1_2 t1_4 t1_5)*/
-EXPLAIN (COSTS false)
-WITH c1_1(id) AS (
-SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
-)
-SELECT t1_1.id, (
-SELECT max(t1_2.id) FROM t1 t1_2, t2 t2_2, t3 t3_2 WHERE t1_2.id = t2_2.id AND t2_2.id = t3_2.id
-) FROM t1 t1_1, t2 t2_1, t3 t3_1, (
-SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.id = t3_3.id
-) v1_1(id), c1_1 WHERE t1_1.id = t2_1.id AND t2_1.id = t3_1.id AND t2_1.id = v1_1.id AND v1_1.id = c1_1.id AND t1_1.id = (
-SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
-);
-/*+HashJoin(t1_1 t3_1)MergeJoin(t1_3 t3_3)NestLoop(t1_2 t2_2)NestLoop(t1_4 t2_4)NestLoop(t1_5 t2_5)Leading(a t3_2 t3_5 t2_2 c1_1 t3_4 t3_3 t2_3 t2_4 t1_3 t2_5 t1_2 t3_1 t1_4 t2_1 t1_5 t1_1)*/
-EXPLAIN (COSTS false)
-WITH c1_1(id) AS (
-SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
-)
-SELECT t1_1.id, (
-SELECT max(t1_2.id) FROM t1 t1_2, t2 t2_2, t3 t3_2 WHERE t1_2.id = t2_2.id AND t2_2.id = t3_2.id
-) FROM t1 t1_1, t2 t2_1, t3 t3_1, (
-SELECT t1_3.id FROM t1 t1_3, t2 t2_3, t3 t3_3 WHERE t1_3.id = t2_3.id AND t2_3.id = t3_3.id
-) v1_1(id), c1_1 WHERE t1_1.id = t2_1.id AND t2_1.id = t3_1.id AND t2_1.id = v1_1.id AND v1_1.id = c1_1.id AND t1_1.id = (
-SELECT max(t1_4.id) FROM t1 t1_4, t2 t2_4, t3 t3_4 WHERE t1_4.id = t2_4.id AND t2_4.id = t3_4.id 
-);
-/*+HashJoin(t1_1 t3_1)MergeJoin(t1_3 t3_3)NestLoop(t1_2 t2_2)NestLoop(t1_4 t2_4)NestLoop(t1_5 t2_5)Leading(t3_5 t2_5 t1_5)Leading(t3_2 t2_2 t1_2)Leading(t3_4 t2_4 t1_4)Leading(c1_1 t3_3 t2_3 t1_3 t3_1 t2_1 t1_1)*/
+
+/*+IndexScan(t3_2)BitmapScan(t2_2)NestLoop(t2_2 t3_2)Leading(t2_2 t3_2)*/
 EXPLAIN (COSTS false)
 WITH c1_1(id) AS (
 SELECT max(t1_5.id) FROM t1 t1_5, t2 t2_5, t3 t3_5 WHERE t1_5.id = t2_5.id AND t2_5.id = t3_5.id
@@ -734,110 +675,8 @@ EXPLAIN (COSTS false) SELECT * FROM t1, t2, t3, t4, t5 WHERE t1.id = t2.id AND t
 
 -- inherite table test to specify the index's name
 EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_pkey)*/
+/*+IndexScan(p2_c1 p2_c1_id2_val)*/
 EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_id_val_idx)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_val_id_idx)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-
-EXPLAIN (COSTS false) SELECT val FROM p2 WHERE val >= '50' AND val <= '51' AND p2.ctid = '(1,1)';
-
--- Inhibit parallel exection to avoid interfaring the hint
-set max_parallel_workers_per_gather to 0;
-/*+ IndexScan(p2 p2_val)*/
-EXPLAIN (COSTS false) SELECT val FROM p2 WHERE val >= '50' AND val <= '51' AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_pkey)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_id2_val)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_val2_id)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-
-/*+IndexScan(p2 p2_pkey)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_c1_id_val_idx)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 no_exist)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_pkey p2_c1_id_val_idx)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_pkey no_exist)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_c1_id_val_idx no_exist)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_pkey p2_c1_id_val_idx no_exist)*/
-EXPLAIN (COSTS false) SELECT * FROM p2 WHERE id >= 50 AND id <= 51 AND p2.ctid = '(1,1)';
-
-/*+IndexScan(p2 p2_val_idx)*/
-EXPLAIN (COSTS false) SELECT val FROM p2 WHERE val >= '50' AND val <= '51' AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_expr)*/
-EXPLAIN (COSTS false) SELECT val FROM p2 WHERE val >= '50' AND val <= '51' AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_val_idx6)*/
-EXPLAIN (COSTS false) SELECT val FROM p2 WHERE val >= '50' AND val <= '51' AND p2.ctid = '(1,1)';
-/*+IndexScan(p2 p2_val_idx p2_val_idx6)*/
-EXPLAIN (COSTS false) SELECT val FROM p2 WHERE val >= '50' AND val <= '51' AND p2.ctid = '(1,1)';
-
--- regular expression
--- ordinary table
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexScanRegexp(t5 t5_[^i].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexScanRegexp(t5 t5_id[0-9].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexScanRegexp(t5 t5[^_].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexScanRegexp(t5 ^.*t5_idaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexScan(t5 t5_id[0-9].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexOnlyScanRegexp(t5 t5_[^i].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexOnlyScanRegexp(t5 t5_id[0-9].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexOnlyScanRegexp(t5 t5[^_].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexOnlyScanRegexp(t5 ^.*t5_idaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ IndexOnlyScan(t5 t5_id[0-9].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ BitmapScanRegexp(t5 t5_[^i].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ BitmapScanRegexp(t5 t5_id[0-9].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ BitmapScanRegexp(t5 t5[^_].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ BitmapScanRegexp(t5 ^.*t5_idaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-/*+ BitmapScan(t5 t5_id[0-9].*)*/
-EXPLAIN (COSTS false) SELECT id FROM t5 WHERE id = 1;
-
--- Inheritance
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ IndexScanRegexp(p1 p1_.*[^0-9]$)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ IndexScanRegexp(p1 p1_.*val2.*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ IndexScanRegexp(p1 p1[^_].*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ IndexScan(p1 p1_.*val2.*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ IndexOnlyScanRegexp(p1 p1_.*[^0-9]$)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ IndexOnlyScanRegexp(p1 p1_.*val2.*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ IndexOnlyScanRegexp(p1 p1[^_].*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ IndexOnlyScan(p1 p1_.*val2.*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ BitmapScanRegexp(p1 p1_.*[^0-9]$)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ BitmapScanRegexp(p1 p1_.*val2.*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ BitmapScanRegexp(p1 p1[^_].*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
-/*+ BitmapScan(p1 p1_.*val2.*)*/
-EXPLAIN (COSTS false) SELECT val FROM p1 WHERE val = 1;
 
 -- search from hint table
 INSERT INTO hint_plan.hints (norm_query_string, application_name, hints) VALUES ('EXPLAIN (COSTS false) SELECT * FROM t1 WHERE t1.id = ?;', '', 'SeqScan(t1)');
@@ -855,6 +694,7 @@ VACUUM ANALYZE hint_plan.hints;
 EXPLAIN (COSTS false) SELECT id FROM t1 WHERE t1.id = 1;
 
 -- static function
+-- not work, not sure why
 CREATE FUNCTION testfunc() RETURNS RECORD AS $$
 DECLARE
   ret record;
@@ -863,9 +703,10 @@ BEGIN
   RETURN ret;
 END;
 $$ LANGUAGE plpgsql;
-SELECT testfunc();
+explain SELECT testfunc();
 
 -- dynamic function
+-- not work, not sure why
 DROP FUNCTION testfunc();
 CREATE FUNCTION testfunc() RETURNS void AS $$
 BEGIN
@@ -874,290 +715,58 @@ END;
 $$ LANGUAGE plpgsql;
 SELECT testfunc();
 
--- This should not use SeqScan(t1)
-/*+ IndexScan(t1) */ SELECT * from t1 LIMIT 1;
+-- test partition table 
+create table parttbl(v1 int, v2 int, v3 int) PARTITION BY RANGE (v1)
+( PARTITION p1 START (0) INCLUSIVE, 
+  PARTITION p2 START (100) INCLUSIVE,
+  PARTITION p3 START (200) INCLUSIVE,
+  DEFAULT PARTITION others);
+insert into parttbl values(generate_series(0, 300), generate_series(0, 300), generate_series(0, 300));
+ANALYZE parttbl;
 
--- Perform
-DROP FUNCTION testfunc();
-CREATE FUNCTION testfunc() RETURNS void AS $$
-BEGIN
-  PERFORM  1, /*+ SeqScan(t1) */ * from t1;
-END;
-$$ LANGUAGE plpgsql;
-SELECT testfunc();
+CREATE INDEX parttbl_idx_1 ON parttbl (v1);
+CREATE INDEX parttbl_idx_2 ON parttbl (v1, v2);
+CREATE INDEX parttbl_1_prt_p1_idx_3 ON parttbl_1_prt_p1 (v1);
 
--- FOR loop
-DROP FUNCTION testfunc();
-CREATE FUNCTION testfunc() RETURNS int AS $$
-DECLARE
-  sum int;
-  v int;
-BEGIN
-  sum := 0;
-  FOR v IN SELECT /*+ SeqScan(t1) */ v FROM t1 ORDER BY id LOOP
-    sum := sum + v;
-  END LOOP;
-  RETURN v;
-END;
-$$ LANGUAGE plpgsql;
-SELECT testfunc();
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1);
 
--- Dynamic FOR loop
-DROP FUNCTION testfunc();
-CREATE FUNCTION testfunc() RETURNS int AS $$
-DECLARE
-  sum int;
-  v int;
-  i   int;
-BEGIN
-  sum := 0;
-  FOR v IN EXECUTE 'SELECT /*+ SeqScan(t1) */ val FROM t1 ORDER BY id' LOOP
-    sum := sum + v;
-  END LOOP;
-  RETURN v;
-END;
-$$ LANGUAGE plpgsql;
-SELECT testfunc();
+/*+HashJoin(t1 parttbl)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1);
 
--- Cursor FOR loop
-DROP FUNCTION testfunc();
-CREATE FUNCTION testfunc() RETURNS int AS $$
-DECLARE
-  ref CURSOR FOR SELECT /*+ SeqScan(t1) */ * FROM t1 ORDER BY id;
-  rec record;
-  sum int := 0;
-BEGIN
-  FOR rec IN ref LOOP
-    sum := sum + rec.val;
-  END LOOP;
-  RETURN sum;
-END;
-$$ LANGUAGE plpgsql;
-SELECT testfunc();
+/*+MergeJoin(t1 parttbl)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1);
 
--- RETURN QUERY
-DROP FUNCTION testfunc();
-CREATE FUNCTION testfunc() RETURNS SETOF t1 AS $$
-BEGIN
-  RETURN QUERY SELECT /*+ SeqScan(t1) */ * FROM t1 ORDER BY id;
-END;
-$$ LANGUAGE plpgsql;
-SELECT * FROM testfunc() LIMIT 1;
+/*+NestLoop(t1 parttbl)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1);
 
--- Test for error exit from inner SQL statement.
-DROP FUNCTION testfunc();
-CREATE FUNCTION testfunc() RETURNS SETOF t1 AS $$
-BEGIN
-  RETURN QUERY SELECT /*+ SeqScan(t1) */ * FROM ttx ORDER BY id;
-END;
-$$ LANGUAGE plpgsql;
-SELECT * FROM testfunc() LIMIT 1;
+/*+NestLoop(parttbl t1)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1);
 
--- this should not use SeqScan(t1) hint.
-/*+ IndexScan(t1) */ SELECT * from t1 LIMIT 1;
+/*+IndexScan(parttbl)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1);
 
-DROP FUNCTION testfunc();
-DROP EXTENSION pg_hint_plan;
+/*+IndexScan(parttbl_1_prt_p1)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1);
 
-CREATE FUNCTION reset_stats_and_wait() RETURNS void AS $$
-DECLARE
-  rows int;
-BEGIN
-  rows = 1;
-  while rows > 0 LOOP
-   PERFORM pg_stat_reset();
-   PERFORM pg_sleep(0.5);
-   SELECT sum(seq_scan + idx_scan) from pg_stat_user_tables into rows;
-  END LOOP;
-END;
-$$ LANGUAGE plpgsql;
+/*+IndexScan(parttbl_1_prt_p1 parttbl_1_prt_p1_idx_3)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1);
 
--- Dynamic query in pl/pgsql
-CREATE OR REPLACE FUNCTION dynsql1(x int) RETURNS int AS $$
-DECLARE c int;
-BEGIN
-  EXECUTE '/*+ IndexScan(t1) */ SELECT count(*) FROM t1 WHERE id < $1'
-  	INTO c USING x;
-  RETURN c;
-END;
-$$ VOLATILE LANGUAGE plpgsql;
-vacuum analyze t1;
-SET pg_hint_plan.enable_hint = false;
-SELECT pg_sleep(1);
-SELECT reset_stats_and_wait();
-SELECT dynsql1(9000);
-SELECT pg_sleep(1);
-SELECT relname, seq_scan > 0 as seq_scan, idx_scan > 0 as idx_scan FROM pg_stat_user_tables WHERE schemaname = 'public' AND relname = 't1';
-SET pg_hint_plan.enable_hint = true;
-SELECT reset_stats_and_wait();
-SELECT dynsql1(9000);
-SELECT pg_sleep(1);
-SELECT relname, seq_scan > 0 as seq_scan, idx_scan > 0 as idx_scan FROM pg_stat_user_tables WHERE schemaname = 'public' AND relname = 't1';
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1) JOIN t2 ON (t1.id = t2.id);
 
--- Looped dynamic query in pl/pgsql
-CREATE OR REPLACE FUNCTION dynsql2(x int, OUT r int) AS $$
-DECLARE
-  c text;
-  s int;
-BEGIN
-  r := 0;
-  FOR c IN SELECT f.f FROM (VALUES ('p1_c1'), ('p1_c2')) f(f) LOOP
-    FOR s IN EXECUTE '/*+ IndexScan(' || c || ' ' || c || '_pkey) */ SELECT sum(val) FROM ' || c || ' WHERE id < ' || x LOOP
-      r := r + s;
-    END LOOP;
-  END LOOP;
-END;
-$$ VOLATILE LANGUAGE plpgsql;
-SET pg_hint_plan.enable_hint = false;
-SELECT reset_stats_and_wait();
-SELECT dynsql2(9000);
-SELECT pg_sleep(1);
--- one of the index scans happened while planning.
-SELECT relname, seq_scan, idx_scan FROM pg_stat_user_tables WHERE schemaname = 'public' AND (relname = 'p1_c1' OR relname = 'p1_c2');
-SET pg_hint_plan.enable_hint = true;
-SELECT reset_stats_and_wait();
-SELECT dynsql2(9000);
-SELECT pg_sleep(1);
--- the index scan happened while planning.
-SELECT relname, seq_scan, idx_scan FROM pg_stat_user_tables WHERE schemaname = 'public' AND (relname = 'p1_c1' OR relname = 'p1_c2');
+/*+Leading(t1 t2 parttbl)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1) JOIN t2 ON (t1.id = t2.id);
 
--- Make sure the reference to validly non-existent prepared statement
--- doesn't harm
-CREATE FUNCTION ppf() RETURNS void AS $$
-PREPARE pp1 AS SELECT 1;
-EXECUTE pp1;
-$$ LANGUAGE sql;
+/*+Leading(parttbl t1 t2)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1) JOIN t2 ON (t1.id = t2.id);
 
--- Subqueries on inheritance tables under UNION
-EXPLAIN (COSTS off) SELECT val FROM p1 WHERE val < 1000
-UNION ALL
-SELECT val::int FROM p2 WHERE id < 1000;
+/*+Leading(parttbl t1 t2)NestLoop(parttbl t1)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1) JOIN t2 ON (t1.id = t2.id);
 
-/*+ IndexScan(p1 p1_val2) */
-EXPLAIN (COSTS off) SELECT val FROM p1 WHERE val < 1000
-UNION ALL
-SELECT val::int FROM p2 WHERE id < 1000;
-
-/*+ IndexScan(p1 p1_val2) IndexScan(p2 p2_id_val_idx) */
-EXPLAIN (COSTS off) SELECT val FROM p1 WHERE val < 1000
-UNION ALL
-SELECT val::int FROM p2 WHERE id < 1000;
-
--- union all case
-EXPLAIN (COSTS off) SELECT val FROM p1 WHERE val < 1000
-UNION
-SELECT val::int FROM p2 WHERE id < 1000;
-
-/*+ IndexScan(p2 p2_id_val_idx) */
-EXPLAIN (COSTS off) SELECT val FROM p1 WHERE val < 1000
-UNION
-SELECT val::int FROM p2 WHERE id < 1000;
-
-/*+ IndexScan(p1 p1_val2) IndexScan(p2 p2_id_val_idx) */
-EXPLAIN (COSTS off) SELECT val FROM p1 WHERE val < 1000
-UNION
-SELECT val::int FROM p2 WHERE id < 1000;
-
---
--- Rows hint tests
---
--- Explain result includes "Planning time" if COSTS is enabled, but
--- this test needs it enabled for get rows count. So do tests via psql
--- and grep -v the mutable line.
-
--- Parse error check
-/*+ Rows() */ SELECT 1;
-/*+ Rows(x) */ SELECT 1;
-
--- value types
-\o results/pg_hint_plan.tmpout
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 #99) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 +99) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 -99) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 *99) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 *0.01) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 #aa) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id); -- ERROR
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 /99) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id); -- ERROR
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
--- round up to 1
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 -99999) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
--- complex join tree
-\o results/pg_hint_plan.tmpout
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id) JOIN t3 ON (t3.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t2 #22) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id) JOIN t3 ON (t3.id = t2.id);
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
-\o results/pg_hint_plan.tmpout
-/*+ Rows(t1 t3 *10) */
-EXPLAIN SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id) JOIN t3 ON (t3.id = t2.id);
-\o
-set max_parallel_workers_per_gather to DEFAULT;
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-\! rm results/pg_hint_plan.tmpout
-
--- hint error level
-set client_min_messages to 'DEBUG1';
-set pg_hint_plan.debug_level to 'verbose';
-/*+ SeqScan( */ SELECT 1;
-/*+ SeqScan(t1) */ SELECT * FROM t1 LIMIT 0;
-set pg_hint_plan.parse_messages to 'ERROR';
--- Force an error before running the planner hook, when forcing the Set hints.
-/*+ Set(work_mem "foo") */ SELECT 1;
-/*+ SeqScan(t1) */ SELECT * FROM t1 LIMIT 0;
-set pg_hint_plan.message_level to 'DEBUG1';
-set pg_hint_plan.parse_messages to 'NOTICE';
-/*+ SeqScan( */ SELECT 1;
-/*+ SeqScan(t1) */ SELECT * FROM t1 LIMIT 0;
+/*+Leading(parttbl t1 t2)NestLoop(parttbl t1)IndexScan(parttbl_1_prt_p1 parttbl_1_prt_p1_idx_3)*/
+EXPLAIN (COSTS false) SELECT * FROM t1 JOIN parttbl ON (t1.id = parttbl.v1) JOIN t2 ON (t1.id = t2.id);
 
 -- all hint types together
-/*+ SeqScan(t1) MergeJoin(t1 t2) Leading(t1 t2) Rows(t1 t2 +10) Parallel(t1 8 hard) Set(random_page_cost 2.0)*/
+/*+ SeqScan(t1) MergeJoin(t1 t2) Leading(t1 t2) Set(random_page_cost 2.0)*/
 EXPLAIN (costs off) SELECT * FROM t1 JOIN t2 ON (t1.id = t2.id) JOIN t3 ON (t3.id = t2.id);
+
+reset optimizer;

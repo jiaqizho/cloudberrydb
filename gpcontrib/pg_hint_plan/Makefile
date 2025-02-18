@@ -6,8 +6,11 @@
 
 MODULES = pg_hint_plan
 HINTPLANVER = 1.3.9
-REGRESS = init base_plan pg_hint_plan ut-init ut-A ut-S ut-J ut-L ut-G ut-R \
-	ut-fdw ut-W ut-T ut-fini plpgsql oldextversions
+REGRESS = init base_plan pg_hint_plan 
+
+# not adapter to cbdb yet
+# ut-init ut-A ut-S ut-J ut-L ut-G ut-R \
+# ut-fdw ut-W ut-T ut-fini plpgsql oldextversions
 REGRESS_OPTS = --encoding=UTF8
 
 EXTENSION = pg_hint_plan

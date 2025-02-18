@@ -1,5 +1,5 @@
 SET search_path TO public;
-
+set optimizer to off;
 CREATE EXTENSION pg_hint_plan;
 CREATE SCHEMA s0;
 
@@ -19,7 +19,6 @@ CREATE TABLE p1_c3_c1 (LIKE p1 INCLUDING ALL, CHECK (id > 200 AND id <= 250)) IN
 CREATE TABLE p1_c3_c2 (LIKE p1 INCLUDING ALL, CHECK (id > 250 AND id <= 300)) INHERITS(p1_c3);
 CREATE TABLE p2 (id int PRIMARY KEY, val text);
 CREATE INDEX p2_id_val_idx ON p2 (id, val);
-CREATE UNIQUE INDEX p2_val_idx ON p2 (val);
 CREATE INDEX p2_ununi_id_val_idx ON p2 (val);
 CREATE INDEX p2_val_idx_1 ON p2 USING hash (val);
 CREATE INDEX p2_val_id_idx ON p2 (val, id);
@@ -133,3 +132,4 @@ SELECT name, setting, category
 SELECT * FROM settings;
 
 ANALYZE;
+reset optimizer;
