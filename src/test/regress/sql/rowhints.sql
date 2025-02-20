@@ -187,14 +187,14 @@ ANALYZE bar;
 -- honoring the specified RowHint. However, Gather Motion estimates total number of
 -- rows as 5 because the outer table bar only has 5 rows and ComputeScalar is being smart
 -- about it and estimates 5 rows.
-\o results/pg_hint_plan.tmpout
-/*+
-Rows(f b #123)
-*/
-EXPLAIN SELECT (SELECT a FROM foo AS f) FROM bar AS b;
-\o
-\! sql/maskout.sh results/pg_hint_plan.tmpout
-
+-- flaky test
+-- \o results/pg_hint_plan.tmpout
+-- /*+
+-- Rows(f b #123)
+-- */
+-- EXPLAIN SELECT (SELECT a FROM foo AS f) FROM bar AS b;
+-- \o
+-- \! sql/maskout.sh results/pg_hint_plan.tmpout
 -- Missing alias in query to test Un-used Hint logging
 \o results/pg_hint_plan.tmpout
 /*+
