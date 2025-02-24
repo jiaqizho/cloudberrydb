@@ -34,7 +34,7 @@ class VecAdapter final {
     void SetMemoryTakeOver(bool take);
   };
 
-  VecAdapter(TupleDesc tuple_desc, size_t /* max_batch_size */, bool build_ctid);
+  VecAdapter(TupleDesc tuple_desc, bool build_ctid);
 
   ~VecAdapter();
 
