@@ -32,22 +32,10 @@ int main() {
   printf("-- create pg_ext_aux.pg_pax_tables\n");
   printf(
       "CREATE TABLE pg_ext_aux.pg_pax_tables(relid oid not null, auxrelid oid "
-      "not null, partitionspec pg_node_tree);\n");
+      "not null);\n");
   printf(
       "DELETE FROM gp_distribution_policy WHERE "
       "localoid='pg_ext_aux.pg_pax_tables'::regclass;\n");
-
-  printf("\n-- update toast name to consistent with new relation oid\n");
-  printf(
-      "UPDATE pg_class SET relname = 'pg_toast_%u' WHERE oid = (SELECT "
-      "reltoastrelid FROM pg_class WHERE "
-      "oid='pg_ext_aux.pg_pax_tables'::regclass);\n",
-      PAX_TABLES_RELATION_ID);
-  printf(
-      "UPDATE pg_class SET relname = 'pg_toast_%u_index' WHERE oid = (SELECT "
-      "indexrelid FROM pg_index idx, pg_class c WHERE idx.indrelid = "
-      "c.reltoastrelid AND c.oid = 'pg_ext_aux.pg_pax_tables'::regclass);\n",
-      PAX_TABLES_RELATION_ID);
 
   printf("\n-- update pg_depend\n");
   printf(

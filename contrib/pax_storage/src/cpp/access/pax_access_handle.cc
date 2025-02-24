@@ -3,12 +3,10 @@
 #include "comm/cbdb_api.h"
 
 #include "access/pax_dml_state.h"
-#include "access/pax_partition.h"
 #include "access/pax_scanner.h"
 #include "access/pax_table_cluster.h"
 #include "access/pax_updater.h"
 #include "access/paxc_rel_options.h"
-#include "access/paxc_scanner.h"
 #include "clustering/zorder_utils.h"
 #include "catalog/pax_catalog.h"
 #include "comm/guc.h"
@@ -1061,38 +1059,6 @@ static void PaxCheckClusterColumns(Relation rel, const char *cluster_columns) {
   bms_free(bms);
 }
 
-static void PaxCheckParitionOptions(Relation rel, const char *partition_by,
-                                    const char *partition_ranges) {
-#if !defined(USE_MANIFEST_API) || defined(USE_PAX_CATALOG)
-  if (!partition_by) {
-    if (partition_ranges) {
-      elog(ERROR, "set '%s', but partition_by not specified", partition_ranges);
-    }
-    return;
-  }
-
-  auto pby = paxc_raw_parse(partition_by);
-  auto pkey = paxc::PaxRelationBuildPartitionKey(rel, pby);
-  if (pkey->partnatts > 1) elog(ERROR, "pax only support 1 partition key now");
-
-  auto part = lappend(NIL, pby);
-  if (partition_ranges) {
-    List *ranges;
-
-    ranges = paxc_parse_partition_ranges(partition_ranges);
-    ranges = paxc::PaxValidatePartitionRanges(rel, pkey, ranges);
-    part = lappend(part, ranges);
-  }
-  // Currently, partition_ranges must be set to partition pax tables.
-  // We hope this option be removed and automatically partition data set.
-  else
-    elog(ERROR, "partition_ranges must be set for partition_by='%s'",
-         partition_by);
-
-  paxc::PaxInitializePartitionSpec(rel, reinterpret_cast<Node *>(part));
-#endif
-}
-
 static void PaxCheckNumericOption(Relation rel, char *storage_format) {
   auto relnatts = RelationGetNumberOfAttributes(rel);
   auto tupdesc = RelationGetDescr(rel);
@@ -1165,8 +1131,6 @@ static void PaxObjectAccessHook(ObjectAccessType access, Oid class_id,
       options = reinterpret_cast<paxc::PaxOptions *>(rel->rd_options);
       if (options == NULL) goto out;
 
-      PaxCheckParitionOptions(rel, options->partition_by(),
-                              options->partition_ranges());
       PaxCheckMinMaxColumns(rel, options->minmax_columns());
       PaxCheckBloomFilterColumns(rel, options->bloomfilter_columns());
       PaxCheckClusterColumns(rel, options->cluster_columns());
