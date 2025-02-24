@@ -72,7 +72,7 @@ void PaxFragmentInterface::InitAdapter() {
   if (adapter_)
     adapter_->Reset();
   else
-    adapter_ = std::make_shared<VecAdapter>(RelationGetDescr(relation_), 0,
+    adapter_ = std::make_shared<VecAdapter>(RelationGetDescr(relation_),
                                             scan_desc_->ShouldBuildCtid());
 }
 
