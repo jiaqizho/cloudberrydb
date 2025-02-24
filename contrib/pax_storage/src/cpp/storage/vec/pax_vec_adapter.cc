@@ -384,7 +384,7 @@ AppendArrowArray(arrow::ArrayVector &array_vector,
   array_vector.emplace_back(array);
 }
 
-VecAdapter::VecAdapter(TupleDesc tuple_desc, size_t /* max_batch_size */, bool build_ctid)
+VecAdapter::VecAdapter(TupleDesc tuple_desc, bool build_ctid)
     : rel_tuple_desc_(tuple_desc),
       cached_batch_lens_(0),
       vec_cache_buffer_(nullptr),
@@ -427,8 +427,6 @@ TupleDesc VecAdapter::GetRelationTupleDesc() const { return rel_tuple_desc_; }
 int VecAdapter::AppendToVecBuffer() {
   bool porc_vec_format;
   size_t number_of_append;
-  size_t range_begin = current_index_;
-  size_t range_lens = 100000000;
   size_t total_rows = process_columns_->GetRows();
 
   // There are three cases to direct return
@@ -442,19 +440,18 @@ int VecAdapter::AppendToVecBuffer() {
 
   porc_vec_format = COLUMN_STORAGE_FORMAT_IS_VEC(process_columns_);
 
-  Assert(current_index_ <= total_rows);
-  AssertImply(porc_vec_format, current_index_ == 0);
+  Assert(current_index_ == 0);
   std::tie(number_of_append, current_index_) =
       porc_vec_format
           ? AppendPorcVecFormat(process_columns_.get())
-          : AppendPorcFormat(process_columns_.get(), range_begin, range_lens);
+          : AppendPorcFormat(process_columns_.get(), 0, total_rows);
   Assert(number_of_append <= total_rows);
 
   // In this time cached_batch_lens_ always be 0
   // It's ok to direct set it, rather than use the +=
   cached_batch_lens_ = number_of_append;
   if (build_ctid_) {
-    BuildCtidOffset(range_begin, range_lens);
+    BuildCtidOffset(0, total_rows);
   }
 
   return number_of_append;

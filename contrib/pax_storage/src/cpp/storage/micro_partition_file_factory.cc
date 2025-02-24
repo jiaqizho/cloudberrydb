@@ -17,23 +17,8 @@ MicroPartitionFileFactory::CreateMicroPartitionReader(
 
 #ifdef VEC_BUILD
   if (flags & ReaderFlags::FLAGS_VECTOR_PATH) {
-#if 0
-    auto max_batch_size = VecAdapter::GetMaxBatchSizeFromStr(
-        cbdb::GetGUCConfigOptionByName(VECTOR_MAX_BATCH_SIZE_GUC_NAME, NULL,
-                                       true),
-        VEC_BATCH_LENGTH);
-
-    // The max of record batch size must align with 8
-    // Because the begin bits of the null bitmap in pax must be aligned 8
-    CBDB_CHECK(
-        max_batch_size > 0 && (max_batch_size % MEMORY_ALIGN_SIZE == 0),
-        cbdb::CException::kExTypeInvalid,
-        fmt("Invalid GUC setting [%s=%d], it should align with %d",
-            VECTOR_MAX_BATCH_SIZE_GUC_NAME, max_batch_size, MEMORY_ALIGN_SIZE));
-#endif
-
     auto vec_adapter_ptr = std::make_shared<VecAdapter>(
-        options.tuple_desc, 0,
+        options.tuple_desc,
         (flags & ReaderFlags::FLAGS_SCAN_WITH_CTID) != 0);
     reader = std::make_unique<PaxVecReader>(std::move(reader), vec_adapter_ptr,
                                             options.filter);
