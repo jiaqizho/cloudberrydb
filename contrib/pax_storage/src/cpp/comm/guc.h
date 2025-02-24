@@ -17,16 +17,6 @@ extern int pax_min_size_of_external_toast;
 extern char *pax_default_storage_format;
 extern int pax_bloom_filter_work_memory_bytes;
 extern bool pax_log_filter_tree;
-
-#ifdef VEC_BUILD
-// The guc define in vectorization(contrib/vectorization/main.c:L31)
-// PAX needs this GUC value to determine record batch return size.
-// Since the GUC is not defined in CBDB, we need use GetConfigOptionByName to
-// obtain the GUC. When vectorization changes the name of the GUC, PAX also
-// needs to be changed accordingly.
-#define VECTOR_MAX_BATCH_SIZE_GUC_NAME "vector.max_batch_size"
-#endif
-
 }  // namespace pax
 
 namespace paxc {
