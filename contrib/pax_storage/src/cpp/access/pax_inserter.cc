@@ -4,7 +4,6 @@
 #include <utility>
 
 #include "access/pax_dml_state.h"
-#include "access/pax_partition.h"
 #include "access/paxc_rel_options.h"
 #include "catalog/pax_catalog.h"
 #include "comm/cbdb_wrappers.h"
@@ -15,18 +14,8 @@ namespace pax {
 
 CPaxInserter::CPaxInserter(Relation rel)
     : rel_(rel), insert_count_(0), writer_(nullptr) {
-  auto part_obj = std::make_unique<PartitionObject>();
-  auto ok = part_obj->Initialize(rel_);
-  if (ok) {
-    writer_ = std::make_unique<TableParitionWriter>(rel, std::move(part_obj));
-  } else {
-    // fallback to TableWriter
-    writer_ = std::make_unique<TableWriter>(rel);
-    part_obj->Release();
-    part_obj = nullptr;
-  }
+  writer_ = std::make_unique<TableWriter>(rel);
 
-//  auto split_strategy = std::make_unique<PaxDefaultSplitStrategy>();
   writer_->SetWriteSummaryCallback(&cbdb::InsertOrUpdateMicroPartitionEntry)
       ->SetFileSplitStrategy(std::make_unique<PaxDefaultSplitStrategy>())
       ->Open();
