@@ -109,7 +109,7 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
   NewRelationCreateToastTable(relid, (Datum)0);
 
   // 2. insert entry into pg_pax_tables.
-  ::paxc::InsertPaxTablesEntry(pax_relid, aux_relid, NULL);
+  ::paxc::InsertPaxTablesEntry(pax_relid, aux_relid);
 
   // 3. record pg_depend, pg_pax_blocks_<xxx> depends relation.
   {

@@ -753,15 +753,6 @@ void CPaxAuxSwapRelationFiles(Oid relid1, Oid relid2,
     nulls[ANUM_PG_PAX_TABLES_RELID - 1] = false;
     nulls[ANUM_PG_PAX_TABLES_AUXRELID - 1] = false;
 
-    datum = heap_getattr(old_tuple2, ANUM_PG_PAX_TABLES_PARTITIONSPEC, desc,
-                         &isnull);
-    if (!isnull) {
-      auto vl = reinterpret_cast<struct varlena *>(DatumGetPointer(datum));
-      vl = pg_detoast_datum_packed(vl);
-      values[ANUM_PG_PAX_TABLES_PARTITIONSPEC - 1] = PointerGetDatum(vl);
-    }
-    nulls[ANUM_PG_PAX_TABLES_PARTITIONSPEC - 1] = isnull;
-
     tuple1 = heap_form_tuple(desc, values, nulls);
     tuple1->t_data->t_ctid = old_tuple1->t_data->t_ctid;
     tuple1->t_self = old_tuple1->t_self;
@@ -776,15 +767,6 @@ void CPaxAuxSwapRelationFiles(Oid relid1, Oid relid2,
     values[ANUM_PG_PAX_TABLES_AUXRELID - 1] = datum;
     nulls[ANUM_PG_PAX_TABLES_RELID - 1] = false;
     nulls[ANUM_PG_PAX_TABLES_AUXRELID - 1] = false;
-
-    datum = heap_getattr(old_tuple1, ANUM_PG_PAX_TABLES_PARTITIONSPEC, desc,
-                         &isnull);
-    if (!isnull) {
-      auto vl = reinterpret_cast<struct varlena *>(DatumGetPointer(datum));
-      vl = pg_detoast_datum_packed(vl);
-      values[ANUM_PG_PAX_TABLES_PARTITIONSPEC - 1] = PointerGetDatum(vl);
-    }
-    nulls[ANUM_PG_PAX_TABLES_PARTITIONSPEC - 1] = isnull;
 
     tuple2 = heap_form_tuple(desc, values, nulls);
     tuple2->t_data->t_ctid = old_tuple2->t_data->t_ctid;

@@ -9,9 +9,6 @@ add_custom_command(OUTPUT generate_sql_file
 )
 add_custom_target(create_sql_script DEPENDS generate_sql_script_program generate_sql_file)
 
-# bison
-bison_target(paxc_gram access/paxc_gram.y ${CMAKE_CURRENT_BINARY_DIR}/paxc_gram.c)
-
 
 set(pax_comm_src
     comm/bitmap.cc
@@ -73,7 +70,6 @@ set(pax_storage_src
     storage/pax_itemptr.cc
     storage/proto/protobuf_stream.cc
     storage/pax.cc 
-    storage/pax_table_partition_writer.cc  
     storage/paxc_smgr.cc
     storage/toast/pax_toast.cc
     storage/strategy.cc
@@ -97,15 +93,12 @@ set(pax_clustering_src
 
 
 set(pax_access_src
-    ${BISON_paxc_gram_OUTPUTS} # BISON output file
     access/paxc_rel_options.cc
-    access/paxc_scanner.cc
     access/pax_access_handle.cc
     access/pax_access_method_internal.cc
     access/pax_deleter.cc
     access/pax_dml_state.cc
     access/pax_inserter.cc
-    access/pax_partition.cc
     access/pax_table_cluster.cc
     access/pax_updater.cc
     access/pax_visimap.cc

@@ -1,5 +1,3 @@
-find_package(BISON REQUIRED)
-
 ## protobuf
 include(FindProtobuf)
 find_package(Protobuf 3.6.1 REQUIRED)

@@ -73,10 +73,6 @@ static const relopt_parse_elt kSelfReloptTab[] = {
     {PAX_SOPT_CLUSTER_TYPE, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, cluster_type)},
     {PAX_SOPT_COMPLEVEL, RELOPT_TYPE_INT, offsetof(PaxOptions, compress_level)},
-    {PAX_SOPT_PARTITION_BY, RELOPT_TYPE_STRING,
-     offsetof(PaxOptions, partition_by_offset)},
-    {PAX_SOPT_PARTITION_RANGES, RELOPT_TYPE_STRING,
-     offsetof(PaxOptions, partition_ranges_offset)},
     {PAX_SOPT_MINMAX_COLUMNS, RELOPT_TYPE_STRING,
      offsetof(PaxOptions, minmax_columns_offset)},
     {PAX_SOPT_BLOOMFILTER_COLUMNS, RELOPT_TYPE_STRING,
@@ -326,10 +322,6 @@ void paxc_reg_rel_options() {
   add_int_reloption(self_relopt_kind, PAX_SOPT_COMPLEVEL, "pax compress level",
                     PAX_DEFAULT_COMPRESSLEVEL, PAX_MIN_COMPRESSLEVEL,
                     PAX_MAX_COMPRESSLEVEL, AccessExclusiveLock);
-  add_string_reloption(self_relopt_kind, PAX_SOPT_PARTITION_BY, "partition by",
-                       NULL, NULL, AccessExclusiveLock);
-  add_string_reloption(self_relopt_kind, PAX_SOPT_PARTITION_RANGES,
-                       "partition ranges", NULL, NULL, AccessExclusiveLock);
   add_string_reloption(self_relopt_kind, PAX_SOPT_MINMAX_COLUMNS,
                        "minmax columns", NULL, NULL, AccessExclusiveLock);
   add_string_reloption(self_relopt_kind, PAX_SOPT_BLOOMFILTER_COLUMNS,

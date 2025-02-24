@@ -4,7 +4,6 @@
 
 #include "storage/micro_partition_metadata.h"
 #include "storage/pax.h"
-#include "storage/pax_table_partition_writer.h"
 namespace pax {
 class PartitionObject;
 class CPaxInserter {
