@@ -164,7 +164,7 @@ TEST_P(PaxVecTest, PaxColumnToVec) {
   }
 
   adapter =
-      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH, false);
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, false);
   columns = std::make_unique<PaxColumns>();
   if (is_fixed) {
     column = std::make_unique<PaxCommColumn<int32>>(VEC_BATCH_LENGTH);
@@ -303,7 +303,7 @@ TEST_P(PaxVecTest, PaxColumnWithDictToVec) {
   auto tuple_slot = CreateTupleSlot(false, false, false);
 
   auto adapter =
-      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH, false);
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, false);
   auto columns = std::make_unique<PaxColumns>();
 
   PaxEncoder::EncodingOption encoding_option;
@@ -412,7 +412,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullAndDictToVec) {
   auto tuple_slot = CreateTupleSlot(false, false, false);
 
   auto adapter = std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor,
-                                VEC_BATCH_LENGTH * 10, false);
+                                false);
   auto columns = std::make_unique<PaxColumns>();
 
   PaxEncoder::EncodingOption encoding_option;
@@ -557,7 +557,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVec) {
   TupleTableSlot *tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH, false);
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, false);
   columns = std::make_unique<PaxColumns>();
   if (is_fixed) {
     column = std::make_unique<PaxCommColumn<int32>>(VEC_BATCH_LENGTH);
@@ -721,7 +721,7 @@ TEST_P(PaxVecTest, PaxColumnToVecNoFull) {
   auto tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH, false);
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, false);
   columns = std::make_unique<PaxColumns>();
   if (is_fixed) {
     column = std::make_unique<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
@@ -824,7 +824,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullToVecNoFull) {
   auto tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH, false);
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, false);
   columns = std::make_unique<PaxColumns>();
   if (is_fixed) {
     column = std::make_unique<PaxCommColumn<int32>>(VEC_BATCH_LENGTH + 1000);
@@ -978,7 +978,7 @@ TEST_P(PaxVecTest, PaxColumnAllNullToVec) {
   auto tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH, false);
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, false);
   columns = std::make_unique<PaxColumns>();
   if (is_fixed) {
     column = std::make_unique<PaxCommColumn<int32>>(1000);
@@ -1073,7 +1073,7 @@ TEST_P(PaxVecTest, DecimalTest) {
   TupleTableSlot *tuple_slot = CreateDecimalTupleSlot();
 
   auto adapter =
-      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH, false);
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, false);
   auto columns = std::make_unique<PaxColumns>();
   auto column =
       std::make_unique<PaxShortNumericColumn>(VEC_BATCH_LENGTH + 1000, encoding_option);
@@ -1153,7 +1153,7 @@ TEST_P(PaxVecTest, PaxColumnWithNullAndVisimapToVec) {
   TupleTableSlot *tuple_slot = CreateTupleSlot(is_fixed);
 
   adapter =
-      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, VEC_BATCH_LENGTH, false);
+      std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor, false);
   columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
     column = std::make_unique<PaxCommColumn<int32>>(VEC_BATCH_LENGTH);
@@ -1309,7 +1309,7 @@ TEST_P(PaxVecTest, PaxColumnBuildCtidToVec) {
   }
 
   adapter = std::make_shared<VecAdapter>(tuple_slot->tts_tupleDescriptor,
-                                VEC_BATCH_LENGTH, true);
+                                true);
   columns = std::make_shared<PaxColumns>();
   if (is_fixed) {
     column = std::make_unique<PaxCommColumn<int32>>(VEC_BATCH_LENGTH);
