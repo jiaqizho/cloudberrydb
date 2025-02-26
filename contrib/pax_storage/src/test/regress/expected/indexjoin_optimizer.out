@@ -88,24 +88,27 @@ WHERE tq.sym = tt.symbol AND
       tt.event_ts <  tq.end_ts
 GROUP BY 1
 ORDER BY 1 asc ;
-                                                               QUERY PLAN                                                               
-----------------------------------------------------------------------------------------------------------------------------------------
- Finalize GroupAggregate  (cost=10000004659.04..10000004809.69 rows=413 width=16)
-   Group Key: ((((tt.event_ts / 100000) / 5) * 5))
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=10000004659.04..10000004796.27 rows=1239 width=16)
-         Merge Key: ((((tt.event_ts / 100000) / 5) * 5))
-         ->  Partial GroupAggregate  (cost=10000004659.04..10000004779.75 rows=413 width=16)
-               Group Key: ((((tt.event_ts / 100000) / 5) * 5))
-               ->  Sort  (cost=10000004659.04..10000004696.87 rows=15131 width=8)
-                     Sort Key: ((((tt.event_ts / 100000) / 5) * 5))
-                     ->  Nested Loop  (cost=10000000000.15..10000003608.53 rows=15131 width=8)
-                           ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=10000000000.00..10000000008.00 rows=420 width=25)
-                                 ->  Seq Scan on my_tt_agg_small tt  (cost=10000000000.00..10000000002.40 rows=140 width=25)
-                           ->  Index Scan using my_tq_agg_small_ets_end_ts_ix on my_tq_agg_small tq  (cost=0.15..7.93 rows=38 width=20)
-                                 Index Cond: ((ets <= tt.event_ts) AND (end_ts > tt.event_ts))
-                                 Filter: (tt.symbol = (sym)::bpchar)
- Optimizer: Postgres query optimizer
-(15 rows)
+                                                                                                      QUERY PLAN                                                                                                       
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1344.56 rows=413 width=16)
+   Merge Key: ((((my_tt_agg_small.event_ts / 100000) / 5) * 5))
+   ->  Finalize GroupAggregate  (cost=0.00..1344.53 rows=138 width=16)
+         Group Key: ((((my_tt_agg_small.event_ts / 100000) / 5) * 5))
+         ->  Sort  (cost=0.00..1344.52 rows=138 width=16)
+               Sort Key: ((((my_tt_agg_small.event_ts / 100000) / 5) * 5))
+               ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=0.00..1344.38 rows=138 width=16)
+                     Hash Key: ((((my_tt_agg_small.event_ts / 100000) / 5) * 5))
+                     ->  Streaming Partial HashAggregate  (cost=0.00..1344.37 rows=138 width=16)
+                           Group Key: (((my_tt_agg_small.event_ts / 100000) / 5) * 5)
+                           ->  Nested Loop  (cost=0.00..1335.11 rows=45925 width=8)
+                                 Join Filter: (((my_tq_agg_small.sym)::bpchar = my_tt_agg_small.symbol) AND (my_tt_agg_small.event_ts >= my_tq_agg_small.ets) AND (my_tt_agg_small.event_ts < my_tq_agg_small.end_ts))
+                                 ->  Seq Scan on my_tt_agg_small  (cost=0.00..431.01 rows=140 width=25)
+                                 ->  Materialize  (cost=0.00..431.16 rows=676 width=20)
+                                       ->  Redistribute Motion 3:3  (slice3; segments: 3)  (cost=0.00..431.14 rows=676 width=20)
+                                             Hash Key: my_tq_agg_small.sym
+                                             ->  Seq Scan on my_tq_agg_small  (cost=0.00..431.04 rows=676 width=20)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(18 rows)
 
 reset optimizer_segments;
 reset optimizer_nestloop_factor;

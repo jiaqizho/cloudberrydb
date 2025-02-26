@@ -416,7 +416,6 @@ insert into t2_github_issue_10143 values ('b', 'bdong', 'bcode', 1100);
 analyze t1_github_issue_10143;
 analyze t2_github_issue_10143;
 
-set optimizer_trace_fallback = on;
 
 explain select (select name from t1_github_issue_10143 where code = a.code limit 1) as dongnm
 ,sum(sum(a.salary)) over()
@@ -451,7 +450,6 @@ group by name
 union all
 select * from cte;
 
-reset optimizer_trace_fallback;
 
 -- CLEANUP
 -- start_ignore
