@@ -68,7 +68,7 @@ arrow::Status PaxDatasetInterface::Initialize(uint32_t tableoid, void *context, 
     v.emplace_back(std::move(x));
   }
   it->Release();
-  return desc_->Initialize(relation_, schema(), scan_options, fs, nullptr, std::move(VectorIterator(std::move(v))));
+  return desc_->Initialize(relation_, schema(), scan_options, fs, nullptr, context, std::move(VectorIterator(std::move(v))));
 }
 
 void PaxDatasetInterface::Release() {

@@ -651,6 +651,14 @@ NotNode
 Final filter tree: 
 NullTestNode(flags=129)
   └── VarNode(attrno=2)
+LOG:  Origin filter tree: 
+NotNode
+  └── NullTestNode(flags=65)
+    └── VarNode(attrno=2)
+
+Final filter tree: 
+NullTestNode(flags=129)
+  └── VarNode(attrno=2)
  count 
 -------
    200

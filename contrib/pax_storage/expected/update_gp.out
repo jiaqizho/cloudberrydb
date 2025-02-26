@@ -425,21 +425,10 @@ drop table tab5;
 -- Update distribution key
 -- start_ignore
 drop table if exists r;
-NOTICE:  table "r" does not exist, skipping
 drop table if exists s;
-NOTICE:  table "s" does not exist, skipping
 drop table if exists update_dist;
-NOTICE:  table "update_dist" does not exist, skipping
 drop table if exists update_ao_table;
-NOTICE:  table "update_ao_table" does not exist, skipping
 drop table if exists update_aoco_table;
-NOTICE:  table "update_aoco_table" does not exist, skipping
-drop table if exists p_1;
-NOTICE:  table "p_1" does not exist, skipping
-drop table if exists p_2;
-NOTICE:  table "p_2" does not exist, skipping
-drop table if exists subpartition_1;
-NOTICE:  table "subpartition_1" does not exist, skipping
 -- end_ignore
 -- Update normal table distribution key
 create table update_dist(a int) distributed by (a);

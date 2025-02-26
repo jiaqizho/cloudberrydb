@@ -115,6 +115,22 @@ select count(*) from t1 where v2 = v1;
 select count(*) from t1 where v1 < v1; -- stupid case, but still support
 select count(*) from t1 where v1 > v1; -- stupid case, but still support
 
+-- var +/-/* const
+select count(*) from t1 where v1 - 10 > 100;
+select count(*) from t1 where v1 + 10 > 100;
+
+select count(*) from t1 where v1 - 10 > v2;
+select count(*) from t1 where v1 + 10 > v2;
+
+select count(*) from t1 where v1 - 10 > (v2 + 100) - 20;
+select count(*) from t1 where v1 + 10 > (v2 + 200) - 10;
+
+select count(*) from t1 where v1 + v2 > 1000;
+select count(*) from t1 where v1 + v2 < 1000;
+select count(*) from t1 where v1 + v2 < v3;
+
+select count(*) from t1 where intrc(v1) + 10 > v2;
+
 -- simply the filter tree
 set pax_log_filter_tree to on;
 select count(*) from t1 where v1 > 10 or intrc(v2) < 120;
@@ -135,100 +151,12 @@ select count(*) from t_bf where v1 in (3, 9, -1, '3'::float);
 select count(*) from t_bf where v1 in (1000, 10001);
 select count(*) from t_bf where v1 in (11, 10001);
 select count(*) from t_bf where v1 not in (1000, 10001);
+select count(*) from t1 where v1 in (1000, 10001, NULL);
+select count(*) from t1 where v1 not in (1000, 10001);
+select count(*) from t1 where not (v2 < 1000 and v1 in (1000, 10001));
 
 -- List<> quals
 select count(*) from t1 left join t2 on t1.v1 = t2.v1 where t1.v1 > 1 and t2.v1 < 10;
-
--- coalesce, not support yet 
-select count(*) from t1 where coalesce(v1, 2) != 1;
-
-set vector.enable_vectorization to on;
-
--- enable vectorization and test again 
-
--- no filter
-select count(*) from t1;
-select count(v1) from t1;
-select count(1) from t1;
-
-select count(*) from t_allnull;
-select count(v1) from t_allnull;
-select count(1) from t_allnull;
-
--- basic tests
-select count(*) from t1 where v1 > 1 and v1 < 10;
-select count(*) from t1 where v1 > 1 and v2 < 110;
-select count(*) from t1 where v1 is not null;
-select count(*) from t1 where v1 is null;
-
-select count(*) from t1 where (v1 < 10 and intrc(v2) in (101, 1223, 321));
-
-select count(*) from t1 where v1 > 90 or v1 < 10;
-select count(*) from t1 where v1 > 90 or v2 < 110;
-
--- nested exprs
-select count(*) from t1 where v1 > 90 and (v1 > 10 or v1 < 20);
-select count(*) from t1 where v1 > 10 and (v2 > 110 or v2 < 120);
-
-select count(*) from t1 where v1 > 90 or (v1 > 10 and v1 < 20);
-select count(*) from t1 where v1 > 10 or (v2 > 110 and v2 < 120);
-
-select count(*) from t1 where v1 > 90 or (v1 > 10 and (v1 < 20 or v2 < 120));
-select count(*) from t1 where v1 > 90 and (v1 > 10 or (v1 < 20 and v2 < 120));
-select count(*) from t1 where v1 > 90 and (v1 > 10 or (v1 < 20 and intrc(v2) < 120));
-
-select count(*) from t_allnull where v1 is not null;
-select count(*) from t_allnull where v1 is null and v2 is not null;
-select count(*) from t_allnull where v1 is null or (v2 is null and v3 is not null);
-
-select count(*) from t1 where falserc(v1);
-
--- varop
-select count(*) from t1 where v1 < v2;
-select count(*) from t1 where v2 > v1;
-
-select count(*) from t1 where v1 > v2;
-select count(*) from t1 where v1 >= v2;
-
-select count(*) from t1 where v2 < v1;
-select count(*) from t1 where v2 <= v1;
-
-select count(*) from t1 where v1 = v2;
-select count(*) from t1 where v2 = v1;
-
-select count(*) from t1 where v1 < v1; -- stupid case, but still support
-select count(*) from t1 where v1 > v1; -- stupid case, but still support
-
--- var +/-/* const
-select count(*) from t1 where v1 - 10 > 100;
-select count(*) from t1 where v1 + 10 > 100;
-
-select count(*) from t1 where v1 - 10 > v2;
-select count(*) from t1 where v1 + 10 > v2;
-
-select count(*) from t1 where v1 - 10 > (v2 + 100) - 20;
-select count(*) from t1 where v1 + 10 > (v2 + 200) - 10;
-
-select count(*) from t1 where v1 + v2 > 1000;
-select count(*) from t1 where v1 + v2 < 1000;
-select count(*) from t1 where v1 + v2 < v3;
-
-select count(*) from t1 where intrc(v1) + 10 > v2;
-
-
--- simply the filter tree
-set pax_log_filter_tree to on;
-select count(*) from t1 where v1 > 10 or intrc(v2) < 120;
-select count(*) from t1 where v1 > 10 and intrc(v2) < 120;
-select count(*) from t1 where v1 is not null;
-reset pax_log_filter_tree;
-
--- IN && min/max
-select count(*) from t1 where v1 in (3, 9, -1, '3'::float); -- not support cast yet
-select count(*) from t1 where v1 in (1000, 10001);
-select count(*) from t1 where v1 in (1000, 10001, NULL);
-select count(*) from t1 where v1 not in (1000, 10001); -- not work
-select count(*) from t1 where not (v2 < 1000 and v1 in (1000, 10001));
 
 -- coalesce, not support yet 
 select count(*) from t1 where coalesce(v1, 2) != 1;

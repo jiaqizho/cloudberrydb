@@ -1,6 +1,5 @@
 create table t_dict1(a int, b text) using pax with(storage_format=porc,compresstype=dict);
 insert into t_dict1 select 1, repeat('1b', 12345678) from generate_series(1,20)i;
-set vector.enable_vectorization=false;
 explain select count(*) from t_dict1;
                                      QUERY PLAN                                     
 ------------------------------------------------------------------------------------
@@ -31,19 +30,9 @@ select count(b) from t_dict1;
     20
 (1 row)
 
-set vector.enable_vectorization=true;
-explain select count(*) from t_dict1;
-ERROR:  unknown compresstype "dict"
-select count(*) from t_dict1;
-ERROR:  unknown compresstype "dict"
-explain select count(b) from t_dict1;
-ERROR:  unknown compresstype "dict"
-select count(b) from t_dict1;
-ERROR:  unknown compresstype "dict"
 drop table t_dict1;
 create table t_dict1(a int, b text) using pax with(storage_format=porc_vec,compresstype=dict);
 insert into t_dict1 select 1, repeat('1b', 12345678) from generate_series(1,20)i;
-set vector.enable_vectorization=false;
 explain select count(*) from t_dict1;
                                      QUERY PLAN                                     
 ------------------------------------------------------------------------------------
@@ -74,13 +63,4 @@ select count(b) from t_dict1;
     20
 (1 row)
 
-set vector.enable_vectorization=true;
-explain select count(*) from t_dict1;
-ERROR:  unknown compresstype "dict"
-select count(*) from t_dict1;
-ERROR:  unknown compresstype "dict"
-explain select count(b) from t_dict1;
-ERROR:  unknown compresstype "dict"
-select count(b) from t_dict1;
-ERROR:  unknown compresstype "dict"
 drop table t_dict1;

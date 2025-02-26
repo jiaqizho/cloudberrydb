@@ -46,10 +46,10 @@ case when i=1 then null else i end,
   from generate_series(20,30)i;
 set client_min_messages = log;
 explain select * from pax_test.in_test_t where b in (1, null);
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.05 rows=10 width=287)
-   ->  Seq Scan on in_test_t  (cost=0.00..76.92 rows=3 width=287)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.05 rows=10 width=287)
+   ->  Vec Seq Scan on in_test_t  (cost=0.00..76.92 rows=3 width=287)
          Filter: (b = ANY ('{1,NULL}'::bigint[]))
  Optimizer: Postgres query optimizer
 (4 rows)
@@ -62,10 +62,10 @@ kind group, filter rate: 0 / 1
 (0 rows)
 
 explain select * from pax_test.in_test_t where b in (2, 3);
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
-   ->  Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
+   ->  Vec Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
          Filter: (b = ANY ('{2,3}'::bigint[]))
  Optimizer: Postgres query optimizer
 (4 rows)
@@ -80,19 +80,19 @@ kind group, filter rate: 0 / 1
 (2 rows)
 
 explain select * from pax_test.in_test_t where c in ('t');
-                                    QUERY PLAN                                     
------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..137.00 rows=5150 width=287)
-   ->  Seq Scan on in_test_t  (cost=0.00..68.33 rows=1717 width=287)
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..137.00 rows=5150 width=287)
+   ->  Vec Seq Scan on in_test_t  (cost=0.00..68.33 rows=1717 width=287)
          Filter: c
  Optimizer: Postgres query optimizer
 (4 rows)
 
 explain select * from pax_test.in_test_t where c in ('f');
-                                    QUERY PLAN                                     
------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..137.00 rows=5150 width=287)
-   ->  Seq Scan on in_test_t  (cost=0.00..68.33 rows=1717 width=287)
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..137.00 rows=5150 width=287)
+   ->  Vec Seq Scan on in_test_t  (cost=0.00..68.33 rows=1717 width=287)
          Filter: (NOT c)
  Optimizer: Postgres query optimizer
 (4 rows)
@@ -131,10 +131,10 @@ LOG:  kind file, filter rate: 0 / 2
 (11 rows)
 
 explain select * from pax_test.in_test_t where d in (2.0, 4.0);
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
-   ->  Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
+   ->  Vec Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
          Filter: (d = ANY ('{2,4}'::double precision[]))
  Optimizer: Postgres query optimizer
 (4 rows)
@@ -166,10 +166,10 @@ LOG:  kind file, filter rate: 0 / 2
 (2 rows)
 
 explain select * from pax_test.in_test_t where f in ('t_2', 't_4');
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
-   ->  Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
+   ->  Vec Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
          Filter: (f = ANY ('{t_2,t_4}'::text[]))
  Optimizer: Postgres query optimizer
 (4 rows)
@@ -184,10 +184,10 @@ kind group, filter rate: 0 / 1
 (2 rows)
 
 explain select * from pax_test.in_test_t where g in ('v_2', 'v_4');
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
-   ->  Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
+   ->  Vec Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
          Filter: ((g)::text = ANY ('{v_2,v_4}'::text[]))
  Optimizer: Postgres query optimizer
 (4 rows)
@@ -202,10 +202,10 @@ kind group, filter rate: 0 / 1
 (2 rows)
 
 explain select * from pax_test.in_test_t where h in ('bp_2', 'bp_4');
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
-   ->  Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..77.19 rows=21 width=287)
+   ->  Vec Seq Scan on in_test_t  (cost=0.00..76.92 rows=7 width=287)
          Filter: (h = ANY ('{bp_2,bp_4}'::bpchar[]))
  Optimizer: Postgres query optimizer
 (4 rows)
