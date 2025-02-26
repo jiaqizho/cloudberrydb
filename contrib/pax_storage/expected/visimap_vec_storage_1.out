@@ -13,11 +13,11 @@ create table pt1(a int, i int, t text, n numeric(15,2), b bool, bp char(16))
 using pax
 with(storage_format=porc_vec);
 explain (costs off) select ctid, * from pt1;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Seq Scan on pt1
- Optimizer: Postgres query optimizer
+                  QUERY PLAN                  
+----------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)
+   ->  Vec Seq Scan on pt1
+ Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 
 select ctid, * from pt1;
@@ -217,8 +217,8 @@ select ctid, * from pt1;
 explain (costs off) select * from pt1 where a = 1 and i >= 2 and i < 10;
                      QUERY PLAN                      
 -----------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)
-   ->  Seq Scan on pt1
+ Vec Gather Motion 1:1  (slice1; segments: 1)
+   ->  Vec Seq Scan on pt1
          Filter: ((a = 1) AND (i >= 2) AND (i < 10))
  Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)

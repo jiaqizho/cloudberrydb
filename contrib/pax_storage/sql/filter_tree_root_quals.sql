@@ -5,11 +5,9 @@
 -- m/No sparse filter/
 -- end_matchignore
 
-
 set default_table_access_method to pax;
 set pax_enable_debug to on;
 set pax_enable_sparse_filter to on;
-set vector.enable_vectorization to off;
 
 create table t1(same int, v1 int, v2 int, v3 int, v4 int) using pax with (minmax_columns='v1,v2,v3,v4');
 create table t2(same int, v1 int, v2 int, v3 int, v4 int) using pax with (minmax_columns='v1,v2,v3,v4');
@@ -26,25 +24,9 @@ analyze t2;
 
 -- ORCA plan is poor
 set optimizer = off; 
-set client_min_messages to log;
+
 -- query with quals list which size is > 1
-WITH t1_cte AS (
-        SELECT v1, v2, v3
-        FROM t1 where v2 > 0
-)
-SELECT t2.*
-FROM t2
-join t1_cte on t1_cte.v1 = t2.v1 
-WHERE 
-	t1_cte.v2 < 100
-    and ((t1_cte.v1 = 42 AND t2.v1 = 43) OR (t1_cte.v1 = 44 AND t2.v2 = 45)) 
-    and t2.v1 < 90;
-
-reset client_min_messages;
-
-set vector.enable_vectorization to on;
 set client_min_messages to log;
-
 WITH t1_cte AS (
         SELECT v1, v2, v3
         FROM t1 where v2 > 0
@@ -56,8 +38,8 @@ WHERE
 	t1_cte.v2 < 100
     and ((t1_cte.v1 = 42 AND t2.v1 = 43) OR (t1_cte.v1 = 44 AND t2.v2 = 45)) 
     and t2.v1 < 90;
+
 reset client_min_messages;
-reset vector.enable_vectorization;
 reset optimizer;
 
 drop table t1;

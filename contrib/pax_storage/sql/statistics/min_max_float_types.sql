@@ -159,4 +159,3 @@ drop table t_float8;
 reset pax_enable_debug;
 reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;

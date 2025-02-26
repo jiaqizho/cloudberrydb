@@ -1,4 +1,3 @@
-set vector.enable_vectorization = on;
 -- set the number of tuples in a group to 5,
 -- so we can test multiple group with visimap,
 -- at the beginning, in the middle, or at the end
@@ -80,4 +79,3 @@ reset optimizer;
 drop table pt1;
 
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;

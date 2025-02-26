@@ -271,8 +271,8 @@ void CopyBitPackedBuffer(PaxColumn *column,
         if (value) {
           out_data_buffer->Set(bit_index);
         }
-        bit_index++;
       }
+      bit_index++;
     }
 
     if (!is_null) {
