@@ -40,7 +40,6 @@ alter table orca.s add column d int;
 insert into orca.s select i, i/2 from generate_series(1,30) i;
 set optimizer_log=on;
 set optimizer_enable_indexjoin=on;
-set optimizer_trace_fallback = on;
 -- expected fall back to the planner
 select sum(distinct a), count(distinct b) from orca.r;
  sum | count 
@@ -8694,10 +8693,22 @@ select (select sum(foo.a + bar.d) + 1 from bar) from foo group by a, b;
 
 -- aggrefs with multiple agglevelsup
 select (select (select sum(foo.a + bar.d) from jazz) from bar) from foo group by a, b;
-ERROR:  correlated subquery with skip-level correlations is not supported
+ sum 
+-----
+  15
+  12
+   9
+(3 rows)
+
 -- aggrefs with multiple agglevelsup in an expression
 select (select (select sum(foo.a + bar.d) * 2 from jazz) from bar) from foo group by a, b;
-ERROR:  correlated subquery with skip-level correlations is not supported
+ ?column? 
+----------
+       30
+       24
+       18
+(3 rows)
+
 -- nested group by
 select (select max(f) from bar where d = 1 group by a, e) from foo group by a;
  max 
@@ -8796,7 +8807,13 @@ SELECT  foo.b+1, avg (( SELECT bar.f FROM bar WHERE bar.d = foo.b)) AS t FROM fo
 (3 rows)
 
 SELECT foo.b+1, sum( 1 + (SELECT bar.f FROM bar WHERE bar.d = ANY (SELECT jazz.g FROM jazz WHERE jazz.h = foo.b))) AS t FROM foo GROUP BY foo.b;
-ERROR:  correlated subquery with skip-level correlations is not supported
+ ?column? | t 
+----------+---
+        2 |  
+        3 | 3
+        4 |  
+(3 rows)
+
 select foo.b+1, sum((with cte as (select * from jazz) select 1 from cte where cte.h = foo.b)) as t FROM foo GROUP BY foo.b;
  ?column? | t 
 ----------+---
@@ -12362,7 +12379,6 @@ insert into tcorr1 values (1,99);
 insert into tcorr2 values (1,1);
 analyze tcorr1;
 analyze tcorr2;
-set optimizer_trace_fallback to on;
 explain
 select *
 from tcorr1 out
@@ -12438,7 +12454,28 @@ where out.b in (select coalesce(tcorr2_d.c, 99)
                                              from tcorr2
                                              where tcorr2.b = out.b
                                              group by a) tcorr2_d on tcorr1.a=tcorr2_d.a);
-ERROR:  correlated subquery with skip-level correlations is not supported
+                                                      QUERY PLAN                                                      
+----------------------------------------------------------------------------------------------------------------------
+ Nested Loop Semi Join  (cost=10000000001.08..10000000003.20 rows=3 width=8)
+   Join Filter: ("out".b = COALESCE((count(*)), '99'::bigint))
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1.03 rows=1 width=8)
+         ->  Seq Scan on tcorr1 "out"  (cost=0.00..1.01 rows=1 width=8)
+   ->  Materialize  (cost=1.08..2.17 rows=3 width=8)
+         ->  Hash Left Join  (cost=1.08..2.15 rows=3 width=8)
+               Hash Cond: (tcorr1.a = tcorr2.a)
+               ->  Gather Motion 3:1  (slice2; segments: 3)  (cost=0.00..1.03 rows=1 width=4)
+                     ->  Seq Scan on tcorr1  (cost=0.00..1.01 rows=1 width=4)
+               ->  Hash  (cost=1.07..1.07 rows=1 width=12)
+                     ->  HashAggregate  (cost=1.05..1.06 rows=1 width=12)
+                           Group Key: tcorr2.a
+                           ->  Result  (cost=0.00..1.04 rows=1 width=4)
+                                 Filter: (tcorr2.b = "out".b)
+                                 ->  Materialize  (cost=0.00..1.03 rows=1 width=8)
+                                       ->  Gather Motion 3:1  (slice3; segments: 3)  (cost=0.00..1.03 rows=1 width=8)
+                                             ->  Seq Scan on tcorr2  (cost=0.00..1.01 rows=1 width=8)
+ Optimizer: Postgres query optimizer
+(18 rows)
+
 -- expect 1 row
 select *
 from tcorr1 out
@@ -12447,7 +12484,11 @@ where out.b in (select coalesce(tcorr2_d.c, 99)
                                              from tcorr2
                                              where tcorr2.b = out.b
                                              group by a) tcorr2_d on tcorr1.a=tcorr2_d.a);
-ERROR:  correlated subquery with skip-level correlations is not supported
+ a | b  
+---+----
+ 1 | 99
+(1 row)
+
 -- expect 1 row
 select *
 from tcorr1 out
@@ -12534,7 +12575,28 @@ where out.b in (select coalesce(tcorr2_d.c, 99)
                                              from tcorr2
                                              where tcorr2.b = out.b
                                              group by a) tcorr2_d on tcorr1.a=tcorr2_d.a);
-ERROR:  correlated subquery with skip-level correlations is not supported
+                                                      QUERY PLAN                                                      
+----------------------------------------------------------------------------------------------------------------------
+ Nested Loop Semi Join  (cost=10000000001.08..10000000003.20 rows=3 width=8)
+   Join Filter: ("out".b = COALESCE((count(*)), '99'::bigint))
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1.03 rows=1 width=8)
+         ->  Seq Scan on tcorr1 "out"  (cost=0.00..1.01 rows=1 width=8)
+   ->  Materialize  (cost=1.08..2.17 rows=3 width=8)
+         ->  Hash Left Join  (cost=1.08..2.15 rows=3 width=8)
+               Hash Cond: (tcorr1.a = tcorr2.a)
+               ->  Gather Motion 3:1  (slice2; segments: 3)  (cost=0.00..1.03 rows=1 width=4)
+                     ->  Seq Scan on tcorr1  (cost=0.00..1.01 rows=1 width=4)
+               ->  Hash  (cost=1.07..1.07 rows=1 width=12)
+                     ->  HashAggregate  (cost=1.05..1.06 rows=1 width=12)
+                           Group Key: tcorr2.a
+                           ->  Result  (cost=0.00..1.04 rows=1 width=4)
+                                 Filter: (tcorr2.b = "out".b)
+                                 ->  Materialize  (cost=0.00..1.03 rows=1 width=8)
+                                       ->  Gather Motion 3:1  (slice3; segments: 3)  (cost=0.00..1.03 rows=1 width=8)
+                                             ->  Seq Scan on tcorr2  (cost=0.00..1.01 rows=1 width=8)
+ Optimizer: Postgres query optimizer
+(18 rows)
+
 -- expect 1 row
 select *
 from tcorr1 out
@@ -12543,7 +12605,11 @@ where out.b in (select coalesce(tcorr2_d.c, 99)
                                              from tcorr2
                                              where tcorr2.b = out.b
                                              group by a) tcorr2_d on tcorr1.a=tcorr2_d.a);
-ERROR:  correlated subquery with skip-level correlations is not supported
+ a | b  
+---+----
+ 1 | 99
+(1 row)
+
 -- expect 1 row
 select *
 from tcorr1 out
@@ -12611,7 +12677,6 @@ analyze tbitmap;
 set optimizer_join_order = query;
 set optimizer_enable_hashjoin = off;
 set optimizer_enable_groupagg = off;
-set optimizer_trace_fallback = on;
 set enable_sort = off;
 -- 1 simple btree
 explain (costs off)
@@ -12879,20 +12944,22 @@ select * from foo join (select a, count(*) + 5 as cnt from tbtree where tbtree.a
 -- 10 bitmap with proj select grby select
 explain (costs off)
 select * from foo join (select a, count(*) + 5 as cnt from tbitmap where tbitmap.a < 5000 group by a having count(*) < 2) proj_sel_grby_sel on foo.a=proj_sel_grby_sel.a;
-                QUERY PLAN                
-------------------------------------------
+                       QUERY PLAN                       
+--------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
          Hash Cond: (tbitmap.a = foo.a)
          ->  HashAggregate
                Group Key: tbitmap.a
                Filter: (count(*) < 2)
-               ->  Seq Scan on tbitmap
-                     Filter: (a < 5000)
+               ->  Bitmap Heap Scan on tbitmap
+                     Recheck Cond: (a < 5000)
+                     ->  Bitmap Index Scan on tbitmapxa
+                           Index Cond: (a < 5000)
          ->  Hash
                ->  Seq Scan on foo
  Optimizer: Postgres query optimizer
-(11 rows)
+(13 rows)
 
 select * from foo join (select a, count(*) + 5 as cnt from tbitmap where tbitmap.a < 5000 group by a having count(*) < 2) proj_sel_grby_sel on foo.a=proj_sel_grby_sel.a;
   a   |  b   |  c   |  a   | cnt 
@@ -13006,7 +13073,27 @@ from foo l1 where b in (select ab
                                     on l2.a=tbtree_derived.a and l2.b=tbtree_derived.b
                         where l2.c = 1
                        );
-ERROR:  correlated subquery with skip-level correlations is not supported
+                                      QUERY PLAN                                      
+--------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  HashAggregate
+         Group Key: (RowIdExpr)
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)
+               Hash Key: (RowIdExpr)
+               ->  Nested Loop
+                     Join Filter: ((l1.a + tbtree.b) = l1.b)
+                     ->  Broadcast Motion 3:3  (slice3; segments: 3)
+                           ->  Seq Scan on foo l1
+                     ->  Materialize
+                           ->  Hash Join
+                                 Hash Cond: ((tbtree.a = l2.a) AND (tbtree.b = l2.b))
+                                 ->  Seq Scan on tbtree
+                                 ->  Hash
+                                       ->  Seq Scan on foo l2
+                                             Filter: (c = 1)
+ Optimizer: Postgres query optimizer
+(17 rows)
+
 -- 16 group by columns are not a superset of the distribution columns - no index scan
 explain (costs off)
 select * from foo join (select b, count(*) as cnt from tbtree group by b) grby on foo.a=grby.cnt;
@@ -13089,7 +13176,6 @@ explain (costs off) select count(*), t2.c from roj1 t1 left join roj2 t2 on t1.a
 (11 rows)
 
 reset optimizer_enable_motion_redistribute;
-reset optimizer_trace_fallback;
 reset enable_sort;
 -- simple check for btree indexes on AO tables
 create table t_ao_btree(a int, b int)
@@ -13110,7 +13196,6 @@ create index t_ao_btree_ix on t_ao_btree using btree(a,b);
 analyze t_ao_btree;
 analyze tpart_ao_btree;
 analyze tpart_dim;
-set optimizer_trace_fallback to on;
 set optimizer_enable_hashjoin to off;
 -- this should use a bitmap scan on the btree index
 select * from t_ao_btree where a = 3 and b = 3;
@@ -13244,10 +13329,8 @@ select enable_xform('CXformInnerJoin2NLJoin');
 
 -- end_ignore
 reset optimizer_enable_hashjoin;
-reset optimizer_trace_fallback;
 -- Tests converted from MDPs that use tables partitioned on text columns and similar types,
 -- which can't be handled in ORCA MDPs, since they would require calling the GPDB executor
-set optimizer_trace_fallback = on;
 -- GroupingOnSameTblCol-2.mdp
 -- from dxl
 create table asset_records(
@@ -13655,7 +13738,6 @@ select * from v where year > 1;
  2019
 (1 row)
 
-reset optimizer_trace_fallback;
 create table sqall_t1(a int) distributed by (a);
 insert into sqall_t1 values (1), (2), (3);
 set optimizer_join_order='query';
@@ -13943,7 +14025,6 @@ reset optimizer_xform_bind_threshold;
 reset statement_timeout;
 -- an agg of a non-SRF with a nested SRF should be treated as a SRF, the
 -- optimizer must not eliminate the SRF or it can produce incorrect results
-set optimizer_trace_fallback = on;
 create table nested_srf(a text);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
@@ -14004,7 +14085,6 @@ select count(*) from (select trim(regexp_split_to_table((a)::text, ','::text)) f
      0
 (1 row)
 
-reset optimizer_trace_fallback;
 --- if the inner child is already distributed on the join column, orca should
 --- not place any motion on the inner child
 CREATE TABLE tone (a int, b int, c int);

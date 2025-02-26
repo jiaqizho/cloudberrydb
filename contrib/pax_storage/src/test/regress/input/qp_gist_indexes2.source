@@ -261,7 +261,6 @@ set optimizer_enable_tablescan = FALSE;
 -- canonical form, as it is for the BOX data type and perhaps some other 
 -- data types), as long as data in all of those formats should be converted 
 -- to the same internal representation.
-set optimizer_trace_fallback = TRUE;
 SELECT owner, property FROM GistTable1 
  WHERE property IS NULL;
 SELECT count_index_scans('EXPLAIN SELECT owner, property FROM GistTable1 WHERE property IS NULL ORDER BY id;');
@@ -288,7 +287,6 @@ SELECT id, property FROM GistTable1
  ORDER BY id
  ;
 --end_ignore
-reset optimizer_trace_fallback;
 
 
 -- ----------------------------------------------------------------------

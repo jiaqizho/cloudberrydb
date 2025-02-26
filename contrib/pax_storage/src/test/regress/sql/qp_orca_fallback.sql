@@ -6,7 +6,6 @@ SET search_path to qp_orca_fallback;
 -- Test the optimizer_enable_dml_constraints GUC, which forces GPORCA to fall back when there
 -- are NULL or CHECK constraints on a table.
 
-set optimizer_trace_fallback = on;
 
 DROP TABLE IF EXISTS constr_tab;
 CREATE TABLE constr_tab ( a int check (a>0) , b int, c int, d int, CHECK (a+b>5)) DISTRIBUTED BY (a);
