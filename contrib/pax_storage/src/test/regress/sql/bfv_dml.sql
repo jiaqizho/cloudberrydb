@@ -130,13 +130,11 @@ select * from update_pk_test order by 1,2;
 -- on distribution key column, with some features in the table or the query,
 -- such that ORCA cannot produce a plan and it falls back to the Postgres
 -- planner.
-set optimizer_trace_fallback = on;
 
 -- Subquery that returns a row rather than a single scalar isn't supported
 -- in ORCA currently, so we can use that to trigger fallback.
 update update_pk_test set a=1 where row(1,2) = (SELECT 1, 2);
 select * from update_pk_test order by 1,2;
-reset optimizer_trace_fallback;
 
 
 --
