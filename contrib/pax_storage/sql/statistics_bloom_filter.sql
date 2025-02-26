@@ -49,13 +49,10 @@ select * from t1 where v1 in (1, 2, NULL) and v2 in (4, 5, 6); -- filter all by 
 select * from t1 where v1 in (1, 2, 3) and v2 in (4, 5, NULL); -- support filter NULL
 select * from t1 where v1 in (1, 2, NULL) and v2 in (4, 5, NULL); -- support filter NULL
 
-reset client_min_messages;
-set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t1 where v1 in (12, 55, 77); -- different group
 select * from t1 where v1 in (12, 55, 77) and v2 > 100;
 reset client_min_messages;
-set vector.enable_vectorization to off;
 
 drop table t1;
 
@@ -78,14 +75,11 @@ select * from t2 where v1 in ('1', '2', '3') and v2 in ('4', '5', NULL); -- supp
 select * from t2 where v1 in ('1', '2', NULL) and v2 in ('4', '5', NULL); -- support filter NULL
 
 select * from t2 where v1 in ('104', '105', '106') and v2 > '100';
-reset client_min_messages;
 
-set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t2 where v1 in ('12', '55', '77'); -- different group
 select * from t2 where v1 in ('12', '55', '77') and v2 > '100';
 reset client_min_messages;
-set vector.enable_vectorization to off;
 
 drop table t2;
 
@@ -121,15 +115,12 @@ select * from t3 where v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-
 select * from t3 where v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aaa', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aab', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aac') and v2 > 30;
 select * from t3 where v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aaa', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aab', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aac') and v2 > 300;
 select * from t3 where v2 > 300 and v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aaa', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380aab');
-reset client_min_messages;
 
-set vector.enable_vectorization to on;
 set client_min_messages to log;
 select * from t3 where v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a29'); -- different group
 select * from t3 where v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14');
 select * from t3 where v1 in ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a23', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a28');
 reset client_min_messages;
-set vector.enable_vectorization to off;
 drop table t3;
 
 -- test the big bloom filter
@@ -153,4 +144,3 @@ reset pax_bloom_filter_work_memory_bytes;
 reset pax_max_tuples_per_group;
 reset pax_max_tuples_per_file;
 reset pax_enable_sparse_filter;
-reset vector.enable_vectorization;

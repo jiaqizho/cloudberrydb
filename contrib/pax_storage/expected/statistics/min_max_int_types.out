@@ -17,292 +17,194 @@ insert into t_int2(i, v) values(1, generate_series(1, 10));
 insert into t_int2(i, v) values(1, generate_series(11, 20));
 set client_min_messages to log;
 select count(*) from t_int2 where v > 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v > 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v > 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v > 15::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v > 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v < 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v < 6::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v < 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v < 16::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v < 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v = -1::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v = 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v >= 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v >= 6::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v >= 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v >= 16::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v >= 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v <= -1::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v <= 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v <= 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v <= 15::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v <= 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -310,292 +212,194 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
 
 -- oper(int2, int4)
 select count(*) from t_int2 where v > 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v > 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v > 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v > 15::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v > 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v < 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v < 6::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v < 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v < 16::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v < 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v = -1::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v = 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v >= 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v >= 6::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v >= 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v >= 16::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v >= 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v <= -1::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v <= 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v <= 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v <= 15::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v <= 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -603,292 +407,194 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
 
 -- oper(int2, int8)
 select count(*) from t_int2 where v > 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v > 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v > 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v > 15::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v > 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v < 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v < 6::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v < 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v < 16::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v < 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v = -1::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v = 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int2 where v = 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v >= 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_int2 where v >= 6::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v >= 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v >= 16::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v >= 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v <= -1::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int2 where v <= 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int2 where v <= 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int2 where v <= 15::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_int2 where v <= 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -907,292 +613,196 @@ insert into t_int4(i, v) values(1, generate_series(1, 10));
 insert into t_int4(i, v) values(1, generate_series(10, 20));
 set client_min_messages to log;
 select count(*) from t_int4 where v > 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v > 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v > 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int4 where v > 15::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v > 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v < 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v < 6::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v < 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int4 where v < 16::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v < 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v = -1::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v = 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 3 / 5
  count 
 -------
      2
 (1 row)
 
 select count(*) from t_int4 where v = 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v >= 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v >= 6::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v >= 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int4 where v >= 16::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v >= 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v <= -1::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v <= 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v <= 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int4 where v <= 15::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v <= 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
@@ -1200,292 +810,196 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
 
 -- oper(int4, int2)
 select count(*) from t_int4 where v > 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v > 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v > 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int4 where v > 15::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v > 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v < 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v < 6::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v < 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int4 where v < 16::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v < 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v = -1::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v = 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 3 / 5
  count 
 -------
      2
 (1 row)
 
 select count(*) from t_int4 where v = 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v >= 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v >= 6::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v >= 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int4 where v >= 16::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v >= 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v <= -1::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v <= 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v <= 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int4 where v <= 15::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v <= 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
@@ -1493,292 +1007,196 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
 
 -- oper(int4, int8)
 select count(*) from t_int4 where v > 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v > 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v > 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int4 where v > 15::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v > 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v < 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v < 6::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v < 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int4 where v < 16::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v < 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v = -1::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v = 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 3 / 5
  count 
 -------
      2
 (1 row)
 
 select count(*) from t_int4 where v = 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int4 where v = 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v >= 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int4 where v >= 6::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v >= 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int4 where v >= 16::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v >= 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v <= -1::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int4 where v <= 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int4 where v <= 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int4 where v <= 15::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int4 where v <= 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
@@ -1797,292 +1215,196 @@ insert into t_int8(i, v) values(1, generate_series(1, 10));
 insert into t_int8(i, v) values(1, generate_series(10, 20));
 set client_min_messages to log;
 select count(*) from t_int8 where v > 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v > 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v > 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int8 where v > 15::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v > 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v < 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v < 6::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v < 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int8 where v < 16::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v < 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v = -1::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v = 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 3 / 5
  count 
 -------
      2
 (1 row)
 
 select count(*) from t_int8 where v = 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v >= 0::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v >= 6::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v >= 11::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int8 where v >= 16::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v >= 21::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v <= -1::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v <= 5::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v <= 10::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int8 where v <= 15::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v <= 20::int8;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
@@ -2090,292 +1412,196 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
 
 -- oper(int8, int2)
 select count(*) from t_int8 where v > 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v > 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v > 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int8 where v > 15::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v > 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v < 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v < 6::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v < 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int8 where v < 16::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v < 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v = -1::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v = 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 3 / 5
  count 
 -------
      2
 (1 row)
 
 select count(*) from t_int8 where v = 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v >= 0::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v >= 6::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v >= 11::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int8 where v >= 16::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v >= 21::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v <= -1::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v <= 5::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v <= 10::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int8 where v <= 15::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v <= 20::int2;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
@@ -2383,292 +1609,196 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
 
 -- oper(int8, int4)
 select count(*) from t_int8 where v > 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v > 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v > 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int8 where v > 15::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v > 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v < 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v < 6::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v < 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int8 where v < 16::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v < 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v = -1::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v = 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 3 / 5
  count 
 -------
      2
 (1 row)
 
 select count(*) from t_int8 where v = 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_int8 where v = 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v >= 0::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_int8 where v >= 6::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v >= 11::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_int8 where v >= 16::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v >= 21::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v <= -1::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_int8 where v <= 5::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_int8 where v <= 10::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_int8 where v <= 15::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_int8 where v <= 20::int4;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
@@ -2687,312 +1817,196 @@ insert into t_numeric(i, v) values(1, generate_series(1, 10));
 insert into t_numeric(i, v) values(1, generate_series(10, 20));
 set client_min_messages to log;
 select count(*) from t_numeric where v > 0::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_numeric where v > 5::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_numeric where v > 10::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_numeric where v > 15::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_numeric where v > 20::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_numeric where v < 0::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_numeric where v < 6::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_numeric where v < 11::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_numeric where v < 16::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_numeric where v < 21::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_numeric where v = -1::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_numeric where v = 5::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_numeric where v = 10::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 3 / 5
  count 
 -------
      2
 (1 row)
 
 select count(*) from t_numeric where v = 11::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_numeric where v = 20::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 2 / 3
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_numeric where v = 21::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_numeric where v >= 0::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
 (1 row)
 
 select count(*) from t_numeric where v >= 6::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_numeric where v >= 11::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_numeric where v >= 16::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 3
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_numeric where v >= 21::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_numeric where v <= -1::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_numeric where v <= 5::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_numeric where v <= 10::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 2 / 5
  count 
 -------
     11
 (1 row)
 
 select count(*) from t_numeric where v <= 15::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 5
  count 
 -------
     16
 (1 row)
 
 select count(*) from t_numeric where v <= 20::numeric;
-LOG:  kind file, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind group, no filter.  (seg0 slice1 10.13.9.100:7002 pid=10139)
-LOG:  kind file, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind group, no filter.  (seg2 slice1 10.13.9.100:7004 pid=10142)
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=10140)
-LOG:  kind group, no filter.  (seg1 slice1 10.13.9.100:7003 pid=10140)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     21
@@ -3004,4 +2018,3 @@ drop table t_numeric;
 reset pax_enable_debug;
 reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;

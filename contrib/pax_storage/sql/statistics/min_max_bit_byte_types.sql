@@ -154,6 +154,5 @@ drop table t_varbit;
 reset pax_enable_debug;
 reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;
 
 

@@ -20,189 +20,201 @@ insert into t_text(i, v) values (1, 'pfk'),(1, 'pfl'),(1, 'pfm'),(1, 'pfn'),(1, 
 (1, 'pfp'),(1, 'pfq'),(1, 'pfr'),(1, 'pfs'),(1, 'pft');
 set client_min_messages to log;
 select count(*) from t_text where v > 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v > 'pfe'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v > 'pfj'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v > 'pfo'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v > 'pft'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v < 'pf9'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v < 'pff'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v < 'pfk'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v < 'pfp'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v < 'pfz'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v = 'pf9'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v = 'pfe'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfj'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfk'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pft'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfz'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v >= 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v >= 'pfa'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v >= 'pff'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v >= 'pfk'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v >= 'pfp'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v >= 'pfz'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v <= 'pf9'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v <= 'pfe'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v <= 'pfj'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v <= 'pfo'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v <= 'pft'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -210,189 +222,201 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(text, varchar)
 select count(*) from t_text where v > 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v > 'pfe'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v > 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v > 'pfo'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v > 'pft'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v < 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v < 'pff'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v < 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v < 'pfp'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v < 'pfz'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v = 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v = 'pfe'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pft'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfz'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v >= 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v >= 'pfa'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v >= 'pff'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v >= 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v >= 'pfp'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v >= 'pfz'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v <= 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v <= 'pfe'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v <= 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v <= 'pfo'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v <= 'pft'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -400,189 +424,189 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(text, name)
 select count(*) from t_text where v > 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v > 'pfe'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v > 'pfj'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v > 'pfo'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v > 'pft'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v < 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v < 'pff'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v < 'pfk'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v < 'pfp'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v < 'pfz'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v = 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v = 'pfe'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfj'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfk'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pft'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfz'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v >= 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v >= 'pfa'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v >= 'pff'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v >= 'pfk'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v >= 'pfp'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v >= 'pfz'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v <= 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v <= 'pfe'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v <= 'pfj'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v <= 'pfo'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v <= 'pft'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -590,189 +614,201 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(text, name)
 select count(*) from t_text where v > 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v > 'pfe'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v > 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v > 'pfo'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v > 'pft'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v < 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v < 'pff'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v < 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v < 'pfp'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v < 'pfz'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v = 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v = 'pfe'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pft'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_text where v = 'pfz'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v >= 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v >= 'pfa'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_text where v >= 'pff'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v >= 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v >= 'pfp'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v >= 'pfz'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v <= 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_text where v <= 'pfe'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_text where v <= 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_text where v <= 'pfo'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_text where v <= 'pft'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -793,189 +829,201 @@ insert into t_varchar(i, v) values (1, 'pfk'),(1, 'pfl'),(1, 'pfm'),(1, 'pfn'),(
 (1, 'pfp'),(1, 'pfq'),(1, 'pfr'),(1, 'pfs'),(1, 'pft');
 set client_min_messages to log;
 select count(*) from t_varchar where v > 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v > 'pfe'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v > 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v > 'pfo'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v > 'pft'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v < 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v < 'pff'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v < 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v < 'pfp'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v < 'pfz'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v = 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v = 'pfe'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pft'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfz'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v >= 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfa'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v >= 'pff'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfp'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfz'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v <= 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfe'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfo'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v <= 'pft'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -983,189 +1031,201 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(varchar, text)
 select count(*) from t_varchar where v > 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v > 'pfe'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v > 'pfj'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v > 'pfo'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v > 'pft'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v < 'pf9'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v < 'pff'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v < 'pfk'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v < 'pfp'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v < 'pfz'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v = 'pf9'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v = 'pfe'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfj'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfk'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pft'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfz'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v >= 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfa'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v >= 'pff'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfk'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfp'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfz'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v <= 'pf9'::text;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfe'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfj'::text;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfo'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v <= 'pft'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -1173,189 +1233,189 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(varchar, name)
 select count(*) from t_varchar where v > 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v > 'pfe'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v > 'pfj'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v > 'pfo'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v > 'pft'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v < 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v < 'pff'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v < 'pfk'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v < 'pfp'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v < 'pfz'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v = 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v = 'pfe'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfj'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfk'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pft'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfz'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v >= 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfa'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v >= 'pff'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfk'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfp'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfz'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v <= 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfe'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfj'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfo'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v <= 'pft'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -1363,189 +1423,201 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(varchar, bpchar)
 select count(*) from t_varchar where v > 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v > 'pfe'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v > 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v > 'pfo'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v > 'pft'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v < 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v < 'pff'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v < 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v < 'pfp'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v < 'pfz'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v = 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v = 'pfe'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pft'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_varchar where v = 'pfz'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v >= 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfa'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_varchar where v >= 'pff'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfp'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v >= 'pfz'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v <= 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfe'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_varchar where v <= 'pfo'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_varchar where v <= 'pft'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -1566,189 +1638,201 @@ insert into t_bpchar(i, v) values (1, 'pfk'),(1, 'pfl'),(1, 'pfm'),(1, 'pfn'),(1
 (1, 'pfp'),(1, 'pfq'),(1, 'pfr'),(1, 'pfs'),(1, 'pft');
 set client_min_messages to log;
 select count(*) from t_bpchar where v > 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfe'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfo'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v > 'pft'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v < 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v < 'pff'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfp'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfz'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v = 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfe'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pft'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfz'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfa'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pff'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfk'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfp'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfz'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pf9'::bpchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfe'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfj'::bpchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfo'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pft'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -1756,14 +1840,13 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(bpchar, text)
 select count(*) from t_bpchar where v > 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfe'::text;
-LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
@@ -1778,6 +1861,7 @@ LOG:  kind file, filter rate: 1 / 2
 
 select count(*) from t_bpchar where v > 'pfo'::text;
 LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
@@ -1799,6 +1883,7 @@ LOG:  kind file, filter rate: 2 / 2
 
 select count(*) from t_bpchar where v < 'pff'::text;
 LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
@@ -1812,14 +1897,13 @@ LOG:  kind file, filter rate: 1 / 2
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfp'::text;
-LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfz'::text;
-LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -1834,6 +1918,7 @@ LOG:  kind file, filter rate: 2 / 2
 
 select count(*) from t_bpchar where v = 'pfe'::text;
 LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
@@ -1841,6 +1926,7 @@ LOG:  kind file, filter rate: 1 / 2
 
 select count(*) from t_bpchar where v = 'pfj'::text;
 LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
@@ -1848,6 +1934,7 @@ LOG:  kind file, filter rate: 1 / 2
 
 select count(*) from t_bpchar where v = 'pfk'::text;
 LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
@@ -1855,6 +1942,7 @@ LOG:  kind file, filter rate: 1 / 2
 
 select count(*) from t_bpchar where v = 'pft'::text;
 LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
@@ -1868,21 +1956,19 @@ LOG:  kind file, filter rate: 2 / 2
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfa'::text;
-LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pff'::text;
-LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
@@ -1897,6 +1983,7 @@ LOG:  kind file, filter rate: 1 / 2
 
 select count(*) from t_bpchar where v >= 'pfp'::text;
 LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
@@ -1918,6 +2005,7 @@ LOG:  kind file, filter rate: 2 / 2
 
 select count(*) from t_bpchar where v <= 'pfe'::text;
 LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
@@ -1931,14 +2019,13 @@ LOG:  kind file, filter rate: 1 / 2
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfo'::text;
-LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pft'::text;
-LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -2136,189 +2223,200 @@ LOG:  kind file, filter rate: 0 / 2
 
 -- oper(bpchar, varchar)
 select count(*) from t_bpchar where v > 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfe'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v > 'pfo'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v > 'pft'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v < 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v < 'pff'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfp'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v < 'pfz'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v = 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfe'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pft'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_bpchar where v = 'pfz'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfa'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pff'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfk'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfp'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v >= 'pfz'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pf9'::varchar;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfe'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfj'::varchar;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pfo'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_bpchar where v <= 'pft'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -2339,189 +2437,201 @@ insert into t_name(i, v) values (1, 'pfk'),(1, 'pfl'),(1, 'pfm'),(1, 'pfn'),(1, 
 (1, 'pfp'),(1, 'pfq'),(1, 'pfr'),(1, 'pfs'),(1, 'pft');
 set client_min_messages to log;
 select count(*) from t_name where v > 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v > 'pfe'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v > 'pfj'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v > 'pfo'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v > 'pft'::name;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v < 'pf9'::name;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v < 'pff'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v < 'pfk'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v < 'pfp'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v < 'pfz'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v = 'pf9'::name;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v = 'pfe'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfj'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfk'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pft'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfz'::name;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v >= 'pf9'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v >= 'pfa'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v >= 'pff'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v >= 'pfk'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v >= 'pfp'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v >= 'pfz'::name;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v <= 'pf9'::name;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v <= 'pfe'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v <= 'pfj'::name;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v <= 'pfo'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v <= 'pft'::name;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -2529,189 +2639,189 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(name, text)
 select count(*) from t_name where v > 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v > 'pfe'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v > 'pfj'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v > 'pfo'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v > 'pft'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v < 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v < 'pff'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v < 'pfk'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v < 'pfp'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v < 'pfz'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v = 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v = 'pfe'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfj'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfk'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pft'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfz'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v >= 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v >= 'pfa'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v >= 'pff'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v >= 'pfk'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v >= 'pfp'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v >= 'pfz'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v <= 'pf9'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v <= 'pfe'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v <= 'pfj'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v <= 'pfo'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v <= 'pft'::text;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -2719,189 +2829,189 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(name, bpchar)
 select count(*) from t_name where v > 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v > 'pfe'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v > 'pfj'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v > 'pfo'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v > 'pft'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v < 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v < 'pff'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v < 'pfk'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v < 'pfp'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v < 'pfz'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v = 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v = 'pfe'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfj'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfk'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pft'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfz'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v >= 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v >= 'pfa'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v >= 'pff'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v >= 'pfk'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v >= 'pfp'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v >= 'pfz'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v <= 'pf9'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v <= 'pfe'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v <= 'pfj'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v <= 'pfo'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v <= 'pft'::bpchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -2909,189 +3019,189 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
 
 -- oper(name, varchar)
 select count(*) from t_name where v > 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v > 'pfe'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v > 'pfj'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v > 'pfo'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v > 'pft'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v < 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v < 'pff'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v < 'pfk'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v < 'pfp'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v < 'pfz'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v = 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v = 'pfe'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfj'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfk'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pft'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_name where v = 'pfz'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v >= 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v >= 'pfa'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_name where v >= 'pff'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v >= 'pfk'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v >= 'pfp'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v >= 'pfz'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v <= 'pf9'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_name where v <= 'pfe'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_name where v <= 'pfj'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_name where v <= 'pfo'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_name where v <= 'pft'::varchar;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=24211)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -3103,4 +3213,3 @@ drop table t_name;
 reset pax_enable_debug;
 reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;

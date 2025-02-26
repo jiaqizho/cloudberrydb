@@ -9,10 +9,6 @@ set pax_enable_debug to on;
 set pax_enable_sparse_filter to on;
 set pax_max_tuples_per_group to 5;
 
--- FIXME(jiaqizho): current case vectorization have a bug
--- bug case: select count(*) from t_date where v = '2000-01-11 00:00:00+00'::timestamptz;
-set vector.enable_vectorization to off;
-
 -- 
 -- Test the date min/max types support 
 -- 
@@ -508,4 +504,3 @@ drop table t_interval;
 reset pax_enable_debug;
 reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;

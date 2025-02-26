@@ -25,11 +25,11 @@ case when i%3=0 then null
      end case -- n
 from generate_series(1,40)i;
 explain select *, '|' || bp || '|' from t_default_value1;
-                                     QUERY PLAN                                      
--------------------------------------------------------------------------------------
- Result  (cost=0.00..431.00 rows=1 width=41)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=33)
-         ->  Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=33)
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
+ Vec Result  (cost=0.00..431.00 rows=1 width=41)
+   ->  Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=33)
+         ->  Vec Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=33)
  Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
@@ -83,10 +83,10 @@ alter table t_default_value1 add bp2 char(16) default '  _PAD_  ';
 alter table t_default_value1 add s2 text default '  _DEF_TEXT_  ';
 alter table t_default_value1 add n2 numeric(22, 10) default 6.283185307179586;
 explain select *, '|' || bp2 || '|' from t_default_value1;
-                                  QUERY PLAN                                   
--------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=66)
-   ->  Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=67)
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..246.75 rows=11100 width=296)
+   ->  Vec Seq Scan on t_default_value1  (cost=0.00..98.75 rows=3700 width=296)
  Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 
@@ -138,10 +138,10 @@ select *, '|' || bp2 || '|' from t_default_value1;
 -- precision > 35 will fallback to pg executor
 alter table t_default_value1 add n3 numeric(36, 10) default 1.234;
 explain select *, '|' || bp2 || '|' from t_default_value1;
-                                  QUERY PLAN                                   
--------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=74)
-   ->  Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=75)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..227.58 rows=10100 width=324)
+   ->  Seq Scan on t_default_value1  (cost=0.00..92.92 rows=3367 width=324)
  Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 
@@ -191,10 +191,10 @@ select *, '|' || bp2 || '|' from t_default_value1;
 (40 rows)
 
 explain select *, '|' || bp2 || '|' from t_default_value1;
-                                  QUERY PLAN                                   
--------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=74)
-   ->  Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=75)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..227.58 rows=10100 width=324)
+   ->  Seq Scan on t_default_value1  (cost=0.00..92.92 rows=3367 width=324)
  Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 
@@ -271,11 +271,11 @@ case when i%3=0 then null
      end case -- n
 from generate_series(1,40)i;
 explain select *, '|' || bp || '|' from t_default_value1;
-                                     QUERY PLAN                                      
--------------------------------------------------------------------------------------
- Result  (cost=0.00..431.00 rows=1 width=41)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=33)
-         ->  Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=33)
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
+ Vec Result  (cost=0.00..431.00 rows=1 width=41)
+   ->  Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=33)
+         ->  Vec Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=33)
  Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
@@ -329,10 +329,10 @@ alter table t_default_value1 add bp2 char(16) default '  _PAD_  ';
 alter table t_default_value1 add s2 text default '  _DEF_TEXT_  ';
 alter table t_default_value1 add n2 numeric(22, 10) default 6.283185307179586;
 explain select *, '|' || bp2 || '|' from t_default_value1;
-                                    QUERY PLAN                                     
------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=66)
-   ->  Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=67)
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..246.75 rows=11100 width=296)
+   ->  Vec Seq Scan on t_default_value1  (cost=0.00..98.75 rows=3700 width=296)
  Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 
@@ -385,10 +385,10 @@ select *, '|' || bp2 || '|' from t_default_value1;
 alter table t_default_value1 add n3 numeric(36, 10) default 1.234;
 ERROR:  column 'n3' precision(36) out of range, precision should be (0, 35]
 explain select *, '|' || bp2 || '|' from t_default_value1;
-                                  QUERY PLAN                                   
--------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=66)
-   ->  Seq Scan on t_default_value1  (cost=0.00..431.00 rows=1 width=67)
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Vec Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..246.75 rows=11100 width=296)
+   ->  Vec Seq Scan on t_default_value1  (cost=0.00..98.75 rows=3700 width=296)
  Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 

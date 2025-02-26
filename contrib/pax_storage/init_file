@@ -90,7 +90,11 @@ m/Distributed randomly/
 # ignore messages that has no filter
 m/LOG:  kind file, no filter\..*/
 m/LOG:  kind group, no filter\..*/
+m/^LOG:  kind file, filter rate: 0 \/ .*/
+m/^LOG:  Build a readable bloom filter .*/
 m/Build a readable bloom filter .*/
+m/kind group, filter rate: 0 \/.*/
+m/kind group, no filter\..*/
 -- end_matchignore
 
 -- start_matchsubs
@@ -159,14 +163,8 @@ s/.//gs
 m/reset enable_parallel;/
 s/.//gs
 
+m/ \([a-zA-Z_0-9]+\.cc:\d+\)/
+s/ \([a-zA-Z_0-9]+\.cc:\d+\)//
 -- end_matchsubs
 
 -- pax ignore matchers
-
--- start_matchsubs
-m/\(pax_access_handle.cc:\d+\)/
-s/\(pax_access_handle.cc:\d+\)/\(pax_access_handle.cc:###\)/
-
-m/\(paxc_rel_options.cc:\d+\)/
-s/\(paxc_rel_options.cc:\d+\)/\(paxc_rel_options.cc:###\)/
--- end_matchsubs

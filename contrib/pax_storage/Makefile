@@ -32,9 +32,10 @@ all: build
 
 DIRS = $(shell find src/cpp -maxdepth 2 -type d)
 SRC = $(foreach dir, $(DIRS), $(wildcard $(dir)/*.cc))
+CSRC = $(foreach dir, $(DIRS), $(wildcard $(dir)/*.c))
 
 .PHONY: install-data build
-build:
+build: $(SRC) $(CSRC)
 	@if [ ! -f build/Makefile ]; then \
 		mkdir -p build && \
 		cd build && cmake .. -DCMAKE_INSTALL_PREFIX=$(DESTDIR)$(prefix); \
@@ -60,10 +61,20 @@ install: install-data
 .PHONY: pax-test
 pax-test: 
 	@echo "Begin running pax tests"
+	@echo "Run pax-test with vector.enable_vectorization off"
+	PGOPTIONS="$(PGOPTIONS) -c vector.enable_vectorization=off" \
 	$(PG_REGRESS) \
 		--init-file=init_file --schedule=pax_schedule \
 		--load-extension=gp_inject_fault --dbname=pax_test
 	$(bindir)/dropdb --if-exists pax_test
+ifeq ($(enable_vectorization),yes)
+	@echo "Run pax-test with vector.enable_vectorization on"
+	PGOPTIONS="$(PGOPTIONS) -c vector.enable_vectorization=on" \
+	$(PG_REGRESS) \
+		--init-file=init_file --schedule=pax_schedule \
+		--load-extension=gp_inject_fault --dbname=pax_test
+	$(bindir)/dropdb --if-exists pax_test
+endif
 
 .PHONY: icw_test
 icw_test: pax-test regress_test isolation2_test

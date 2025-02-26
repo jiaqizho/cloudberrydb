@@ -17,182 +17,194 @@ insert into t_float4(i, v) values(1, generate_series(1, 10));
 insert into t_float4(i, v) values(1, generate_series(11, 20));
 set client_min_messages to log;
 select count(*) from t_float4 where v > 0::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float4 where v > 5::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float4 where v > 10::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float4 where v > 15::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float4 where v > 20::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v < 0::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v < 6::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float4 where v < 11::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float4 where v < 16::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float4 where v < 21::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float4 where v = -1::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v = 5::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float4 where v = 10::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float4 where v = 11::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float4 where v = 20::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float4 where v = 21::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v >= 0::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float4 where v >= 6::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float4 where v >= 11::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float4 where v >= 16::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float4 where v >= 21::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v <= -1::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v <= 5::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float4 where v <= 10::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float4 where v <= 15::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float4 where v <= 20::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -200,182 +212,194 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
 
 -- oper(float4, float8)
 select count(*) from t_float4 where v > 0::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float4 where v > 5::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float4 where v > 10::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float4 where v > 15::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float4 where v > 20::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v < 0::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v < 6::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float4 where v < 11::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float4 where v < 16::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float4 where v < 21::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float4 where v = -1::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v = 5::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float4 where v = 10::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float4 where v = 11::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float4 where v = 20::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float4 where v = 21::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v >= 0::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float4 where v >= 6::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float4 where v >= 11::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float4 where v >= 16::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float4 where v >= 21::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v <= -1::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float4 where v <= 5::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float4 where v <= 10::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float4 where v <= 15::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float4 where v <= 20::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -394,182 +418,194 @@ insert into t_float8(i, v) values(1, generate_series(1, 10));
 insert into t_float8(i, v) values(1, generate_series(11, 20));
 set client_min_messages to log;
 select count(*) from t_float8 where v > 0::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float8 where v > 5::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float8 where v > 10::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float8 where v > 15::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float8 where v > 20::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v < 0::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v < 6::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float8 where v < 11::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float8 where v < 16::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float8 where v < 21::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float8 where v = -1::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v = 5::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float8 where v = 10::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float8 where v = 11::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float8 where v = 20::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float8 where v = 21::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v >= 0::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float8 where v >= 6::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float8 where v >= 11::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float8 where v >= 16::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float8 where v >= 21::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v <= -1::float8;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v <= 5::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float8 where v <= 10::float8;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float8 where v <= 15::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float8 where v <= 20::float8;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -577,182 +613,194 @@ LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
 
 -- oper(float8, float4)
 select count(*) from t_float8 where v > 0::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float8 where v > 5::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float8 where v > 10::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float8 where v > 15::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float8 where v > 20::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v < 0::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v < 6::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float8 where v < 11::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float8 where v < 16::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float8 where v < 21::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float8 where v = -1::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v = 5::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float8 where v = 10::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float8 where v = 11::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float8 where v = 20::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_float8 where v = 21::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v >= 0::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_float8 where v >= 6::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float8 where v >= 11::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float8 where v >= 16::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float8 where v >= 21::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v <= -1::float4;
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_float8 where v <= 5::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_float8 where v <= 10::float4;
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_float8 where v <= 15::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_float8 where v <= 20::float4;
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=29736)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -764,4 +812,3 @@ drop table t_float8;
 reset pax_enable_debug;
 reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;

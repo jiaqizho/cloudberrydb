@@ -7,7 +7,6 @@ set default_table_access_method to pax;
 set pax_enable_debug to on;
 set pax_enable_sparse_filter to on;
 set pax_max_tuples_per_group to 5;
-set vector.enable_vectorization to on;
 -- 
 -- Test the box min/max types support 
 -- 
@@ -24,182 +23,194 @@ insert into t_box(i, v) values (1, box'(0,0),(1,11)'), (1, box'(0,0),(1,12)'),(1
     (1, box'(0,0),(1,20)');
 set client_min_messages to log;
 select count(*) from t_box where v > box'(0,0),(0,0)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_box where v > box'(0,0),(1,5)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_box where v > box'(0,0),(1,10)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_box where v > box'(0,0),(1,15)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_box where v > box'(0,0),(1,20)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_box where v < box'(0,0),(0,0)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_box where v < box'(0,0),(1,6)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_box where v < box'(0,0),(1,11)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_box where v < box'(0,0),(1,16)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_box where v < box'(0,0),(1,21)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_box where v = box'(0,0),(0,0)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_box where v = box'(0,0),(1,5)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_box where v = box'(0,0),(1,10)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_box where v = box'(0,0),(1,11)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_box where v = box'(0,0),(1,20)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_box where v = box'(0,0),(1,21)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_box where v >= box'(0,0),(0,0)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_box where v >= box'(0,0),(1,6)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_box where v >= box'(0,0),(1,11)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_box where v >= box'(0,0),(1,16)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_box where v >= box'(0,0),(1,21)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_box where v <= box'(0,0),(0,0)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_box where v <= box'(0,0),(1,5)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_box where v <= box'(0,0),(1,10)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_box where v <= box'(0,0),(1,15)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_box where v <= box'(0,0),(1,20)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -224,182 +235,194 @@ insert into t_lseg(i, v) values (1, lseg'(0,0),(1,11)'), (1, lseg'(0,0),(1,12)')
     (1, lseg'(0,0),(1,20)');
 set client_min_messages to log;
 select count(*) from t_lseg where v > lseg'(0,0),(0,0)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_lseg where v > lseg'(0,0),(1,5)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_lseg where v > lseg'(0,0),(1,10)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_lseg where v > lseg'(0,0),(1,15)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_lseg where v > lseg'(0,0),(1,20)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_lseg where v < lseg'(0,0),(0,0)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_lseg where v < lseg'(0,0),(1,6)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_lseg where v < lseg'(0,0),(1,11)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_lseg where v < lseg'(0,0),(1,16)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_lseg where v < lseg'(0,0),(1,21)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_lseg where v = lseg'(0,0),(0,0)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_lseg where v = lseg'(0,0),(1,5)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_lseg where v = lseg'(0,0),(1,10)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_lseg where v = lseg'(0,0),(1,11)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_lseg where v = lseg'(0,0),(1,20)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_lseg where v = lseg'(0,0),(1,21)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_lseg where v >= lseg'(0,0),(0,0)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_lseg where v >= lseg'(0,0),(1,6)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_lseg where v >= lseg'(0,0),(1,11)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_lseg where v >= lseg'(0,0),(1,16)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_lseg where v >= lseg'(0,0),(1,21)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_lseg where v <= lseg'(0,0),(0,0)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_lseg where v <= lseg'(0,0),(1,5)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_lseg where v <= lseg'(0,0),(1,10)';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_lseg where v <= lseg'(0,0),(1,15)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_lseg where v <= lseg'(0,0),(1,20)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -421,182 +444,194 @@ insert into t_circle(i, v) values (1, circle'<(0,0),11>'), (1, circle'<(0,0),12>
     (1, circle'<(0,0),20>');
 set client_min_messages to log;
 select count(*) from t_circle where v > circle'<(0,0),0>';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_circle where v > circle'<(0,0),5>';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_circle where v > circle'<(0,0),10>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_circle where v > circle'<(0,0),15>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_circle where v > circle'<(0,0),20>';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_circle where v < circle'<(0,0),0>';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_circle where v < circle'<(0,0),6>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_circle where v < circle'<(0,0),11>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_circle where v < circle'<(0,0),16>';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_circle where v < circle'<(0,0),21>';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_circle where v = circle'<(0,0),0>';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_circle where v = circle'<(0,0),5>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_circle where v = circle'<(0,0),10>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_circle where v = circle'<(0,0),11>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_circle where v = circle'<(0,0),20>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      1
 (1 row)
 
 select count(*) from t_circle where v = circle'<(0,0),21>';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_circle where v >= circle'<(0,0),0>';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_circle where v >= circle'<(0,0),6>';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_circle where v >= circle'<(0,0),11>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_circle where v >= circle'<(0,0),16>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_circle where v >= circle'<(0,0),21>';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_circle where v <= circle'<(0,0),0>';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_circle where v <= circle'<(0,0),5>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
+kind group, filter rate: 1 / 2
  count 
 -------
      5
 (1 row)
 
 select count(*) from t_circle where v <= circle'<(0,0),10>';
-LOG:  kind file, filter rate: 1 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 1 / 2
  count 
 -------
     10
 (1 row)
 
 select count(*) from t_circle where v <= circle'<(0,0),15>';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
+kind group, filter rate: 1 / 4
  count 
 -------
     15
 (1 row)
 
 select count(*) from t_circle where v <= circle'<(0,0),20>';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -618,182 +653,182 @@ insert into t_path(i, v) values (1, path'(0,0),(1,1),(2,11)'), (1, path'(0,0),(1
 (1, path'(0,0),(1,1),(2,20)');
 set client_min_messages to log;
 select count(*) from t_path where v > path'(0,0),(1,1),(2,0)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v > path'(0,0),(1,1),(2,5)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v > path'(0,0),(1,1),(2,10)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v > path'(0,0),(1,1),(2,15)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v > path'(0,0),(1,1),(2,20)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v < path'(0,0),(1,1),(2,0)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v < path'(0,0),(1,1),(2,6)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v < path'(0,0),(1,1),(2,11)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v < path'(0,0),(1,1),(2,16)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v < path'(0,0),(1,1),(2,21)';
-LOG:  kind file, filter rate: 2 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 2 / 2
  count 
 -------
      0
 (1 row)
 
 select count(*) from t_path where v = path'(0,0),(1,1),(2,0)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v = path'(0,0),(1,1),(2,5)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v = path'(0,0),(1,1),(2,10)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v = path'(0,0),(1,1),(2,11)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v = path'(0,0),(1,1),(2,20)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v = path'(0,0),(1,1),(2,21)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v >= path'(0,0),(1,1),(2,0)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v >= path'(0,0),(1,1),(2,6)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v >= path'(0,0),(1,1),(2,11)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v >= path'(0,0),(1,1),(2,16)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v >= path'(0,0),(1,1),(2,21)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v <= path'(0,0),(1,1),(2,0)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v <= path'(0,0),(1,1),(2,5)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v <= path'(0,0),(1,1),(2,10)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v <= path'(0,0),(1,1),(2,15)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
 (1 row)
 
 select count(*) from t_path where v <= path'(0,0),(1,1),(2,20)';
-LOG:  kind file, filter rate: 0 / 2  (seg1 slice1 10.13.9.100:7003 pid=31176)
+LOG:  kind file, filter rate: 0 / 2
  count 
 -------
     20
@@ -805,4 +840,3 @@ drop table t_path;
 reset pax_enable_debug;
 reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;

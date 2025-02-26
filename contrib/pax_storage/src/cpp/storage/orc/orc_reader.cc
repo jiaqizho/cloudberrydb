@@ -7,6 +7,7 @@
 #include "comm/cbdb_wrappers.h"
 #include "exceptions/CException.h"
 #include "storage/filter/pax_filter.h"
+#include "storage/filter/pax_sparse_filter.h"
 #include "storage/orc/orc_defined.h"
 #include "storage/orc/orc_group.h"
 #include "storage/orc/porc.h"
@@ -178,7 +179,16 @@ retry_read_group:
       return false;
     }
 
-    working_group_ = ReadGroup(current_group_index_++);
+    auto group_index = current_group_index_++;
+    if (filter_ && filter_->SparseFilterEnabled()) {
+      auto info = GetGroupStatsInfo(group_index);
+      TupleDesc tupleDesc = slot->tts_tupleDescriptor;
+      if (!filter_->ExecSparseFilter(*info, tupleDesc,
+                     pax::PaxSparseFilter::StatisticsKind::kGroup)) {
+        goto retry_read_group;
+      }
+    }
+    working_group_ = ReadGroup(group_index);
     auto columns = working_group_->GetAllColumns().get();
 
     // The column number in Pax file meta could be smaller than the column
