@@ -182,6 +182,7 @@ arrow::Status ParallelScanDesc::Initialize(Relation relation,
   const std::shared_ptr<arrow::Schema> &table_schema,
   const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options,
   FileSystem *file_system, std::shared_ptr<FileSystemOptions> fs_options,
+  void *context,
   pax::IteratorBase<std::shared_ptr<MicroPartitionInfoProvider>> &&it) {
   relation_ = relation;
   file_system_ = file_system;
@@ -189,6 +190,7 @@ arrow::Status ParallelScanDesc::Initialize(Relation relation,
   Assert(relation && file_system);
 
   auto tupdesc = RelationGetDescr(relation);
+  PlanState *ps = (PlanState *)context;
 
   std::vector<std::shared_ptr<MicroPartitionInfoProvider>> result;
 
@@ -202,12 +204,13 @@ arrow::Status ParallelScanDesc::Initialize(Relation relation,
         arrow::ExtractFieldName(table_schema_->field(i)->name()));
 
   CalculateScanColumns(table_names);
-  pax_filter_->InitSparseFilter(relation_, scan_options->filter, table_names);
+  if (pax_enable_sparse_filter)
+    pax_filter_->InitSparseFilter(relation, ps->plan->qual);
 
   while (it.HasNext()) {
     auto meta = it.Next();
     bool ok = true;
-    if (pax_filter_->SparseFilterEnabled()) {
+    if (pax_enable_sparse_filter && pax_filter_->SparseFilterEnabled()) {
       MicroPartitionStatsProvider provider(meta->GetStats());
       ok = pax_filter_->ExecSparseFilter(provider, tupdesc,
                                          PaxSparseFilter::StatisticsKind::kFile);

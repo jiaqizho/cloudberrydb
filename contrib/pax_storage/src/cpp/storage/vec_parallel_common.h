@@ -52,6 +52,7 @@ class ParallelScanDesc final : public std::enable_shared_from_this<ParallelScanD
     const std::shared_ptr<arrow::Schema> &table_schema,
     const std::shared_ptr<arrow::dataset::ScanOptions> &scan_options,
     FileSystem *file_system, std::shared_ptr<FileSystemOptions> options,
+    void *context /* pg context about the scan */,
     pax::IteratorBase<std::shared_ptr<MicroPartitionInfoProvider>> &&it);
   void Release();
   const std::shared_ptr<arrow::Schema> &TableSchema() const {

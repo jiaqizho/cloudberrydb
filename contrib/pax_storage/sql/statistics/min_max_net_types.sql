@@ -8,7 +8,6 @@ set default_table_access_method to pax;
 set pax_enable_debug to on;
 set pax_enable_sparse_filter to on;
 set pax_max_tuples_per_group to 5;
-set vector.enable_vectorization to on;
 
 -- 
 -- Test the inet min/max types support 
@@ -158,4 +157,3 @@ drop table t_mac8;
 reset pax_enable_debug;
 reset pax_enable_sparse_filter;
 reset pax_max_tuples_per_group;
-reset vector.enable_vectorization;
