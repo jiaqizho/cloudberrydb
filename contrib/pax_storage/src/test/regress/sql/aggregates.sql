@@ -3,7 +3,6 @@
 --
 
 -- start_ignore
-SET optimizer_trace_fallback to on;
 -- end_ignore
 
 -- avoid bit-exact output here because operations may not be bit-exact.
@@ -569,7 +568,6 @@ select aggfns(distinct a,b,c order by a,c using ~<~,b)
 -- start_ignore
 -- pg_get_viewdef() runs some internal queries on catalogs, and we don't want
 -- fallback notices about those.
-reset optimizer_trace_fallback;
 -- end_ignore
 
 create view agg_view1 as
@@ -627,7 +625,6 @@ select pg_get_viewdef('agg_view1'::regclass);
 drop view agg_view1;
 
 -- start_ignore
-SET optimizer_trace_fallback to on;
 -- end_ignore
 
 -- incorrect DISTINCT usage errors
@@ -785,12 +782,10 @@ select ten,
 -- start_ignore
 -- pg_get_viewdef() runs some internal queries on catalogs, and we don't want
 -- fallback notices about those.
-reset optimizer_trace_fallback;
 -- end_ignore
 
 select pg_get_viewdef('aggordview1');
 -- start_ignore
-SET optimizer_trace_fallback to on;
 -- end_ignore
 select * from aggordview1 order by ten;
 drop view aggordview1;
@@ -962,11 +957,9 @@ select ten,
 -- start_ignore
 -- pg_get_viewdef() runs some internal queries on catalogs, and we don't want
 -- fallback notices about those.
-reset optimizer_trace_fallback;
 -- end_ignore
 select pg_get_viewdef('aggordview1');
 -- start_ignore
-SET optimizer_trace_fallback to on;
 -- end_ignore
 select * from aggordview1 order by ten;
 drop view aggordview1;

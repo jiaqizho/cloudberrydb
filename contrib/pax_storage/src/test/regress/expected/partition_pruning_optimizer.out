@@ -144,25 +144,25 @@ SELECT * FROM pt_lt_tab WHERE col1 < 10 ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col1 < 10 ORDER BY col2,col3 LIMIT 5;
-                                                                QUERY PLAN                                                                 
--------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=5 width=12)
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.00 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.00 rows=4 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=4 width=12)
                      Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.00 rows=4 width=12)
-                           ->  Index Scan using pt_lt_tab_1_prt_part1_col1_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_1_prt_part2_col1_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_1_prt_part3_col1_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_1_prt_part4_col1_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_1_prt_part5_col1_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
+                     ->  Append  (cost=0.00..431.00 rows=4 width=12)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part1  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -172,26 +172,36 @@ SELECT * FROM pt_lt_tab WHERE col1 > 50 ORDER BY col2,col3 LIMIT 5;
 (0 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col1 > 50 ORDER BY col2,col3 LIMIT 5;
-                                                             QUERY PLAN                                                              
--------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=1 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..387.97 rows=1 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..387.97 rows=1 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Sort  (cost=0.00..6.00 rows=1 width=12)
+         ->  Sort  (cost=0.00..387.97 rows=1 width=12)
                Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-               ->  Append  (cost=0.00..6.00 rows=1 width=12)
-                     ->  Index Scan using pt_lt_tab_1_prt_part1_col1_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
-                     ->  Index Scan using pt_lt_tab_1_prt_part2_col1_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
-                     ->  Index Scan using pt_lt_tab_1_prt_part3_col1_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
-                     ->  Index Scan using pt_lt_tab_1_prt_part4_col1_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
-                     ->  Index Scan using pt_lt_tab_1_prt_part5_col1_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
+               ->  Append  (cost=0.00..387.97 rows=1 width=12)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part1  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part1_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part2  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part2_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part3  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part3_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part4  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part4_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part5  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part5_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
  Optimizer: Pivotal Optimizer (GPORCA)
-(17 rows)
+(27 rows)
 
 SELECT * FROM pt_lt_tab WHERE col1 = 25 ORDER BY col2,col3 LIMIT 5;
  col1 | col2 | col3 | col4 
@@ -200,26 +210,36 @@ SELECT * FROM pt_lt_tab WHERE col1 = 25 ORDER BY col2,col3 LIMIT 5;
 (1 row)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col1 = 25 ORDER BY col2,col3 LIMIT 5;
-                                                             QUERY PLAN                                                              
--------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=2 width=12)
-   ->  Gather Motion 1:1  (slice1; segments: 1)  (cost=0.00..6.00 rows=2 width=12)
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..387.97 rows=1 width=12)
+   ->  Gather Motion 1:1  (slice1; segments: 1)  (cost=0.00..387.97 rows=1 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Sort  (cost=0.00..6.00 rows=1 width=12)
+         ->  Sort  (cost=0.00..387.97 rows=1 width=12)
                Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-               ->  Append  (cost=0.00..6.00 rows=1 width=12)
-                     ->  Index Scan using pt_lt_tab_1_prt_part1_col1_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 = 25)
-                     ->  Index Scan using pt_lt_tab_1_prt_part2_col1_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 = 25)
-                     ->  Index Scan using pt_lt_tab_1_prt_part3_col1_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 = 25)
-                     ->  Index Scan using pt_lt_tab_1_prt_part4_col1_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 = 25)
-                     ->  Index Scan using pt_lt_tab_1_prt_part5_col1_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 = 25)
+               ->  Append  (cost=0.00..387.97 rows=1 width=12)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part1  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 = 25)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part1_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 = 25)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part2  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 = 25)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part2_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 = 25)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part3  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 = 25)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part3_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 = 25)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part4  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 = 25)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part4_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 = 25)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part5  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 = 25)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part5_col1_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 = 25)
  Optimizer: Pivotal Optimizer (GPORCA)
-(17 rows)
+(27 rows)
 
 SELECT * FROM pt_lt_tab WHERE col1 <> 10 ORDER BY col2,col3 LIMIT 5;
  col1 | col2 | col3 | col4 
@@ -265,25 +285,25 @@ SELECT * FROM pt_lt_tab WHERE col1 > 10 AND col1 < 50 ORDER BY col2,col3 LIMIT 5
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col1 > 10 AND col1 < 50 ORDER BY col2,col3 LIMIT 5;
-                                                                 QUERY PLAN                                                                 
---------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.01 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.01 rows=5 width=12)
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.01 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.01 rows=13 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=13 width=12)
                      Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.00 rows=13 width=12)
-                           ->  Index Scan using pt_lt_tab_1_prt_part1_col1_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=13 width=12)
-                                 Index Cond: ((col1 > 10) AND (col1 < 50))
-                           ->  Index Scan using pt_lt_tab_1_prt_part2_col1_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=13 width=12)
-                                 Index Cond: ((col1 > 10) AND (col1 < 50))
-                           ->  Index Scan using pt_lt_tab_1_prt_part3_col1_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=13 width=12)
-                                 Index Cond: ((col1 > 10) AND (col1 < 50))
-                           ->  Index Scan using pt_lt_tab_1_prt_part4_col1_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=13 width=12)
-                                 Index Cond: ((col1 > 10) AND (col1 < 50))
-                           ->  Index Scan using pt_lt_tab_1_prt_part5_col1_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=13 width=12)
-                                 Index Cond: ((col1 > 10) AND (col1 < 50))
+                     ->  Append  (cost=0.00..431.00 rows=13 width=12)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part1  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col1 > 10) AND (col1 < 50))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col1 > 10) AND (col1 < 50))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col1 > 10) AND (col1 < 50))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col1 > 10) AND (col1 < 50))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col1 > 10) AND (col1 < 50))
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -331,25 +351,25 @@ SELECT * FROM pt_lt_tab WHERE col1 between 10 AND 25 ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col1 between 10 AND 25 ORDER BY col2,col3 LIMIT 5;
-                                                                QUERY PLAN                                                                 
--------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=5 width=12)
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.00 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.00 rows=6 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=6 width=12)
                      Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.00 rows=6 width=12)
-                           ->  Index Scan using pt_lt_tab_1_prt_part1_col1_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=6 width=12)
-                                 Index Cond: ((col1 >= 10) AND (col1 <= 25))
-                           ->  Index Scan using pt_lt_tab_1_prt_part2_col1_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=6 width=12)
-                                 Index Cond: ((col1 >= 10) AND (col1 <= 25))
-                           ->  Index Scan using pt_lt_tab_1_prt_part3_col1_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=6 width=12)
-                                 Index Cond: ((col1 >= 10) AND (col1 <= 25))
-                           ->  Index Scan using pt_lt_tab_1_prt_part4_col1_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=6 width=12)
-                                 Index Cond: ((col1 >= 10) AND (col1 <= 25))
-                           ->  Index Scan using pt_lt_tab_1_prt_part5_col1_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=6 width=12)
-                                 Index Cond: ((col1 >= 10) AND (col1 <= 25))
+                     ->  Append  (cost=0.00..431.00 rows=6 width=12)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part1  (cost=0.00..431.00 rows=6 width=12)
+                                 Filter: ((col1 >= 10) AND (col1 <= 25))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=6 width=12)
+                                 Filter: ((col1 >= 10) AND (col1 <= 25))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=6 width=12)
+                                 Filter: ((col1 >= 10) AND (col1 <= 25))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=6 width=12)
+                                 Filter: ((col1 >= 10) AND (col1 <= 25))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=6 width=12)
+                                 Filter: ((col1 >= 10) AND (col1 <= 25))
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -367,17 +387,17 @@ SELECT * FROM pt_lt_tab WHERE col2 < 10 ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col2 < 10 ORDER BY col2,col3 LIMIT 5;
-                                                                QUERY PLAN                                                                 
--------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=5 width=12)
-         Merge Key: col2, col3
-         ->  Limit  (cost=0.00..6.00 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.00 rows=4 width=12)
-                     Sort Key: col2, col3
-                     ->  Append  (cost=0.00..6.00 rows=4 width=12)
-                           ->  Index Scan using pt_lt_tab_1_prt_part1_col2_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col2 < '10'::numeric)
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
+         Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=4 width=12)
+                     Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
+                     ->  Append  (cost=0.00..431.00 rows=4 width=12)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part1  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col2 < '10'::numeric)
  Optimizer: Pivotal Optimizer (GPORCA)
 (10 rows)
 
@@ -405,18 +425,20 @@ SELECT * FROM pt_lt_tab WHERE col2 = 25 ORDER BY col2,col3 LIMIT 5;
 (1 row)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col2 = 25 ORDER BY col2,col3 LIMIT 5;
-                                                             QUERY PLAN                                                              
--------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=2 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=2 width=12)
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..387.96 rows=2 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..387.96 rows=2 width=12)
          Merge Key: col2, col3
-         ->  Sort  (cost=0.00..6.00 rows=1 width=12)
+         ->  Sort  (cost=0.00..387.96 rows=1 width=12)
                Sort Key: col2, col3
-               ->  Append  (cost=0.00..6.00 rows=1 width=12)
-                     ->  Index Scan using pt_lt_tab_1_prt_part3_col2_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col2 = '25'::numeric)
+               ->  Append  (cost=0.00..387.96 rows=1 width=12)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part3  (cost=0.00..387.96 rows=1 width=12)
+                           Recheck Cond: (col2 = '25'::numeric)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part3_col2_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col2 = '25'::numeric)
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(11 rows)
 
 SELECT * FROM pt_lt_tab WHERE col2 <> 10 ORDER BY col2,col3 LIMIT 5;
  col1 | col2 | col3 | col4 
@@ -462,23 +484,23 @@ SELECT * FROM pt_lt_tab WHERE col2 > 10 AND col2 < 50 ORDER BY col2,col3 LIMIT 5
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col2 > 10 AND col2 < 50 ORDER BY col2,col3 LIMIT 5;
-                                                                 QUERY PLAN                                                                 
---------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.01 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.01 rows=5 width=12)
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_1_prt_part2.col2, pt_lt_tab_1_prt_part2.col3
-         ->  Limit  (cost=0.00..6.01 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.01 rows=14 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=12 width=12)
                      Sort Key: pt_lt_tab_1_prt_part2.col2, pt_lt_tab_1_prt_part2.col3
-                     ->  Append  (cost=0.00..6.00 rows=14 width=12)
-                           ->  Index Scan using pt_lt_tab_1_prt_part2_col2_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 > '10'::numeric) AND (col2 < '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part3_col2_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 > '10'::numeric) AND (col2 < '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part4_col2_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 > '10'::numeric) AND (col2 < '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part5_col2_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 > '10'::numeric) AND (col2 < '50'::numeric))
+                     ->  Append  (cost=0.00..431.00 rows=12 width=12)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=12 width=12)
+                                 Filter: ((col2 > '10'::numeric) AND (col2 < '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=12 width=12)
+                                 Filter: ((col2 > '10'::numeric) AND (col2 < '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=12 width=12)
+                                 Filter: ((col2 > '10'::numeric) AND (col2 < '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=12 width=12)
+                                 Filter: ((col2 > '10'::numeric) AND (col2 < '50'::numeric))
  Optimizer: Pivotal Optimizer (GPORCA)
 (16 rows)
 
@@ -524,25 +546,25 @@ SELECT * FROM pt_lt_tab WHERE col2 between 10 AND 50 ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col2 between 10 AND 50 ORDER BY col2,col3 LIMIT 5;
-                                                                 QUERY PLAN                                                                 
---------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.01 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.01 rows=5 width=12)
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.01 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.01 rows=14 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=13 width=12)
                      Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.00 rows=14 width=12)
-                           ->  Index Scan using pt_lt_tab_1_prt_part1_col2_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part2_col2_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part3_col2_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part4_col2_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part5_col2_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                     ->  Append  (cost=0.00..431.00 rows=13 width=12)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part1  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -560,25 +582,25 @@ SELECT * FROM pt_lt_tab WHERE col1 < 10 ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col1 < 10 ORDER BY col2,col3 LIMIT 5;
-                                                                   QUERY PLAN                                                                   
-------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=5 width=12)
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.00 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.00 rows=4 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=4 width=12)
                      Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.00 rows=4 width=12)
-                           ->  Index Scan using pt_lt_tab_1_prt_part1_col1_col2_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_1_prt_part2_col1_col2_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_1_prt_part3_col1_col2_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_1_prt_part4_col1_col2_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_1_prt_part5_col1_col2_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
+                     ->  Append  (cost=0.00..431.00 rows=4 width=12)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part1  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -588,26 +610,36 @@ SELECT * FROM pt_lt_tab WHERE col1 > 50 ORDER BY col2,col3 LIMIT 5;
 (0 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col1 > 50 ORDER BY col2,col3 LIMIT 5;
-                                                                QUERY PLAN                                                                
-------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=1 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
+                                                        QUERY PLAN                                                        
+--------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..387.97 rows=1 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..387.97 rows=1 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Sort  (cost=0.00..6.00 rows=1 width=12)
+         ->  Sort  (cost=0.00..387.97 rows=1 width=12)
                Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-               ->  Append  (cost=0.00..6.00 rows=1 width=12)
-                     ->  Index Scan using pt_lt_tab_1_prt_part1_col1_col2_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
-                     ->  Index Scan using pt_lt_tab_1_prt_part2_col1_col2_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
-                     ->  Index Scan using pt_lt_tab_1_prt_part3_col1_col2_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
-                     ->  Index Scan using pt_lt_tab_1_prt_part4_col1_col2_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
-                     ->  Index Scan using pt_lt_tab_1_prt_part5_col1_col2_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col1 > 50)
+               ->  Append  (cost=0.00..387.97 rows=1 width=12)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part1  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part1_col1_col2_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part2  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part2_col1_col2_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part3  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part3_col1_col2_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part4  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part4_col1_col2_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
+                     ->  Bitmap Heap Scan on pt_lt_tab_1_prt_part5  (cost=0.00..387.97 rows=1 width=12)
+                           Recheck Cond: (col1 > 50)
+                           ->  Bitmap Index Scan on pt_lt_tab_1_prt_part5_col1_col2_idx  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col1 > 50)
  Optimizer: Pivotal Optimizer (GPORCA)
-(17 rows)
+(27 rows)
 
 SELECT * FROM pt_lt_tab WHERE col2 = 25 ORDER BY col2,col3 LIMIT 5;
  col1 | col2 | col3 | col4 
@@ -616,16 +648,16 @@ SELECT * FROM pt_lt_tab WHERE col2 = 25 ORDER BY col2,col3 LIMIT 5;
 (1 row)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col2 = 25 ORDER BY col2,col3 LIMIT 5;
-                                                                QUERY PLAN                                                                
-------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=2 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=2 width=12)
-         Merge Key: col2, col3
-         ->  Sort  (cost=0.00..6.00 rows=1 width=12)
-               Sort Key: col2, col3
-               ->  Append  (cost=0.00..6.00 rows=1 width=12)
-                     ->  Index Scan using pt_lt_tab_1_prt_part3_col1_col2_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col2 = '25'::numeric)
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=2 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=2 width=12)
+         Merge Key: pt_lt_tab_1_prt_part3.col2, pt_lt_tab_1_prt_part3.col3
+         ->  Sort  (cost=0.00..431.00 rows=1 width=12)
+               Sort Key: pt_lt_tab_1_prt_part3.col2, pt_lt_tab_1_prt_part3.col3
+               ->  Append  (cost=0.00..431.00 rows=1 width=12)
+                     ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: (col2 = '25'::numeric)
  Optimizer: Pivotal Optimizer (GPORCA)
 (9 rows)
 
@@ -668,22 +700,22 @@ SELECT * FROM pt_lt_tab WHERE col2 > 10 AND col1 = 10 ORDER BY col2,col3 LIMIT 5
 (0 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col2 > 10 AND col1 = 10 ORDER BY col2,col3 LIMIT 5;
-                                                                QUERY PLAN                                                                
-------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=1 width=12)
-   ->  Gather Motion 1:1  (slice1; segments: 1)  (cost=0.00..6.00 rows=1 width=12)
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=1 width=12)
+   ->  Gather Motion 1:1  (slice1; segments: 1)  (cost=0.00..431.00 rows=1 width=12)
          Merge Key: pt_lt_tab_1_prt_part2.col2, pt_lt_tab_1_prt_part2.col3
-         ->  Sort  (cost=0.00..6.00 rows=1 width=12)
+         ->  Sort  (cost=0.00..431.00 rows=1 width=12)
                Sort Key: pt_lt_tab_1_prt_part2.col2, pt_lt_tab_1_prt_part2.col3
-               ->  Append  (cost=0.00..6.00 rows=1 width=12)
-                     ->  Index Scan using pt_lt_tab_1_prt_part2_col1_col2_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col1 = 10) AND (col2 > '10'::numeric))
-                     ->  Index Scan using pt_lt_tab_1_prt_part3_col1_col2_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col1 = 10) AND (col2 > '10'::numeric))
-                     ->  Index Scan using pt_lt_tab_1_prt_part4_col1_col2_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col1 = 10) AND (col2 > '10'::numeric))
-                     ->  Index Scan using pt_lt_tab_1_prt_part5_col1_col2_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col1 = 10) AND (col2 > '10'::numeric))
+               ->  Append  (cost=0.00..431.00 rows=1 width=12)
+                     ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
+                     ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
+                     ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
+                     ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
  Optimizer: Pivotal Optimizer (GPORCA)
 (15 rows)
 
@@ -731,25 +763,25 @@ SELECT * FROM pt_lt_tab WHERE col2 between 10 AND 50 ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col2 between 10 AND 50 ORDER BY col2,col3 LIMIT 5;
-                                                                   QUERY PLAN                                                                    
--------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.01 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.01 rows=5 width=12)
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.01 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.01 rows=14 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=13 width=12)
                      Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.01 rows=14 width=12)
-                           ->  Index Scan using pt_lt_tab_1_prt_part1_col1_col2_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part2_col1_col2_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part3_col1_col2_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part4_col1_col2_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_1_prt_part5_col1_col2_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                     ->  Append  (cost=0.00..431.00 rows=13 width=12)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part1  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=13 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
@@ -769,27 +801,27 @@ SELECT * FROM pt_lt_tab_df WHERE col1 < 10 ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab_df WHERE col1 < 10 ORDER BY col2,col3 LIMIT 5;
-                                                                      QUERY PLAN                                                                      
-------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=5 width=12)
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_df_1_prt_part1.col2, pt_lt_tab_df_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.00 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.00 rows=4 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=4 width=12)
                      Sort Key: pt_lt_tab_df_1_prt_part1.col2, pt_lt_tab_df_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.00 rows=4 width=12)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part1_col2_col1_key on pt_lt_tab_df_1_prt_part1  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part2_col2_col1_key on pt_lt_tab_df_1_prt_part2  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part3_col2_col1_key on pt_lt_tab_df_1_prt_part3  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part4_col2_col1_key on pt_lt_tab_df_1_prt_part4  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part5_col2_col1_key on pt_lt_tab_df_1_prt_part5  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_def_col2_col1_key on pt_lt_tab_df_1_prt_def  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 < 10)
+                     ->  Append  (cost=0.00..431.00 rows=4 width=12)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part1  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part2  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part3  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part4  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part5  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_def  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 < 10)
  Optimizer: Pivotal Optimizer (GPORCA)
 (20 rows)
 
@@ -804,27 +836,27 @@ SELECT * FROM pt_lt_tab_df WHERE col1 > 50 ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab_df WHERE col1 > 50 ORDER BY col2,col3 LIMIT 5;
-                                                                      QUERY PLAN                                                                      
-------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=5 width=12)
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=12)
          Merge Key: pt_lt_tab_df_1_prt_part1.col2, pt_lt_tab_df_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.00 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.00 rows=4 width=12)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.00 rows=4 width=12)
                      Sort Key: pt_lt_tab_df_1_prt_part1.col2, pt_lt_tab_df_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.00 rows=4 width=12)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part1_col2_col1_key on pt_lt_tab_df_1_prt_part1  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 > 50)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part2_col2_col1_key on pt_lt_tab_df_1_prt_part2  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 > 50)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part3_col2_col1_key on pt_lt_tab_df_1_prt_part3  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 > 50)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part4_col2_col1_key on pt_lt_tab_df_1_prt_part4  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 > 50)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part5_col2_col1_key on pt_lt_tab_df_1_prt_part5  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 > 50)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_def_col2_col1_key on pt_lt_tab_df_1_prt_def  (cost=0.00..6.00 rows=4 width=12)
-                                 Index Cond: (col1 > 50)
+                     ->  Append  (cost=0.00..431.00 rows=4 width=12)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part1  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 > 50)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part2  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 > 50)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part3  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 > 50)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part4  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 > 50)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part5  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 > 50)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_def  (cost=0.00..431.00 rows=4 width=12)
+                                 Filter: (col1 > 50)
  Optimizer: Pivotal Optimizer (GPORCA)
 (20 rows)
 
@@ -835,18 +867,20 @@ SELECT * FROM pt_lt_tab_df WHERE col2 = 25 ORDER BY col2,col3 LIMIT 5;
 (1 row)
 
 EXPLAIN SELECT * FROM pt_lt_tab_df WHERE col2 = 25 ORDER BY col2,col3 LIMIT 5;
-                                                                   QUERY PLAN                                                                   
-------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=2 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=2 width=12)
+                                                         QUERY PLAN                                                          
+-----------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..387.96 rows=2 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..387.96 rows=2 width=12)
          Merge Key: col2, col3
-         ->  Sort  (cost=0.00..6.00 rows=1 width=12)
+         ->  Sort  (cost=0.00..387.96 rows=1 width=12)
                Sort Key: col2, col3
-               ->  Append  (cost=0.00..6.00 rows=1 width=12)
-                     ->  Index Scan using pt_lt_tab_df_1_prt_part3_col2_col1_key on pt_lt_tab_df_1_prt_part3  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: (col2 = '25'::numeric)
+               ->  Append  (cost=0.00..387.96 rows=1 width=12)
+                     ->  Bitmap Heap Scan on pt_lt_tab_df_1_prt_part3  (cost=0.00..387.96 rows=1 width=12)
+                           Recheck Cond: (col2 = '25'::numeric)
+                           ->  Bitmap Index Scan on pt_lt_tab_df_1_prt_part3_col2_col1_key  (cost=0.00..0.00 rows=0 width=0)
+                                 Index Cond: (col2 = '25'::numeric)
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(11 rows)
 
 SELECT * FROM pt_lt_tab_df WHERE col2 <> 10 ORDER BY col2,col3 LIMIT 5;
  col1 | col2 | col3 | col4 
@@ -889,24 +923,24 @@ SELECT * FROM pt_lt_tab_df WHERE col2 > 10 AND col1 = 10 ORDER BY col2,col3 LIMI
 (0 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab_df WHERE col2 > 10 AND col1 = 10 ORDER BY col2,col3 LIMIT 5;
-                                                                   QUERY PLAN                                                                   
-------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.00 rows=1 width=12)
-   ->  Gather Motion 1:1  (slice1; segments: 1)  (cost=0.00..6.00 rows=1 width=12)
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=1 width=12)
+   ->  Gather Motion 1:1  (slice1; segments: 1)  (cost=0.00..431.00 rows=1 width=12)
          Merge Key: pt_lt_tab_df_1_prt_part2.col2, pt_lt_tab_df_1_prt_part2.col3
-         ->  Sort  (cost=0.00..6.00 rows=1 width=12)
+         ->  Sort  (cost=0.00..431.00 rows=1 width=12)
                Sort Key: pt_lt_tab_df_1_prt_part2.col2, pt_lt_tab_df_1_prt_part2.col3
-               ->  Append  (cost=0.00..6.00 rows=1 width=12)
-                     ->  Index Scan using pt_lt_tab_df_1_prt_part2_col2_col1_key on pt_lt_tab_df_1_prt_part2  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col2 > '10'::numeric) AND (col1 = 10))
-                     ->  Index Scan using pt_lt_tab_df_1_prt_part3_col2_col1_key on pt_lt_tab_df_1_prt_part3  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col2 > '10'::numeric) AND (col1 = 10))
-                     ->  Index Scan using pt_lt_tab_df_1_prt_part4_col2_col1_key on pt_lt_tab_df_1_prt_part4  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col2 > '10'::numeric) AND (col1 = 10))
-                     ->  Index Scan using pt_lt_tab_df_1_prt_part5_col2_col1_key on pt_lt_tab_df_1_prt_part5  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col2 > '10'::numeric) AND (col1 = 10))
-                     ->  Index Scan using pt_lt_tab_df_1_prt_def_col2_col1_key on pt_lt_tab_df_1_prt_def  (cost=0.00..6.00 rows=1 width=12)
-                           Index Cond: ((col2 > '10'::numeric) AND (col1 = 10))
+               ->  Append  (cost=0.00..431.00 rows=1 width=12)
+                     ->  Seq Scan on pt_lt_tab_df_1_prt_part2  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
+                     ->  Seq Scan on pt_lt_tab_df_1_prt_part3  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
+                     ->  Seq Scan on pt_lt_tab_df_1_prt_part4  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
+                     ->  Seq Scan on pt_lt_tab_df_1_prt_part5  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
+                     ->  Seq Scan on pt_lt_tab_df_1_prt_def  (cost=0.00..431.00 rows=1 width=12)
+                           Filter: ((col2 > '10'::numeric) AND (col1 = 10))
  Optimizer: Pivotal Optimizer (GPORCA)
 (17 rows)
 
@@ -956,27 +990,27 @@ SELECT * FROM pt_lt_tab_df WHERE col2 between 10 AND 50 ORDER BY col2,col3 LIMIT
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab_df WHERE col2 between 10 AND 50 ORDER BY col2,col3 LIMIT 5;
-                                                                      QUERY PLAN                                                                       
--------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.01 rows=5 width=12)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.01 rows=5 width=12)
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.01 rows=5 width=12)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.01 rows=5 width=12)
          Merge Key: pt_lt_tab_df_1_prt_part1.col2, pt_lt_tab_df_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.01 rows=2 width=12)
-               ->  Sort  (cost=0.00..6.01 rows=14 width=12)
+         ->  Limit  (cost=0.00..431.01 rows=2 width=12)
+               ->  Sort  (cost=0.00..431.01 rows=14 width=12)
                      Sort Key: pt_lt_tab_df_1_prt_part1.col2, pt_lt_tab_df_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.01 rows=14 width=12)
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part1_col2_col1_key on pt_lt_tab_df_1_prt_part1  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part2_col2_col1_key on pt_lt_tab_df_1_prt_part2  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part3_col2_col1_key on pt_lt_tab_df_1_prt_part3  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part4_col2_col1_key on pt_lt_tab_df_1_prt_part4  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_df_1_prt_part5_col2_col1_key on pt_lt_tab_df_1_prt_part5  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
-                           ->  Index Scan using pt_lt_tab_df_1_prt_def_col2_col1_key on pt_lt_tab_df_1_prt_def  (cost=0.00..6.01 rows=14 width=12)
-                                 Index Cond: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                     ->  Append  (cost=0.00..431.00 rows=14 width=12)
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part1  (cost=0.00..431.00 rows=14 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part2  (cost=0.00..431.00 rows=14 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part3  (cost=0.00..431.00 rows=14 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part4  (cost=0.00..431.00 rows=14 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_part5  (cost=0.00..431.00 rows=14 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
+                           ->  Seq Scan on pt_lt_tab_df_1_prt_def  (cost=0.00..431.00 rows=14 width=12)
+                                 Filter: ((col2 >= '10'::numeric) AND (col2 <= '50'::numeric))
  Optimizer: Pivotal Optimizer (GPORCA)
 (20 rows)
 
@@ -1682,25 +1716,25 @@ SELECT * FROM pt_lt_tab WHERE col4 = False ORDER BY col2,col3 LIMIT 5;
 (5 rows)
 
 EXPLAIN SELECT * FROM pt_lt_tab WHERE col4 = False ORDER BY col2,col3 LIMIT 5;
-                                                                QUERY PLAN                                                                 
--------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.00..6.01 rows=5 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.01 rows=5 width=8)
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..431.00 rows=5 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=5 width=8)
          Merge Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-         ->  Limit  (cost=0.00..6.01 rows=2 width=8)
-               ->  Sort  (cost=0.00..6.01 rows=10 width=8)
+         ->  Limit  (cost=0.00..431.00 rows=2 width=8)
+               ->  Sort  (cost=0.00..431.00 rows=10 width=8)
                      Sort Key: pt_lt_tab_1_prt_part1.col2, pt_lt_tab_1_prt_part1.col3
-                     ->  Append  (cost=0.00..6.00 rows=10 width=8)
-                           ->  Index Scan using pt_lt_tab_1_prt_part1_col4_idx on pt_lt_tab_1_prt_part1  (cost=0.00..6.00 rows=10 width=8)
-                                 Index Cond: (col4 = false)
-                           ->  Index Scan using pt_lt_tab_1_prt_part2_col4_idx on pt_lt_tab_1_prt_part2  (cost=0.00..6.00 rows=10 width=8)
-                                 Index Cond: (col4 = false)
-                           ->  Index Scan using pt_lt_tab_1_prt_part3_col4_idx on pt_lt_tab_1_prt_part3  (cost=0.00..6.00 rows=10 width=8)
-                                 Index Cond: (col4 = false)
-                           ->  Index Scan using pt_lt_tab_1_prt_part4_col4_idx on pt_lt_tab_1_prt_part4  (cost=0.00..6.00 rows=10 width=8)
-                                 Index Cond: (col4 = false)
-                           ->  Index Scan using pt_lt_tab_1_prt_part5_col4_idx on pt_lt_tab_1_prt_part5  (cost=0.00..6.00 rows=10 width=8)
-                                 Index Cond: (col4 = false)
+                     ->  Append  (cost=0.00..431.00 rows=10 width=8)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part1  (cost=0.00..431.00 rows=10 width=8)
+                                 Filter: (NOT col4)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part2  (cost=0.00..431.00 rows=10 width=8)
+                                 Filter: (NOT col4)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part3  (cost=0.00..431.00 rows=10 width=8)
+                                 Filter: (NOT col4)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part4  (cost=0.00..431.00 rows=10 width=8)
+                                 Filter: (NOT col4)
+                           ->  Seq Scan on pt_lt_tab_1_prt_part5  (cost=0.00..431.00 rows=10 width=8)
+                                 Filter: (NOT col4)
  Optimizer: Pivotal Optimizer (GPORCA)
 (18 rows)
 
