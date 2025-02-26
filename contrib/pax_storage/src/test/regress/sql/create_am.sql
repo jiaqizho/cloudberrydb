@@ -40,8 +40,8 @@ CREATE INDEX grect2ind2 ON fast_emp4000 USING gist2 (home_base);
 
 -- Now check the results from plain indexscan; temporarily drop existing
 -- index grect2ind to ensure it doesn't capture the plan
+-- DROP INDEX grect2ind;
 BEGIN;
-DROP INDEX grect2ind;
 SET enable_seqscan = OFF;
 SET enable_indexscan = ON;
 SET enable_bitmapscan = OFF;

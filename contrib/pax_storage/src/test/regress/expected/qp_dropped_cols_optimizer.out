@@ -14703,18 +14703,16 @@ ALTER TABLE table_with_leaf_partition_containing_dropped_column ALTER PARTITION 
 ERROR:  table "prttab_leaf_containing_dropped_col_part1" is not partitioned
 CREATE INDEX table_with_leaf_partition_containing_dropped_column_index ON table_with_leaf_partition_containing_dropped_column(a, b);
 EXPLAIN SELECT * FROM table_with_leaf_partition_containing_dropped_column WHERE a>42 and z<42;
-                                                                          QUERY PLAN                                                                          
---------------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Append  (cost=0.00..6.00 rows=1 width=12)
-         ->  Index Scan using prttab_leaf_containing_dropped_col_part1_a_b_idx on prttab_leaf_containing_dropped_col_part1  (cost=0.00..6.00 rows=1 width=12)
-               Index Cond: (a > 42)
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Append  (cost=0.00..431.00 rows=1 width=12)
+         ->  Seq Scan on prttab_leaf_containing_dropped_col_part1  (cost=0.00..431.00 rows=1 width=12)
                Filter: ((a > 42) AND (z < 42))
-         ->  Index Scan using prttab_leaf_containing_dropped_col_part2_a_b_idx on prttab_leaf_containing_dropped_col_part2  (cost=0.00..6.00 rows=1 width=12)
-               Index Cond: (a > 42)
+         ->  Seq Scan on prttab_leaf_containing_dropped_col_part2  (cost=0.00..431.00 rows=1 width=12)
                Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(7 rows)
 
 SELECT * FROM table_with_leaf_partition_containing_dropped_column WHERE a>42 and z<42;
  a | b | z 
@@ -14722,14 +14720,13 @@ SELECT * FROM table_with_leaf_partition_containing_dropped_column WHERE a>42 and
 (0 rows)
 
 EXPLAIN SELECT * FROM prttab_leaf_containing_dropped_col_part1 WHERE a>42 and z<42;
-                                                                       QUERY PLAN                                                                       
---------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Index Scan using prttab_leaf_containing_dropped_col_part1_a_b_idx on prttab_leaf_containing_dropped_col_part1  (cost=0.00..6.00 rows=1 width=12)
-         Index Cond: (a > 42)
-         Filter: (z < 42)
+                                           QUERY PLAN                                            
+-------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Seq Scan on prttab_leaf_containing_dropped_col_part1  (cost=0.00..431.00 rows=1 width=12)
+         Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 SELECT * FROM prttab_leaf_containing_dropped_col_part1 WHERE a>42 and z<42;
  a | b | z 
@@ -14737,14 +14734,13 @@ SELECT * FROM prttab_leaf_containing_dropped_col_part1 WHERE a>42 and z<42;
 (0 rows)
 
 EXPLAIN SELECT * FROM prttab_leaf_containing_dropped_col_part2 WHERE a>42 and z<42;
-                                                                       QUERY PLAN                                                                       
---------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Index Scan using prttab_leaf_containing_dropped_col_part2_a_b_idx on prttab_leaf_containing_dropped_col_part2  (cost=0.00..6.00 rows=1 width=12)
-         Index Cond: (a > 42)
-         Filter: (z < 42)
+                                           QUERY PLAN                                            
+-------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Seq Scan on prttab_leaf_containing_dropped_col_part2  (cost=0.00..431.00 rows=1 width=12)
+         Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 SELECT * FROM prttab_leaf_containing_dropped_col_part2 WHERE a>42 and z<42;
  a | b | z 
@@ -14771,18 +14767,16 @@ ALTER TABLE leaf_containing_dropped_column_between_index_columns DROP COLUMN d1;
 ALTER TABLE table_with_leaf_containing_dropped_column_between_index_columns EXCHANGE PARTITION FOR ('2021-04-11'::date) WITH TABLE leaf_containing_dropped_column_between_index_columns;
 CREATE INDEX table_with_leaf_partition_dropped_col_between_index_cols_index ON table_with_leaf_containing_dropped_column_between_index_columns(a, b);
 EXPLAIN SELECT * FROM table_with_leaf_containing_dropped_column_between_index_columns WHERE a>42 and z<42;
-                                                                         QUERY PLAN                                                                         
-------------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Append  (cost=0.00..6.00 rows=1 width=12)
-         ->  Index Scan using leaf_containing_dropped_col_index_part1_a_b_idx on leaf_containing_dropped_col_index_part1  (cost=0.00..6.00 rows=1 width=12)
-               Index Cond: (a > 42)
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Append  (cost=0.00..431.00 rows=1 width=12)
+         ->  Seq Scan on leaf_containing_dropped_col_index_part1  (cost=0.00..431.00 rows=1 width=12)
                Filter: ((a > 42) AND (z < 42))
-         ->  Index Scan using leaf_containing_dropped_col_index_part2_a_b_idx on leaf_containing_dropped_col_index_part2  (cost=0.00..6.00 rows=1 width=12)
-               Index Cond: (a > 42)
+         ->  Seq Scan on leaf_containing_dropped_col_index_part2  (cost=0.00..431.00 rows=1 width=12)
                Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(7 rows)
 
 SELECT * FROM table_with_leaf_containing_dropped_column_between_index_columns WHERE a>42 and z<42;
  a | b | z 
@@ -14790,14 +14784,13 @@ SELECT * FROM table_with_leaf_containing_dropped_column_between_index_columns WH
 (0 rows)
 
 EXPLAIN SELECT * FROM leaf_containing_dropped_col_index_part1 WHERE a>42 and z<42;
-                                                                      QUERY PLAN                                                                      
-------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Index Scan using leaf_containing_dropped_col_index_part1_a_b_idx on leaf_containing_dropped_col_index_part1  (cost=0.00..6.00 rows=1 width=12)
-         Index Cond: (a > 42)
-         Filter: (z < 42)
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Seq Scan on leaf_containing_dropped_col_index_part1  (cost=0.00..431.00 rows=1 width=12)
+         Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 SELECT * FROM leaf_containing_dropped_col_index_part1 WHERE a>42 and z<42;
  a | b | z 
@@ -14805,14 +14798,13 @@ SELECT * FROM leaf_containing_dropped_col_index_part1 WHERE a>42 and z<42;
 (0 rows)
 
 EXPLAIN SELECT * FROM leaf_containing_dropped_col_index_part2 WHERE a>42 and z<42;
-                                                                      QUERY PLAN                                                                      
-------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Index Scan using leaf_containing_dropped_col_index_part2_a_b_idx on leaf_containing_dropped_col_index_part2  (cost=0.00..6.00 rows=1 width=12)
-         Index Cond: (a > 42)
-         Filter: (z < 42)
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Seq Scan on leaf_containing_dropped_col_index_part2  (cost=0.00..431.00 rows=1 width=12)
+         Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 SELECT * FROM leaf_containing_dropped_col_index_part2 WHERE a>42 and z<42;
  a | b | z 
@@ -14839,18 +14831,16 @@ ALTER TABLE table_with_root_containing_dropped_columns DROP COLUMN d1;
 ALTER TABLE table_with_root_containing_dropped_columns EXCHANGE PARTITION FOR ('2021-04-11'::date) WITH TABLE leaf_containing_no_dropped_columns;
 CREATE INDEX table_with_root_containing_dropped_columns_index ON table_with_root_containing_dropped_columns(a, b);
 EXPLAIN SELECT * FROM table_with_root_containing_dropped_columns WHERE a>42 and z<42;
-                                                                                 QUERY PLAN                                                                                 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Append  (cost=0.00..6.00 rows=1 width=12)
-         ->  Index Scan using leaf_with_root_containing_dropped_columns_part1_a_b_idx on leaf_with_root_containing_dropped_columns_part1  (cost=0.00..6.00 rows=1 width=12)
-               Index Cond: (a > 42)
+                                                  QUERY PLAN                                                  
+--------------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Append  (cost=0.00..431.00 rows=1 width=12)
+         ->  Seq Scan on leaf_with_root_containing_dropped_columns_part1  (cost=0.00..431.00 rows=1 width=12)
                Filter: ((a > 42) AND (z < 42))
-         ->  Index Scan using leaf_with_root_containing_dropped_columns_part2_a_b_idx on leaf_with_root_containing_dropped_columns_part2  (cost=0.00..6.00 rows=1 width=12)
-               Index Cond: (a > 42)
+         ->  Seq Scan on leaf_with_root_containing_dropped_columns_part2  (cost=0.00..431.00 rows=1 width=12)
                Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(7 rows)
 
 SELECT * FROM table_with_root_containing_dropped_columns WHERE a>42 and z<42;
  a | b | z 
@@ -14858,14 +14848,13 @@ SELECT * FROM table_with_root_containing_dropped_columns WHERE a>42 and z<42;
 (0 rows)
 
 EXPLAIN SELECT * FROM leaf_with_root_containing_dropped_columns_part1 WHERE a>42 and z<42;
-                                                                              QUERY PLAN                                                                              
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Index Scan using leaf_with_root_containing_dropped_columns_part1_a_b_idx on leaf_with_root_containing_dropped_columns_part1  (cost=0.00..6.00 rows=1 width=12)
-         Index Cond: (a > 42)
-         Filter: (z < 42)
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Seq Scan on leaf_with_root_containing_dropped_columns_part1  (cost=0.00..431.00 rows=1 width=12)
+         Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 SELECT * FROM leaf_with_root_containing_dropped_columns_part1 WHERE a>42 and z<42;
  a | b | z 
@@ -14873,14 +14862,13 @@ SELECT * FROM leaf_with_root_containing_dropped_columns_part1 WHERE a>42 and z<4
 (0 rows)
 
 EXPLAIN SELECT * FROM leaf_with_root_containing_dropped_columns_part2 WHERE a>42 and z<42;
-                                                                              QUERY PLAN                                                                              
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Index Scan using leaf_with_root_containing_dropped_columns_part2_a_b_idx on leaf_with_root_containing_dropped_columns_part2  (cost=0.00..6.00 rows=1 width=12)
-         Index Cond: (a > 42)
-         Filter: (z < 42)
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Seq Scan on leaf_with_root_containing_dropped_columns_part2  (cost=0.00..431.00 rows=1 width=12)
+         Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 SELECT * FROM leaf_with_root_containing_dropped_columns_part2 WHERE a>42 and z<42;
  a | b | z 
@@ -14908,18 +14896,16 @@ ALTER TABLE leaf_containing_dropped_columns_between_index_columns DROP COLUMN d1
 ALTER TABLE table_with_both_containing_dropped_column EXCHANGE PARTITION FOR ('2021-04-11'::date) WITH TABLE leaf_containing_dropped_columns_between_index_columns;
 CREATE INDEX table_with_both_containing_dropped_column_index ON table_with_both_containing_dropped_column(a, b);
 EXPLAIN SELECT * FROM table_with_both_containing_dropped_column WHERE a>42 and z<42;
-                                                                    QUERY PLAN                                                                    
---------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Append  (cost=0.00..6.00 rows=1 width=12)
-         ->  Index Scan using leaf_with_dropped_cols_index_part1_a_b_idx on leaf_with_dropped_cols_index_part1  (cost=0.00..6.00 rows=1 width=12)
-               Index Cond: (a > 42)
+                                           QUERY PLAN                                            
+-------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Append  (cost=0.00..431.00 rows=1 width=12)
+         ->  Seq Scan on leaf_with_dropped_cols_index_part1  (cost=0.00..431.00 rows=1 width=12)
                Filter: ((a > 42) AND (z < 42))
-         ->  Index Scan using leaf_with_dropped_cols_index_part2_a_b_idx on leaf_with_dropped_cols_index_part2  (cost=0.00..6.00 rows=1 width=12)
-               Index Cond: (a > 42)
+         ->  Seq Scan on leaf_with_dropped_cols_index_part2  (cost=0.00..431.00 rows=1 width=12)
                Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+(7 rows)
 
 SELECT * FROM table_with_both_containing_dropped_column WHERE a>42 and z<42;
  a | b | z 
@@ -14927,14 +14913,13 @@ SELECT * FROM table_with_both_containing_dropped_column WHERE a>42 and z<42;
 (0 rows)
 
 EXPLAIN SELECT * FROM leaf_with_dropped_cols_index_part1 WHERE a>42 and z<42;
-                                                                 QUERY PLAN                                                                 
---------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Index Scan using leaf_with_dropped_cols_index_part1_a_b_idx on leaf_with_dropped_cols_index_part1  (cost=0.00..6.00 rows=1 width=12)
-         Index Cond: (a > 42)
-         Filter: (z < 42)
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Seq Scan on leaf_with_dropped_cols_index_part1  (cost=0.00..431.00 rows=1 width=12)
+         Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 SELECT * FROM leaf_with_dropped_cols_index_part1 WHERE a>42 and z<42;
  a | b | z 
@@ -14942,14 +14927,13 @@ SELECT * FROM leaf_with_dropped_cols_index_part1 WHERE a>42 and z<42;
 (0 rows)
 
 EXPLAIN SELECT * FROM leaf_with_dropped_cols_index_part2 WHERE a>42 and z<42;
-                                                                 QUERY PLAN                                                                 
---------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..6.00 rows=1 width=12)
-   ->  Index Scan using leaf_with_dropped_cols_index_part2_a_b_idx on leaf_with_dropped_cols_index_part2  (cost=0.00..6.00 rows=1 width=12)
-         Index Cond: (a > 42)
-         Filter: (z < 42)
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=12)
+   ->  Seq Scan on leaf_with_dropped_cols_index_part2  (cost=0.00..431.00 rows=1 width=12)
+         Filter: ((a > 42) AND (z < 42))
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+(4 rows)
 
 SELECT * FROM leaf_with_dropped_cols_index_part2 WHERE a>42 and z<42;
  a | b | z 

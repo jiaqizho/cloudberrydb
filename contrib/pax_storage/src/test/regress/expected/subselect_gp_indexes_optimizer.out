@@ -101,22 +101,24 @@ select t1.id1, (select count(*) from choose_seqscan_t2 t2 where t2.id1 = t1.id1 
 (8 rows)
 
 explain select t1.id1, (select count(*) from choose_seqscan_t2 t2 where t2.id1 = t1.id1 and t2.id2 = 1) from choose_seqscan_t1 t1 where t1.id1 < 10;
-                                                 QUERY PLAN                                                  
--------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..437.00 rows=9 width=12)
-   ->  Hash Left Join  (cost=0.00..437.00 rows=3 width=12)
-         Hash Cond: (choose_seqscan_t1.id1 = choose_seqscan_t2.id1)
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..818.97 rows=9 width=12)
+   ->  Nested Loop Left Join  (cost=0.00..818.97 rows=3 width=12)
+         Join Filter: true
          ->  Seq Scan on choose_seqscan_t1  (cost=0.00..431.00 rows=3 width=4)
                Filter: (id1 < 10)
-         ->  Hash  (cost=6.00..6.00 rows=1 width=12)
-               ->  GroupAggregate  (cost=0.00..6.00 rows=1 width=12)
-                     Group Key: choose_seqscan_t2.id1
-                     ->  Sort  (cost=0.00..6.00 rows=1 width=4)
-                           Sort Key: choose_seqscan_t2.id1
-                           ->  Index Scan using bidx2 on choose_seqscan_t2  (cost=0.00..6.00 rows=1 width=4)
+         ->  GroupAggregate  (cost=0.00..387.97 rows=1 width=8)
+               Group Key: choose_seqscan_t2.id1
+               ->  Sort  (cost=0.00..387.97 rows=1 width=4)
+                     Sort Key: choose_seqscan_t2.id1
+                     ->  Bitmap Heap Scan on choose_seqscan_t2  (cost=0.00..387.97 rows=1 width=4)
+                           Recheck Cond: (id2 = 1)
+                           Filter: ((id1 = choose_seqscan_t1.id1) AND (id1 < 10))
+                           ->  Bitmap Index Scan on bidx2  (cost=0.00..0.00 rows=0 width=0)
                                  Index Cond: (id2 = 1)
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
-(13 rows)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(15 rows)
 
 -- Test using a join within the subplan. It could perhaps use an Nested Loop Join +
 -- Index Scan to do the join, but at the memont, the planner doesn't consider distributing
@@ -186,26 +188,26 @@ select t1.id1, (select count(*) from choose_seqscan_t3 t3, choose_seqscan_t2 t2 
 (8 rows)
 
 explain select t1.id1, (select count(*) from choose_seqscan_t3 t3, choose_seqscan_t2 t2 where t1.id1 = t2.id1 and t3.id1 = t2.id1) from choose_seqscan_t1 t1 where t1.id1 < 10;
-                                                    QUERY PLAN                                                     
--------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..868.01 rows=9 width=12)
-   ->  Hash Left Join  (cost=0.00..868.01 rows=3 width=12)
-         Hash Cond: (choose_seqscan_t1.id1 = choose_seqscan_t2.id1)
-         ->  Seq Scan on choose_seqscan_t1  (cost=0.00..431.00 rows=3 width=4)
-               Filter: (id1 < 10)
-         ->  Hash  (cost=437.00..437.00 rows=3 width=12)
-               ->  GroupAggregate  (cost=0.00..437.00 rows=3 width=12)
-                     Group Key: choose_seqscan_t2.id1
-                     ->  Sort  (cost=0.00..437.00 rows=3 width=4)
-                           Sort Key: choose_seqscan_t2.id1
-                           ->  Hash Join  (cost=0.00..437.00 rows=3 width=4)
-                                 Hash Cond: (choose_seqscan_t3.id1 = choose_seqscan_t2.id1)
-                                 ->  Index Scan using bidx3 on choose_seqscan_t3  (cost=0.00..6.00 rows=3 width=4)
-                                       Index Cond: (id1 < 10)
-                                 ->  Hash  (cost=431.00..431.00 rows=3 width=4)
-                                       ->  Seq Scan on choose_seqscan_t2  (cost=0.00..431.00 rows=3 width=4)
-                                             Filter: (id1 < 10)
- Optimizer: Pivotal Optimizer (GPORCA)
+                                                         QUERY PLAN                                                         
+----------------------------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..23877551147.01 rows=7 width=12)
+   ->  Seq Scan on choose_seqscan_t1 t1  (cost=0.00..23877551146.92 rows=2 width=12)
+         Filter: (id1 < 10)
+         SubPlan 1
+           ->  Aggregate  (cost=10000000050.79..10000000050.80 rows=1 width=8)
+                 ->  Nested Loop  (cost=10000000000.00..10000000044.54 rows=2500 width=0)
+                       ->  Result  (cost=0.00..6.58 rows=50 width=4)
+                             Filter: (t3.id1 = t1.id1)
+                             ->  Materialize  (cost=0.00..6.08 rows=50 width=4)
+                                   ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..5.83 rows=50 width=4)
+                                         ->  Seq Scan on choose_seqscan_t3 t3  (cost=0.00..5.17 rows=17 width=4)
+                       ->  Materialize  (cost=0.00..6.83 rows=50 width=4)
+                             ->  Result  (cost=0.00..6.58 rows=50 width=4)
+                                   Filter: (t2.id1 = t1.id1)
+                                   ->  Materialize  (cost=0.00..6.08 rows=50 width=4)
+                                         ->  Broadcast Motion 3:3  (slice3; segments: 3)  (cost=0.00..5.83 rows=50 width=4)
+                                               ->  Seq Scan on choose_seqscan_t2 t2  (cost=0.00..5.17 rows=17 width=4)
+ Optimizer: Postgres query optimizer
 (18 rows)
 
 -- start_ignore

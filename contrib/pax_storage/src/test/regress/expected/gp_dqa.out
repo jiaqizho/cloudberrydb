@@ -320,22 +320,24 @@ select count(distinct dqa_t1.d) from dqa_t1, dqa_t2 where dqa_t1.d = dqa_t2.d gr
 (56 rows)
 
 explain (costs off) select count(distinct dqa_t1.d) from dqa_t1, dqa_t2 where dqa_t1.d = dqa_t2.d group by dqa_t2.dt;
-                         QUERY PLAN
-------------------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  HashAggregate
+   ->  Finalize HashAggregate
          Group Key: dqa_t2.dt
          ->  Redistribute Motion 3:3  (slice2; segments: 3)
                Hash Key: dqa_t2.dt
-               ->  HashAggregate
-                     Group Key: dqa_t2.dt, dqa_t1.d
-                     ->  Hash Join
-                           Hash Cond: (dqa_t1.d = dqa_t2.d)
-                           ->  Seq Scan on dqa_t1
-                           ->  Hash
-                                 ->  Seq Scan on dqa_t2
+               ->  Partial HashAggregate
+                     Group Key: dqa_t2.dt
+                     ->  HashAggregate
+                           Group Key: dqa_t2.dt, dqa_t1.d
+                           ->  Hash Join
+                                 Hash Cond: (dqa_t1.d = dqa_t2.d)
+                                 ->  Seq Scan on dqa_t1
+                                 ->  Hash
+                                       ->  Seq Scan on dqa_t2
  Optimizer: Postgres query optimizer
-(13 rows)
+(15 rows)
 
 -- Distinct keys are not distribution keys
 select count(distinct c) from dqa_t1;

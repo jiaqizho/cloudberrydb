@@ -399,11 +399,8 @@ set optimizer_enable_tablescan = FALSE;
 -- canonical form, as it is for the BOX data type and perhaps some other 
 -- data types), as long as data in all of those formats should be converted 
 -- to the same internal representation.
-set optimizer_trace_fallback = TRUE;
 SELECT owner, property FROM GistTable1 
  WHERE property IS NULL;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  No plan has been computed for required properties
             owner            | property 
 -----------------------------+----------
  A. Gent                     | 
@@ -413,10 +410,6 @@ DETAIL:  No plan has been computed for required properties
 (4 rows)
 
 SELECT count_index_scans('EXPLAIN SELECT owner, property FROM GistTable1 WHERE property IS NULL ORDER BY id;');
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: SIRV functions
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  No plan has been computed for required properties
  count_index_scans 
 -------------------
                  1
@@ -428,8 +421,6 @@ SELECT owner, property FROM GistTable1
  WHERE property IS NULL
  ORDER BY id
  ;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-                                             QUERY PLAN                                              
 -----------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=701.28..701.28 rows=2 width=51)
    Merge Key: id
@@ -447,8 +438,6 @@ SELECT id, property FROM GistTable1
  WHERE property IS NULL 
  ORDER BY id
  ;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  No plan has been computed for required properties
  id | property 
 ----+----------
   8 | 
@@ -458,10 +447,6 @@ DETAIL:  No plan has been computed for required properties
 (4 rows)
 
 SELECT count_index_scans('EXPLAIN SELECT id, property FROM GistTable1 WHERE property IS NULL ORDER BY id;');
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Feature not supported: SIRV functions
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  No plan has been computed for required properties
  count_index_scans 
 -------------------
                  1
@@ -473,8 +458,6 @@ SELECT id, property FROM GistTable1
  WHERE property IS NULL 
  ORDER BY id
  ;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-                                             QUERY PLAN                                              
 -----------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=701.28..701.28 rows=2 width=36)
    Merge Key: id
@@ -486,7 +469,6 @@ INFO:  GPORCA failed to produce a plan, falling back to planner
 (7 rows)
 
 --end_ignore
-reset optimizer_trace_fallback;
 -- ----------------------------------------------------------------------
 -- Test: test13Vacuum.sql
 -- ----------------------------------------------------------------------

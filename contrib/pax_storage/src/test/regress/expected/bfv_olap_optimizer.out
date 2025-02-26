@@ -611,7 +611,6 @@ insert into t2_github_issue_10143 values ('a', 'adong', 'acode', 1000);
 insert into t2_github_issue_10143 values ('b', 'bdong', 'bcode', 1100);
 analyze t1_github_issue_10143;
 analyze t2_github_issue_10143;
-set optimizer_trace_fallback = on;
 explain select (select name from t1_github_issue_10143 where code = a.code limit 1) as dongnm
 ,sum(sum(a.salary)) over()
 from t2_github_issue_10143 a
@@ -665,8 +664,6 @@ select (select rn from (select row_number() over () as rn, name
 ,sum(sum(a.salary)) over()
 from t2_github_issue_10143 a
 group by a.code;
-INFO:  GPORCA failed to produce a plan, falling back to planner
-DETAIL:  Query-to-DXL Translation: No variable entry found due to incorrect normalization of query
  dongnm | sum  
 --------+------
       1 | 2100
@@ -691,7 +688,6 @@ select * from cte;
    2 | bcode
 (3 rows)
 
-reset optimizer_trace_fallback;
 -- CLEANUP
 -- start_ignore
 drop schema bfv_olap cascade;
