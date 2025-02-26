@@ -26,11 +26,6 @@ case when i%3=0 then null
      end case -- n
 from generate_series(1,40)i;
 
-set vector.enable_vectorization = on;
-explain select *, '|' || bp || '|' from t_default_value1;
-select *, '|' || bp || '|' from t_default_value1;
-
-set vector.enable_vectorization = off;
 explain select *, '|' || bp || '|' from t_default_value1;
 select *, '|' || bp || '|' from t_default_value1;
 
@@ -40,7 +35,6 @@ alter table t_default_value1 add s2 text default '  _DEF_TEXT_  ';
 alter table t_default_value1 add n2 numeric(22, 10) default 6.283185307179586;
 
 
-set vector.enable_vectorization = on;
 explain select *, '|' || bp2 || '|' from t_default_value1;
 select *, '|' || bp2 || '|' from t_default_value1;
 
@@ -49,7 +43,6 @@ alter table t_default_value1 add n3 numeric(36, 10) default 1.234;
 explain select *, '|' || bp2 || '|' from t_default_value1;
 select *, '|' || bp2 || '|' from t_default_value1;
 
-set vector.enable_vectorization = off;
 explain select *, '|' || bp2 || '|' from t_default_value1;
 select *, '|' || bp2 || '|' from t_default_value1;
 
@@ -83,11 +76,6 @@ case when i%3=0 then null
      end case -- n
 from generate_series(1,40)i;
 
-set vector.enable_vectorization = on;
-explain select *, '|' || bp || '|' from t_default_value1;
-select *, '|' || bp || '|' from t_default_value1;
-
-set vector.enable_vectorization = off;
 explain select *, '|' || bp || '|' from t_default_value1;
 select *, '|' || bp || '|' from t_default_value1;
 
@@ -96,15 +84,12 @@ alter table t_default_value1 add bp2 char(16) default '  _PAD_  ';
 alter table t_default_value1 add s2 text default '  _DEF_TEXT_  ';
 alter table t_default_value1 add n2 numeric(22, 10) default 6.283185307179586;
 
-
-set vector.enable_vectorization = on;
 explain select *, '|' || bp2 || '|' from t_default_value1;
 select *, '|' || bp2 || '|' from t_default_value1;
 
 -- fail: porc_vec disallow to use numeric with precision > 35
 alter table t_default_value1 add n3 numeric(36, 10) default 1.234;
 
-set vector.enable_vectorization = off;
 explain select *, '|' || bp2 || '|' from t_default_value1;
 select *, '|' || bp2 || '|' from t_default_value1;
 

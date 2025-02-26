@@ -628,25 +628,29 @@ LOG:  kind file, filter rate: 0 / 2
 select count(*) from t1 where v1 is not null;
 LOG:  statement: select count(*) from t1 where v1 is not null;
 LOG:  Origin filter tree: 
-NotNode
-  └── NullTestNode(flags=65)
-    └── VarNode(attrno=2)
+NullTestNode(flags=129)
+  └── VarNode(attrno=2)
 
 Final filter tree: 
 NullTestNode(flags=129)
   └── VarNode(attrno=2)
 LOG:  Origin filter tree: 
-NotNode
-  └── NullTestNode(flags=65)
-    └── VarNode(attrno=2)
+NullTestNode(flags=129)
+  └── VarNode(attrno=2)
 
 Final filter tree: 
 NullTestNode(flags=129)
   └── VarNode(attrno=2)
 LOG:  Origin filter tree: 
-NotNode
-  └── NullTestNode(flags=65)
-    └── VarNode(attrno=2)
+NullTestNode(flags=129)
+  └── VarNode(attrno=2)
+
+Final filter tree: 
+NullTestNode(flags=129)
+  └── VarNode(attrno=2)
+LOG:  Origin filter tree: 
+NullTestNode(flags=129)
+  └── VarNode(attrno=2)
 
 Final filter tree: 
 NullTestNode(flags=129)

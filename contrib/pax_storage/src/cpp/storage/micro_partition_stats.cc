@@ -1110,10 +1110,16 @@ inline void MicroPartitionStats::AddNonNullColumn(int column_index,
       } else if (typlen == -1) {
         auto val_ptr =
             reinterpret_cast<struct varlena *>(cbdb::DatumToPointer(value));
+        char *val_data = VARDATA_ANY(val_ptr);
+        auto val_len = VARSIZE_ANY_EXHDR(val_ptr);
+        // ignore trailing spaces so it can filter text/varchar correctly
+        if (att->atttypid == BPCHAROID)
+          val_len = bpchartruelen(val_data, val_len);
+
         // safe to direct call, cause no toast here
-        bf_stats_[column_index].Add((unsigned char *)VARDATA_ANY(val_ptr),
-                                    VARSIZE_ANY_EXHDR(val_ptr));
+        bf_stats_[column_index].Add((unsigned char *)val_data, val_len);
       } else {
+        Assert(typlen > 0);
         auto val_ptr = (unsigned char *)cbdb::DatumToPointer(value);
         Size real_size;
 
