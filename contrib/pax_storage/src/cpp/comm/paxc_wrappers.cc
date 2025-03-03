@@ -506,4 +506,20 @@ void PaxAddPendingDelete(Relation rel, RelFileNode rn_node, bool atCommit) {
   pfree(relativePath);
 }
 
+/**
+ * @brief Create a directory for pax storage.
+ * 1. Add pending delete for relfilenode/pax directory if abort transaction
+ * 2. Add XLOG to create relfilenode/pax directory
+ * 3. create relfilenode/pax directory, i.e. data directory.
+ *     This function will do following this function call
+ */
+SMgrRelation PaxRelationCreateStorage(RelFileNode rnode, Relation rel)
+{
+  if (rel->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT ||
+      rel->rd_rel->relpersistence == RELPERSISTENCE_UNLOGGED) {
+    paxc::XLogPaxCreateDirectory(rnode);
+  }
+  return RelationCreateStorage(rnode, rel->rd_rel->relpersistence, SMGR_PAX, rel);
+}
+
 }  // namespace paxc

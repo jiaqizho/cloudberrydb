@@ -148,23 +148,23 @@ INFO:  (slice 1) Dispatch command to SINGLE content
 end;
 INFO:  Distributed transaction command 'Distributed Commit (one-phase)' to PARTIAL contents: 0 1
 insert into hash_3_3_2 select * from gangsize_input_data where gp_segment_id = 0;
+INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
 INFO:  (slice 0) Dispatch command to ALL contents: 0 1 2
-INFO:  (slice 1) Dispatch command to SINGLE content
 INFO:  Distributed transaction command 'Distributed Commit (one-phase)' to ALL contents: 0 1 2
 begin;
 insert into hash_3_3_2 select * from gangsize_input_data where gp_segment_id = 0;
+INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
 INFO:  (slice 0) Dispatch command to ALL contents: 0 1 2
-INFO:  (slice 1) Dispatch command to SINGLE content
 end;
 INFO:  Distributed transaction command 'Distributed Commit (one-phase)' to ALL contents: 0 1 2
 insert into replicate_3_3 select * from gangsize_input_data where gp_segment_id = 0;
+INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
 INFO:  (slice 0) Dispatch command to ALL contents: 0 1 2
-INFO:  (slice 1) Dispatch command to SINGLE content
 INFO:  Distributed transaction command 'Distributed Commit (one-phase)' to ALL contents: 0 1 2
 begin;
 insert into replicate_3_3 select * from gangsize_input_data where gp_segment_id = 0;
+INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
 INFO:  (slice 0) Dispatch command to ALL contents: 0 1 2
-INFO:  (slice 1) Dispatch command to SINGLE content
 end;
 INFO:  Distributed transaction command 'Distributed Commit (one-phase)' to ALL contents: 0 1 2
 insert into hash_2_3_4 select * from gangsize_input_data where gp_segment_id = 0;

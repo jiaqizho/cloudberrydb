@@ -34,11 +34,28 @@ DIRS = $(shell find src/cpp -maxdepth 2 -type d)
 SRC = $(foreach dir, $(DIRS), $(wildcard $(dir)/*.cc))
 CSRC = $(foreach dir, $(DIRS), $(wildcard $(dir)/*.c))
 
+# read options from ENV
+USE_MANIFEST_API := $(shell echo $$USE_MANIFEST_API)
+USE_PAX_CATALOG := $(shell echo $$USE_PAX_CATALOG)
+
+# if the ENVs are not set, set default value
+ifeq ($(USE_MANIFEST_API),)
+    USE_MANIFEST_API := ON
+endif
+
+ifeq ($(USE_PAX_CATALOG),)
+    USE_PAX_CATALOG := OFF
+endif
+
 .PHONY: install-data build
 build: $(SRC) $(CSRC)
+	@echo "build pax, USE_MANIFEST_API=$(USE_MANIFEST_API) USE_PAX_CATALOG=$(USE_PAX_CATALOG)"
 	@if [ ! -f build/Makefile ]; then \
 		mkdir -p build && \
-		cd build && cmake .. -DCMAKE_INSTALL_PREFIX=$(DESTDIR)$(prefix); \
+		cd build && \
+		cmake -DCMAKE_INSTALL_PREFIX=$(DESTDIR)$(prefix) \
+			-DUSE_MANIFEST_API=$(USE_MANIFEST_API) \
+			-DUSE_PAX_CATALOG=$(USE_PAX_CATALOG) .. ; \
 	fi
 	cd build && make -j8
 	@cp -f build/src/cpp/libpax.so pax.so
@@ -77,13 +94,18 @@ ifeq ($(enable_vectorization),yes)
 endif
 
 .PHONY: icw_test
-icw_test: pax-test regress_test isolation2_test
+icw_test: pax-test regress_test pax_vec_test isolation2_test
+
+.PHONY: pax_vec_test
+pax_vec_test:
+ifeq ($(enable_vectorization),yes)
 	@echo "Begin running pax+vector regression tests"
 	@echo "Current PGOPTIONS=$(PGOPTIONS) -c vector.enable_vectorization=on"
 	PGOPTIONS="$(PGOPTIONS) -c vector.enable_vectorization=on" make -C $(PAX_VEC_REGRESS_DIR) icw_test
 	@echo "Begin running pax+vec format+vector regression tests"
 	@echo "Current PGOPTIONS=$(PGOPTIONS) -c vector.enable_vectorization=on -c pax_default_storage_format=porc_vec"
 	PGOPTIONS="$(PGOPTIONS) -c vector.enable_vectorization=on -c pax_default_storage_format=porc_vec" make -C $(PAX_VEC_REGRESS_DIR) icw_test
+endif
 
 .PHONY: regress_test isolation2_test
 regress_test:

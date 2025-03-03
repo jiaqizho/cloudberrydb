@@ -250,6 +250,8 @@ void RelOpenSmgr(Relation rel);
 
 void RelCloseSmgr(Relation rel);
 
+void PaxRelationCreateStorage(RelFileNode rnode, Relation rel);
+
 void RelDropStorage(Relation rel);
 
 char *GetGUCConfigOptionByName(const char *name, const char **varname,

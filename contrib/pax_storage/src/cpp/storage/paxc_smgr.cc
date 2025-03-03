@@ -4,6 +4,8 @@
 #include "storage/paxc_smgr.h"
 #include "storage/wal/paxc_wal.h"
 
+#include <unistd.h>
+
 smgr_get_impl_hook_type prev_smgr_get_impl_hook = NULL;
 extern smgr_get_impl_hook_type smgr_get_impl_hook;
 
@@ -23,9 +25,15 @@ static void mdunlink_pax(RelFileNodeBackend rnode, ForkNumber forkNumber,
     }
   }
 
-  const f_smgr *smgr = smgr_get(SMGR_MD);
-  Assert(smgr != NULL);
-  smgr->smgr_unlink(rnode, forkNumber, isRedo);
+  // unlink the relfilenode file directly, mdunlink will not remove
+  // the relfilenode file, only truncate it if isRedo is false.
+  auto relpath = relpath(rnode, MAIN_FORKNUM);
+  auto ret = unlink(relpath);
+  if (ret == -1 && errno != ENOENT) {
+    ereport(WARNING, (errcode_for_file_access(),
+                      errmsg("PAX: could not remove file \"%s\": %m", relpath)));
+  }
+  pfree(relpath);
 }
 
 static const f_smgr pax_smgr = {
