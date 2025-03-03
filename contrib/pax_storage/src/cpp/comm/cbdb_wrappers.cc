@@ -589,6 +589,12 @@ void cbdb::RelDropStorage(Relation rel) {
   CBDB_WRAP_END;
 }
 
+void cbdb::PaxRelationCreateStorage(RelFileNode rnode, Relation rel) {
+  CBDB_WRAP_START;
+  { paxc::PaxRelationCreateStorage(rnode, rel); }
+  CBDB_WRAP_END;
+}
+
 char *cbdb::GetGUCConfigOptionByName(const char *name, const char **varname,
                                      bool missing_ok) {
   CBDB_WRAP_START;

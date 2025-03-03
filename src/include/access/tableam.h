@@ -63,6 +63,8 @@ struct ValidateIndexState;
  */
 #define SCAN_SUPPORT_VECTORIZATION (1 << 8) /* support vectorization scan */
 
+#define SCAN_FORCE_BIG_WRITE_LOCK (1 << 9) /* force big write lock */
+
 /*
  * Bitmask values for the flags argument to the scan_begin callback.
  */

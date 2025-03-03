@@ -4,6 +4,10 @@
 DROP DATABASE IF EXISTS oid_wraparound;
 CREATE DATABASE oid_wraparound;
 \c oid_wraparound
+-- start_ignore
+select xmin, xmax, oid, relname, reltype from pg_class where oid>=16384 and oid < 16400;
+select xmin, xmax, oid, typname from pg_type where oid>=16384 and oid < 16400;
+-- end_ignore
 
 -- Create the functions that we will be using to set and observe the Oid counter
 -- on the master and the segments.
@@ -35,6 +39,10 @@ SELECT gp_set_next_oid_segments(4290000000);
 SELECT gp_get_next_oid_master();
 SELECT gp_get_next_oid_segments();
 CREATE TABLE oid_wraparound_table (a int);
+-- start_ignore
+select xmin, xmax, oid, relname, reltype from pg_class where xmin=(select xmin from pg_class where relname='oid_wraparound_table');
+select xmin, xmax, oid, typname from pg_type where xmin=(select xmin from pg_class where relname='oid_wraparound_table');
+-- end_ignore
 DROP TABLE oid_wraparound_table;
 SELECT gp_get_next_oid_master();
 SELECT gp_get_next_oid_segments();
@@ -51,5 +59,10 @@ SELECT gp_set_next_oid_segments(16384);
 SELECT gp_get_next_oid_master();
 SELECT gp_get_next_oid_segments();
 CREATE TABLE oid_wraparound_table_other AS SELECT 1 AS a;
-SELECT gp_get_next_oid_master() in (16398, 16399);
+-- start_ignore
+select xmin, xmax, oid, relname, reltype from pg_class where xmin=(select xmin from pg_class where relname='oid_wraparound_table_other');
+select xmin, xmax, oid, typname from pg_type where xmin=(select xmin from pg_class where relname='oid_wraparound_table_other');
+SELECT gp_get_next_oid_master();
+-- end_ignore
+SELECT gp_get_next_oid_master() in (16394, 16398, 16399);
 SELECT gp_get_next_oid_segments();

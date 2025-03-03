@@ -48,10 +48,6 @@ typedef struct MetaValue
   Datum value;
 } MetaValue;
 
-typedef struct ManifestScanKeyData {
-  MetaValue field;
-} ManifestScanKeyData;
-
 /* some forward declaration */
 /*
  * define the handle returned by manifest_open for operating manifest CRUD
@@ -81,8 +77,6 @@ typedef ManifestScanData *ManifestScan;
 /*
  * define the scan key for scanning the manifest tuple
  */
-typedef struct ManifestScanKeyData ManifestScanKeyData;
-typedef ManifestScanKeyData *ManifestScanKey;
 typedef struct RelationData *Relation;
 typedef struct SnapshotData *Snapshot;
 typedef struct RelFileNode RelFileNode;
@@ -103,14 +97,6 @@ ManifestDesc manifest_init();
  *             tablespaceId, ReiFileNodeId, databaseId
  */
 void manifest_create(Relation rel, RelFileNode newrelnode);
-
-/**
- * remove the manifest resource when dropping the table
- * including the top manifest entry and all the current and historical manifest files
- * return error if something went wrong.
- */
-void manifest_remove(Relation pax_rel, RelFileNode relnode);
-
 
 /**
  * Clear all micro partitions in the current version in non-transaction
@@ -134,16 +120,6 @@ ManifestRelation manifest_open(Relation pax_rel);
  */
 void manifest_close(ManifestRelation mfrel);
 
-
-/**
- * init a manifest meta scan key, the memory of the key need to created by user and
- * freed by user.
- * Arguments:
- * key - struct instance to initialize
- * data - if strategy is by field value, specify the value here
- */
-void manifest_scan_key_init(ManifestScanKey key, MetaValue data);
-
 /**
  * create a manifest tuple scan iterator with a scan key.
  * if the key is provided with NULL, the scan will just iterate all over manifest
@@ -153,7 +129,7 @@ void manifest_scan_key_init(ManifestScanKey key, MetaValue data);
  * mfrel - the manifest operation handle which returned by manifest_open interface
  * key - define search key
  */
-ManifestScan manifest_beginscan(ManifestRelation mfrel, Snapshot snapshot, ManifestScanKey key);
+ManifestScan manifest_beginscan(ManifestRelation mfrel, Snapshot snapshot);
 
 /**
  * clean up a scan iterator, release all resources including the scan object itself.
@@ -210,8 +186,8 @@ void manifest_insert(ManifestRelation mrel, const MetaValue data[],
  * notice that the inserted tuple will be synced to disk when only after
  * call the manifest_commit.
  */
-void manifest_update(ManifestRelation mrel, ManifestTuple oldtuple,
-                     const MetaValue data[], int count);
+void manifest_update(ManifestRelation mrel, int block, const MetaValue data[],
+                     int count);
 /**
  * delete a manifest tuple
  * Argument:
@@ -225,23 +201,8 @@ void manifest_update(ManifestRelation mrel, ManifestTuple oldtuple,
  *
  * the interface call cannot support parallel processing currently
  */
-void manifest_delete(ManifestRelation mrel, ManifestTuple tuple);
+void manifest_delete(ManifestRelation mrel, int block);
 
-/**
- * commit all manifest changes, and sync manifest to disk
- * Argument:
- * relnode - the manifest identifier
- *
- * cleanup all the invisible manifest tuples, and save all visible tuples to disk.
- * also update manifest top entrance heap record with new generated file path
- * the heap table update operaiton will require a RowExeclusiveLock, which means
- * any DML query for a same table will be hold on this lock, it can be called parallelly
- * but will be executed serially for the same relnode.
- *
- * notice that all the memory that allocated during the a transaction processing for
- * manifest will be released here.
- */
-void manifest_commit(Relation rel);
 
 /**
  * get a field value from a manifest tuple by a given field name

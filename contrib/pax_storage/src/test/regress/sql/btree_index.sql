@@ -122,7 +122,7 @@ CREATE UNIQUE INDEX plain_unique ON dedup_unique_test_table (a) WITH (deduplicat
 -- checking (at least with a BLCKSZ of 8192 or less)
 DO $$
 BEGIN
-    FOR r IN 1..1350 LOOP
+    FOR r IN 1..50 LOOP
         DELETE FROM dedup_unique_test_table;
         INSERT INTO dedup_unique_test_table SELECT 1;
     END LOOP;

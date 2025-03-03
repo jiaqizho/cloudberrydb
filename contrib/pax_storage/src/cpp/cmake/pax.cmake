@@ -114,12 +114,21 @@ if (USE_PAX_CATALOG)
       catalog/pg_pax_tables.cc)
 endif()
 
+set(manifest_src
+  manifest/manifest.c
+  manifest/scan.c
+  manifest/tuple.c
+  manifest/manifest_wrapper.cc
+)
+
 if (USE_MANIFEST_API)
   set(pax_storage_src ${pax_storage_src} storage/micro_partition_iterator_manifest.cc)
   if (USE_PAX_CATALOG)
     set(pax_catalog_src ${pax_catalog_src} catalog/pax_manifest_impl.cc)
   else()
     # use manifest implementation
+    set(pax_target_include ${pax_target_include} ${TOP_DIR}/dependency/yyjson/src)
+    set(pax_catalog_src ${pax_catalog_src} ${manifest_src})
   endif()
 else() # USE_MANIFEST_API
   set(pax_storage_src ${pax_storage_src} storage/micro_partition_iterator.cc)
@@ -147,8 +156,8 @@ add_subdirectory(contrib/tabulate)
 #### pax.so
 set(pax_target_src  ${PROTO_SRCS} ${pax_storage_src} ${pax_clustering_src} ${pax_exceptions_src}
   ${pax_access_src} ${pax_comm_src} ${pax_catalog_src} ${pax_vec_src})
-set(pax_target_include ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR} contrib/tabulate/include)
-set(pax_target_link_libs protobuf zstd z postgres)
+set(pax_target_include ${pax_target_include} ${ZTSD_HEADER} ${CMAKE_CURRENT_SOURCE_DIR} ${CBDB_INCLUDE_DIR} contrib/tabulate/include)
+set(pax_target_link_libs ${pax_target_link_libs} protobuf zstd z postgres)
 if (PAX_USE_LZ4)
   list(APPEND pax_target_link_libs lz4)
 endif()
@@ -158,6 +167,9 @@ set(pax_target_dependencies generate_protobuf create_sql_script)
 add_library(pax SHARED ${pax_target_src})
 set_target_properties(pax PROPERTIES OUTPUT_NAME pax)
 
+if(USE_MANIFEST_API AND NOT USE_PAX_CATALOG)
+  set(pax_target_link_libs ${pax_target_link_libs} yyjson)
+endif()
 
 # vec build
 if (VEC_BUILD)
