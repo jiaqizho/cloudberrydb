@@ -34,6 +34,7 @@ MicroPartitionMetadata ManifestTupleToValue(
   }
   {
     datum = ManifestGetTupleValue(tuple, mrel, PAX_AUX_PTTUPCOUNT, &is_null);
+    Assert(!is_null);
     CBDB_CHECK(!is_null, cbdb::CException::kExTypeLogicError);
     v.SetTupleCount(DatumGetInt32(datum));
   }
@@ -115,7 +116,7 @@ void MicroPartitionManifestIterator::begin() {
   if (!mrel_) {
     mrel_ = manifest_open(pax_rel_);
   }
-  mscan_ = manifest_beginscan(mrel_, snapshot_, nullptr);
+  mscan_ = manifest_beginscan(mrel_, snapshot_);
 }
 
 void MicroPartitionManifestIterator::end(bool close_aux) {

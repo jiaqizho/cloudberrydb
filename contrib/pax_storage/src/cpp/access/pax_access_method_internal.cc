@@ -8,16 +8,13 @@
 #include "comm/paxc_wrappers.h"
 #include "comm/singleton.h"
 #include "exceptions/CException.h"
+#include "storage/wal/paxc_wal.h"
 
 #define RELATION_IS_PAX(rel) \
   (OidIsValid((rel)->rd_rel->relam) && RelationIsPAX(rel))
 
 #ifdef USE_MANIFEST_API
 namespace pax {
-#define NOT_IMPLEMENTED_YET                        \
-  ereport(ERROR,                                   \
-          (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
-           errmsg("not implemented yet on pax relations: %s", __func__)))
 
 void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
                                                const RelFileNode *newrnode,
@@ -38,13 +35,13 @@ void CCPaxAccessMethod::RelationCopyData(Relation rel,
   CBDB_TRY();
   {
     cbdb::RelOpenSmgr(rel);
+    cbdb::PaxRelationCreateStorage(*newrnode, rel);
     pax::PaxCopyAllDataFiles(rel, newrnode, true);
+    cbdb::RelDropStorage(rel);
     cbdb::RelCloseSmgr(rel);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_END_TRY();
-
-  RelationDropStorage(rel);
 }
 
 void CCPaxAccessMethod::RelationCopyForCluster(
@@ -86,7 +83,7 @@ uint64 PaxAccessMethod::RelationSize(Relation rel, ForkNumber fork_number) {
   uint64 pax_size = 0;
 
   mrel = manifest_open(rel);
-  mscan = manifest_beginscan(mrel, nullptr, nullptr);
+  mscan = manifest_beginscan(mrel, nullptr);
   while ((mtuple = manifest_getnext(mscan, nullptr))) {
     Datum datum;
     bool isnull;
@@ -119,7 +116,7 @@ void PaxAccessMethod::EstimateRelSize(Relation rel, int32 * /*attr_widths*/,
   *allvisfrac = 0;
 
   mrel = manifest_open(rel);
-  mscan = manifest_beginscan(mrel, nullptr, nullptr);
+  mscan = manifest_beginscan(mrel, nullptr);
   while ((mtuple = manifest_getnext(mscan, nullptr))) {
     Datum datum;
     bool isnull;
@@ -144,11 +141,6 @@ void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2,
                                         MultiXactId cutoff_multi) {
   manifest_swap_table(relid1, relid2, frozen_xid, cutoff_multi);
 }
-#ifndef USE_PAX_CATALOG
-void register_custom_object_classes() {
-  manifest_init();
-}
-#endif
 } // namespace paxc
 #else
 
@@ -216,7 +208,7 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
   }
 
   // create relfilenode file for pax table
-  auto srel = RelationCreateStorage(*newrnode, persistence, SMGR_PAX, rel);
+  auto srel = paxc::PaxRelationCreateStorage(*newrnode, rel);
   smgrclose(srel);
 
   // create data directory
@@ -256,10 +248,10 @@ void CCPaxAccessMethod::RelationCopyData(Relation rel,
   CBDB_TRY();
   {
     cbdb::RelOpenSmgr(rel);
+    cbdb::PaxRelationCreateStorage(*newrnode, rel);
     pax::CCPaxAuxTable::PaxAuxRelationCopyData(rel, newrnode, true);
-    cbdb::RelCloseSmgr(rel);
     cbdb::RelDropStorage(rel);
-    cbdb::PaxAddPendingDelete(rel, rel->rd_node, true);
+    cbdb::RelCloseSmgr(rel);
   }
   CBDB_CATCH_DEFAULT();
   CBDB_FINALLY({});
@@ -429,7 +421,10 @@ void PaxAccessMethod::SwapRelationFiles(Oid relid1, Oid relid2,
 } // namespace paxc
 #endif
 
-#if !defined(USE_MANIFEST_API) || defined(USE_PAX_CATALOG)
+// register object class to support delete by dependency
+// 1. fast-sequence is always supported
+// pg_pax_tables is supported by pax catalog
+
 namespace paxc {
 struct PaxObjectProperty {
   const char *name;
@@ -441,9 +436,10 @@ struct PaxObjectProperty {
 static const struct PaxObjectProperty kPaxObjectProperties[] = {
     {"fast-sequence", PAX_FASTSEQUENCE_OID, PAX_FASTSEQUENCE_INDEX_OID,
      ANUM_PG_PAX_FAST_SEQUENCE_OBJID},
+#ifdef USE_PAX_CATALOG
     {"pg_pax_tables", PAX_TABLES_RELATION_ID, PAX_TABLES_RELID_INDEX_ID,
      ANUM_PG_PAX_TABLES_RELID},
-    // add pg_pax_tables here
+#endif
 };
 
 static const struct PaxObjectProperty *FindPaxObjectProperty(Oid class_id) {
@@ -485,6 +481,36 @@ static void PaxDeleteObject(struct CustomObjectClass * /*self*/,
   table_close(rel, RowExclusiveLock);
 }
 
+static void PaxFastSeqTypeDesc(struct CustomObjectClass * /*self*/,
+                               const ObjectAddress * /*object*/,
+                               bool /*missing_ok*/,
+                               struct StringInfoData *buffer) {
+  appendStringInfoString(buffer, "pax fast sequence");
+}
+
+static void PaxFastSeqIdentityObject(struct CustomObjectClass * /*self*/,
+                                     const ObjectAddress *object,
+                                     List **objname, List ** /*objargs*/,
+                                     bool missing_ok,
+                                     struct StringInfoData *buffer) {
+  char *pax_fast_seq_name;
+  pax_fast_seq_name =
+      CPaxGetFastSequencesName(object->objectId, missing_ok);
+  if (pax_fast_seq_name) {
+    if (objname) *objname = list_make1(pax_fast_seq_name);
+    appendStringInfo(buffer, "pax fast sequences identity %s: ",
+                     quote_identifier(pax_fast_seq_name));
+  }
+}
+
+static struct CustomObjectClass pax_fastsequence_coc = {
+    .class_id = PAX_FASTSEQUENCE_OID,
+    .do_delete = PaxDeleteObject,
+    .object_type_desc = PaxFastSeqTypeDesc,
+    .object_identity_parts = PaxFastSeqIdentityObject,
+};
+
+#ifdef USE_PAX_CATALOG
 static void PaxTableTypeDesc(struct CustomObjectClass * /*self*/,
                              const ObjectAddress * /*object*/,
                              bool /*missing_ok*/,
@@ -536,46 +562,23 @@ static void PaxTableIdentityObject(struct CustomObjectClass * /*self*/,
   }
 }
 
-static void PaxFastSeqTypeDesc(struct CustomObjectClass * /*self*/,
-                               const ObjectAddress * /*object*/,
-                               bool /*missing_ok*/,
-                               struct StringInfoData *buffer) {
-  appendStringInfoString(buffer, "pax fast sequence");
-}
-
-static void PaxFastSeqIdentityObject(struct CustomObjectClass * /*self*/,
-                                     const ObjectAddress *object,
-                                     List **objname, List ** /*objargs*/,
-                                     bool missing_ok,
-                                     struct StringInfoData *buffer) {
-  char *pax_fast_seq_name;
-  pax_fast_seq_name =
-      CPaxGetFastSequencesName(object->objectId, missing_ok);
-  if (pax_fast_seq_name) {
-    if (objname) *objname = list_make1(pax_fast_seq_name);
-    appendStringInfo(buffer, "pax fast sequences identity %s: ",
-                     quote_identifier(pax_fast_seq_name));
-  }
-}
-
-static struct CustomObjectClass pax_fastsequence_coc = {
-    .class_id = PAX_FASTSEQUENCE_OID,
-    .do_delete = PaxDeleteObject,
-    .object_type_desc = PaxFastSeqTypeDesc,
-    .object_identity_parts = PaxFastSeqIdentityObject,
-};
-
 static struct CustomObjectClass pax_tables_coc = {
     .class_id = PAX_TABLES_RELATION_ID,
     .do_delete = PaxDeleteObject,
     .object_type_desc = PaxTableTypeDesc,
     .object_identity_parts = PaxTableIdentityObject,
 };
+#endif // USE_PAX_CATALOG
 
 void register_custom_object_classes() {
   register_custom_object_class(&pax_fastsequence_coc);
+#ifdef USE_PAX_CATALOG
   register_custom_object_class(&pax_tables_coc);
+#endif // USE_PAX_CATALOG
+
+#if defined(USE_MANIFEST_API) && !defined(USE_PAX_CATALOG)
+  manifest_init();
+#endif
 }
 
 } // namespace paxc
-#endif

@@ -410,11 +410,18 @@ const TupleTableSlotOps *PaxAccessMethod::SlotCallbacks(
 }
 
 uint32 PaxAccessMethod::ScanFlags(Relation relation) {
+  uint32 flags = 0;
 #ifdef VEC_BUILD
-  return SCAN_SUPPORT_VECTORIZATION | SCAN_SUPPORT_COLUMN_ORIENTED_SCAN;
+  flags |= SCAN_SUPPORT_VECTORIZATION | SCAN_SUPPORT_COLUMN_ORIENTED_SCAN;
 #else
-  return SCAN_SUPPORT_COLUMN_ORIENTED_SCAN;
+  flags |= SCAN_SUPPORT_COLUMN_ORIENTED_SCAN;
 #endif
+
+#if defined(USE_MANIFEST_API) && !defined(USE_PAX_CATALOG)
+  flags |= SCAN_FORCE_BIG_WRITE_LOCK;
+#endif
+
+  return flags;
 }
 
 Size PaxAccessMethod::ParallelscanEstimate(Relation /*rel*/) {

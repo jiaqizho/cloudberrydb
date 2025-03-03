@@ -20,6 +20,7 @@ static inline void InsertTuple(Relation rel, Datum *values, bool *nulls) {
 extern "C" {
 struct ManifestRelationData {
   Relation aux_rel;
+  MemoryContext parent_ctx;
   MemoryContext mctx; // memory context for per tuple allocation.
 };
 
@@ -28,6 +29,11 @@ struct ManifestScanData {
   SysScanDesc desc;
 };
 }
+
+static void manifest_update_internal(ManifestRelation mrel,
+                                     ManifestTuple oldtuple,
+                                     const MetaValue data[],
+                                     int count);
 
 static inline AttrNumber get_aux_name_attrno(const char *colname) {
   if (strcmp(colname, PAX_AUX_PTBLOCKNAME) == 0)
@@ -163,7 +169,7 @@ static bool manifest_new_filenode(Relation rel,
 
 static void manifest_create_data_dir(Relation rel, const RelFileNode &newrnode) {
   // create relfilenode file for pax table
-  auto srel = RelationCreateStorage(newrnode, rel->rd_rel->relpersistence, SMGR_PAX, rel);
+  auto srel = paxc::PaxRelationCreateStorage(newrnode, rel);
   smgrclose(srel);
 
   char *path = paxc::BuildPaxDirectoryPath(newrnode, rel->rd_backend, false);
@@ -181,9 +187,6 @@ static void manifest_create_data_dir(Relation rel, const RelFileNode &newrnode) 
   if (rc != 0)
     elog(ERROR, "create data dir failed for %u/%u/%lu",
                 newrnode.dbNode, newrnode.spcNode, newrnode.relNode);
-
-  if (paxc::NeedWAL(rel))
-    paxc::XLogPaxCreateDirectory(newrnode);
 }
 
 void manifest_create(Relation rel, RelFileNode relnode) {
@@ -202,7 +205,6 @@ void manifest_truncate(Relation rel) {
   CBDB_END_TRY();
 }
 
-// FIXME: lockmode
 ManifestRelation manifest_open(Relation rel) {
   Oid aux_relid;
   ManifestRelation mrel;
@@ -211,7 +213,9 @@ ManifestRelation manifest_open(Relation rel) {
 
   aux_relid = paxc::GetPaxAuxRelid(RelationGetRelid(rel));
   mrel->aux_rel = table_open(aux_relid, AccessShareLock);
+  mrel->parent_ctx = CurrentMemoryContext;
   mrel->mctx = nullptr;
+
   return mrel;
 }
 
@@ -219,7 +223,7 @@ static inline MemoryContext manifest_memory_context(ManifestRelation mrel) {
   if (mrel->mctx) {
     MemoryContextReset(mrel->mctx);
   } else {
-    mrel->mctx = AllocSetContextCreate(CurrentMemoryContext, "manifest-relation",
+    mrel->mctx = AllocSetContextCreate(mrel->parent_ctx, "manifest-relation",
                                        ALLOCSET_DEFAULT_SIZES);
   }
   return mrel->mctx;
@@ -297,8 +301,29 @@ void manifest_insert(ManifestRelation mrel, const MetaValue data[], int count) {
   CommandCounterIncrement();
 }
 
-void manifest_update(ManifestRelation mrel, ManifestTuple oldtuple,
-                     const MetaValue data[], int count) {
+void manifest_update(ManifestRelation mrel, int block, const MetaValue data[],
+                     int count) {
+  paxc::ScanAuxContext context;
+  Relation aux_rel;
+  HeapTuple tuple;
+  MemoryContext oldctx;
+
+  aux_rel = mrel->aux_rel;
+  oldctx = MemoryContextSwitchTo(manifest_memory_context(mrel));
+  context.BeginSearchMicroPartition(RelationGetRelid(aux_rel), InvalidOid, NULL,
+                                    RowExclusiveLock, block);
+  tuple = context.SearchMicroPartitionEntry();
+  if (HeapTupleIsValid(tuple)) {
+    manifest_update_internal(mrel, tuple, data, count);
+  }
+  context.EndSearchMicroPartition(NoLock);
+  MemoryContextSwitchTo(oldctx);
+}
+
+static void manifest_update_internal(ManifestRelation mrel,
+                                     ManifestTuple oldtuple,
+                                     const MetaValue data[],
+                                     int count) {
   Relation aux_rel;
   Datum values[NATTS_PG_PAX_BLOCK_TABLES];
   bool isnull[NATTS_PG_PAX_BLOCK_TABLES];
@@ -351,8 +376,22 @@ void manifest_update(ManifestRelation mrel, ManifestTuple oldtuple,
   CommandCounterIncrement();
 }
 
-void manifest_delete(ManifestRelation mrel, ManifestTuple tuple) {
-  CatalogTupleDelete(mrel->aux_rel, &tuple->t_self);
+void manifest_delete(ManifestRelation mrel, int block) {
+  paxc::ScanAuxContext context;
+  Relation aux_rel;
+  HeapTuple tuple;
+  MemoryContext oldctx;
+
+  aux_rel = mrel->aux_rel;
+  oldctx = MemoryContextSwitchTo(manifest_memory_context(mrel));
+  context.BeginSearchMicroPartition(RelationGetRelid(aux_rel), InvalidOid, NULL,
+                                    RowExclusiveLock, block);
+  tuple = context.SearchMicroPartitionEntry();
+  if (HeapTupleIsValid(tuple)) {
+    CatalogTupleDelete(aux_rel, &tuple->t_self);
+  }
+  context.EndSearchMicroPartition(NoLock);
+  MemoryContextSwitchTo(oldctx);
 }
 
 Datum get_manifesttuple_value(ManifestTuple tuple, ManifestRelation mrel,
@@ -384,7 +423,7 @@ Datum get_manifesttuple_value(ManifestTuple tuple, ManifestRelation mrel,
   }
 }
 
-ManifestScan manifest_beginscan(ManifestRelation mrel, Snapshot snapshot, ManifestScanKey key) {
+ManifestScan manifest_beginscan(ManifestRelation mrel, Snapshot snapshot) {
   ManifestScan scan;
   scan = (ManifestScan) palloc(sizeof(*scan));
   scan->mrel = mrel;

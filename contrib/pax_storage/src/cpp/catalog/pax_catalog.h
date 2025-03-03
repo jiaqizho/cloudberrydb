@@ -1,16 +1,9 @@
 #pragma once
 #include "comm/cbdb_api.h"
 
+#include "catalog/pax_catalog_columns.h"
 #include "catalog/pax_fastsequence.h"
 #include "storage/micro_partition_metadata.h"
-
-#define PAX_AUX_PTBLOCKNAME       "ptblockname"
-#define PAX_AUX_PTTUPCOUNT        "pttupcount"
-#define PAX_AUX_PTBLOCKSIZE       "ptblocksize"
-#define PAX_AUX_PTSTATISITICS     "ptstatistics"
-#define PAX_AUX_PTVISIMAPNAME     "ptvisimapname"
-#define PAX_AUX_PTEXISTEXTTOAST   "ptexistexttoast"
-#define PAX_AUX_PTISCLUSTERED     "ptisclustered"
 
 #ifdef USE_MANIFEST_API
 extern "C" {
