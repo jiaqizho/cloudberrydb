@@ -6,9 +6,10 @@ set(TOP_DIR ${PROJECT_SOURCE_DIR}/../..)
 set(CBDB_INCLUDE_DIR ${TOP_DIR}/src/include)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -Wno-unused-function -Wno-redundant-move -Wno-error=redundant-move -Wno-error=ignored-qualifiers -Wuninitialized -Winit-self -Wstrict-aliasing -Wno-missing-field-initializers -Wno-unused-parameter -Wno-clobbered -Wno-sized-deallocation -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unused-parameter -Wno-parameter-name")
 
 option(USE_MANIFEST_API "Use manifest API" ON)
-option(USE_PAX_CATALOG "Use manifest API, by pax impl" ON)
+option(USE_PAX_CATALOG "Use manifest API, by pax impl" OFF)
 
 # Build gtest options
 option(BUILD_GTEST "Build with google test" ON)
@@ -81,3 +82,15 @@ endif(VEC_BUILD)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/")
 include(FindDependencies)
 add_subdirectory(src/cpp)
+
+if(USE_MANIFEST_API AND NOT USE_PAX_CATALOG)
+    set(SAVED_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+    set(SAVED_CMAKE_INSTALL_SO_NO_EXE ${CMAKE_INSTALL_SO_NO_EXE})
+
+    set(BUILD_SHARED_LIBS ON)
+    set(CMAKE_INSTALL_SO_NO_EXE OFF)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/../../dependency/yyjson ${CMAKE_BINARY_DIR}/yyjson_build)
+
+    set(BUILD_SHARED_LIBS ${SAVED_BUILD_SHARED_LIBS})
+    set(CMAKE_INSTALL_SO_NO_EXE ${SAVED_CMAKE_INSTALL_SO_NO_EXE})
+endif()

@@ -14,3 +14,6 @@
 	path = contrib/pax_storage/src/cpp/contrib/cpp-stub
 	url = https://code.hashdata.xyz/cloudberry/cpp-stub.git
 	branch = dev
+[submodule "dependency/yyjson"]
+	path = dependency/yyjson
+	url = https://github.com/ibireme/yyjson.git

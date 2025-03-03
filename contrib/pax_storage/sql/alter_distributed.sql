@@ -96,6 +96,9 @@ SELECT gp_inject_fault('pax_finish_swap_fast_fastsequence', 'panic', dbid) FROM 
 ALTER TABLE list_parted SET DISTRIBUTED BY (c);
 select gp_segment_id,seq from gp_dist_random('pg_ext_aux.pg_pax_fastsequence') where 
     objid = 'list_part1'::regclass::oid or objid = 'sub_part1'::regclass::oid or objid = 'sub_part2'::regclass::oid;
+-- start_ignore
+SELECT gp_inject_fault('pax_finish_swap_fast_fastsequence', 'reset', dbid) FROM gp_segment_configuration WHERE role = 'p' AND content > -1;
+-- end_ignore
 SELECT gp_inject_fault('finish_prepared_after_record_commit_prepared', 'reset', dbid) FROM gp_segment_configuration WHERE role = 'p' AND content > -1;
 select gp_inject_fault('fts_probe', 'reset', dbid) FROM gp_segment_configuration WHERE role = 'p' AND content > -1;
 
