@@ -29,6 +29,7 @@
 int main() {
   printf("-- insert pax catalog values\n");
 
+#if !defined(USE_MANIFEST_API) || defined(USE_PAX_CATALOG)
   printf("-- create pg_ext_aux.pg_pax_tables\n");
   printf(
       "CREATE TABLE pg_ext_aux.pg_pax_tables(relid oid not null, auxrelid oid "
@@ -86,6 +87,7 @@ int main() {
       "UPDATE pg_index SET indexrelid = %u WHERE "
       "indrelid='pg_ext_aux.pg_pax_tables'::regclass;\n",
       PAX_TABLES_RELID_INDEX_ID);
+#endif
 
   printf("\n-- insert proc and am entry\n");
   printf(

@@ -103,18 +103,13 @@ void PaxCopyAllDataFiles(Relation rel, const RelFileNode *newrnode,
   //    PaxAuxRelationSetNewFilenode.
   if (createnewpath) {
     // create pg_pax_table relfilenode file and dbid directory.
-    cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
-                                         SMGR_PAX, rel);
+    // cbdb::RelationCreateStorageDirectory(*newrnode, rel->rd_rel->relpersistence,
+    //                                      SMGR_PAX, rel);
 
     // create micropartition file destination folder for copying.
     CBDB_CHECK((fs->CreateDirectory(dst_path) == 0),
                cbdb::CException::ExType::kExTypeIOError,
                fmt("Fail to create directory [path=%s]", dst_path.c_str()));
-
-    // only permanent table should write wal
-    if (cbdb::NeedWAL(rel)) {
-      cbdb::XLogPaxCreateDirectory(*newrnode);
-    }
   }
 
   // Get micropatition file source folder filename list for copying, if file
@@ -122,6 +117,10 @@ void PaxCopyAllDataFiles(Relation rel, const RelFileNode *newrnode,
   filelist = fs->ListDirectory(src_path);
   if (filelist.empty()) return;
 
+  const size_t buffer_size = 1024 * 1024;
+  void *buffer = cbdb::Palloc(buffer_size);
+
+  auto need_wal = cbdb::NeedWAL(rel);
   for (auto &iter : filelist) {
     Assert(!iter.empty());
     std::string src_file = src_path;
@@ -132,10 +131,24 @@ void PaxCopyAllDataFiles(Relation rel, const RelFileNode *newrnode,
     dst_file.append(iter);
     auto file1 = fs->Open(src_file, pax::fs::kReadMode);
     auto file2 = fs->Open(dst_file, pax::fs::kWriteMode);
-    fs->CopyFile(file1.get(), file2.get());
+
+    auto size = file1->FileLength();
+    int64 offset = 0;
+    while (size > 0) {
+      auto batch_len = Min(size, buffer_size);
+      file1->ReadN(buffer, batch_len);
+      file2->WriteN(buffer, batch_len);
+      if (need_wal)
+        cbdb::XLogPaxInsert(*newrnode, iter.c_str(), offset, buffer, batch_len);
+      offset += batch_len;
+      size -= batch_len;
+    }
+
     file1->Close();
     file2->Close();
   }
+
+  cbdb::Pfree(buffer);
 }
 
 }
@@ -147,6 +160,96 @@ PG_FUNCTION_INFO_V1(MicroPartitionStatsCombineResult);
 
 
 #ifdef USE_MANIFEST_API
+extern "C" {
+PG_FUNCTION_INFO_V1(pax_get_catalog_rows);
+struct fetch_catalog_rows_context {
+  Relation relation;
+  ManifestRelation mrel;
+  ManifestScan mscan;
+  TupleDesc tupdesc;
+};
+
+Datum pax_get_catalog_rows(PG_FUNCTION_ARGS) {
+  FuncCallContext *fctx;
+  struct fetch_catalog_rows_context *ctx;
+  ManifestTuple mtuple;
+
+  if (SRF_IS_FIRSTCALL()) {
+    MemoryContext oldctx;
+    TupleDesc tupdesc;
+    Oid relid;
+
+    relid = PG_GETARG_OID(0);
+
+    fctx = SRF_FIRSTCALL_INIT();
+    oldctx = MemoryContextSwitchTo(fctx->multi_call_memory_ctx);
+
+    tupdesc = CreateTemplateTupleDesc(7);
+    TupleDescInitEntry(tupdesc, (AttrNumber)1,
+                      PAX_AUX_PTBLOCKNAME, INT4OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)2,
+                      PAX_AUX_PTTUPCOUNT, INT4OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)3,
+                      PAX_AUX_PTBLOCKSIZE, INT4OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)4,
+                      PAX_AUX_PTSTATISITICS, PAX_AUX_STATS_TYPE_OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)5,
+                      PAX_AUX_PTVISIMAPNAME, NAMEOID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)6,
+                      PAX_AUX_PTEXISTEXTTOAST, BOOLOID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)7,
+                      PAX_AUX_PTISCLUSTERED, BOOLOID, -1, 0);
+
+    ctx = (struct fetch_catalog_rows_context *)palloc(sizeof(*ctx));
+    ctx->relation = table_open(relid, AccessShareLock);
+    ctx->mrel = manifest_open(ctx->relation);
+    ctx->mscan = manifest_beginscan(ctx->mrel, NULL);
+
+    fctx->user_fctx = ctx;
+    fctx->tuple_desc = BlessTupleDesc(tupdesc);
+
+    MemoryContextSwitchTo(oldctx);
+  } else {
+    fctx = SRF_PERCALL_SETUP();
+    ctx = (struct fetch_catalog_rows_context *)fctx->user_fctx;
+  }
+
+  mtuple = manifest_getnext(ctx->mscan, nullptr);
+  if (mtuple) {
+    ManifestRelation mrel;
+    HeapTuple tuple;
+    NameData visimap;
+    Datum values[7];
+    bool isnull[7];
+
+    mrel = ctx->mrel;
+    values[0] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTBLOCKNAME, &isnull[0]);
+    values[1] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTTUPCOUNT, &isnull[1]);
+    values[2] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTBLOCKSIZE, &isnull[2]);
+    values[3] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTSTATISITICS, &isnull[3]);
+    values[4] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTVISIMAPNAME, &isnull[4]);
+    if (!isnull[4]) {
+      namestrcpy(&visimap, DatumGetCString(values[4]));
+      values[4] = NameGetDatum(&visimap);
+    }
+    values[5] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTEXISTEXTTOAST, &isnull[5]);
+    values[6] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTISCLUSTERED, &isnull[6]);
+
+    tuple = heap_form_tuple(fctx->tuple_desc, values, isnull);
+    SRF_RETURN_NEXT(fctx, HeapTupleGetDatum(tuple));
+  }
+
+  manifest_endscan(ctx->mscan);
+  manifest_close(ctx->mrel);
+  table_close(ctx->relation, AccessShareLock);
+
+  ctx->relation = nullptr;
+  ctx->mrel = nullptr;
+  ctx->mscan = nullptr;
+  SRF_RETURN_DONE(fctx);
+}
+}
+
 namespace pax {
 MicroPartitionMetadata ManifestTupleToValue(
     const std::string &rel_path, ManifestRelation mrel, ManifestTuple tuple);
@@ -225,13 +328,9 @@ void InsertOrUpdateMicroPartitionEntry(const pax::WriteSummary &summary,
 
   auto rel = table_open(summary.rel_oid, AccessShareLock);
   auto mrel = manifest_open(rel);
-  auto oldtuple = manifest_find(mrel, nullptr, block_id);
-  Assert(oldtuple);
-
-  manifest_update(mrel, oldtuple, values, lengthof(values));
+  manifest_update(mrel, block_id, values, lengthof(values));
   manifest_close(mrel);
-  table_close(rel, NoLock);
-  manifest_free_tuple(oldtuple);
+  table_close(rel, AccessShareLock);
 
   pfree(stats_output);
 }
@@ -247,21 +346,15 @@ void InsertMicroPartitionPlaceHolder(Oid pax_relid, int block_id) {
   auto rel = manifest_open(pax_rel);
   manifest_insert(rel, values, lengthof(values));
   manifest_close(rel);
-  table_close(pax_rel, NoLock);
+  table_close(pax_rel, AccessShareLock);
 }
 
 void DeleteMicroPartitionEntry(Oid pax_relid, Snapshot snapshot, int block_id) {
   Relation pax_rel = table_open(pax_relid, AccessShareLock);
   auto aux_rel = manifest_open(pax_rel);
-
-  auto tuple = manifest_find(aux_rel, snapshot, block_id);
-  Assert(tuple);
-  manifest_delete(aux_rel, tuple);
-
+  manifest_delete(aux_rel, block_id);
   manifest_close(aux_rel);
-  table_close(pax_rel, NoLock);
-
-  manifest_free_tuple(tuple);
+  table_close(pax_rel, AccessShareLock);
 }
 
 bool IsMicroPartitionVisible(Relation pax_rel, BlockNumber block,
@@ -279,7 +372,6 @@ void GetMicroPartitionMetadata(Relation rel, Snapshot snapshot, int block_id,
                                pax::MicroPartitionMetadata &info) {
   auto mrel = manifest_open(rel);
   auto tuple = manifest_find(mrel, snapshot, block_id);
-  Assert(tuple);
 
   CBDB_TRY();
   {
@@ -291,8 +383,8 @@ void GetMicroPartitionMetadata(Relation rel, Snapshot snapshot, int block_id,
   CBDB_CATCH_DEFAULT();
   CBDB_END_TRY();
 
-  manifest_close(mrel);
   manifest_free_tuple(tuple);
+  manifest_close(mrel);
 }
 
 } // namespace internal
@@ -396,10 +488,7 @@ void PaxCatalogUpdater::UpdateVisimap(int block_id, const char *visimap_filename
 
   CBDB_WRAP_START;
   {
-    auto oldtuple = manifest_find(mrel_, nullptr, block_id);
-    Assert(oldtuple);
-    manifest_update(mrel_, oldtuple, values, lengthof(values));
-    manifest_free_tuple(oldtuple);
+    manifest_update(mrel_, block_id, values, lengthof(values));
   }
   CBDB_WRAP_END;
 }
@@ -421,8 +510,6 @@ void PaxCatalogUpdater::UpdateStatistics(int block_id,
                                         stats_len - VARHDRSZ);
     if (!ok) elog(ERROR, "failed to serialize stats");
 
-    auto oldtuple = manifest_find(mrel_, nullptr, block_id);
-    Assert(oldtuple);
 
     MetaValue values[] = {
       {
@@ -430,8 +517,7 @@ void PaxCatalogUpdater::UpdateStatistics(int block_id,
         PointerGetDatum(stats_out),
       },
     };
-    manifest_update(mrel_, oldtuple, values, lengthof(values));
-    manifest_free_tuple(oldtuple);
+    manifest_update(mrel_, block_id, values, lengthof(values));
     pfree(stats_out);
   }
   CBDB_WRAP_END;
@@ -468,7 +554,7 @@ Datum MicroPartitionStatsCombineResult(PG_FUNCTION_ARGS) {
   rel_desc = CreateTupleDescCopy(RelationGetDescr(rel));
 
   mrel = manifest_open(rel);
-  mscan = manifest_beginscan(mrel, nullptr, nullptr);
+  mscan = manifest_beginscan(mrel, nullptr);
   while ((tuple = manifest_getnext(mscan, nullptr))) {
     Datum datum;
     datum = get_manifesttuple_value(tuple, mrel, PAX_AUX_PTSTATISITICS, &isnull);
@@ -506,6 +592,76 @@ Datum MicroPartitionStatsCombineResult(PG_FUNCTION_ARGS) {
   PG_RETURN_TEXT_P(cstring_to_text(str.data));
 }
 #else
+extern "C" {
+
+PG_FUNCTION_INFO_V1(pax_get_catalog_rows);
+Datum pax_get_catalog_rows(PG_FUNCTION_ARGS) {
+  FuncCallContext *fctx;
+  paxc::ScanAuxContext *sctx;
+  HeapTuple tuple;
+ 
+  if (SRF_IS_FIRSTCALL()) {
+    MemoryContext oldctx;
+    TupleDesc tupdesc;
+    Oid relid;
+    Oid aux_relid;
+    paxc::ScanAuxContext scan_context;
+
+    relid = PG_GETARG_OID(0);
+    fctx = SRF_FIRSTCALL_INIT();
+    oldctx = MemoryContextSwitchTo(fctx->multi_call_memory_ctx);
+
+    aux_relid = paxc::GetPaxAuxRelid(relid);
+    scan_context.BeginSearchMicroPartition(aux_relid, nullptr, AccessShareLock);
+
+    tupdesc = CreateTemplateTupleDesc(7);
+    TupleDescInitEntry(tupdesc, (AttrNumber)1,
+                      PAX_AUX_PTBLOCKNAME, INT4OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)2,
+                      PAX_AUX_PTTUPCOUNT, INT4OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)3,
+                      PAX_AUX_PTBLOCKSIZE, INT4OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)4,
+                      PAX_AUX_PTSTATISITICS, PAX_AUX_STATS_TYPE_OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)5,
+                      PAX_AUX_PTVISIMAPNAME, NAMEOID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)6,
+                      PAX_AUX_PTEXISTEXTTOAST, BOOLOID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)7,
+                      PAX_AUX_PTISCLUSTERED, BOOLOID, -1, 0);
+
+    sctx = (paxc::ScanAuxContext *)palloc(sizeof(*sctx));
+    *sctx = scan_context;
+    fctx->user_fctx = sctx;
+    fctx->tuple_desc = BlessTupleDesc(tupdesc);
+
+    MemoryContextSwitchTo(oldctx);
+  } else {
+    fctx = SRF_PERCALL_SETUP();
+    sctx = (paxc::ScanAuxContext *)fctx->user_fctx;
+  }
+
+  tuple = sctx->SearchMicroPartitionEntry();
+  if (HeapTupleIsValid(tuple)) {
+    Datum values[7];
+    bool isnull[7];
+    Relation rel = sctx->GetRelation();
+    TupleDesc desc = RelationGetDescr(rel);
+    values[0] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME, desc, &isnull[0]);
+    values[1] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT, desc, &isnull[1]);
+    values[2] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE, desc, &isnull[2]);
+    values[3] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS, desc, &isnull[3]);
+    values[4] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTVISIMAPNAME, desc, &isnull[4]);
+    values[5] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST, desc, &isnull[5]);
+    values[6] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED, desc, &isnull[6]);
+    tuple = heap_form_tuple(fctx->tuple_desc, values, isnull);
+    SRF_RETURN_NEXT(fctx, HeapTupleGetDatum(tuple));
+  }
+
+  sctx->EndSearchMicroPartition(AccessShareLock);
+  SRF_RETURN_DONE(fctx);
+}
+} // extern "C"
 
 namespace paxc {
 

@@ -187,7 +187,7 @@ SELECT gp_inject_fault('pax_finish_swap_fast_fastsequence', 'panic', dbid) FROM 
 (3 rows)
 
 ALTER TABLE list_parted SET DISTRIBUTED BY (c);
-ERROR:  fault triggered, fault name:'pax_finish_swap_fast_fastsequence' fault type:'panic'  (seg2 127.0.1.1:7004 pid=16965)
+ERROR:  fault triggered, fault name:'pax_finish_swap_fast_fastsequence' fault type:'panic'
 select gp_segment_id,seq from gp_dist_random('pg_ext_aux.pg_pax_fastsequence') where 
     objid = 'list_part1'::regclass::oid or objid = 'sub_part1'::regclass::oid or objid = 'sub_part2'::regclass::oid;
  gp_segment_id | seq 

@@ -40,5 +40,7 @@ typedef struct PendingRelDeletePaxFile {
 } PendingRelDeletePaxFile;
 
 void PaxAddPendingDelete(Relation rel, RelFileNode rn_node, bool atCommit);
+SMgrRelation PaxRelationCreateStorage(RelFileNode rnode, Relation rel);
+
 
 }  // namespace paxc

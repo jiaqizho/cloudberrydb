@@ -1,30 +1,28 @@
-CREATE OR REPLACE FUNCTION "get_pax_aux_table"(table_name text)
-  RETURNS TABLE("ptblockname" integer,"pttupcount" integer, 
-    "ptstatistics" pg_ext_aux.paxauxstats, 
-    "ptexistvisimap" bool, "ptexistexttoast" bool, "ptisclustered" bool) AS $BODY$
-    DECLARE
-    subquery  varchar;
-    pre_sql   varchar;
-    table_oid Oid;
-    begin
-    pre_sql:='select oid from pg_class where relname='''||table_name||'''';
-    EXECUTE pre_sql into table_oid;
-    subquery := 'select ptblockname, pttupcount, ptstatistics, ptvisimapname IS NOT NULL AS ptexistvisimap, ptexistexttoast, ptisclustered from gp_dist_random(''pg_ext_aux.pg_pax_blocks_'||table_oid||''')';
-    RETURN QUERY execute subquery;
-    END
-    $BODY$
-  LANGUAGE plpgsql;
-CREATE OR REPLACE FUNCTION "get_pax_table_stats"(table_name text)
-  RETURNS TABLE("ptstatistics" pg_ext_aux.paxauxstats) AS $BODY$
-    DECLARE
-    subquery  varchar;
-    pre_sql   varchar;
-    table_oid Oid;
-    begin
-    pre_sql:='select oid from pg_class where relname='''||table_name||'''';
-    EXECUTE pre_sql into table_oid;
-    subquery := 'select ptstatistics from gp_dist_random(''pg_ext_aux.pg_pax_blocks_'||table_oid||''')';
-    RETURN QUERY execute subquery;
-    END
-    $BODY$
-  LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION pax_get_catalog_rows(rel regclass,
+  ptblockname out int,
+  pttupcount out int,
+  ptblocksize out int,
+  ptstatistics out pg_ext_aux.paxauxstats,
+  ptvisimapname out name,
+  pthastoast out boolean,
+  ptisclustered out boolean
+)
+returns setof record
+EXECUTE ON  ALL SEGMENTS
+AS '$libdir/pax', 'pax_get_catalog_rows' LANGUAGE C ;
+CREATE OR REPLACE FUNCTION get_pax_aux_table(rel regclass)
+RETURNS TABLE(
+  ptblockname integer,
+  pttupcount integer,
+  ptstatistics pg_ext_aux.paxauxstats,
+  ptexistvisimap bool,
+  ptexistexttoast bool,
+  ptisclustered bool
+) AS $$
+  SELECT ptblockname, pttupcount, ptstatistics, ptvisimapname IS NOT NULL, pthastoast, ptisclustered
+  FROM pax_get_catalog_rows(rel);
+$$ LANGUAGE sql;
+CREATE OR REPLACE FUNCTION get_pax_table_stats(rel regclass)
+  RETURNS TABLE("ptstatistics" pg_ext_aux.paxauxstats) AS $$
+  SELECT ptstatistics FROM pax_get_catalog_rows(rel);
+$$ LANGUAGE sql;
