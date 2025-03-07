@@ -1554,7 +1554,7 @@ appendonly_index_build_range_scan(Relation heapRelation,
 	ExprContext *econtext;
 	Snapshot	snapshot;
 	FileSegInfo **seginfo = NULL;
-	int segfile_count;
+	int segfile_count = 0;
 	int64 total_blockcount = 0;
 	int64 previous_blkno = -1;
 
@@ -2155,7 +2155,7 @@ appendonly_scan_sample_next_block(TableScanDesc scan, SampleScanState *scanstate
 	if (aoscan->totalTuples == 0)
 	{
 		FileSegInfo **seginfo;
-		int segfile_count;
+		int segfile_count = 0;
 		int64 total_tupcount = 0;
 	
 		seginfo = GetAllFileSegInfo(aoscan->aos_rd, aoscan->snapshot, &segfile_count, NULL);

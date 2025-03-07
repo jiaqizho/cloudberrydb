@@ -896,8 +896,8 @@ px_disable_fipsmode(void)
 	ossl_cipher_types = ossl_cipher_types_all;
 	fips = false;
 
-	if (!FIPS_mode_set)
-		return;
+	// if (!FIPS_mode_set)
+	// 	return;
 
 	FIPS_mode_set(0);
 #endif
@@ -925,12 +925,12 @@ px_enable_fipsmode(void)
 	ossl_cipher_types = NULL;
 
 	/* Make sure that we are linked against a FIPS enabled OpenSSL */
-	if (!FIPS_mode_set)
-	{
-		ereport(ERROR,
-				(errmsg("FIPS enabled OpenSSL is required for strict FIPS mode"),
-				 errhint("Recompile OpenSSL with the FIPS module, or install a FIPS enabled OpenSSL distribution.")));
-	}
+	// if (!FIPS_mode_set)
+	// {
+	// 	ereport(ERROR,
+	// 			(errmsg("FIPS enabled OpenSSL is required for strict FIPS mode"),
+	// 			 errhint("Recompile OpenSSL with the FIPS module, or install a FIPS enabled OpenSSL distribution.")));
+	// }
 
 	/*
 	 * A non-zero return value means that FIPS mode was enabled, but the
@@ -964,12 +964,12 @@ px_check_fipsmode(void)
 #else
 
 	/* Make sure that we are linked against a FIPS enabled OpenSSL */
-	if (!FIPS_mode_set)
-	{
-		ereport(ERROR,
-				(errmsg("FIPS enabled OpenSSL is required for strict FIPS mode"),
-				 errhint("Recompile OpenSSL with the FIPS module, or install a FIPS enabled OpenSSL distribution.")));
-	}
+	// if (!FIPS_mode_set)
+	// {
+	// 	ereport(ERROR,
+	// 			(errmsg("FIPS enabled OpenSSL is required for strict FIPS mode"),
+	// 			 errhint("Recompile OpenSSL with the FIPS module, or install a FIPS enabled OpenSSL distribution.")));
+	// }
 
 #endif
 }
