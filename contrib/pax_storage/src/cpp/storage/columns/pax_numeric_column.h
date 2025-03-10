@@ -32,14 +32,14 @@ namespace pax {
 
 class PaxPgNumericColumn final : public PaxNonFixedEncodingColumn {
  public:
-  PaxPgNumericColumn(uint32 capacity, uint32 lengths_capacity,
+  PaxPgNumericColumn(uint32 capacity, uint32 offsets_capacity,
                      const PaxEncoder::EncodingOption &encoder_options)
-      : PaxNonFixedEncodingColumn(capacity, lengths_capacity, encoder_options) {
+      : PaxNonFixedEncodingColumn(capacity, offsets_capacity, encoder_options) {
   }
 
-  PaxPgNumericColumn(uint32 capacity, uint32 lengths_capacity,
+  PaxPgNumericColumn(uint32 capacity, uint32 offsets_capacity,
                      const PaxDecoder::DecodingOption &decoding_option)
-      : PaxNonFixedEncodingColumn(capacity, lengths_capacity, decoding_option) {
+      : PaxNonFixedEncodingColumn(capacity, offsets_capacity, decoding_option) {
   }
 
   PaxColumnTypeInMem GetPaxColumnTypeInMem() const override {

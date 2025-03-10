@@ -64,7 +64,7 @@ class PaxVecCommColumn : public PaxColumn {
 
   int64 GetOriginLength() const override;
 
-  int64 GetLengthsOriginLength() const override;
+  int64 GetOffsetsOriginLength() const override;
 
   int32 GetTypeLength() const override;
 
@@ -88,7 +88,7 @@ extern template class PaxVecCommColumn<double>;
 
 class PaxVecNonFixedColumn : public PaxColumn {
  public:
-  explicit PaxVecNonFixedColumn(uint32 data_capacity, uint32 lengths_capacity);
+  explicit PaxVecNonFixedColumn(uint32 data_capacity, uint32 offsets_capacity);
 
   PaxVecNonFixedColumn();
 
@@ -110,7 +110,7 @@ class PaxVecNonFixedColumn : public PaxColumn {
 
   int64 GetOriginLength() const override;
 
-  int64 GetLengthsOriginLength() const override;
+  int64 GetOffsetsOriginLength() const override;
 
   int32 GetTypeLength() const override;
 
@@ -139,7 +139,8 @@ class PaxVecNonFixedColumn : public PaxColumn {
   std::shared_ptr<DataBuffer<char>> data_;
   std::shared_ptr<DataBuffer<int32>> offsets_;
 
-  // used in `kTypeStoragePorcVec`
+  // used to record next offset in write path
+  // in read path, next_offsets_ always be -1
   int32 next_offsets_;
 
   std::vector<std::shared_ptr<MemoryObject>> buffer_holders_;

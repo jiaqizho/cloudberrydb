@@ -41,8 +41,8 @@
 namespace pax {
 
 template <typename N>
-static std::unique_ptr<PaxColumn> CreateCommColumn(bool is_vec,
-                                   const PaxEncoder::EncodingOption &opts) {
+static std::unique_ptr<PaxColumn> CreateCommColumn(
+    bool is_vec, const PaxEncoder::EncodingOption &opts) {
   return is_vec
              ? traits::ColumnOptCreateTraits<
                    PaxVecEncodingColumn, N>::create_encoding(DEFAULT_CAPACITY,
@@ -59,7 +59,7 @@ PaxColumns::PaxColumns()
   data_ = std::make_shared<DataBuffer<char>>(0);
 }
 
-PaxColumns::~PaxColumns() { }
+PaxColumns::~PaxColumns() {}
 
 void PaxColumns::SetStorageFormat(PaxStorageFormat format) {
   storage_format_ = format;
@@ -69,8 +69,9 @@ PaxStorageFormat PaxColumns::GetStorageFormat() const {
   return storage_format_;
 }
 
-
-void PaxColumns::Append(std::unique_ptr<PaxColumn> &&column) { columns_.emplace_back(std::move(column)); }
+void PaxColumns::Append(std::unique_ptr<PaxColumn> &&column) {
+  columns_.emplace_back(std::move(column));
+}
 
 void PaxColumns::Append(char * /*buffer*/, size_t /*size*/) {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
@@ -106,7 +107,7 @@ int64 PaxColumns::GetOriginLength() const {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
-int64 PaxColumns::GetLengthsOriginLength() const {
+int64 PaxColumns::GetOffsetsOriginLength() const {
   CBDB_RAISE(cbdb::CException::ExType::kExTypeLogicError);
 }
 
@@ -405,7 +406,7 @@ size_t PaxColumns::MeasureVecDataBuffer(
         padding = TYPEALIGN(MEMORY_ALIGN_SIZE, offsets_size) - offsets_size;
         buffer_len += offsets_size;
         buffer_len += padding;
-        column_streams_func(pax::porc::proto::Stream_Kind_LENGTH, total_rows,
+        column_streams_func(pax::porc::proto::Stream_Kind_OFFSET, total_rows,
                             offsets_size + padding, padding);
 
         auto data_length = column->GetBuffer().second;
@@ -449,22 +450,22 @@ size_t PaxColumns::MeasureVecDataBuffer(
     AssertImply(column->GetEncodingType() !=
                     ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
                 column->GetOriginLength() >= 0);
-    AssertImply(column->GetLengthsEncodingType() !=
+    AssertImply(column->GetOffsetsEncodingType() !=
                     ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED,
-                column->GetLengthsOriginLength() >= 0);
+                column->GetOffsetsOriginLength() >= 0);
 
-    // length origin lengths
+    // length origin offsets
     column_encoding_func(
         column->GetEncodingType(), column->GetCompressLevel(),
         (column->GetEncodingType() !=
          ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED)
             ? TYPEALIGN(MEMORY_ALIGN_SIZE, column->GetOriginLength())
             : column->GetOriginLength(),
-        column->GetLengthsEncodingType(), column->GetLengthsCompressLevel(),
-        (column->GetLengthsEncodingType() !=
+        column->GetOffsetsEncodingType(), column->GetOffsetsCompressLevel(),
+        (column->GetOffsetsEncodingType() !=
          ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED)
-            ? TYPEALIGN(MEMORY_ALIGN_SIZE, column->GetLengthsOriginLength())
-            : column->GetLengthsOriginLength());
+            ? TYPEALIGN(MEMORY_ALIGN_SIZE, column->GetOffsetsOriginLength())
+            : column->GetOffsetsOriginLength());
   }
   return buffer_len;
 }
@@ -505,22 +506,22 @@ size_t PaxColumns::MeasureOrcDataBuffer(
       case kTypeBpChar:
       case kTypeDecimal:
       case kTypeNonFixed: {
-        size_t length_stream_size =
-            ((PaxNonFixedColumn *)column)->GetLengthBuffer().second;
+        size_t offset_stream_size =
+            ((PaxNonFixedColumn *)column)->GetOffsetBuffer(true).second;
 
         size_t padding = 0;
 
-        if ((buffer_len + length_stream_size) % column->GetAlignSize() != 0) {
+        if ((buffer_len + offset_stream_size) % column->GetAlignSize() != 0) {
           auto align_buffer_len = TYPEALIGN(column->GetAlignSize(),
-                                            (buffer_len + length_stream_size));
-          Assert(align_buffer_len - buffer_len > length_stream_size);
-          padding = align_buffer_len - buffer_len - length_stream_size;
+                                            (buffer_len + offset_stream_size));
+          Assert(align_buffer_len - buffer_len > offset_stream_size);
+          padding = align_buffer_len - buffer_len - offset_stream_size;
         }
 
-        buffer_len += length_stream_size;
+        buffer_len += offset_stream_size;
         buffer_len += padding;
-        column_streams_func(pax::porc::proto::Stream_Kind_LENGTH, column_size,
-                            length_stream_size + padding, padding);
+        column_streams_func(pax::porc::proto::Stream_Kind_OFFSET, column_size,
+                            offset_stream_size + padding, padding);
 
         auto length_data = column->GetBuffer().second;
         buffer_len += length_data;
@@ -554,8 +555,8 @@ size_t PaxColumns::MeasureOrcDataBuffer(
 
     column_encoding_func(
         column->GetEncodingType(), column->GetCompressLevel(),
-        column->GetOriginLength(), column->GetLengthsEncodingType(),
-        column->GetLengthsCompressLevel(), column->GetLengthsOriginLength());
+        column->GetOriginLength(), column->GetOffsetsEncodingType(),
+        column->GetOffsetsCompressLevel(), column->GetOffsetsOriginLength());
   }
   return buffer_len;
 }
@@ -564,24 +565,25 @@ void PaxColumns::CombineVecDataBuffer() {
   char *buffer = nullptr;
   size_t buffer_len = 0;
 
-  auto fill_padding_buffer = [](PaxColumn *column,
-                                const std::shared_ptr<DataBuffer<char>> &data_buffer,
-                                size_t buffer_len, size_t align) {
-    Assert(data_buffer);
+  auto fill_padding_buffer =
+      [](PaxColumn *column,
+         const std::shared_ptr<DataBuffer<char>> &data_buffer,
+         size_t buffer_len, size_t align) {
+        Assert(data_buffer);
 
-    if (column && (column->GetEncodingType() !=
-                   ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED)) {
-      return;
-    }
+        if (column && (column->GetEncodingType() !=
+                       ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED)) {
+          return;
+        }
 
-    auto gap_size = TYPEALIGN(align, buffer_len) - buffer_len;
-    if (!gap_size) {
-      return;
-    }
+        auto gap_size = TYPEALIGN(align, buffer_len) - buffer_len;
+        if (!gap_size) {
+          return;
+        }
 
-    data_buffer->WriteZero(gap_size);
-    data_buffer->Brush(gap_size);
-  };
+        data_buffer->WriteZero(gap_size);
+        data_buffer->Brush(gap_size);
+      };
 
   for (const auto &p_column : columns_) {
     if (!p_column) {
@@ -618,17 +620,17 @@ void PaxColumns::CombineVecDataBuffer() {
       case kTypeVecBpChar:
       case kTypeVecNoHeader:
       case kTypeNonFixed: {
-        char *length_stream_data;
-        size_t length_stream_len;
+        char *offset_stream_data;
+        size_t offset_stream_len;
         auto no_fixed_column = reinterpret_cast<PaxVecNonFixedColumn *>(column);
-        std::tie(length_stream_data, length_stream_len) =
+        std::tie(offset_stream_data, offset_stream_len) =
             no_fixed_column->GetOffsetBuffer(false);
 
-        Assert(data_->Available() >= length_stream_len);
-        data_->Write(length_stream_data, length_stream_len);
-        data_->Brush(length_stream_len);
+        Assert(data_->Available() >= offset_stream_len);
+        data_->Write(offset_stream_data, offset_stream_len);
+        data_->Brush(offset_stream_len);
 
-        fill_padding_buffer(nullptr, data_, length_stream_len,
+        fill_padding_buffer(nullptr, data_, offset_stream_len,
                             MEMORY_ALIGN_SIZE);
 
         std::tie(buffer, buffer_len) = column->GetBuffer();
@@ -702,31 +704,31 @@ void PaxColumns::CombineOrcDataBuffer() {
       case kTypeBpChar:
       case kTypeDecimal:
       case kTypeNonFixed: {
-        char *length_stream_data;
-        size_t length_stream_len;
-        size_t length_stream_aligned_len;
+        char *offset_stream_data;
+        size_t offset_stream_len;
+        size_t offset_stream_aligned_len;
         auto no_fixed_column = reinterpret_cast<PaxNonFixedColumn *>(column);
-        std::tie(length_stream_data, length_stream_len) =
-            no_fixed_column->GetLengthBuffer();
+        std::tie(offset_stream_data, offset_stream_len) =
+            no_fixed_column->GetOffsetBuffer(false);
 
         auto current_buffer_len = data_->Used();
-        if ((current_buffer_len + length_stream_len) % column->GetAlignSize() !=
+        if ((current_buffer_len + offset_stream_len) % column->GetAlignSize() !=
             0) {
           auto align_buffer_len = TYPEALIGN(
-              column->GetAlignSize(), (current_buffer_len + length_stream_len));
-          Assert(align_buffer_len - current_buffer_len > length_stream_len);
-          length_stream_aligned_len = align_buffer_len - current_buffer_len;
+              column->GetAlignSize(), (current_buffer_len + offset_stream_len));
+          Assert(align_buffer_len - current_buffer_len > offset_stream_len);
+          offset_stream_aligned_len = align_buffer_len - current_buffer_len;
         } else {
-          length_stream_aligned_len = length_stream_len;
+          offset_stream_aligned_len = offset_stream_len;
         }
 
-        memcpy(data_->GetAvailableBuffer(), length_stream_data,
-               length_stream_len);
-        data_->Brush(length_stream_len);
+        memcpy(data_->GetAvailableBuffer(), offset_stream_data,
+               offset_stream_len);
+        data_->Brush(offset_stream_len);
 
-        Assert(length_stream_aligned_len >= length_stream_len);
-        if (length_stream_aligned_len > length_stream_len) {
-          auto padding = length_stream_aligned_len - length_stream_len;
+        Assert(offset_stream_aligned_len >= offset_stream_len);
+        if (offset_stream_aligned_len > offset_stream_len) {
+          auto padding = offset_stream_aligned_len - offset_stream_len;
           data_->WriteZero(padding);
           data_->Brush(padding);
         }

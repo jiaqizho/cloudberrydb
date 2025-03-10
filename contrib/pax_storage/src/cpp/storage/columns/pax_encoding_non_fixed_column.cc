@@ -58,22 +58,22 @@ void PaxNonFixedEncodingColumn::InitEncoder() {
   PaxColumn::SetCompressLevel(0);
 }
 
-void PaxNonFixedEncodingColumn::InitLengthStreamCompressor() {
-  Assert(encoder_options_.lengths_encode_type !=
+void PaxNonFixedEncodingColumn::InitOffsetStreamCompressor() {
+  Assert(encoder_options_.offsets_encode_type !=
          ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED);
-  lengths_compressor_ = PaxCompressor::CreateBlockCompressor(
-      encoder_options_.lengths_encode_type);
-  SetLengthsEncodeType(encoder_options_.lengths_encode_type);
-  SetLengthsCompressLevel(encoder_options_.lengths_compress_level);
+  offsets_compressor_ = PaxCompressor::CreateBlockCompressor(
+      encoder_options_.offsets_encode_type);
+  SetOffsetsEncodeType(encoder_options_.offsets_encode_type);
+  SetOffsetsCompressLevel(encoder_options_.offsets_compress_level);
 }
 
-void PaxNonFixedEncodingColumn::InitLengthStreamDecompressor() {
-  Assert(decoder_options_.lengths_encode_type !=
+void PaxNonFixedEncodingColumn::InitOffsetStreamDecompressor() {
+  Assert(decoder_options_.offsets_encode_type !=
          ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED);
-  lengths_compressor_ = PaxCompressor::CreateBlockCompressor(
-      decoder_options_.lengths_encode_type);
-  SetLengthsEncodeType(decoder_options_.lengths_encode_type);
-  SetLengthsCompressLevel(decoder_options_.lengths_compress_level);
+  offsets_compressor_ = PaxCompressor::CreateBlockCompressor(
+      decoder_options_.offsets_encode_type);
+  SetOffsetsEncodeType(decoder_options_.offsets_encode_type);
+  SetOffsetsCompressLevel(decoder_options_.offsets_compress_level);
 }
 
 void PaxNonFixedEncodingColumn::InitDecoder() {
@@ -85,7 +85,8 @@ void PaxNonFixedEncodingColumn::InitDecoder() {
 
   decoder_ = PaxDecoder::CreateDecoder<int8>(decoder_options_);
   if (decoder_) {
-    shared_data_ = std::make_shared<DataBuffer<char>>(*PaxNonFixedColumn::data_);
+    shared_data_ =
+        std::make_shared<DataBuffer<char>>(*PaxNonFixedColumn::data_);
     decoder_->SetDataBuffer(shared_data_);
     return;
   }
@@ -95,44 +96,44 @@ void PaxNonFixedEncodingColumn::InitDecoder() {
 }
 
 PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
-    uint32 data_capacity, uint32 lengths_capacity,
+    uint32 data_capacity, uint32 offsets_capacity,
     const PaxEncoder::EncodingOption &encoder_options)
-    : PaxNonFixedColumn(data_capacity, lengths_capacity),
+    : PaxNonFixedColumn(data_capacity, offsets_capacity),
       encoder_options_(encoder_options),
       encoder_(nullptr),
       decoder_(nullptr),
       compressor_(nullptr),
       compress_route_(true),
       shared_data_(nullptr),
-      lengths_compressor_(nullptr),
-      shared_lengths_data_(nullptr) {
+      offsets_compressor_(nullptr),
+      shared_offsets_data_(nullptr) {
   InitEncoder();
-  InitLengthStreamCompressor();
+  InitOffsetStreamCompressor();
 }
 
 PaxNonFixedEncodingColumn::PaxNonFixedEncodingColumn(
-    uint32 data_capacity, uint32 lengths_capacity,
+    uint32 data_capacity, uint32 offsets_capacity,
     const PaxDecoder::DecodingOption &decoding_option)
-    : PaxNonFixedColumn(data_capacity, lengths_capacity),
+    : PaxNonFixedColumn(data_capacity, offsets_capacity),
       decoder_options_(decoding_option),
       encoder_(nullptr),
       decoder_(nullptr),
       compressor_(nullptr),
       compress_route_(false),
       shared_data_(nullptr),
-      lengths_compressor_(nullptr),
-      shared_lengths_data_(nullptr) {
+      offsets_compressor_(nullptr),
+      shared_offsets_data_(nullptr) {
   InitDecoder();
-  InitLengthStreamDecompressor();
+  InitOffsetStreamDecompressor();
 }
 
-PaxNonFixedEncodingColumn::~PaxNonFixedEncodingColumn() { }
+PaxNonFixedEncodingColumn::~PaxNonFixedEncodingColumn() {}
 
 void PaxNonFixedEncodingColumn::Set(std::shared_ptr<DataBuffer<char>> data,
-                                    std::shared_ptr<DataBuffer<int32>> lengths,
+                                    std::shared_ptr<DataBuffer<int32>> offsets,
                                     size_t total_size) {
   bool exist_decoder;
-  Assert(data && lengths);
+  Assert(data && offsets);
 
   auto data_decompress = [&]() {
     Assert(!compress_route_);
@@ -166,48 +167,43 @@ void PaxNonFixedEncodingColumn::Set(std::shared_ptr<DataBuffer<char>> data,
     }
   };
 
-  auto lengths_decompress = [&]() {
+  auto offsets_decompress = [&]() {
     Assert(!compress_route_);
-    Assert(lengths_compressor_);
+    Assert(offsets_compressor_);
 
-    if (lengths->Used() != 0) {
-      auto d_size = lengths_compressor_->Decompress(
-          PaxNonFixedColumn::lengths_->Start(),
-          PaxNonFixedColumn::lengths_->Capacity(), lengths->Start(),
-          lengths->Used());
-      if (lengths_compressor_->IsError(d_size)) {
+    if (offsets->Used() != 0) {
+      auto d_size = offsets_compressor_->Decompress(
+          PaxNonFixedColumn::offsets_->Start(),
+          PaxNonFixedColumn::offsets_->Capacity(), offsets->Start(),
+          offsets->Used());
+      if (offsets_compressor_->IsError(d_size)) {
         CBDB_RAISE(
             cbdb::CException::ExType::kExTypeCompressError,
             fmt("Decompress failed, %s", compressor_->ErrorName(d_size)));
       }
-      PaxNonFixedColumn::lengths_->Brush(d_size);
+      PaxNonFixedColumn::offsets_->Brush(d_size);
     }
-
-    BuildOffsets();
   };
 
   exist_decoder = compressor_ || decoder_;
 
-  if (exist_decoder && lengths_compressor_) {
+  if (exist_decoder && offsets_compressor_) {
     data_decompress();
-    lengths_decompress();
-
-    estimated_size_ = total_size;
-  } else if (exist_decoder && !lengths_compressor_) {
+    offsets_decompress();
+    PaxNonFixedColumn::estimated_size_ = total_size;
+    PaxNonFixedColumn::next_offsets_ = -1;
+  } else if (exist_decoder && !offsets_compressor_) {
     data_decompress();
-
-    lengths_ = lengths;
-    BuildOffsets();
-
-    estimated_size_ = total_size;
-  } else if (!exist_decoder && lengths_compressor_) {
-    data_ = data;
-
-    lengths_decompress();
-
-    estimated_size_ = total_size;
-  } else {  // (!compressor_ && !lengths_compressor_)
-    PaxNonFixedColumn::Set(data, lengths, total_size);
+    PaxNonFixedColumn::offsets_ = offsets;
+    PaxNonFixedColumn::estimated_size_ = total_size;
+    PaxNonFixedColumn::next_offsets_ = -1;
+  } else if (!exist_decoder && offsets_compressor_) {
+    PaxNonFixedColumn::data_ = data;
+    offsets_decompress();
+    PaxNonFixedColumn::estimated_size_ = total_size;
+    PaxNonFixedColumn::next_offsets_ = -1;
+  } else {  // (!compressor_ && !offsets_compressor_)
+    PaxNonFixedColumn::Set(data, offsets, total_size);
   }
 }
 
@@ -254,9 +250,15 @@ std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetBuffer() {
       encoder_->SetDataBuffer(shared_data_);
 
       char *data_buffer = PaxNonFixedColumn::data_->GetBuffer();
-      for (size_t i = 0; i < lengths_->GetSize(); i++) {
-        encoder_->Append(data_buffer, (*lengths_)[i]);
-        data_buffer += (*lengths_)[i];
+
+      for (size_t i = 0; i < offsets_->GetSize() - 1; i++) {
+        encoder_->Append(data_buffer, (*offsets_)[i + 1] - (*offsets_)[i]);
+        data_buffer += (*offsets_)[i + 1] - (*offsets_)[i];
+      }
+
+      if (next_offsets_ != -1) {
+        encoder_->Append(data_buffer,
+                         next_offsets_ - (*offsets_)[offsets_->GetSize() - 1]);
       }
 
       encoder_->Flush();
@@ -270,38 +272,45 @@ std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetBuffer() {
   return PaxNonFixedColumn::GetBuffer();
 }
 
-std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetLengthBuffer() {
-  if (lengths_compressor_ && compress_route_) {
-    if (shared_lengths_data_) {
-      return std::make_pair(shared_lengths_data_->Start(),
-                            shared_lengths_data_->Used());
+std::pair<char *, size_t> PaxNonFixedEncodingColumn::GetOffsetBuffer(
+    bool append_last) {
+  if (append_last) {
+    AppendLastOffset();
+  }
+
+  if (offsets_compressor_ && compress_route_) {
+    if (shared_offsets_data_) {
+      return std::make_pair(shared_offsets_data_->Start(),
+                            shared_offsets_data_->Used());
     }
 
-    if (PaxNonFixedColumn::lengths_->Used() == 0) {
-      return PaxNonFixedColumn::GetLengthBuffer();
+    if (PaxNonFixedColumn::offsets_->Used() == 0) {
+      // should never append last offset again
+      return PaxNonFixedColumn::GetOffsetBuffer(false);
     }
 
-    size_t bound_size = lengths_compressor_->GetCompressBound(
-        PaxNonFixedColumn::lengths_->Used());
-    shared_lengths_data_ = std::make_shared<DataBuffer<char>>(bound_size);
+    size_t bound_size = offsets_compressor_->GetCompressBound(
+        PaxNonFixedColumn::offsets_->Used());
+    shared_offsets_data_ = std::make_shared<DataBuffer<char>>(bound_size);
 
-    auto c_size = lengths_compressor_->Compress(
-        shared_lengths_data_->Start(), shared_lengths_data_->Capacity(),
-        PaxNonFixedColumn::lengths_->Start(),
-        PaxNonFixedColumn::lengths_->Used(), encoder_options_.compress_level);
+    auto c_size = offsets_compressor_->Compress(
+        shared_offsets_data_->Start(), shared_offsets_data_->Capacity(),
+        PaxNonFixedColumn::offsets_->Start(),
+        PaxNonFixedColumn::offsets_->Used(), encoder_options_.compress_level);
 
-    if (lengths_compressor_->IsError(c_size)) {
+    if (offsets_compressor_->IsError(c_size)) {
       CBDB_RAISE(cbdb::CException::ExType::kExTypeCompressError,
                  fmt("Compress failed, %s", compressor_->ErrorName(c_size)));
     }
 
-    shared_lengths_data_->Brush(c_size);
-    return std::make_pair(shared_lengths_data_->Start(),
-                          shared_lengths_data_->Used());
+    shared_offsets_data_->Brush(c_size);
+    return std::make_pair(shared_offsets_data_->Start(),
+                          shared_offsets_data_->Used());
   }
 
   // no compress or uncompressed
-  return PaxNonFixedColumn::GetLengthBuffer();
+  // should never append last offset again
+  return PaxNonFixedColumn::GetOffsetBuffer(false);
 }
 
 int64 PaxNonFixedEncodingColumn::GetOriginLength() const {

@@ -52,8 +52,8 @@ message Stream {
     PRESENT = 0;
     // raw buffer stream
     DATA = 1;
-    // length buffer stream
-    LENGTH = 2;
+    // offset buffer stream
+    OFFSET = 2;
     // toast indexes stream
     TOAST = 3;
   }
@@ -64,8 +64,8 @@ message Stream {
   // the bytes of stream
   optional uint64 length = 101;
   // the bytes of padding.
-  // The length stream is placed before the data stream. When the data stream
-  // of column specifies align size, the length stream may add padding bytes 
+  // The offset stream is placed before the data stream. When the data stream
+  // of column specifies align size, the offset stream may add padding bytes 
   // to ensure that the data stream is aligned according to the align size.
   optional uint32 padding = 102;
 }

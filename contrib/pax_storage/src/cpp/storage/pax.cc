@@ -210,8 +210,8 @@ std::unique_ptr<MicroPartitionWriter> TableWriter::CreateMicroPartitionWriter(
   options.file_name = std::move(file_path);
   options.encoding_opts = GetRelEncodingOptions();
   options.storage_format = GetStorageFormat();
-  options.lengths_encoding_opts = std::make_pair(
-      PAX_LENGTHS_DEFAULT_COMPRESSTYPE, PAX_LENGTHS_DEFAULT_COMPRESSLEVEL);
+  options.offsets_encoding_opts = std::make_pair(
+      PAX_OFFSETS_DEFAULT_COMPRESSTYPE, PAX_OFFSETS_DEFAULT_COMPRESSLEVEL);
   options.enable_min_max_col_idxs = GetMinMaxColumnIndexes();
   options.enable_bf_col_idxs = GetBloomFilterColumnIndexes();
 
@@ -556,7 +556,8 @@ TableDeleter::TableDeleter(
 }
 
 void TableDeleter::UpdateStatsInAuxTable(
-    pax::PaxCatalogUpdater &catalog_update, const pax::MicroPartitionMetadata &meta,
+    pax::PaxCatalogUpdater &catalog_update,
+    const pax::MicroPartitionMetadata &meta,
     std::shared_ptr<Bitmap8> visi_bitmap,
     const std::vector<int> &min_max_col_idxs,
     const std::vector<int> &bf_col_idxs, std::shared_ptr<PaxFilter> filter) {
@@ -640,9 +641,8 @@ void TableDeleter::DeleteWithVisibilityMap(
           micro_partition_metadata.GetVisibilityBitmapFile();
 
       if (!visibility_map_filename.empty()) {
-
-        auto buffer =
-            LoadVisimap(file_system_, file_system_options_, visibility_map_filename);
+        auto buffer = LoadVisimap(file_system_, file_system_options_,
+                                  visibility_map_filename);
         auto visibility_file_bitmap =
             Bitmap8(BitmapRaw<uint8>(buffer->data(), buffer->size()),
                     Bitmap8::ReadOnlyOwnBitmap);
@@ -657,13 +657,13 @@ void TableDeleter::DeleteWithVisibilityMap(
           auto visi_name = strrchr(visibility_map_filename.c_str(), '/');
           CBDB_CHECK(visi_name != nullptr, cbdb::CException::kExTypeLogicError);
           visi_name++;
-          rc = sscanf(visi_name, "%d_%x_%x.visimap",
-                      &blocknum, &generate, &xid);
+          rc =
+              sscanf(visi_name, "%d_%x_%x.visimap", &blocknum, &generate, &xid);
           Assert(blocknum >= 0 && block_id == blocknum);
           (void)xid;
           CBDB_CHECK(rc == 3, cbdb::CException::kExTypeLogicError,
-                    fmt("Fail to sscanf [rc=%d, filename=%s, rel_path=%s]", rc,
-                        visibility_map_filename.c_str(), rel_path.c_str()));
+                     fmt("Fail to sscanf [rc=%d, filename=%s, rel_path=%s]", rc,
+                         visibility_map_filename.c_str(), rel_path.c_str()));
         }
 #endif
       } else {
