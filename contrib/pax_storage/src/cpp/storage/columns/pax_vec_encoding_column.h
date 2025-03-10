@@ -82,17 +82,18 @@ extern template class PaxVecEncodingColumn<int64>;
 class PaxVecNonFixedEncodingColumn : public PaxVecNonFixedColumn {
  public:
   PaxVecNonFixedEncodingColumn(
-      uint32 data_capacity, uint32 lengths_capacity,
+      uint32 data_capacity, uint32 offsets_capacity,
       const PaxEncoder::EncodingOption &encoder_options);
 
   PaxVecNonFixedEncodingColumn(
-      uint32 data_capacity, uint32 lengths_capacity,
+      uint32 data_capacity, uint32 offsets_capacity,
       const PaxDecoder::DecodingOption &decoding_option);
 
   ~PaxVecNonFixedEncodingColumn() override;
 
-  void Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> offsets,
-           size_t total_size, size_t non_null_rows) override;
+  void Set(std::shared_ptr<DataBuffer<char>> data,
+           std::shared_ptr<DataBuffer<int32>> offsets, size_t total_size,
+           size_t non_null_rows) override;
 
   std::pair<char *, size_t> GetBuffer() override;
 

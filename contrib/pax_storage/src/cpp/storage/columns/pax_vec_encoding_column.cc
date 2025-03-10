@@ -59,7 +59,7 @@ PaxVecEncodingColumn<T>::PaxVecEncodingColumn(
 }
 
 template <typename T>
-PaxVecEncodingColumn<T>::~PaxVecEncodingColumn() { }
+PaxVecEncodingColumn<T>::~PaxVecEncodingColumn() {}
 
 template <typename T>
 void PaxVecEncodingColumn<T>::InitEncoder() {
@@ -96,7 +96,8 @@ void PaxVecEncodingColumn<T>::InitDecoder() {
   if (decoder_) {
     // init the shared_data_ with the buffer from PaxVecCommColumn<T>::data_
     // cause decoder_ need a DataBuffer<char> * as dst buffer
-    shared_data_ = std::make_shared<DataBuffer<char>>(*PaxVecCommColumn<T>::data_);
+    shared_data_ =
+        std::make_shared<DataBuffer<char>>(*PaxVecCommColumn<T>::data_);
     decoder_->SetDataBuffer(shared_data_);
     return;
   }
@@ -106,7 +107,8 @@ void PaxVecEncodingColumn<T>::InitDecoder() {
 }
 
 template <typename T>
-void PaxVecEncodingColumn<T>::Set(std::shared_ptr<DataBuffer<T>> data, size_t non_null_rows) {
+void PaxVecEncodingColumn<T>::Set(std::shared_ptr<DataBuffer<T>> data,
+                                  size_t non_null_rows) {
   PaxColumn::non_null_rows_ = non_null_rows;
   if (decoder_) {
     // should not decoding null
@@ -158,7 +160,8 @@ std::pair<char *, size_t> PaxVecEncodingColumn<T>::GetBuffer() {
       // because we still need store a origin data in `PaxVecCommColumn<T>`
       auto origin_data_buffer = PaxVecCommColumn<T>::data_;
 
-      shared_data_ = std::make_shared<DataBuffer<char>>(origin_data_buffer->Used());
+      shared_data_ =
+          std::make_shared<DataBuffer<char>>(origin_data_buffer->Used());
       encoder_->SetDataBuffer(shared_data_);
       for (size_t i = 0; i < origin_data_buffer->GetSize(); i++) {
         encoder_->Append((char *)(origin_data_buffer->GetBuffer() + i),
@@ -226,9 +229,9 @@ template class PaxVecEncodingColumn<int32>;
 template class PaxVecEncodingColumn<int64>;
 
 PaxVecNonFixedEncodingColumn::PaxVecNonFixedEncodingColumn(
-    uint32 data_capacity, uint32 lengths_capacity,
+    uint32 data_capacity, uint32 offsets_capacity,
     const PaxEncoder::EncodingOption &encoder_options)
-    : PaxVecNonFixedColumn(data_capacity, lengths_capacity),
+    : PaxVecNonFixedColumn(data_capacity, offsets_capacity),
       encoder_options_(encoder_options),
       compressor_(nullptr),
       compress_route_(true),
@@ -251,18 +254,18 @@ PaxVecNonFixedEncodingColumn::PaxVecNonFixedEncodingColumn(
     PaxColumn::SetCompressLevel(0);
   }
 
-  Assert(encoder_options_.lengths_encode_type !=
+  Assert(encoder_options_.offsets_encode_type !=
          ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED);
   offsets_compressor_ = PaxCompressor::CreateBlockCompressor(
-      encoder_options_.lengths_encode_type);
-  SetLengthsEncodeType(encoder_options_.lengths_encode_type);
-  SetLengthsCompressLevel(encoder_options_.lengths_compress_level);
+      encoder_options_.offsets_encode_type);
+  SetOffsetsEncodeType(encoder_options_.offsets_encode_type);
+  SetOffsetsCompressLevel(encoder_options_.offsets_compress_level);
 }
 
 PaxVecNonFixedEncodingColumn::PaxVecNonFixedEncodingColumn(
-    uint32 data_capacity, uint32 lengths_capacity,
+    uint32 data_capacity, uint32 offsets_capacity,
     const PaxDecoder::DecodingOption &decoding_option)
-    : PaxVecNonFixedColumn(data_capacity, lengths_capacity),
+    : PaxVecNonFixedColumn(data_capacity, offsets_capacity),
       decoder_options_(decoding_option),
       compressor_(nullptr),
       compress_route_(false),
@@ -276,20 +279,20 @@ PaxVecNonFixedEncodingColumn::PaxVecNonFixedEncodingColumn(
   compressor_ =
       PaxCompressor::CreateBlockCompressor(PaxColumn::GetEncodingType());
 
-  Assert(decoder_options_.lengths_encode_type !=
+  Assert(decoder_options_.offsets_encode_type !=
          ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED);
   offsets_compressor_ = PaxCompressor::CreateBlockCompressor(
-      decoder_options_.lengths_encode_type);
-  SetLengthsEncodeType(decoder_options_.lengths_encode_type);
-  SetLengthsCompressLevel(decoder_options_.lengths_compress_level);
+      decoder_options_.offsets_encode_type);
+  SetOffsetsEncodeType(decoder_options_.offsets_encode_type);
+  SetOffsetsCompressLevel(decoder_options_.offsets_compress_level);
 }
 
-PaxVecNonFixedEncodingColumn::~PaxVecNonFixedEncodingColumn() { }
+PaxVecNonFixedEncodingColumn::~PaxVecNonFixedEncodingColumn() {}
 
-void PaxVecNonFixedEncodingColumn::Set(std::shared_ptr<DataBuffer<char>> data,
-                                       std::shared_ptr<DataBuffer<int32>> offsets,
-                                       size_t total_size,
-                                       size_t non_null_rows) {
+void PaxVecNonFixedEncodingColumn::Set(
+    std::shared_ptr<DataBuffer<char>> data,
+    std::shared_ptr<DataBuffer<int32>> offsets, size_t total_size,
+    size_t non_null_rows) {
   PaxColumn::non_null_rows_ = non_null_rows;
 
   auto data_decompress = [&]() {
@@ -332,20 +335,18 @@ void PaxVecNonFixedEncodingColumn::Set(std::shared_ptr<DataBuffer<char>> data,
   if (compressor_ && offsets_compressor_) {
     data_decompress();
     offsets_decompress();
-
-    estimated_size_ = total_size;
+    PaxVecNonFixedColumn::estimated_size_ = total_size;
+    PaxVecNonFixedColumn::next_offsets_ = -1;
   } else if (compressor_ && !offsets_compressor_) {
     data_decompress();
-
-    offsets_ = std::move(offsets);
-
-    estimated_size_ = total_size;
+    PaxVecNonFixedColumn::offsets_ = std::move(offsets);
+    PaxVecNonFixedColumn::estimated_size_ = total_size;
+    PaxVecNonFixedColumn::next_offsets_ = -1;
   } else if (!compressor_ && offsets_compressor_) {
-    data_ = std::move(data);
-
+    PaxVecNonFixedColumn::data_ = std::move(data);
     offsets_decompress();
-
-    estimated_size_ = total_size;
+    PaxVecNonFixedColumn::estimated_size_ = total_size;
+    PaxVecNonFixedColumn::next_offsets_ = -1;
   } else {  // (!compressor_ && !offsets_compressor_)
     PaxVecNonFixedColumn::Set(data, offsets_, total_size, non_null_rows);
   }
@@ -419,18 +420,18 @@ std::pair<char *, size_t> PaxVecNonFixedEncodingColumn::GetOffsetBuffer(
         PaxVecNonFixedColumn::offsets_->Used());
     shared_offsets_data_ = std::make_shared<DataBuffer<char>>(bound_size);
 
-    auto d_size = offsets_compressor_->Compress(
+    auto c_size = offsets_compressor_->Compress(
         shared_offsets_data_->Start(), shared_offsets_data_->Capacity(),
         PaxVecNonFixedColumn::offsets_->Start(),
         PaxVecNonFixedColumn::offsets_->Used(),
         encoder_options_.compress_level);
 
-    if (offsets_compressor_->IsError(d_size)) {
+    if (offsets_compressor_->IsError(c_size)) {
       CBDB_RAISE(cbdb::CException::ExType::kExTypeCompressError,
-                 fmt("Decompress failed, %s", compressor_->ErrorName(d_size)));
+                 fmt("Compress failed, %s", compressor_->ErrorName(c_size)));
     }
 
-    shared_offsets_data_->Brush(d_size);
+    shared_offsets_data_->Brush(c_size);
     return std::make_pair(shared_offsets_data_->Start(),
                           shared_offsets_data_->Used());
   }

@@ -218,8 +218,8 @@ class PaxColumn {
   // Get the data part size without encoding/compress
   virtual int64 GetOriginLength() const = 0;
 
-  // Get the lengths part size without encoding/compress
-  virtual int64 GetLengthsOriginLength() const = 0;
+  // Get the offsets part size without encoding/compress
+  virtual int64 GetOffsetsOriginLength() const = 0;
 
   // Get the type length, used to identify sub-class
   // - `PaxCommColumn<T>` will return the <T> length
@@ -269,15 +269,15 @@ class PaxColumn {
   inline ColumnEncoding_Kind GetEncodingType() const { return encoded_type_; }
 
   // Get current length part encoding type
-  inline ColumnEncoding_Kind GetLengthsEncodingType() const {
-    return lengths_encoded_type_;
+  inline ColumnEncoding_Kind GetOffsetsEncodingType() const {
+    return offsets_encoded_type_;
   }
 
   // Get current data part compress level
   inline int GetCompressLevel() const { return compress_level_; }
 
   // Get current length part compress level
-  inline int GetLengthsCompressLevel() const { return lengths_compress_level_; }
+  inline int GetOffsetsCompressLevel() const { return offsets_compress_level_; }
 
   // Get the counts of toast
   virtual size_t ToastCounts();
@@ -319,12 +319,12 @@ class PaxColumn {
     compress_level_ = compress_level;
   }
 
-  inline void SetLengthsEncodeType(ColumnEncoding_Kind encoding_type) {
-    lengths_encoded_type_ = encoding_type;
+  inline void SetOffsetsEncodeType(ColumnEncoding_Kind encoding_type) {
+    offsets_encoded_type_ = encoding_type;
   }
 
-  inline void SetLengthsCompressLevel(int compress_level) {
-    lengths_compress_level_ = compress_level;
+  inline void SetOffsetsCompressLevel(int compress_level) {
+    offsets_compress_level_ = compress_level;
   }
 
   inline std::pair<std::string, bool> GetAttribute(const std::string &key) {
@@ -370,11 +370,11 @@ class PaxColumn {
   // the column data compress level
   int compress_level_;
 
-  // the column lengths encoded type
-  ColumnEncoding_Kind lengths_encoded_type_;
+  // the column offsets encoded type
+  ColumnEncoding_Kind offsets_encoded_type_;
 
-  // the column lengths compress level
-  int lengths_compress_level_;
+  // the column offsets compress level
+  int offsets_compress_level_;
 
   // data part align size.
   // This field only takes effect when current column is no encoding/compress.
@@ -448,7 +448,7 @@ class PaxCommColumn : public PaxColumn {
 
   int64 GetOriginLength() const override;
 
-  int64 GetLengthsOriginLength() const override;
+  int64 GetOffsetsOriginLength() const override;
 
   std::pair<char *, size_t> GetBuffer() override;
 
@@ -468,14 +468,14 @@ extern template class PaxCommColumn<double>;
 
 class PaxNonFixedColumn : public PaxColumn {
  public:
-  PaxNonFixedColumn(uint32 data_capacity, uint32 lengths_capacity);
+  PaxNonFixedColumn(uint32 data_capacity, uint32 offsets_capacity);
 
   PaxNonFixedColumn();
 
   ~PaxNonFixedColumn() override;
 
   virtual void Set(std::shared_ptr<DataBuffer<char>> data,
-                   std::shared_ptr<DataBuffer<int32>> lengths,
+                   std::shared_ptr<DataBuffer<int32>> offsets,
                    size_t total_size);
 
   void Append(char *buffer, size_t size) override;
@@ -490,7 +490,7 @@ class PaxNonFixedColumn : public PaxColumn {
 
   int64 GetOriginLength() const override;
 
-  int64 GetLengthsOriginLength() const override;
+  int64 GetOffsetsOriginLength() const override;
 
   int32 GetTypeLength() const override;
 
@@ -503,9 +503,11 @@ class PaxNonFixedColumn : public PaxColumn {
 
   size_t GetNonNullRows() const override;
 
-  virtual std::pair<char *, size_t> GetLengthBuffer();
+  virtual std::pair<char *, size_t> GetOffsetBuffer(bool append_last);
 
  protected:
+  void AppendLastOffset();
+
   void BuildOffsets();
 
   void AppendAlign(char *buffer, size_t size);
@@ -516,17 +518,14 @@ class PaxNonFixedColumn : public PaxColumn {
 
   // orc needs to serialize int32 array
   // the length of a single tuple field will not exceed 2GB,
-  // so a variable-length element of the lengths stream can use int32
+  // so a variable-length element of the offsets stream can use int32
   // to represent the length
-  std::shared_ptr<DataBuffer<int32>> lengths_;
+  std::shared_ptr<DataBuffer<int32>> offsets_;
 
-  // FIXME: currently, the pax file stores the lengths stream, each element of
-  // which is the length of each record. We need to use offsets instead. so
-  // that when reading data, there is no need to build the offsets array.
-  //
-  // Notice: we should not use offsets in the write path at this time until
-  // we fixed the fixme above.
-  std::vector<int32> offsets_;
+  // used to record next offset in write path
+  // in read path, next_offsets_ always be -1
+  int32 next_offsets_;
+
   std::vector<std::shared_ptr<MemoryObject>> buffer_holders_;
 };
 

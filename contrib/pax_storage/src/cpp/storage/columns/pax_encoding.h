@@ -45,17 +45,17 @@ class PaxEncoder {
     bool is_sign;
     int compress_level;
 
-    ColumnEncoding_Kind lengths_encode_type;
-    int lengths_compress_level;
+    ColumnEncoding_Kind offsets_encode_type;
+    int offsets_compress_level;
 
     EncodingOption()
         : column_encode_type(
               ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED),
           is_sign(true),
           compress_level(0),
-          lengths_encode_type(
+          offsets_encode_type(
               ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
-          lengths_compress_level(0) {}
+          offsets_compress_level(0) {}
   };
 
  public:
