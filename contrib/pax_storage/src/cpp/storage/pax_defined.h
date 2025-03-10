@@ -28,9 +28,8 @@
 #pragma once
 #include <vector>
 
-#include "storage/proto/proto_wrappers.h"
-
 #include "storage/paxc_define.h"
+#include "storage/proto/proto_wrappers.h"
 
 namespace pax {
 
@@ -39,9 +38,9 @@ namespace pax {
 #define PAX_DATA_NO_ALIGN (1)
 #define BITS_TO_BYTES(bits) (((bits) + 7) / 8)
 
-#define PAX_LENGTHS_DEFAULT_COMPRESSTYPE \
+#define PAX_OFFSETS_DEFAULT_COMPRESSTYPE \
   ColumnEncoding_Kind::ColumnEncoding_Kind_COMPRESS_ZSTD
-#define PAX_LENGTHS_DEFAULT_COMPRESSLEVEL 5
+#define PAX_OFFSETS_DEFAULT_COMPRESSLEVEL 5
 
 #define COLUMN_STORAGE_FORMAT_IS_VEC(column) \
   (((column)->GetStorageFormat()) == PaxStorageFormat::kTypeStoragePorcVec)

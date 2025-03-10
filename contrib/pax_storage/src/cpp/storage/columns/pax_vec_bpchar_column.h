@@ -26,18 +26,17 @@
  */
 
 #pragma once
-#include "storage/columns/pax_vec_encoding_column.h"
-
 #include "comm/byte_buffer.h"
+#include "storage/columns/pax_vec_encoding_column.h"
 
 namespace pax {
 
 class PaxVecBpCharColumn final : public PaxVecNonFixedEncodingColumn {
  public:
-  PaxVecBpCharColumn(uint32 capacity, uint32 lengths_capacity,
+  PaxVecBpCharColumn(uint32 capacity, uint32 offsets_capacity,
                      const PaxEncoder::EncodingOption &encoder_options);
 
-  PaxVecBpCharColumn(uint32 capacity, uint32 lengths_capacity,
+  PaxVecBpCharColumn(uint32 capacity, uint32 offsets_capacity,
                      const PaxDecoder::DecodingOption &decoding_option);
 
   ~PaxVecBpCharColumn();

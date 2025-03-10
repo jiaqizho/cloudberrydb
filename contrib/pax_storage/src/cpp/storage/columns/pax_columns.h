@@ -61,7 +61,7 @@ class PaxColumns : public PaxColumn {
 
   int64 GetOriginLength() const override;
 
-  int64 GetLengthsOriginLength() const override;
+  int64 GetOffsetsOriginLength() const override;
 
   int32 GetTypeLength() const override;
 

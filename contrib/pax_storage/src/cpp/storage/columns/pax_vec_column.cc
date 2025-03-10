@@ -107,7 +107,7 @@ int64 PaxVecCommColumn<T>::GetOriginLength() const {
 }
 
 template <typename T>
-int64 PaxVecCommColumn<T>::GetLengthsOriginLength() const {
+int64 PaxVecCommColumn<T>::GetOffsetsOriginLength() const {
   return 0;
 }
 
@@ -123,10 +123,7 @@ std::pair<char *, size_t> PaxVecCommColumn<T>::GetBuffer() {
 
 template <typename T>
 std::pair<char *, size_t> PaxVecCommColumn<T>::GetBuffer(size_t position) {
-  CBDB_CHECK(position < GetRows(), cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get buffer [pos=%lu, total rows=%lu], \n %s",
-                 position, GetRows(), DebugString().c_str()));
-
+  Assert(position < GetRows());
   return std::make_pair(data_->Start() + (sizeof(T) * position), sizeof(T));
 }
 
@@ -140,11 +137,7 @@ Datum PaxVecCommColumn<T>::GetDatum(size_t position) {
 template <typename T>
 std::pair<char *, size_t> PaxVecCommColumn<T>::GetRangeBuffer(size_t start_pos,
                                                               size_t len) {
-  CBDB_CHECK((start_pos + len) <= GetRows(),
-             cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get range buffer [pos=%lu, len=%lu, total "
-                 "rows=%lu], \n %s",
-                 start_pos, len, GetRows(), DebugString().c_str()));
+  Assert((start_pos + len) <= GetRows());
   return std::make_pair(data_->Start() + (sizeof(T) * start_pos),
                         sizeof(T) * len);
 }
@@ -163,11 +156,11 @@ template class PaxVecCommColumn<float>;
 template class PaxVecCommColumn<double>;
 
 PaxVecNonFixedColumn::PaxVecNonFixedColumn(uint32 data_capacity,
-                                           uint32 lengths_capacity)
+                                           uint32 offsets_capacity)
     : estimated_size_(0),
       data_(std::make_shared<DataBuffer<char>>(
           TYPEALIGN(MEMORY_ALIGN_SIZE, data_capacity))),
-      offsets_(std::make_shared<DataBuffer<int32>>(lengths_capacity)),
+      offsets_(std::make_shared<DataBuffer<int32>>(offsets_capacity)),
       next_offsets_(0) {
   Assert(data_capacity % sizeof(int64) == 0);
 }
@@ -262,7 +255,7 @@ size_t PaxVecNonFixedColumn::PhysicalSize() const { return estimated_size_; }
 
 int64 PaxVecNonFixedColumn::GetOriginLength() const { return data_->Used(); }
 
-int64 PaxVecNonFixedColumn::GetLengthsOriginLength() const {
+int64 PaxVecNonFixedColumn::GetOffsetsOriginLength() const {
   Assert(next_offsets_ == -1);
   return offsets_->Used();
 }
@@ -270,10 +263,7 @@ int64 PaxVecNonFixedColumn::GetLengthsOriginLength() const {
 int32 PaxVecNonFixedColumn::GetTypeLength() const { return -1; }
 
 std::pair<char *, size_t> PaxVecNonFixedColumn::GetBuffer(size_t position) {
-  CBDB_CHECK(position < offsets_->GetSize(),
-             cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get buffer [pos=%lu, total rows=%lu], \n %s",
-                 position, GetRows(), DebugString().c_str()));
+  Assert(position < offsets_->GetSize());
   // This situation happend when writing
   // The `offsets_` have not fill the last one
   if (unlikely(position == offsets_->GetSize() - 1)) {
@@ -328,20 +318,25 @@ Datum PaxVecNonFixedColumn::GetDatum(size_t position) {
 
 std::pair<char *, size_t> PaxVecNonFixedColumn::GetRangeBuffer(size_t start_pos,
                                                                size_t len) {
-  CBDB_CHECK((start_pos + len) <= (offsets_->GetSize() - 1),
-             cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get buffer [pos=%lu, len=%lu, total rows=%lu], \n %s",
-                 start_pos, len, GetRows(), DebugString().c_str()));
+  AssertImply(next_offsets_ == -1,
+              (start_pos + len) <= (offsets_->GetSize() - 1));
+  AssertImply(next_offsets_ != -1, (start_pos + len) <= (offsets_->GetSize()));
 
-  auto start_offset = (*offsets_)[start_pos];
-  auto last_offset = (*offsets_)[start_pos + len];
-  // all null here
-  if (start_offset == last_offset) {
-    return std::make_pair(data_->GetBuffer() + start_offset, 0);
+  // same as (start_pos + len - 1 == offsets_->GetSize() - 1)
+  if (unlikely(start_pos + len == offsets_->GetSize())) {
+    Assert(next_offsets_ != -1);
+    if (offsets_->GetSize() == 0) {  // all null in write
+      Assert(len == 0);
+      return std::make_pair(data_->GetBuffer(), 0);
+    } else {
+      Assert(next_offsets_ != 0);
+      return std::make_pair(data_->GetBuffer() + (*offsets_)[start_pos],
+                            next_offsets_ - (*offsets_)[start_pos]);
+    }
   }
 
-  return std::make_pair(data_->GetBuffer() + start_offset,
-                        last_offset - start_offset);
+  return std::make_pair(data_->GetBuffer() + (*offsets_)[start_pos],
+                        (*offsets_)[start_pos + len] - (*offsets_)[start_pos]);
 }
 
 std::shared_ptr<DataBuffer<char>> PaxVecNonFixedColumn::GetDataBuffer() {

@@ -33,18 +33,18 @@ namespace pax {
 #define NUMBER_OF_CHAR_UNINIT -1
 
 PaxVecBpCharColumn::PaxVecBpCharColumn(
-    uint32 capacity, uint32 lengths_capacity,
+    uint32 capacity, uint32 offsets_capacity,
     const PaxEncoder::EncodingOption &encoder_options)
-    : PaxVecNonFixedEncodingColumn(capacity, lengths_capacity, encoder_options),
+    : PaxVecNonFixedEncodingColumn(capacity, offsets_capacity, encoder_options),
       number_of_char_(NUMBER_OF_CHAR_UNINIT) {}
 
 PaxVecBpCharColumn::PaxVecBpCharColumn(
-    uint32 capacity, uint32 lengths_capacity,
+    uint32 capacity, uint32 offsets_capacity,
     const PaxDecoder::DecodingOption &decoding_option)
-    : PaxVecNonFixedEncodingColumn(capacity, lengths_capacity, decoding_option),
+    : PaxVecNonFixedEncodingColumn(capacity, offsets_capacity, decoding_option),
       number_of_char_(NUMBER_OF_CHAR_UNINIT) {}
 
-PaxVecBpCharColumn::~PaxVecBpCharColumn() { }
+PaxVecBpCharColumn::~PaxVecBpCharColumn() {}
 
 void PaxVecBpCharColumn::Append(char *buffer, size_t size) {
   if (number_of_char_ == NUMBER_OF_CHAR_UNINIT) {
