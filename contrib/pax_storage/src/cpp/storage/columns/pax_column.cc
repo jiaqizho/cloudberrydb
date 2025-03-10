@@ -45,9 +45,9 @@ PaxColumn::PaxColumn()
       non_null_rows_(0),
       encoded_type_(ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
       compress_level_(0),
-      lengths_encoded_type_(
+      offsets_encoded_type_(
           ColumnEncoding_Kind::ColumnEncoding_Kind_NO_ENCODED),
-      lengths_compress_level_(0),
+      offsets_compress_level_(0),
       type_align_size_(PAX_DATA_NO_ALIGN),
       toast_indexes_(nullptr),
       toast_flat_map_(nullptr),
@@ -73,11 +73,7 @@ size_t PaxColumn::GetRows() const { return total_rows_; }
 size_t PaxColumn::GetNonNullRows() const { return non_null_rows_; }
 
 size_t PaxColumn::GetRangeNonNullRows(size_t start_pos, size_t len) {
-  CBDB_CHECK((start_pos + len) <= GetRows(),
-             cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get range not null rows [start position=%lu, "
-                 "len=%lu, total rows=%lu], \n %s",
-                 start_pos, len, GetRows(), DebugString().c_str()));
+  Assert((start_pos + len) <= GetRows());
   if (!null_bitmap_) return len;
   if (len == 0) {
     return 0;
@@ -206,7 +202,7 @@ std::string PaxColumn::DebugString() {
       "toast=%d]",
       GetPaxColumnTypeInMem(), GetStorageFormat(), GetTypeLength(), HasNull(),
       AllNull(), HasAttributes(), GetRows(), GetAlignSize(), GetEncodingType(),
-      GetLengthsEncodingType(), GetCompressLevel(), GetLengthsCompressLevel(),
+      GetOffsetsEncodingType(), GetCompressLevel(), GetOffsetsCompressLevel(),
       ToastCounts(), GetExternalToastDataBuffer() != nullptr);
 }
 
@@ -262,7 +258,7 @@ PaxColumnTypeInMem PaxCommColumn<T>::GetPaxColumnTypeInMem() const {
 
 template <typename T>
 size_t PaxCommColumn<T>::GetNonNullRows() const {
-  return data_->Used() / sizeof(T);
+  return data_->GetSize();
 }
 
 template <typename T>
@@ -276,7 +272,7 @@ int64 PaxCommColumn<T>::GetOriginLength() const {
 }
 
 template <typename T>
-int64 PaxCommColumn<T>::GetLengthsOriginLength() const {
+int64 PaxCommColumn<T>::GetOffsetsOriginLength() const {
   return 0;
 }
 
@@ -292,10 +288,7 @@ std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer() {
 
 template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetBuffer(size_t position) {
-  CBDB_CHECK(position < GetNonNullRows(),
-             cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get buffer [pos=%lu, not null rows=%lu], \n %s",
-                 position, GetNonNullRows(), DebugString().c_str()));
+  Assert(position < GetNonNullRows());
   return std::make_pair(data_->Start() + (sizeof(T) * position), sizeof(T));
 }
 
@@ -309,11 +302,7 @@ Datum PaxCommColumn<T>::GetDatum(size_t position) {
 template <typename T>
 std::pair<char *, size_t> PaxCommColumn<T>::GetRangeBuffer(size_t start_pos,
                                                            size_t len) {
-  CBDB_CHECK((start_pos + len) <= GetNonNullRows(),
-             cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get range buffer [start=%lu, len=%lu, not null "
-                 "rows=%lu], \n %s",
-                 start_pos, len, GetNonNullRows(), DebugString().c_str()));
+  Assert((start_pos + len) <= GetNonNullRows());
   return std::make_pair(data_->Start() + (sizeof(T) * start_pos),
                         sizeof(T) * len);
 }
@@ -327,10 +316,11 @@ template class PaxCommColumn<float>;
 template class PaxCommColumn<double>;
 
 PaxNonFixedColumn::PaxNonFixedColumn(uint32 data_capacity,
-                                     uint32 lengths_capacity)
+                                     uint32 offsets_capacity)
     : estimated_size_(0),
       data_(std::make_shared<DataBuffer<char>>(data_capacity)),
-      lengths_(std::make_shared<DataBuffer<int32>>(lengths_capacity)) {}
+      offsets_(std::make_shared<DataBuffer<int32>>(offsets_capacity)),
+      next_offsets_(0) {}
 
 PaxNonFixedColumn::PaxNonFixedColumn()
     : PaxNonFixedColumn(DEFAULT_CAPACITY, DEFAULT_CAPACITY) {}
@@ -338,20 +328,12 @@ PaxNonFixedColumn::PaxNonFixedColumn()
 PaxNonFixedColumn::~PaxNonFixedColumn() {}
 
 void PaxNonFixedColumn::Set(std::shared_ptr<DataBuffer<char>> data,
-                            std::shared_ptr<DataBuffer<int32>> lengths,
+                            std::shared_ptr<DataBuffer<int32>> offsets,
                             size_t total_size) {
   estimated_size_ = total_size;
   data_ = std::move(data);
-  lengths_ = std::move(lengths);
-  BuildOffsets();
-}
-
-void PaxNonFixedColumn::BuildOffsets() {
-  Assert(offsets_.empty());
-  offsets_.resize(lengths_->GetSize() + 1);
-  for (size_t i = 0; i <= lengths_->GetSize(); i++) {
-    offsets_[i] = i == 0 ? 0 : offsets_[i - 1] + (*lengths_)[i - 1];
-  }
+  offsets_ = std::move(offsets);
+  next_offsets_ = -1;
 }
 
 void PaxNonFixedColumn::AppendAlign(char *buffer, size_t size) {
@@ -362,14 +344,15 @@ void PaxNonFixedColumn::AppendAlign(char *buffer, size_t size) {
 
   Assert(likely(reinterpret_cast<char *> TYPEALIGN(
                     type_align_size_, data_->Position()) == data_->Position()));
+  Assert(next_offsets_ != -1);
   size = TYPEALIGN(type_align_size_, size);
 
   if (data_->Available() < size) {
     data_->ReSize(data_->Used() + size, 2);
   }
 
-  if (lengths_->Available() < sizeof(int32)) {
-    lengths_->ReSize(lengths_->Used() + sizeof(int32), 2);
+  if (offsets_->Available() < sizeof(int32)) {
+    offsets_->ReSize(offsets_->Used() + sizeof(int32), 2);
   }
 
   estimated_size_ += size;
@@ -381,9 +364,11 @@ void PaxNonFixedColumn::AppendAlign(char *buffer, size_t size) {
   }
 
   Assert(size <= INT32_MAX);
-  auto length = static_cast<int32>(size);
-  lengths_->Write(&length, sizeof(int32));
-  lengths_->Brush(sizeof(int32));
+  Assert(next_offsets_ + size <= INT32_MAX);
+
+  offsets_->Write(next_offsets_);
+  offsets_->Brush(sizeof(next_offsets_));
+  next_offsets_ += size;
 }
 
 void PaxNonFixedColumn::Append(char *buffer, size_t size) {
@@ -398,8 +383,8 @@ void PaxNonFixedColumn::Append(char *buffer, size_t size) {
     data_->ReSize(data_->Used() + size, 2);
   }
 
-  if (lengths_->Available() < sizeof(int32)) {
-    lengths_->ReSize(lengths_->Used() + sizeof(int32), 2);
+  if (offsets_->Available() < sizeof(int32)) {
+    offsets_->ReSize(offsets_->Used() + sizeof(int32), 2);
   }
 
   estimated_size_ += size;
@@ -407,13 +392,30 @@ void PaxNonFixedColumn::Append(char *buffer, size_t size) {
   data_->Brush(size);
 
   Assert(size <= INT32_MAX);
-  auto length = static_cast<int32>(size);
-  lengths_->Write(&length, sizeof(int32));
-  lengths_->Brush(sizeof(int32));
+  Assert(next_offsets_ + size <= INT32_MAX);
+
+  offsets_->Write(next_offsets_);
+  offsets_->Brush(sizeof(next_offsets_));
+  next_offsets_ += size;
 }
 
-std::pair<char *, size_t> PaxNonFixedColumn::GetLengthBuffer() {
-  return std::make_pair((char *)lengths_->GetBuffer(), lengths_->Used());
+void PaxNonFixedColumn::AppendLastOffset() {
+  Assert(next_offsets_ != -1);
+  Assert(offsets_->Capacity() >= sizeof(int32));
+  if (offsets_->Available() == 0) {
+    offsets_->ReSize(offsets_->Capacity() + sizeof(int32));
+  }
+  offsets_->Write(next_offsets_);
+  offsets_->Brush(sizeof(next_offsets_));
+  next_offsets_ = -1;
+}
+
+std::pair<char *, size_t> PaxNonFixedColumn::GetOffsetBuffer(bool append_last) {
+  if (append_last) {
+    AppendLastOffset();
+  }
+
+  return std::make_pair((char *)offsets_->GetBuffer(), offsets_->Used());
 }
 
 PaxColumnTypeInMem PaxNonFixedColumn::GetPaxColumnTypeInMem() const {
@@ -428,31 +430,39 @@ std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer() {
   return std::make_pair(data_->GetBuffer(), data_->Used());
 }
 
-size_t PaxNonFixedColumn::GetNonNullRows() const { return lengths_->GetSize(); }
-
 size_t PaxNonFixedColumn::PhysicalSize() const { return estimated_size_; }
 
 int64 PaxNonFixedColumn::GetOriginLength() const { return data_->Used(); }
 
-int64 PaxNonFixedColumn::GetLengthsOriginLength() const {
-  return lengths_->Used();
+int64 PaxNonFixedColumn::GetOffsetsOriginLength() const {
+  Assert(next_offsets_ == -1);
+  return offsets_->Used();
 }
 
 int32 PaxNonFixedColumn::GetTypeLength() const { return -1; }
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetBuffer(size_t position) {
-  Assert(position < GetNonNullRows());
-  Assert(position + 1 < offsets_.size());
-  Assert(offsets_[position + 1] > offsets_[position]);
+  Assert(position < offsets_->GetSize());
 
-  return std::make_pair(data_->GetBuffer() + offsets_[position],
-                        offsets_[position + 1] - offsets_[position]);
+  // This situation happend when writing
+  // The `offsets_` have not fill the last one
+  if (unlikely(position == offsets_->GetSize() - 1)) {
+    Assert(next_offsets_ != -1);
+    return std::make_pair(data_->GetBuffer() + (*offsets_)[position],
+                          next_offsets_ - (*offsets_)[position]);
+  }
+
+  Assert((*offsets_)[position] != (*offsets_)[position + 1]);
+
+  return std::make_pair(data_->GetBuffer() + (*offsets_)[position],
+                        (*offsets_)[position + 1] - (*offsets_)[position]);
 }
 
 Datum PaxNonFixedColumn::GetDatum(size_t position) {
   Assert(position < GetNonNullRows());
   const char *buffer = nullptr;
-  const auto &start_offset = offsets_[position];
+  // safe to call without length
+  const auto &start_offset = (*offsets_)[position];
   buffer = data_->GetBuffer() + start_offset;
   Datum datum = PointerGetDatum(buffer);
 
@@ -473,24 +483,31 @@ Datum PaxNonFixedColumn::GetDatum(size_t position) {
 
 std::pair<char *, size_t> PaxNonFixedColumn::GetRangeBuffer(size_t start_pos,
                                                             size_t len) {
-  CBDB_CHECK((start_pos + len) <= GetNonNullRows(),
-             cbdb::CException::ExType::kExTypeOutOfRange,
-             fmt("Fail to get range buffer [start=%lu, len=%lu, not null "
-                 "rows=%lu], \n %s",
-                 start_pos, len, GetNonNullRows(), DebugString().c_str()));
-  size_t range_len = 0;
+  AssertImply(next_offsets_ == -1,
+              (start_pos + len) <= (offsets_->GetSize() - 1));
+  AssertImply(next_offsets_ != -1, (start_pos + len) <= (offsets_->GetSize()));
 
-  for (size_t i = start_pos; i < start_pos + len; i++) {
-    range_len += (*lengths_)[i];
+  // same as (start_pos + len - 1 == offsets_->GetSize() - 1)
+  if (unlikely(start_pos + len == offsets_->GetSize())) {
+    Assert(next_offsets_ != -1);
+    if (offsets_->GetSize() == 0) {  // all null in write
+      Assert(len == 0);
+      return std::make_pair(data_->GetBuffer(), 0);
+    } else {
+      Assert(next_offsets_ != 0);
+      return std::make_pair(data_->GetBuffer() + (*offsets_)[start_pos],
+                            next_offsets_ - (*offsets_)[start_pos]);
+    }
   }
 
-  if (GetNonNullRows() == 0) {
-    Assert(range_len == 0);
-    return std::make_pair(data_->GetBuffer(), 0);
-  }
+  AssertImply(len != 0, (*offsets_)[start_pos + len] > (*offsets_)[start_pos]);
 
-  Assert(start_pos < offsets_.size());
-  return std::make_pair(data_->GetBuffer() + offsets_[start_pos], range_len);
+  return std::make_pair(data_->GetBuffer() + (*offsets_)[start_pos],
+                        (*offsets_)[start_pos + len] - (*offsets_)[start_pos]);
+}
+
+size_t PaxNonFixedColumn::GetNonNullRows() const {
+  return next_offsets_ == -1 ? offsets_->GetSize() - 1 : offsets_->GetSize();
 }
 
 };  // namespace pax

@@ -104,7 +104,7 @@ static std::unique_ptr<PaxColumns> BuildColumns(
     const std::vector<pax::porc::proto::Type_Kind> &types, const TupleDesc desc,
     const std::vector<std::tuple<ColumnEncoding_Kind, int>>
         &column_encoding_types,
-    const std::pair<ColumnEncoding_Kind, int> &lengths_encoding_types,
+    const std::pair<ColumnEncoding_Kind, int> &offsets_encoding_types,
     const PaxStorageFormat &storage_format) {
   std::unique_ptr<PaxColumns> columns;
   bool is_vec;
@@ -125,13 +125,13 @@ static std::unique_ptr<PaxColumns> BuildColumns(
     encoding_option.is_sign = true;
     encoding_option.compress_level = std::get<1>(column_encoding_types[i]);
 
-    if (lengths_encoding_types.first == ColumnEncoding_Kind_DEF_ENCODED) {
-      // default value of lengths_stream is zstd
-      encoding_option.lengths_encode_type = ColumnEncoding_Kind_COMPRESS_ZSTD;
-      encoding_option.lengths_compress_level = 5;
+    if (offsets_encoding_types.first == ColumnEncoding_Kind_DEF_ENCODED) {
+      // default value of offsets_stream is zstd
+      encoding_option.offsets_encode_type = ColumnEncoding_Kind_COMPRESS_ZSTD;
+      encoding_option.offsets_compress_level = 5;
     } else {
-      encoding_option.lengths_encode_type = lengths_encoding_types.first;
-      encoding_option.lengths_compress_level = lengths_encoding_types.second;
+      encoding_option.offsets_encode_type = offsets_encoding_types.first;
+      encoding_option.offsets_compress_level = offsets_encoding_types.second;
     }
 
     switch (type) {
@@ -243,7 +243,7 @@ OrcWriter::OrcWriter(
 
   pax_columns_ = BuildColumns(column_types_, writer_options.rel_tuple_desc,
                               writer_options.encoding_opts,
-                              writer_options.lengths_encoding_opts,
+                              writer_options.offsets_encoding_opts,
                               writer_options.storage_format);
 
   summary_.rel_oid = writer_options.rel_oid;
@@ -300,7 +300,7 @@ void OrcWriter::Flush() {
 
     new_columns = BuildColumns(column_types_, writer_options_.rel_tuple_desc,
                                writer_options_.encoding_opts,
-                               writer_options_.lengths_encoding_opts,
+                               writer_options_.offsets_encoding_opts,
                                writer_options_.storage_format);
 
     for (size_t i = 0; i < column_types_.size(); ++i) {
@@ -773,9 +773,9 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
   PaxColumns::ColumnEncodingFunc column_encoding_func =
       [&encoding_kinds](const ColumnEncoding_Kind &encoding_kind,
                         const uint64 compress_lvl, const int64 origin_len,
-                        const ColumnEncoding_Kind &length_stream_encoding_kind,
-                        const uint64 length_stream_compress_lvl,
-                        const int64 length_stream_origin_len) {
+                        const ColumnEncoding_Kind &offset_stream_encoding_kind,
+                        const uint64 offset_stream_compress_lvl,
+                        const int64 offset_stream_origin_len) {
         ColumnEncoding column_encoding;
         Assert(encoding_kind !=
                ColumnEncoding_Kind::ColumnEncoding_Kind_DEF_ENCODED);
@@ -783,10 +783,10 @@ bool OrcWriter::WriteStripe(BufferedOutputStream *buffer_mem_stream,
         column_encoding.set_compress_lvl(compress_lvl);
         column_encoding.set_length(origin_len);
 
-        column_encoding.set_length_stream_kind(length_stream_encoding_kind);
-        column_encoding.set_length_stream_compress_lvl(
-            length_stream_compress_lvl);
-        column_encoding.set_length_stream_length(length_stream_origin_len);
+        column_encoding.set_offset_stream_kind(offset_stream_encoding_kind);
+        column_encoding.set_offset_stream_compress_lvl(
+            offset_stream_compress_lvl);
+        column_encoding.set_offset_stream_length(offset_stream_origin_len);
 
         encoding_kinds.push_back(std::move(column_encoding));
       };

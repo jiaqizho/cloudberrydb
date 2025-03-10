@@ -34,27 +34,30 @@
 namespace pax {
 class PaxNonFixedEncodingColumn : public PaxNonFixedColumn {
  public:
-  PaxNonFixedEncodingColumn(uint32 data_capacity, uint32 lengths_capacity,
+  PaxNonFixedEncodingColumn(uint32 data_capacity, uint32 offsets_capacity,
                             const PaxEncoder::EncodingOption &encoder_options);
 
-  PaxNonFixedEncodingColumn(uint32 data_capacity, uint32 lengths_capacity,
+  PaxNonFixedEncodingColumn(uint32 data_capacity, uint32 offsets_capacity,
                             const PaxDecoder::DecodingOption &decoding_option);
 
   ~PaxNonFixedEncodingColumn() override;
 
-  void Set(std::shared_ptr<DataBuffer<char>> data, std::shared_ptr<DataBuffer<int32>> lengths,
+  void Set(std::shared_ptr<DataBuffer<char>> data,
+           std::shared_ptr<DataBuffer<int32>> offsets,
            size_t total_size) override;
 
   std::pair<char *, size_t> GetBuffer() override;
 
-  std::pair<char *, size_t> GetLengthBuffer() override;
+  std::pair<char *, size_t> GetOffsetBuffer(bool append_last) override;
 
   int64 GetOriginLength() const override;
 
   size_t GetAlignSize() const override;
 
 #ifdef BUILD_RB_RET_DICT
-  inline std::shared_ptr<DataBuffer<char>> GetUndecodedBuffer() { return shared_data_; }
+  inline std::shared_ptr<DataBuffer<char>> GetUndecodedBuffer() {
+    return shared_data_;
+  }
 #endif
 
   // The reason why `PaxNonFixedEncodingColumn` not override the
@@ -64,9 +67,9 @@ class PaxNonFixedEncodingColumn : public PaxNonFixedColumn {
 
  protected:
   void InitEncoder();
-  void InitLengthStreamCompressor();
+  void InitOffsetStreamCompressor();
   void InitDecoder();
-  void InitLengthStreamDecompressor();
+  void InitOffsetStreamDecompressor();
 
  protected:
   PaxEncoder::EncodingOption encoder_options_;
@@ -79,8 +82,8 @@ class PaxNonFixedEncodingColumn : public PaxNonFixedColumn {
   bool compress_route_;
   std::shared_ptr<DataBuffer<char>> shared_data_;
 
-  std::shared_ptr<PaxCompressor> lengths_compressor_;
-  std::shared_ptr<DataBuffer<char>> shared_lengths_data_;
+  std::shared_ptr<PaxCompressor> offsets_compressor_;
+  std::shared_ptr<DataBuffer<char>> shared_offsets_data_;
 };
 
 }  // namespace pax
