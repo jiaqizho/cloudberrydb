@@ -34,8 +34,8 @@
 #include "access/pax_table_cluster.h"
 #include "access/pax_updater.h"
 #include "access/paxc_rel_options.h"
-#include "clustering/zorder_utils.h"
 #include "catalog/pax_catalog.h"
+#include "clustering/zorder_utils.h"
 #include "comm/guc.h"
 #include "comm/pax_memory.h"
 #include "comm/pax_resource.h"
@@ -543,6 +543,19 @@ void PaxAccessMethod::RelationVacuum(Relation /*onerel*/,
   /* PAX: micro-partitions have no dead tuples, so vacuum is empty */
 }
 
+BlockSequence *PaxAccessMethod::RelationGetBlockSequences(Relation rel,
+                                                          int *numSequences) {
+  // PAX not support brin index yet
+  NOT_IMPLEMENTED_YET;
+  return nullptr;
+}
+
+void PaxAccessMethod::RelationGetBlockSequence(Relation rel, BlockNumber blkNum,
+                                               BlockSequence *sequence) {
+  // PAX not support brin index yet
+  NOT_IMPLEMENTED_YET;
+}
+
 bool PaxAccessMethod::RelationNeedsToastTable(Relation /*rel*/) {
   // PAX never used the toasting, don't create the toast table from Cloudberry 7
 
@@ -764,6 +777,10 @@ static const TableAmRoutine kPaxColumnMethods = {
     .index_validate_scan = paxc::PaxAccessMethod::IndexValidateScan,
 
     .relation_size = paxc::PaxAccessMethod::RelationSize,
+    .relation_get_block_sequences =
+        paxc::PaxAccessMethod::RelationGetBlockSequences,
+    .relation_get_block_sequence =
+        paxc::PaxAccessMethod::RelationGetBlockSequence,
     .relation_needs_toast_table =
         paxc::PaxAccessMethod::RelationNeedsToastTable,
 
@@ -960,18 +977,18 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
 
 #if defined(USE_MANIFEST_API)
           auto pax_rel = table_open(RelationRelationId, AccessShareLock);
-          scan = systable_beginscan(pax_rel, InvalidOid, false, GetActiveSnapshot(),
-                                    0, nullptr);
+          scan = systable_beginscan(pax_rel, InvalidOid, false,
+                                    GetActiveSnapshot(), 0, nullptr);
           while (HeapTupleIsValid(tuple = systable_getnext(scan))) {
             Datum datum;
             bool isnull;
 
-            datum = heap_getattr(tuple, Anum_pg_class_relam,
-                                 pax_rel->rd_att, &isnull);
+            datum = heap_getattr(tuple, Anum_pg_class_relam, pax_rel->rd_att,
+                                 &isnull);
             if (isnull || DatumGetObjectId(datum) != PAX_TABLE_AM_OID) continue;
 
-            datum = heap_getattr(tuple, Anum_pg_class_oid,
-                                 pax_rel->rd_att, &isnull);
+            datum = heap_getattr(tuple, Anum_pg_class_oid, pax_rel->rd_att,
+                                 &isnull);
             Assert(!isnull);
             Oid relid = DatumGetObjectId(datum);
             relids = lappend_oid(relids, relid);
@@ -979,7 +996,8 @@ static void paxProcessUtility(PlannedStmt *pstmt, const char *queryString,
           systable_endscan(scan);
           table_close(pax_rel, AccessShareLock);
 #else
-          auto pax_aux_rel = table_open(PAX_TABLES_RELATION_ID, AccessShareLock);
+          auto pax_aux_rel =
+              table_open(PAX_TABLES_RELATION_ID, AccessShareLock);
           scan = systable_beginscan(pax_aux_rel, InvalidOid, false,
                                     GetActiveSnapshot(), 0, NULL);
 
