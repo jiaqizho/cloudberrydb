@@ -61,6 +61,11 @@ class PaxAccessMethod final {
   static TransactionId IndexDeleteTuples(Relation rel,
                                          TM_IndexDeleteOp *delstate);
 
+  static BlockSequence *RelationGetBlockSequences(Relation rel,
+                                                  int *numSequences);
+
+  static void RelationGetBlockSequence(Relation rel, BlockNumber blkNum,
+                                       BlockSequence *sequence);
   static bool RelationNeedsToastTable(Relation rel);
   static uint64 RelationSize(Relation rel, ForkNumber fork_number);
   static void EstimateRelSize(Relation rel, int32 *attr_widths,
@@ -125,7 +130,8 @@ class CCPaxAccessMethod final {
                                           ParallelTableScanDesc parallel_scan,
                                           struct PlanState *ps, uint32 flags);
 
-  static bool IndexUniqueCheck(Relation rel, ItemPointer tid, Snapshot snapshot, bool *all_dead);
+  static bool IndexUniqueCheck(Relation rel, ItemPointer tid, Snapshot snapshot,
+                               bool *all_dead);
 
   /* Index Scan Callbacks */
   static struct IndexFetchTableData *IndexFetchBegin(Relation rel);
@@ -188,7 +194,6 @@ class CCPaxAccessMethod final {
   // DML init/fini hooks
   static void ExtDmlInit(Relation rel, CmdType operation);
   static void ExtDmlFini(Relation rel, CmdType operation);
-
 };
 
 }  // namespace pax
