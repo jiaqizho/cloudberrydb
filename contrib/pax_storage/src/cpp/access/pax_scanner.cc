@@ -272,7 +272,7 @@ TableScanDesc PaxScanDesc::BeginScan(Relation relation, Snapshot snapshot,
   // aux_snapshot is used to get the micro partition metadata
   // from the micro partition files.
   Snapshot aux_snapshot = (snapshot && snapshot->snapshot_type == SNAPSHOT_ANY)
-                              ? GetTransactionSnapshot()
+                              ? GetCatalogSnapshot(InvalidOid)
                               : snapshot;
   std::unique_ptr<pax::IteratorBase<pax::MicroPartitionMetadata>> iter;
   if (desc->rs_base_.rs_parallel) {

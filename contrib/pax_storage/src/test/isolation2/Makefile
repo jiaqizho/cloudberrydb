@@ -13,7 +13,7 @@ PG_ISOLATION2_REGRESS = $(top_builddir)/src/test/isolation2/pg_isolation2_regres
 PG_ISOLATION2_DIR = $(top_builddir)/src/test/isolation2
 
 installcheck: isolation2_link
-	./pg_isolation2_regress --init-file=./init_file --init-file=./init_file_isolation2 --schedule=isolation2_schedule
+	PGOPTIONS="$(PGOPTIONS)" ./pg_isolation2_regress --init-file=./init_file --init-file=./init_file_isolation2 --schedule=isolation2_schedule
 
 # Add a new rule for running installcheck with parallel mode enabled.
 installcheck-cbdb-parallel: install
@@ -29,6 +29,7 @@ isolation2_link: pg_isolation2_regress
 	ln -sf $(PG_REGRESS_DIR)/GPTest.pm GPTest.pm
 	ln -sf $(PG_ISOLATION2_DIR)/pg_isolation2_regress pg_isolation2_regress
 	ln -sf $(PG_ISOLATION2_DIR)/sql_isolation_testcase.py sql_isolation_testcase.py
+	ln -sf $(PG_ISOLATION2_DIR)/isolation2_regress.so isolation2_regress.so
 
 pg_isolation2_regress:
 	make -C $(top_builddir)/src/backend generated-headers

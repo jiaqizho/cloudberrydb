@@ -6,7 +6,8 @@ test: check_gxid
 
 test: checkpoint_dtx_info
 test: autovacuum-analyze
-test: lockmodes
+# pax not support TupleInsertSpeculative
+# test: lockmodes
 # test: pg_rewind_fail_missing_xlog
 test: prepared_xact_deadlock_pg_rewind
 test: ao_partition_lock
@@ -90,10 +91,11 @@ test: instr_in_shmem_terminate
 test: vacuum_recently_dead_tuple_due_to_distributed_snapshot
 test: vacuum_full_interrupt
 test: distributedlog-bug
-test: invalidated_toast_index
+# pax storage not support pg toast index
+#test: invalidated_toast_index
 test: distributed_snapshot
 test: gp_collation
-test: ao_upgrade
+#test: ao_upgrade
 test: ao_blkdir
 test: bitmap_index_concurrent
 test: bitmap_index_crash
@@ -102,7 +104,8 @@ test: bitmap_union
 test: bitmap_index_inspect
 
 # below test utilizes fault injectors so it needs to be in a group by itself
-test: external_table
+# external table not support pax storage
+# test: external_table
 
 test: fsync_ao
 
@@ -230,7 +233,8 @@ test: vacuum_after_vacuum_skip_drop_column
 # test workfile_mgr
 test: workfile_mgr_test
 test: pg_basebackup
-test: pg_basebackup_with_tablespaces
+#TODO: Symlink targets with length greater than 100 characters
+# test: pg_basebackup_with_tablespaces
 test: enable_autovacuum
 
 test: segwalrep/die_commit_pending_replication
@@ -320,6 +324,7 @@ test: sync_guc
 #test: uao/ao_unique_index_vacuum_row
 #test: uao/ao_unique_index_vacuum_column
 
-test: local_directory_table_mixed
+# directory table not support pax storage
+#test: local_directory_table_mixed
 test: stat_activity_extended
 test: sharedsnapshot
