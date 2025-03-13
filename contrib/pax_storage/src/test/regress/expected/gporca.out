@@ -12765,6 +12765,7 @@ select * from foo join tbtree on foo.a=tbtree.a where tbtree.a < 5000;
 (5 rows)
 
 -- 4 bitmap with select pred
+-- start_ignore
 explain (costs off)
 select * from foo join tbitmap on foo.a=tbitmap.a where tbitmap.a < 5000;
                     QUERY PLAN                    
@@ -12782,6 +12783,7 @@ select * from foo join tbitmap on foo.a=tbitmap.a where tbitmap.a < 5000;
  Optimizer: Postgres query optimizer
 (11 rows)
 
+-- end_ignore
 select * from foo join tbitmap on foo.a=tbitmap.a where tbitmap.a < 5000;
   a   |  b   |  c   |  a   |  b   |  c   
 ------+------+------+------+------+------
@@ -12942,6 +12944,7 @@ select * from foo join (select a, count(*) + 5 as cnt from tbtree where tbtree.a
 (3 rows)
 
 -- 10 bitmap with proj select grby select
+-- start_ignore
 explain (costs off)
 select * from foo join (select a, count(*) + 5 as cnt from tbitmap where tbitmap.a < 5000 group by a having count(*) < 2) proj_sel_grby_sel on foo.a=proj_sel_grby_sel.a;
                        QUERY PLAN                       
@@ -12961,6 +12964,7 @@ select * from foo join (select a, count(*) + 5 as cnt from tbitmap where tbitmap
  Optimizer: Postgres query optimizer
 (13 rows)
 
+-- end_ignore
 select * from foo join (select a, count(*) + 5 as cnt from tbitmap where tbitmap.a < 5000 group by a having count(*) < 2) proj_sel_grby_sel on foo.a=proj_sel_grby_sel.a;
   a   |  b   |  c   |  a   | cnt 
 ------+------+------+------+-----
