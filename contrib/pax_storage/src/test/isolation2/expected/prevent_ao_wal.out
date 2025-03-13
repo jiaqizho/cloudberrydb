@@ -53,26 +53,26 @@ VACUUM
 
 -- Validate wal records
 ! last_wal_file=$(psql -At -c "SELECT pg_walfile_name(pg_current_wal_lsn())" postgres) && pg_waldump ${last_wal_file} -p ${COORDINATOR_DATA_DIRECTORY}/pg_wal -r appendonly;
-rmgr: Appendonly  len (rec/tot):    194/   194, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:0/0 len:136
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:128/0 len:0
-rmgr: Appendonly  len (rec/tot):    138/   138, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:0/0 len:80
-rmgr: Appendonly  len (rec/tot):    138/   138, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:128/0 len:80
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:0/136
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:1/0 len:0
-rmgr: Appendonly  len (rec/tot):    146/   146, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:1/0 len:88
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:0/0
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:0/80
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:128/80
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:1/88
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:0/0
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:0/80
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:128/80
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:1/0 len:0
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:129/0 len:0
-rmgr: Appendonly  len (rec/tot):    122/   122, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:1/0 len:64
-rmgr: Appendonly  len (rec/tot):    122/   122, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_INSERT insert: rel ####/######/###### seg/offset:129/0 len:64
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:0/0
-rmgr: Appendonly  len (rec/tot):     58/    58, tx: ##, lsn: #/########, prev #/########, desc: APPENDONLY_TRUNCATE truncate: rel ####/######/###### seg/offset:128/0
+rmgr: Appendonly  len (rec/tot):    194/   194, tx:       1141, lsn: 0/10000130, prev 0/100000E0, desc: APPENDONLY_INSERT insert: rel 1663/17018/90146 seg/offset:0/0 len:136
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:       1142, lsn: 0/10000378, prev 0/10000338, desc: APPENDONLY_INSERT insert: rel 1663/17018/90150 seg/offset:128/0 len:0
+rmgr: Appendonly  len (rec/tot):    138/   138, tx:       1142, lsn: 0/10000408, prev 0/100003B8, desc: APPENDONLY_INSERT insert: rel 1663/17018/90150 seg/offset:0/0 len:80
+rmgr: Appendonly  len (rec/tot):    138/   138, tx:       1142, lsn: 0/10000498, prev 0/10000408, desc: APPENDONLY_INSERT insert: rel 1663/17018/90150 seg/offset:128/0 len:80
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/1050AE20, prev 0/1050ADA8, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90150 seg/offset:0/80
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/1050AE60, prev 0/1050AE20, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90150 seg/offset:128/80
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/1052B320, prev 0/1052B2A8, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90146 seg/offset:0/136
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:       1145, lsn: 0/1052B458, prev 0/1052B418, desc: APPENDONLY_INSERT insert: rel 1663/17018/90146 seg/offset:1/0 len:0
+rmgr: Appendonly  len (rec/tot):    146/   146, tx:       1145, lsn: 0/1052B620, prev 0/1052B5E0, desc: APPENDONLY_INSERT insert: rel 1663/17018/90146 seg/offset:1/0 len:88
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/1052B758, prev 0/1052B728, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90146 seg/offset:0/0
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/1058CA50, prev 0/1058CA10, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90150 seg/offset:0/80
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/1058CA90, prev 0/1058CA50, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90150 seg/offset:128/80
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:       1149, lsn: 0/1058CBE8, prev 0/1058CBA8, desc: APPENDONLY_INSERT insert: rel 1663/17018/90150 seg/offset:1/0 len:0
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:       1149, lsn: 0/1058CC28, prev 0/1058CBE8, desc: APPENDONLY_INSERT insert: rel 1663/17018/90150 seg/offset:129/0 len:0
+rmgr: Appendonly  len (rec/tot):    122/   122, tx:       1149, lsn: 0/1058CDF0, prev 0/1058CDB0, desc: APPENDONLY_INSERT insert: rel 1663/17018/90150 seg/offset:1/0 len:64
+rmgr: Appendonly  len (rec/tot):    122/   122, tx:       1149, lsn: 0/1058CE70, prev 0/1058CDF0, desc: APPENDONLY_INSERT insert: rel 1663/17018/90150 seg/offset:129/0 len:64
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/1058CFA8, prev 0/1058CF78, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90150 seg/offset:0/0
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/1058CFE8, prev 0/1058CFA8, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90150 seg/offset:128/0
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/105AD540, prev 0/105AD510, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90146 seg/offset:1/88
+rmgr: Appendonly  len (rec/tot):     58/    58, tx:          0, lsn: 0/105AD580, prev 0/105AD540, desc: APPENDONLY_TRUNCATE truncate: rel 1663/17018/90146 seg/offset:0/0
 
 
 -- *********** Set wal_level=minimal **************

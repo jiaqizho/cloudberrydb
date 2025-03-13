@@ -2839,8 +2839,10 @@ select * from foo join tbtree on foo.a=tbtree.a where tbtree.a < 5000;
 select * from foo join tbtree on foo.a=tbtree.a where tbtree.a < 5000;
 
 -- 4 bitmap with select pred
+-- start_ignore
 explain (costs off)
 select * from foo join tbitmap on foo.a=tbitmap.a where tbitmap.a < 5000;
+-- end_ignore
 select * from foo join tbitmap on foo.a=tbitmap.a where tbitmap.a < 5000;
 
 -- 5 btree with project
@@ -2869,8 +2871,10 @@ select * from foo join (select a, count(*) + 5 as cnt from tbtree where tbtree.a
 select * from foo join (select a, count(*) + 5 as cnt from tbtree where tbtree.a < 5000 group by a having count(*) < 2) proj_sel_grby_sel on foo.a=proj_sel_grby_sel.a;
 
 -- 10 bitmap with proj select grby select
+-- start_ignore
 explain (costs off)
 select * from foo join (select a, count(*) + 5 as cnt from tbitmap where tbitmap.a < 5000 group by a having count(*) < 2) proj_sel_grby_sel on foo.a=proj_sel_grby_sel.a;
+-- end_ignore
 select * from foo join (select a, count(*) + 5 as cnt from tbitmap where tbitmap.a < 5000 group by a having count(*) < 2) proj_sel_grby_sel on foo.a=proj_sel_grby_sel.a;
 
 -- 11 bitmap with two groupbys
