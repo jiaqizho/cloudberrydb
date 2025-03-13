@@ -54,7 +54,7 @@ select count_of_items_in_directory('@testtablespace@/some_basebackup_tablespace/
 select count_of_items_in_database_directory('@testtablespace@/some_basebackup_tablespace/100/GPDB_*/', oid) from pg_database where datname='some_database_without_tablespace';
  count_of_items_in_database_directory 
 --------------------------------------
- 2                                    
+ 4                                    
 (1 row)
 
 -- Then we should have the tablespace symlink link to the mapped tablespace directory
@@ -84,7 +84,7 @@ select count_of_items_in_directory('@testtablespace@/some_basebackup_tablespace/
 select count_of_items_in_database_directory('@testtablespace@/some_basebackup_tablespace/100/GPDB_*/', oid) from pg_database where datname='some_database_without_tablespace';
  count_of_items_in_database_directory 
 --------------------------------------
- 2                                    
+ 4                                    
 (1 row)
 
 -- Then we should have the tablespace symlink link to the mapped tablespace directory

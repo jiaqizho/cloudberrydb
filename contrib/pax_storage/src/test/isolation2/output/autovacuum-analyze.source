@@ -100,7 +100,7 @@ SELECT count(*) FROM pg_statistic where starelid = 'anatest'::regclass;
 select relpages, reltuples from pg_class where oid = 'anatest'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 1000      
+ 1        | 1000      
 (1 row)
 
 
@@ -223,27 +223,27 @@ SELECT count(*) FROM pg_statistic where starelid = 'rankpart'::regclass;
 select relpages, reltuples from pg_class where oid = 'rankpart_1_prt_extra'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 125       
+ 1        | 125       
 (1 row)
 select relpages, reltuples from pg_class where oid = 'rankpart_1_prt_2'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 250       
+ 1        | 250       
 (1 row)
 select relpages, reltuples from pg_class where oid = 'rankpart_1_prt_3'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 250       
+ 1        | 250       
 (1 row)
 select relpages, reltuples from pg_class where oid = 'rankpart_1_prt_4'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 250       
+ 1        | 250       
 (1 row)
 select relpages, reltuples from pg_class where oid = 'rankpart_1_prt_5'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 125       
+ 1        | 125       
 (1 row)
 select relpages, reltuples from pg_class where oid = 'rankpart_1_prt_6'::regclass;
  relpages | reltuples 
@@ -418,7 +418,7 @@ SELECT count(*) FROM pg_statistic where starelid = 'autostatstbl'::regclass;
 select relpages, reltuples from pg_class where oid = 'autostatstbl'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 1000      
+ 1        | 1000      
 (1 row)
 -- expect analyze_count = 1, autoanalyze_count = 0, and n_mod_since_analyze = 1000 since ANALYZE executed
 -- in same transaction for the insert statement.
@@ -462,7 +462,7 @@ SELECT gp_inject_fault('analyze_finished_one_relation', 'reset', 1);
 select relpages, reltuples from pg_class where oid = 'autostatstbl'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 1000      
+ 1        | 1000      
 (1 row)
 -- expect analyze_count = 1, autoanalyze_count = 1, and n_mod_since_analyze = 0
 select analyze_count, autoanalyze_count, n_mod_since_analyze from pg_stat_all_tables_internal where relname = 'autostatstbl';
@@ -498,7 +498,7 @@ INSERT 1000
 select relpages, reltuples from pg_class where oid = 'autostatstbl'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 2000      
+ 1        | 2000      
 (1 row)
 -- expect analyze_count = 2, autoanalyze_count = 1, and n_mod_since_analyze = 1000 since ANALYZE executed
 -- in same transaction for the insert statement.
@@ -542,7 +542,7 @@ SELECT gp_inject_fault('analyze_finished_one_relation', 'reset', 1);
 select relpages, reltuples from pg_class where oid = 'autostatstbl'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 2000      
+ 1        | 2000      
 (1 row)
 -- expect analyze_count = 2, autoanalyze_count = 2, and n_mod_since_analyze = 0
 select analyze_count, autoanalyze_count, n_mod_since_analyze from pg_stat_all_tables_internal where relname = 'autostatstbl';
@@ -577,7 +577,7 @@ INSERT 1000
 select relpages, reltuples from pg_class where oid = 'autostatstbl'::regclass;
  relpages | reltuples 
 ----------+-----------
- 3        | 2000      
+ 1        | 2000      
 (1 row)
 -- expect analyze_count = 2, autoanalyze_count = 2, and n_mod_since_analyze = 1000 since ANALYZE executed
 -- in same transaction for the insert statement.
@@ -621,7 +621,7 @@ SELECT gp_inject_fault('analyze_finished_one_relation', 'reset', 1);
 select relpages, reltuples from pg_class where oid = 'autostatstbl'::regclass;
  relpages | reltuples 
 ----------+-----------
- 6        | 3000      
+ 1        | 3000      
 (1 row)
 -- expect analyze_count = 2, autoanalyze_count = 3, and n_mod_since_analyze = 0 since ANALYZE executed
 select analyze_count, autoanalyze_count, n_mod_since_analyze from pg_stat_all_tables_internal where relname = 'autostatstbl';

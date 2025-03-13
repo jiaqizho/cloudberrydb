@@ -118,6 +118,7 @@ extern "C" {
 #include "storage/ipc.h"
 #include "storage/lwlock.h"
 #include "storage/md.h"
+#include "storage/procarray.h"
 #include "storage/relfilenode.h"
 #include "storage/smgr.h"
 #include "storage/ufile.h"

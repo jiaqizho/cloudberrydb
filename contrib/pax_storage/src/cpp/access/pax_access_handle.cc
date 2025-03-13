@@ -224,6 +224,11 @@ void CCPaxAccessMethod::TupleInsert(Relation relation, TupleTableSlot *slot,
     MemoryContext old_ctx;
     Assert(cbdb::pax_memory_context);
 
+#ifdef FAULT_INJECTOR
+    FaultInjector_InjectFaultIfSet("pax_insert", DDLNotSpecified, "",
+                                   RelationGetRelationName(relation));
+#endif
+
     old_ctx = MemoryContextSwitchTo(cbdb::pax_memory_context);
     CPaxInserter::TupleInsert(relation, slot, cid, options, bistate);
     MemoryContextSwitchTo(old_ctx);
@@ -557,9 +562,10 @@ double PaxAccessMethod::IndexBuildRangeScan(
   EState *estate;
   ExprContext *econtext;
   Snapshot snapshot;
+  TransactionId OldestXmin;
 
   bool checking_uniqueness pg_attribute_unused();
-  bool need_unregister_snapshot;
+  bool need_unregister_snapshot = false;
   BlockNumber previous_blkno = InvalidBlockNumber;
 
   Assert(OidIsValid(index_relation->rd_rel->relam));
@@ -584,10 +590,28 @@ double PaxAccessMethod::IndexBuildRangeScan(
   econtext->ecxt_scantuple = slot;
   predicate = ExecPrepareQual(index_info->ii_Predicate, estate);
 
+  /*
+   * Prepare for scan of the base relation.  In a normal index build, we use
+   * SnapshotAny because we must retrieve all tuples and do our own time
+   * qual checks (because we have to index RECENTLY_DEAD tuples). In a
+   * concurrent build, or during bootstrap, we take a regular MVCC snapshot
+   * and index whatever's live according to that.
+   */
+  OldestXmin = InvalidTransactionId;
+
+  /* okay to ignore lazy VACUUMs here */
+  if (!IsBootstrapProcessingMode() && !index_info->ii_Concurrent)
+    OldestXmin = GetOldestNonRemovableTransactionId(heap_relation);
+
   if (!scan) {
-    snapshot = RegisterSnapshot(GetTransactionSnapshot());
+    if (!TransactionIdIsValid(OldestXmin)) {
+      snapshot = RegisterSnapshot(GetTransactionSnapshot());
+      need_unregister_snapshot = true;
+    } else {
+      need_unregister_snapshot = false;
+      snapshot = SnapshotAny;
+    }
     scan = table_beginscan(heap_relation, snapshot, 0, NULL);
-    need_unregister_snapshot = true;
   } else {
     snapshot = scan->rs_snapshot;
     need_unregister_snapshot = false;

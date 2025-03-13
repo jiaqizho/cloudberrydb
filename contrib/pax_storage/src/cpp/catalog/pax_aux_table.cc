@@ -73,8 +73,7 @@ static void CPaxNontransactionalTruncateTable(Relation rel) {
   relation_close(aux_rel, NoLock);
 
   CPaxInitializeFastSequenceEntry(RelationGetRelid(rel),
-                                  FASTSEQUENCE_INIT_TYPE_INPLACE,
-                                  0);
+                                  FASTSEQUENCE_INIT_TYPE_INPLACE, 0);
 }
 
 void CPaxCreateMicroPartitionTable(Relation rel) {
@@ -121,13 +120,19 @@ void CPaxCreateMicroPartitionTable(Relation rel) {
         TupleDescAttr(tupdesc, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME - 1);
     attr->attnotnull = true;
   }
+
+  // FIXME: temporary table in aux namespace  is not supported yet.
   relid = heap_create_with_catalog(
       aux_relname, aux_namespace_id, InvalidOid, aux_relid, InvalidOid,
       InvalidOid, rel->rd_rel->relowner, HEAP_TABLE_AM_OID, tupdesc, NIL,
-      RELKIND_RELATION, RELPERSISTENCE_PERMANENT, rel->rd_rel->relisshared,
-      RelationIsMapped(rel), ONCOMMIT_NOOP, NULL, /* GP Policy */
-      (Datum)0, false,                            /* use _user_acl */
-      true, true, InvalidOid, NULL,               /* typeaddress */
+      RELKIND_RELATION,
+      rel->rd_rel->relpersistence == RELPERSISTENCE_UNLOGGED
+          ? RELPERSISTENCE_UNLOGGED
+          : RELPERSISTENCE_PERMANENT,
+      rel->rd_rel->relisshared, RelationIsMapped(rel), ONCOMMIT_NOOP,
+      NULL,                         /* GP Policy */
+      (Datum)0, false,              /* use _user_acl */
+      true, true, InvalidOid, NULL, /* typeaddress */
       false /* valid_opts */);
   Assert(relid == aux_relid);
   table_close(pg_class_desc, NoLock);
@@ -686,8 +691,8 @@ static void FetchMicroPartitionAuxRowCallbackWrapper(Datum *values,
 }
 
 pax::MicroPartitionMetadata PaxGetMicroPartitionMetadata(Relation rel,
-                                                      Snapshot snapshot,
-                                                      int block_id) {
+                                                         Snapshot snapshot,
+                                                         int block_id) {
   CBDB_WRAP_START;
   {
     FetchMicroPartitionAuxRowContext ctx;
