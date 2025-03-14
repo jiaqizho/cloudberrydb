@@ -15,15 +15,15 @@ create table nhtest (i numeric(10, 2)) distributed by (i);
 insert into nhtest values(100000.22);
 insert into nhtest values(300000.19);
 explain select * from nhtest a join nhtest b using (i);
-                                    QUERY PLAN                                     
------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..862.00 rows=1 width=9)
-   ->  Hash Join  (cost=0.00..862.00 rows=1 width=9)
-         Hash Cond: (nhtest.i = nhtest_1.i)
-         ->  Seq Scan on nhtest  (cost=0.00..431.00 rows=1 width=9)
-         ->  Hash  (cost=431.00..431.00 rows=1 width=9)
-               ->  Seq Scan on nhtest nhtest_1  (cost=0.00..431.00 rows=1 width=9)
- Optimizer: Pivotal Optimizer (GPORCA) version 2.74.0
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..862.00 rows=1 width=8)
+   ->  Hash Join  (cost=0.00..862.00 rows=1 width=8)
+         Hash Cond: (a.i = b.i)
+         ->  Seq Scan on nhtest a  (cost=0.00..431.00 rows=1 width=8)
+         ->  Hash  (cost=431.00..431.00 rows=1 width=8)
+               ->  Seq Scan on nhtest b  (cost=0.00..431.00 rows=1 width=8)
+ Optimizer: GPORCA
 (7 rows)
 
 select * from nhtest a join nhtest b using (i);
@@ -493,19 +493,16 @@ select t1.id, t1.data, t2.id, t2.data from test_int1 t1, test_int2 t2 where t1.d
 create table input_table(a varchar(30), b varchar(30)) distributed by (a);
 set enable_hashjoin = off;
 explain (costs off) select X.a from input_table X full join (select a from input_table) Y ON X.a = Y.a;
-                        QUERY PLAN                         
------------------------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Merge Full Join
-         Merge Cond: ((x.a)::text = (input_table.a)::text)
-         ->  Sort
-               Sort Key: x.a
-               ->  Seq Scan on input_table x
-         ->  Sort
-               Sort Key: input_table.a
+   ->  Hash Full Join
+         Hash Cond: ((x.a)::text = (input_table.a)::text)
+         ->  Seq Scan on input_table x
+         ->  Hash
                ->  Seq Scan on input_table
- Optimizer: Postgres query optimizer
-(10 rows)
+ Optimizer: GPORCA
+(7 rows)
 
 -- Cleanup
 reset enable_hashjoin;
@@ -527,15 +524,15 @@ explain select * from t5370 a , t5370_2 b where a.name=b.name;
 --------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..862.25 rows=1000 width=14)
    ->  Hash Join  (cost=0.00..862.20 rows=334 width=14)
-         Hash Cond: (t5370.name = t5370_2.name)
+         Hash Cond: (a.name = b.name)
          ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=0.00..431.02 rows=334 width=7)
-               Hash Key: t5370.name
-               ->  Seq Scan on t5370  (cost=0.00..431.01 rows=334 width=7)
+               Hash Key: a.name
+               ->  Seq Scan on t5370 a  (cost=0.00..431.01 rows=334 width=7)
          ->  Hash  (cost=431.02..431.02 rows=334 width=7)
                ->  Redistribute Motion 3:3  (slice3; segments: 3)  (cost=0.00..431.02 rows=334 width=7)
-                     Hash Key: t5370_2.name
-                     ->  Seq Scan on t5370_2  (cost=0.00..431.01 rows=334 width=7)
- Optimizer: Pivotal Optimizer (GPORCA) version 2.70.2
+                     Hash Key: b.name
+                     ->  Seq Scan on t5370_2 b  (cost=0.00..431.01 rows=334 width=7)
+ Optimizer: GPORCA
 (11 rows)
 
 drop table t5370;
@@ -719,33 +716,33 @@ explain select * from (select t1.a t1a, t1.b t1b, t2.a t2a, t2.b t2b from t1 lef
                                                             QUERY PLAN                                                            
 ----------------------------------------------------------------------------------------------------------------------------------
  Hash Join  (cost=0.00..2586.30 rows=7 width=56)
-   Hash Cond: (t1.b = t3_1.b)
+   Hash Cond: (t1.b = t3.b)
    ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1293.15 rows=3 width=28)
          ->  Hash Right Join  (cost=0.00..1293.15 rows=1 width=28)
                Hash Cond: (t2.a = t1.a)
                ->  Seq Scan on t2  (cost=0.00..431.01 rows=333 width=8)
                ->  Hash  (cost=862.07..862.07 rows=1 width=20)
                      ->  Hash Join  (cost=0.00..862.07 rows=1 width=20)
-                           Hash Cond: (t1.b = t3.b)
+                           Hash Cond: (t1.b = t3_1.b)
                            ->  Seq Scan on t1  (cost=0.00..431.01 rows=334 width=8)
                            ->  Hash  (cost=431.00..431.00 rows=2 width=12)
                                  ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..431.00 rows=2 width=12)
-                                       ->  Seq Scan on t3  (cost=0.00..431.00 rows=1 width=12)
+                                       ->  Seq Scan on t3 t3_1  (cost=0.00..431.00 rows=1 width=12)
    ->  Hash  (cost=1293.15..1293.15 rows=3 width=28)
          ->  Gather Motion 3:1  (slice3; segments: 3)  (cost=0.00..1293.15 rows=3 width=28)
                ->  Result  (cost=0.00..1293.15 rows=1 width=28)
-                     Filter: ((t2_1.a IS NULL) OR (t1_1.b = t3_1.b))
+                     Filter: ((t2_1.a IS NULL) OR (t1_1.b = t3.b))
                      ->  Hash Right Join  (cost=0.00..1293.15 rows=1 width=28)
                            Hash Cond: (t2_1.a = t1_1.a)
                            ->  Seq Scan on t2 t2_1  (cost=0.00..431.01 rows=333 width=8)
                            ->  Hash  (cost=862.07..862.07 rows=1 width=20)
                                  ->  Hash Join  (cost=0.00..862.07 rows=1 width=20)
-                                       Hash Cond: (t1_1.b = t3_1.b)
+                                       Hash Cond: (t1_1.b = t3.b)
                                        ->  Seq Scan on t1 t1_1  (cost=0.00..431.01 rows=334 width=8)
                                        ->  Hash  (cost=431.00..431.00 rows=2 width=12)
                                              ->  Broadcast Motion 3:3  (slice4; segments: 3)  (cost=0.00..431.00 rows=2 width=12)
-                                                   ->  Seq Scan on t3 t3_1  (cost=0.00..431.00 rows=1 width=12)
- Optimizer: Pivotal Optimizer (GPORCA)
+                                                   ->  Seq Scan on t3  (cost=0.00..431.00 rows=1 width=12)
+ Optimizer: GPORCA
 (28 rows)
 
 select * from (select t1.a t1a, t1.b t1b, t2.a t2a, t2.b t2b from t1 left join t2 on t1.a = t2.a) tt 
@@ -1117,26 +1114,21 @@ explain select * from (t_joinsize_1 join t_joinsize_2 on t_joinsize_1.c2 = t_joi
                                                     QUERY PLAN                                                     
 -------------------------------------------------------------------------------------------------------------------
  Hash Join  (cost=0.00..1300.54 rows=99503 width=20)
-   Hash Cond: (t_joinsize_2.c2 = t_joinsize_1_1_prt_2.c2)
+   Hash Cond: (t_joinsize_2.c2 = t_joinsize_1.c2)
    ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.04 rows=1000 width=8)
          ->  Seq Scan on t_joinsize_2  (cost=0.00..431.01 rows=334 width=8)
    ->  Hash  (cost=862.13..862.13 rows=598 width=12)
          ->  Gather Motion 3:1  (slice2; segments: 3)  (cost=0.00..862.13 rows=598 width=12)
                ->  Hash Join  (cost=0.00..862.10 rows=200 width=12)
-                     Hash Cond: (t_joinsize_1_1_prt_2.c1 = t_joinsize_3.c)
-                     ->  Append  (cost=0.00..431.01 rows=400 width=8)
-                           ->  Seq Scan on t_joinsize_1_1_prt_2  (cost=0.00..431.01 rows=400 width=8)
-                           ->  Seq Scan on t_joinsize_1_1_prt_3  (cost=0.00..431.01 rows=400 width=8)
-                           ->  Seq Scan on t_joinsize_1_1_prt_4  (cost=0.00..431.01 rows=400 width=8)
-                           ->  Seq Scan on t_joinsize_1_1_prt_5  (cost=0.00..431.01 rows=400 width=8)
-                           ->  Seq Scan on t_joinsize_1_1_prt_6  (cost=0.00..431.01 rows=400 width=8)
-                           ->  Seq Scan on t_joinsize_1_1_prt_extra  (cost=0.00..431.01 rows=400 width=8)
+                     Hash Cond: (t_joinsize_1.c1 = t_joinsize_3.c)
+                     ->  Dynamic Seq Scan on t_joinsize_1  (cost=0.00..431.01 rows=400 width=8)
+                           Number of partitions to scan: 6 (out of 6)
                      ->  Hash  (cost=431.00..431.00 rows=34 width=4)
                            ->  Redistribute Motion 3:3  (slice3; segments: 3)  (cost=0.00..431.00 rows=34 width=4)
                                  Hash Key: t_joinsize_3.c
                                  ->  Seq Scan on t_joinsize_3  (cost=0.00..431.00 rows=34 width=4)
- Optimizer: Pivotal Optimizer (GPORCA)
-(20 rows)
+ Optimizer: GPORCA
+(15 rows)
 
 drop table t_joinsize_1;
 drop table t_joinsize_2;
@@ -1489,10 +1481,11 @@ select * from foo where exists (select 1 from bar where foo.a = bar.b);
    ->  Hash Semi Join
          Hash Cond: (foo.a = bar.b)
          ->  Seq Scan on foo
+               Filter: (NOT (a IS NULL))
          ->  Hash
                ->  Seq Scan on bar
- Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+ Optimizer: GPORCA
+(8 rows)
 
 select * from foo where exists (select 1 from bar where foo.a = bar.b);
  a  
@@ -1518,10 +1511,11 @@ select * from foo where exists (select 1 from bar where foo.a = bar.b);
    ->  Hash Semi Join
          Hash Cond: (foo.a = bar.b)
          ->  Seq Scan on foo
+               Filter: (NOT (a IS NULL))
          ->  Hash
                ->  Seq Scan on bar
- Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+ Optimizer: GPORCA
+(8 rows)
 
 select * from foo where exists (select 1 from bar where foo.a = bar.b);
  a  
@@ -1571,6 +1565,7 @@ select * from fix_param_a left join fix_param_b on
                ->  Hash Semi Join
                      Hash Cond: ((fix_param_b.i = fix_param_c.i) AND (fix_param_b.j = fix_param_c.j))
                      ->  Seq Scan on fix_param_b
+                           Filter: (NOT (i IS NULL))
                      ->  Hash
                            ->  Seq Scan on fix_param_c
                ->  Hash

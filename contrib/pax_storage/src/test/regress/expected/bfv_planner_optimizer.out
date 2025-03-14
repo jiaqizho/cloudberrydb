@@ -405,17 +405,18 @@ explain (costs off)
 select * from
 (select a from generate_series(1, 10)a) x, t_hashdist
 where x.a > random();
-                                       QUERY PLAN                                       
-----------------------------------------------------------------------------------------
+                                          QUERY PLAN                                          
+----------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Nested Loop
          Join Filter: true
          ->  Seq Scan on t_hashdist
-         ->  Result
-               Filter: ((generate_series.generate_series)::double precision > random())
-               ->  Function Scan on generate_series
- Optimizer: Pivotal Optimizer (GPORCA)
-(8 rows)
+         ->  Materialize
+               ->  Result
+                     Filter: ((generate_series.generate_series)::double precision > random())
+                     ->  Function Scan on generate_series
+ Optimizer: GPORCA
+(9 rows)
 
 ---- join qual
 explain (costs off) select * from
@@ -548,12 +549,12 @@ explain (costs off) select * from t_hashdist cross join (select a, count(1) as s
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Nested Loop
          Join Filter: true
-         ->  Seq Scan on t_hashdist
          ->  Result
                Filter: (((count(1)))::double precision > random())
                ->  HashAggregate
                      Group Key: generate_series.generate_series
                      ->  Function Scan on generate_series
+         ->  Seq Scan on t_hashdist
  Optimizer: Pivotal Optimizer (GPORCA)
 (10 rows)
 
