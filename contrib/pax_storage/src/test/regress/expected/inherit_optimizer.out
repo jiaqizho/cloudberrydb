@@ -1696,15 +1696,15 @@ SELECT min(x) FROM
   (SELECT unique1 AS x FROM tenk1 a
    UNION ALL
    SELECT unique2 AS x FROM tenk1 b) s;
-                    QUERY PLAN                     
----------------------------------------------------
+                   QUERY PLAN                   
+------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Append
-                     ->  Seq Scan on tenk1
-                     ->  Seq Scan on tenk1 tenk1_1
- Optimizer: Pivotal Optimizer (GPORCA)
+                     ->  Seq Scan on tenk1 a
+                     ->  Seq Scan on tenk1 b
+ Optimizer: GPORCA
 (7 rows)
 
 explain (costs off)
@@ -1712,15 +1712,15 @@ SELECT min(y) FROM
   (SELECT unique1 AS x, unique1 AS y FROM tenk1 a
    UNION ALL
    SELECT unique2 AS x, unique2 AS y FROM tenk1 b) s;
-                    QUERY PLAN                     
----------------------------------------------------
+                   QUERY PLAN                   
+------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Append
-                     ->  Seq Scan on tenk1
-                     ->  Seq Scan on tenk1 tenk1_1
- Optimizer: Pivotal Optimizer (GPORCA)
+                     ->  Seq Scan on tenk1 a
+                     ->  Seq Scan on tenk1 b
+ Optimizer: GPORCA
 (7 rows)
 
 -- XXX planner doesn't recognize that index on unique2 is sufficiently sorted
@@ -1730,16 +1730,16 @@ SELECT x, y FROM
    UNION ALL
    SELECT unique2 AS x, unique2 AS y FROM tenk1 b) s
 ORDER BY x, y;
-                    QUERY PLAN                    
---------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: tenk1.thousand, tenk1.tenthous
+   Merge Key: a.thousand, a.tenthous
    ->  Sort
-         Sort Key: tenk1.thousand, tenk1.tenthous
+         Sort Key: a.thousand, a.tenthous
          ->  Append
-               ->  Seq Scan on tenk1
-               ->  Seq Scan on tenk1 tenk1_1
- Optimizer: Pivotal Optimizer (GPORCA)
+               ->  Seq Scan on tenk1 a
+               ->  Seq Scan on tenk1 b
+ Optimizer: GPORCA
 (8 rows)
 
 -- exercise rescan code path via a repeatedly-evaluated subquery
@@ -1853,70 +1853,62 @@ create table part_ab_cd partition of list_parted for values in ('ab', 'cd');
 create table part_ef_gh partition of list_parted for values in ('ef', 'gh');
 create table part_null_xy partition of list_parted for values in (null, 'xy');
 explain (costs off) select * from list_parted;
-                QUERY PLAN                
-------------------------------------------
+                     QUERY PLAN                     
+----------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on part_ab_cd
-         ->  Seq Scan on part_ef_gh
-         ->  Seq Scan on part_null_xy
- Optimizer: Pivotal Optimizer (GPORCA)
-(6 rows)
+   ->  Dynamic Seq Scan on list_parted
+         Number of partitions to scan: 3 (out of 3)
+ Optimizer: GPORCA
+(4 rows)
 
 explain (costs off) select * from list_parted where a is null;
-                QUERY PLAN                
-------------------------------------------
+                     QUERY PLAN                     
+----------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1)
-   ->  Append
-         ->  Seq Scan on part_null_xy
-               Filter: (a IS NULL)
- Optimizer: Pivotal Optimizer (GPORCA)
+   ->  Dynamic Seq Scan on list_parted
+         Number of partitions to scan: 1 (out of 3)
+         Filter: (a IS NULL)
+ Optimizer: GPORCA
 (5 rows)
 
 explain (costs off) select * from list_parted where a is not null;
-                QUERY PLAN                
-------------------------------------------
+                     QUERY PLAN                     
+----------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on part_ab_cd
-               Filter: (NOT (a IS NULL))
-         ->  Seq Scan on part_ef_gh
-               Filter: (NOT (a IS NULL))
-         ->  Seq Scan on part_null_xy
-               Filter: (NOT (a IS NULL))
- Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+   ->  Dynamic Seq Scan on list_parted
+         Number of partitions to scan: 3 (out of 3)
+         Filter: (NOT (a IS NULL))
+ Optimizer: GPORCA
+(5 rows)
 
 explain (costs off) select * from list_parted where a in ('ab', 'cd', 'ef');
-                           QUERY PLAN                           
-----------------------------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on part_ab_cd
-               Filter: ((a)::text = ANY ('{ab,cd,ef}'::text[]))
-         ->  Seq Scan on part_ef_gh
-               Filter: ((a)::text = ANY ('{ab,cd,ef}'::text[]))
- Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+   ->  Dynamic Seq Scan on list_parted
+         Number of partitions to scan: 2 (out of 3)
+         Filter: ((a)::text = ANY ('{ab,cd,ef}'::text[]))
+ Optimizer: GPORCA
+(5 rows)
 
 explain (costs off) select * from list_parted where a = 'ab' or a in (null, 'cd');
-                                         QUERY PLAN                                          
----------------------------------------------------------------------------------------------
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on part_ab_cd
-               Filter: (((a)::text = 'ab'::text) OR ((a)::text = ANY ('{NULL,cd}'::text[])))
- Optimizer: Pivotal Optimizer (GPORCA)
+   ->  Dynamic Seq Scan on list_parted
+         Number of partitions to scan: 1 (out of 3)
+         Filter: (((a)::text = 'ab'::text) OR ((a)::text = ANY ('{NULL,cd}'::text[])))
+ Optimizer: GPORCA
 (5 rows)
 
 explain (costs off) select * from list_parted where a = 'ab';
-                   QUERY PLAN                   
-------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  Seq Scan on part_ab_cd
-               Filter: ((a)::text = 'ab'::text)
- Optimizer: Pivotal Optimizer (GPORCA)
+                     QUERY PLAN                     
+----------------------------------------------------
+ Gather Motion 1:1  (slice1; segments: 1)
+   ->  Dynamic Seq Scan on list_parted
+         Number of partitions to scan: 1 (out of 3)
+         Filter: ((a)::text = 'ab'::text)
+ Optimizer: GPORCA
 (5 rows)
 
 create table range_list_parted (
@@ -2179,15 +2171,15 @@ create table parted_minmax1 partition of parted_minmax for values from (1) to (1
 create index parted_minmax1i on parted_minmax1 (a, b);
 insert into parted_minmax values (1,'12345');
 explain (costs off) select min(a), max(a) from parted_minmax where b = '12345';
-                          QUERY PLAN                           
----------------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
-               ->  Append
-                     ->  Seq Scan on parted_minmax1
-                           Filter: ((b)::text = '12345'::text)
- Optimizer: Pivotal Optimizer (GPORCA)
+               ->  Dynamic Seq Scan on parted_minmax
+                     Number of partitions to scan: 1 (out of 1)
+                     Filter: ((b)::text = '12345'::text)
+ Optimizer: GPORCA
 (7 rows)
 
 select min(a), max(a) from parted_minmax where b = '12345';
@@ -2320,36 +2312,32 @@ create table mclparted2 partition of mclparted for values in(2);
 create index on mclparted (a);
 -- Ensure an Append is used for a list partition with an order by.
 explain (costs off) select * from mclparted order by a;
-                QUERY PLAN                
-------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: mclparted1.a
+   Merge Key: a
    ->  Sort
-         Sort Key: mclparted1.a
-         ->  Append
-               ->  Seq Scan on mclparted1
-               ->  Seq Scan on mclparted2
- Optimizer: Pivotal Optimizer (GPORCA)
-(8 rows)
+         Sort Key: a
+         ->  Dynamic Seq Scan on mclparted
+               Number of partitions to scan: 2 (out of 2)
+ Optimizer: GPORCA
+(7 rows)
 
 -- Ensure a MergeAppend is used when a partition exists with interleaved
 -- datums in the partition bound.
 create table mclparted3_5 partition of mclparted for values in(3,5);
 create table mclparted4 partition of mclparted for values in(4);
 explain (costs off) select * from mclparted order by a;
-                 QUERY PLAN                 
---------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: mclparted1.a
+   Merge Key: a
    ->  Sort
-         Sort Key: mclparted1.a
-         ->  Append
-               ->  Seq Scan on mclparted1
-               ->  Seq Scan on mclparted2
-               ->  Seq Scan on mclparted3_5
-               ->  Seq Scan on mclparted4
- Optimizer: Pivotal Optimizer (GPORCA)
-(10 rows)
+         Sort Key: a
+         ->  Dynamic Seq Scan on mclparted
+               Number of partitions to scan: 4 (out of 4)
+ Optimizer: GPORCA
+(7 rows)
 
 drop table mclparted;
 -- Ensure subplans which don't have a path with the correct pathkeys get
@@ -2404,17 +2392,16 @@ create table bool_lp_true partition of bool_lp for values in(true);
 create table bool_lp_false partition of bool_lp for values in(false);
 create index on bool_lp (b);
 explain (costs off) select * from bool_lp order by b;
-                 QUERY PLAN                  
----------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: bool_lp_false.b
+   Merge Key: b
    ->  Sort
-         Sort Key: bool_lp_false.b
-         ->  Append
-               ->  Seq Scan on bool_lp_false
-               ->  Seq Scan on bool_lp_true
- Optimizer: Pivotal Optimizer (GPORCA)
-(8 rows)
+         Sort Key: b
+         ->  Dynamic Seq Scan on bool_lp
+               Number of partitions to scan: 2 (out of 2)
+ Optimizer: GPORCA
+(7 rows)
 
 drop table bool_lp;
 -- Ensure const bool quals can be properly detected as redundant

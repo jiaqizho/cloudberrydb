@@ -3027,7 +3027,7 @@ from t1 where f1 = f2;
          Partition By: f1
          Order By: f2
          ->  Sort
-               Sort Key: f1
+               Sort Key: f1, f2
                ->  Seq Scan on t1
                      Filter: (f1 = f2)
  Optimizer: Postgres query optimizer
@@ -3077,7 +3077,7 @@ from t1 where f1 = f2;
          Partition By: f1
          Order By: f2
          ->  Sort
-               Sort Key: f1
+               Sort Key: f1, f2
                ->  Seq Scan on t1
                      Filter: (f1 = f2)
  Optimizer: Postgres query optimizer
@@ -3199,7 +3199,7 @@ SELECT * FROM
 WHERE depname = 'sales';
                                    QUERY PLAN                                    
 ---------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 1:1  (slice1; segments: 1)
    ->  WindowAgg
          Partition By: (((depname)::text || 'A'::text)), depname
          ->  Sort
@@ -3278,7 +3278,7 @@ SELECT * FROM
 WHERE depname = 'sales';
                                 QUERY PLAN                                 
 ---------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
+ Gather Motion 1:1  (slice1; segments: 1)
    ->  WindowAgg
          Partition By: depname, empno
          Order By: enroll_date

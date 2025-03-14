@@ -302,16 +302,14 @@ select name, generic_plans, custom_plans from pg_prepared_statements
 -- up to 5 executions, custom plan is used
 set plan_cache_mode to auto;
 explain (costs off) execute test_mode_pp(2);
-                       QUERY PLAN                       
---------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Aggregate
    ->  Gather Motion 1:1  (slice1; segments: 1)
-         ->  Bitmap Heap Scan on test_mode
-               Recheck Cond: (a = 2)
-               ->  Bitmap Index Scan on test_mode_a_idx
-                     Index Cond: (a = 2)
- Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+         ->  Index Only Scan using test_mode_a_idx on test_mode
+               Index Cond: (a = 2)
+ Optimizer: GPORCA
+(5 rows)
 
 select name, generic_plans, custom_plans from pg_prepared_statements
   where  name = 'test_mode_pp';
@@ -323,14 +321,14 @@ select name, generic_plans, custom_plans from pg_prepared_statements
 -- force generic plan
 set plan_cache_mode to force_generic_plan;
 explain (costs off) execute test_mode_pp(2);
-                   QUERY PLAN                   
-------------------------------------------------
+                              QUERY PLAN                              
+----------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
-               ->  Seq Scan on test_mode
-                     Filter: (a = $1)
- Optimizer: Postgres query optimizer
+               ->  Index Only Scan using test_mode_a_idx on test_mode
+                     Index Cond: (a = $1)
+ Optimizer: GPORCA
 (6 rows)
 
 select name, generic_plans, custom_plans from pg_prepared_statements
@@ -383,41 +381,38 @@ select name, generic_plans, custom_plans from pg_prepared_statements
   where  name = 'test_mode_pp';
      name     | generic_plans | custom_plans 
 --------------+---------------+--------------
- test_mode_pp |             1 |            6
+ test_mode_pp |             2 |            5
 (1 row)
 
 -- we should now get a really bad plan
 explain (costs off) execute test_mode_pp(2);
-                       QUERY PLAN                       
---------------------------------------------------------
- Aggregate
-   ->  Gather Motion 1:1  (slice1; segments: 1)
-         ->  Bitmap Heap Scan on test_mode
-               Recheck Cond: (a = 2)
-               ->  Bitmap Index Scan on test_mode_a_idx
-                     Index Cond: (a = 2)
- Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+                              QUERY PLAN                              
+----------------------------------------------------------------------
+ Finalize Aggregate
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         ->  Partial Aggregate
+               ->  Index Only Scan using test_mode_a_idx on test_mode
+                     Index Cond: (a = $1)
+ Optimizer: GPORCA
+(6 rows)
 
 -- but we can force a custom plan
 set plan_cache_mode to force_custom_plan;
 explain (costs off) execute test_mode_pp(2);
-                       QUERY PLAN                       
---------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Aggregate
    ->  Gather Motion 1:1  (slice1; segments: 1)
-         ->  Bitmap Heap Scan on test_mode
-               Recheck Cond: (a = 2)
-               ->  Bitmap Index Scan on test_mode_a_idx
-                     Index Cond: (a = 2)
- Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+         ->  Index Only Scan using test_mode_a_idx on test_mode
+               Index Cond: (a = 2)
+ Optimizer: GPORCA
+(5 rows)
 
 select name, generic_plans, custom_plans from pg_prepared_statements
   where  name = 'test_mode_pp';
      name     | generic_plans | custom_plans 
 --------------+---------------+--------------
- test_mode_pp |             1 |            8
+ test_mode_pp |             3 |            6
 (1 row)
 
 drop table test_mode;
