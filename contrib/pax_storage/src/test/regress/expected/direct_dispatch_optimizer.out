@@ -64,9 +64,8 @@ INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
 -- DO direct dispatch
 -- Known_opt_diff: MPP-21346
 delete from direct_test where key = 100;
-INFO:  (slice 0) Dispatch command to ALL contents: 0 1 2
-INFO:  Distributed transaction command 'Distributed Prepare' to ALL contents: 0 1 2
-INFO:  Distributed transaction command 'Distributed Commit Prepared' to ALL contents: 0 1 2
+INFO:  (slice 0) Dispatch command to SINGLE content
+INFO:  Distributed transaction command 'Distributed Commit (one-phase)' to SINGLE content
 -- verify
 select * from direct_test order by key, value;
 INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
@@ -90,9 +89,8 @@ INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
 -- DELETE with an IS NULL predicate
 -- DO direct dispatch
 delete from direct_test where key is null;
-INFO:  (slice 0) Dispatch command to ALL contents: 0 1 2
-INFO:  Distributed transaction command 'Distributed Prepare' to ALL contents: 0 1 2
-INFO:  Distributed transaction command 'Distributed Commit Prepared' to ALL contents: 0 1 2
+INFO:  (slice 0) Dispatch command to SINGLE content
+INFO:  Distributed transaction command 'Distributed Commit (one-phase)' to SINGLE content
 -- Same single-row insert as above, but with DEFAULT instead of an explicit values.
 -- DO direct dispatch
 insert into direct_test values (default, 'cow');
@@ -392,19 +390,19 @@ EXPLAIN SELECT a.* FROM MPP_22019_a a INNER JOIN MPP_22019_b b ON a.i = b.i WHER
    ->  Result  (cost=0.00..1765376.88 rows=1 width=8)
          Filter: (SubPlan 1)
          ->  Hash Join  (cost=0.00..862.00 rows=1 width=12)
-               Hash Cond: (mpp_22019_a.i = mpp_22019_b.i)
-               ->  Seq Scan on mpp_22019_a  (cost=0.00..431.00 rows=1 width=8)
+               Hash Cond: (a.i = b.i)
+               ->  Seq Scan on mpp_22019_a a  (cost=0.00..431.00 rows=1 width=8)
                      Filter: (i = 1)
                ->  Hash  (cost=431.00..431.00 rows=1 width=8)
-                     ->  Seq Scan on mpp_22019_b  (cost=0.00..431.00 rows=1 width=8)
+                     ->  Seq Scan on mpp_22019_b b  (cost=0.00..431.00 rows=1 width=8)
                            Filter: (i = 1)
          SubPlan 1
            ->  Result  (cost=0.00..431.00 rows=1 width=4)
-                 Filter: (mpp_22019_a_1.j = mpp_22019_b.j)
+                 Filter: (a2.j = b.j)
                  ->  Materialize  (cost=0.00..431.00 rows=1 width=4)
                        ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=0.00..431.00 rows=1 width=4)
-                             ->  Seq Scan on mpp_22019_a mpp_22019_a_1  (cost=0.00..431.00 rows=1 width=4)
- Optimizer: Pivotal Optimizer (GPORCA)
+                             ->  Seq Scan on mpp_22019_a a2  (cost=0.00..431.00 rows=1 width=4)
+ Optimizer: GPORCA
 (17 rows)
 
 SELECT a.* FROM MPP_22019_a a INNER JOIN MPP_22019_b b ON a.i = b.i WHERE a.j NOT IN (SELECT j FROM MPP_22019_a a2 where a2.j = b.j) and a.i = 1;
@@ -722,17 +720,17 @@ INFO:  (slice 1) Dispatch command to PARTIAL contents: 1 2
 (3 rows)
 
 explain (costs off) select t1.gp_segment_id, t2.gp_segment_id, * from t_test_dd_via_segid t1, t_test_dd_via_segid t2 where t1.gp_segment_id=t2.id;
-                                    QUERY PLAN                                     
------------------------------------------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
-         Hash Cond: (t_test_dd_via_segid.gp_segment_id = t_test_dd_via_segid_1.id)
+         Hash Cond: (t1.gp_segment_id = t2.id)
          ->  Redistribute Motion 3:3  (slice2; segments: 3)
-               Hash Key: t_test_dd_via_segid.gp_segment_id
-               ->  Seq Scan on t_test_dd_via_segid
+               Hash Key: t1.gp_segment_id
+               ->  Seq Scan on t_test_dd_via_segid t1
          ->  Hash
-               ->  Seq Scan on t_test_dd_via_segid t_test_dd_via_segid_1
- Optimizer: Pivotal Optimizer (GPORCA)
+               ->  Seq Scan on t_test_dd_via_segid t2
+ Optimizer: GPORCA
 (9 rows)
 
 select t1.gp_segment_id, t2.gp_segment_id, * from t_test_dd_via_segid t1, t_test_dd_via_segid t2 where t1.gp_segment_id=t2.id;
@@ -746,18 +744,21 @@ INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
 (3 rows)
 
 explain (costs off) select gp_segment_id, count(*) from t_test_dd_via_segid group by gp_segment_id;
-                    QUERY PLAN                     
----------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  GroupAggregate
          Group Key: gp_segment_id
          ->  Sort
                Sort Key: gp_segment_id
-               ->  Seq Scan on t_test_dd_via_segid
- Optimizer: Pivotal Optimizer (GPORCA)
-(7 rows)
+               ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                     Hash Key: gp_segment_id
+                     ->  Seq Scan on t_test_dd_via_segid
+ Optimizer: GPORCA
+(9 rows)
 
 select gp_segment_id, count(*) from t_test_dd_via_segid group by gp_segment_id;
+INFO:  (slice 2) Dispatch command to ALL contents: 0 1 2
 INFO:  (slice 1) Dispatch command to ALL contents: 0 1 2
  gp_segment_id | count 
 ---------------+-------
@@ -885,9 +886,9 @@ INFO:  Distributed transaction command 'Distributed Abort (No Prepared)' to SING
 begin;
 -- orca does not handle direct dispatch for DELETE or UPDATE now
 delete from t_hash_partition_1_prt_region1 where r_regionkey=1;
-INFO:  (slice 0) Dispatch command to ALL contents: 0 1 2
+INFO:  (slice 0) Dispatch command to SINGLE content
 abort;
-INFO:  Distributed transaction command 'Distributed Abort (No Prepared)' to ALL contents: 0 1 2
+INFO:  Distributed transaction command 'Distributed Abort (No Prepared)' to SINGLE content
 -- update: root & leaf are all the same hash dist, will direct dispatch
 begin;
 -- orca does not handle direct dispatch for DELETE or UPDATE now

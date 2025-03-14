@@ -244,7 +244,7 @@ explain (costs off)
 select * from btree_bpchar where f1::bpchar like 'foo';
                         QUERY PLAN                        
 ----------------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)
+ Gather Motion 3:1  (slice1; segments: 3)
    ->  Bitmap Heap Scan on btree_bpchar
          Filter: ((f1)::bpchar ~~ 'foo'::text)
          ->  Bitmap Index Scan on btree_bpchar_f1_idx
