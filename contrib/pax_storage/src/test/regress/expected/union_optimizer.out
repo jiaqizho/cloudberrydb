@@ -563,22 +563,23 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) union select x from (va
 
 explain (costs off)
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
-                                             QUERY PLAN                                              
------------------------------------------------------------------------------------------------------
- Nested Loop
-   Join Filter: (NOT (("Values_1".column1)::anyarray IS DISTINCT FROM ("Values".column1)::anyarray))
-   ->  GroupAggregate
-         Group Key: "Values_1".column1
-         ->  Sort
-               Sort Key: "Values_1".column1
-               ->  Values Scan on "Values_1"
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Hash Join
+   Hash Cond: (NOT (("Values".column1)::anyarray IS DISTINCT FROM ("Values_1".column1)::anyarray))
    ->  GroupAggregate
          Group Key: "Values".column1
          ->  Sort
                Sort Key: "Values".column1
                ->  Values Scan on "Values"
- Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+   ->  Hash
+         ->  GroupAggregate
+               Group Key: "Values_1".column1
+               ->  Sort
+                     Sort Key: "Values_1".column1
+                     ->  Values Scan on "Values_1"
+ Optimizer: GPORCA
+(14 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -588,18 +589,19 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from
 
 explain (costs off)
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
-                                                   QUERY PLAN                                                    
------------------------------------------------------------------------------------------------------------------
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
  GroupAggregate
-   Group Key: "Values_1".column1
+   Group Key: "Values".column1
    ->  Sort
-         Sort Key: "Values_1".column1
-         ->  Nested Loop Anti Join
-               Join Filter: (NOT (("Values_1".column1)::anyarray IS DISTINCT FROM ("Values".column1)::anyarray))
-               ->  Values Scan on "Values_1"
+         Sort Key: "Values".column1
+         ->  Hash Anti Join
+               Hash Cond: (NOT (("Values".column1)::anyarray IS DISTINCT FROM ("Values_1".column1)::anyarray))
                ->  Values Scan on "Values"
- Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+               ->  Hash
+                     ->  Values Scan on "Values_1"
+ Optimizer: GPORCA
+(10 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -655,22 +657,23 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) union select x from (va
 
 explain (costs off)
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
-                                             QUERY PLAN                                              
------------------------------------------------------------------------------------------------------
- Nested Loop
-   Join Filter: (NOT (("Values_1".column1)::anyarray IS DISTINCT FROM ("Values".column1)::anyarray))
-   ->  GroupAggregate
-         Group Key: "Values_1".column1
-         ->  Sort
-               Sort Key: "Values_1".column1
-               ->  Values Scan on "Values_1"
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Hash Join
+   Hash Cond: (NOT (("Values".column1)::anyarray IS DISTINCT FROM ("Values_1".column1)::anyarray))
    ->  GroupAggregate
          Group Key: "Values".column1
          ->  Sort
                Sort Key: "Values".column1
                ->  Values Scan on "Values"
- Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+   ->  Hash
+         ->  GroupAggregate
+               Group Key: "Values_1".column1
+               ->  Sort
+                     Sort Key: "Values_1".column1
+                     ->  Values Scan on "Values_1"
+ Optimizer: GPORCA
+(14 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -680,18 +683,19 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from
 
 explain (costs off)
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
-                                                   QUERY PLAN                                                    
------------------------------------------------------------------------------------------------------------------
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
  GroupAggregate
-   Group Key: "Values_1".column1
+   Group Key: "Values".column1
    ->  Sort
-         Sort Key: "Values_1".column1
-         ->  Nested Loop Anti Join
-               Join Filter: (NOT (("Values_1".column1)::anyarray IS DISTINCT FROM ("Values".column1)::anyarray))
-               ->  Values Scan on "Values_1"
+         Sort Key: "Values".column1
+         ->  Hash Anti Join
+               Hash Cond: (NOT (("Values".column1)::anyarray IS DISTINCT FROM ("Values_1".column1)::anyarray))
                ->  Values Scan on "Values"
- Optimizer: Pivotal Optimizer (GPORCA)
-(9 rows)
+               ->  Hash
+                     ->  Values Scan on "Values_1"
+ Optimizer: GPORCA
+(10 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -1020,25 +1024,29 @@ set enable_hashagg = true;
 set enable_sort = false;
 explain (costs off)
 select from generate_series(1,5) union select from generate_series(1,3);
-                           QUERY PLAN                           
-----------------------------------------------------------------
- HashAggregate
+                              QUERY PLAN                              
+----------------------------------------------------------------------
+ Aggregate
    ->  Append
-         ->  Function Scan on generate_series
-         ->  Function Scan on generate_series generate_series_1
-(4 rows)
+         ->  Aggregate
+               ->  Function Scan on generate_series
+         ->  Aggregate
+               ->  Function Scan on generate_series generate_series_1
+ Optimizer: Pivotal Optimizer (GPORCA)
+(7 rows)
 
 explain (costs off)
 select from generate_series(1,5) intersect select from generate_series(1,3);
-                              QUERY PLAN                              
-----------------------------------------------------------------------
- HashSetOp Intersect
-   ->  Append
-         ->  Subquery Scan on "*SELECT* 1"
-               ->  Function Scan on generate_series
-         ->  Subquery Scan on "*SELECT* 2"
-               ->  Function Scan on generate_series generate_series_1
-(6 rows)
+                           QUERY PLAN                           
+----------------------------------------------------------------
+ Nested Loop
+   Join Filter: true
+   ->  Aggregate
+         ->  Function Scan on generate_series generate_series_1
+   ->  Aggregate
+         ->  Function Scan on generate_series
+ Optimizer: Pivotal Optimizer (GPORCA)
+(7 rows)
 
 select from generate_series(1,5) union select from generate_series(1,3);
 --
@@ -1069,25 +1077,29 @@ set enable_hashagg = false;
 set enable_sort = true;
 explain (costs off)
 select from generate_series(1,5) union select from generate_series(1,3);
-                           QUERY PLAN                           
-----------------------------------------------------------------
- Unique
+                              QUERY PLAN                              
+----------------------------------------------------------------------
+ Aggregate
    ->  Append
-         ->  Function Scan on generate_series
-         ->  Function Scan on generate_series generate_series_1
-(4 rows)
+         ->  Aggregate
+               ->  Function Scan on generate_series
+         ->  Aggregate
+               ->  Function Scan on generate_series generate_series_1
+ Optimizer: Pivotal Optimizer (GPORCA)
+(7 rows)
 
 explain (costs off)
 select from generate_series(1,5) intersect select from generate_series(1,3);
-                              QUERY PLAN                              
-----------------------------------------------------------------------
- SetOp Intersect
-   ->  Append
-         ->  Subquery Scan on "*SELECT* 1"
-               ->  Function Scan on generate_series
-         ->  Subquery Scan on "*SELECT* 2"
-               ->  Function Scan on generate_series generate_series_1
-(6 rows)
+                           QUERY PLAN                           
+----------------------------------------------------------------
+ Nested Loop
+   Join Filter: true
+   ->  Aggregate
+         ->  Function Scan on generate_series generate_series_1
+   ->  Aggregate
+         ->  Function Scan on generate_series
+ Optimizer: Pivotal Optimizer (GPORCA)
+(7 rows)
 
 select from generate_series(1,5) union select from generate_series(1,3);
 --
@@ -1164,9 +1176,9 @@ explain (costs off)
          ->  Result
                Filter: (((t1.a || t1.b)) = 'ab'::text)
                ->  Seq Scan on t1
-         ->  Seq Scan on t2
-               Filter: (ab = 'ab'::text)
- Optimizer: Pivotal Optimizer (GPORCA)
+         ->  Index Only Scan using t2_pkey on t2
+               Index Cond: (ab = 'ab'::text)
+ Optimizer: GPORCA
 (8 rows)
 
 explain (costs off)
@@ -1188,9 +1200,9 @@ explain (costs off)
                            ->  Result
                                  Filter: (((t1.a || t1.b)) = 'ab'::text)
                                  ->  Seq Scan on t1
-                     ->  Seq Scan on t2
-                           Filter: (ab = 'ab'::text)
- Optimizer: Pivotal Optimizer (GPORCA)
+                     ->  Index Only Scan using t2_pkey on t2
+                           Index Cond: (ab = 'ab'::text)
+ Optimizer: GPORCA
 (14 rows)
 
 --
@@ -1331,23 +1343,21 @@ SELECT * FROM
    SELECT 2 AS t, 4 AS x) ss
 WHERE x < 4
 ORDER BY x;
-                            QUERY PLAN                            
-------------------------------------------------------------------
- Sort
-   Sort Key: (generate_series(1, 10))
-   ->  GroupAggregate
-         Group Key: (1), (generate_series(1, 10))
-         ->  Sort
-               Sort Key: (1), (generate_series(1, 10))
-               ->  Append
-                     ->  Result
-                           Filter: ((generate_series(1, 10)) < 4)
-                           ->  ProjectSet
-                                 ->  Result
-                     ->  Result
-                           One-Time Filter: false
- Optimizer: Pivotal Optimizer (GPORCA)
-(14 rows)
+                         QUERY PLAN                         
+------------------------------------------------------------
+ GroupAggregate
+   Group Key: (1), (generate_series(1, 10))
+   ->  Sort
+         Sort Key: (generate_series(1, 10)), (1)
+         ->  Append
+               ->  Result
+                     Filter: ((generate_series(1, 10)) < 4)
+                     ->  ProjectSet
+                           ->  Result
+               ->  Result
+                     One-Time Filter: false
+ Optimizer: GPORCA
+(12 rows)
 
 SELECT * FROM
   (SELECT 1 AS t, generate_series(1,10) AS x
@@ -1406,27 +1416,27 @@ select distinct q1 from
    union all
    select distinct * from int8_tbl i82) ss
 where q2 = q2;
-                             QUERY PLAN                              
----------------------------------------------------------------------
+                          QUERY PLAN                          
+--------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  GroupAggregate
-         Group Key: int8_tbl.q1
+         Group Key: i81.q1
          ->  Sort
-               Sort Key: int8_tbl.q1
+               Sort Key: i81.q1
                ->  Append
                      ->  GroupAggregate
-                           Group Key: int8_tbl.q1
+                           Group Key: i81.q1
                            ->  Sort
-                                 Sort Key: int8_tbl.q1
-                                 ->  Seq Scan on int8_tbl
+                                 Sort Key: i81.q1
+                                 ->  Seq Scan on int8_tbl i81
                                        Filter: (q2 = q2)
                      ->  GroupAggregate
-                           Group Key: int8_tbl_1.q1
+                           Group Key: i82.q1
                            ->  Sort
-                                 Sort Key: int8_tbl_1.q1
-                                 ->  Seq Scan on int8_tbl int8_tbl_1
+                                 Sort Key: i82.q1
+                                 ->  Seq Scan on int8_tbl i82
                                        Filter: (q2 = q2)
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: GPORCA
 (19 rows)
 
 select distinct q1 from
@@ -1446,27 +1456,27 @@ select distinct q1 from
    union all
    select distinct * from int8_tbl i82) ss
 where -q1 = q2;
-                             QUERY PLAN                              
----------------------------------------------------------------------
+                          QUERY PLAN                          
+--------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  GroupAggregate
-         Group Key: int8_tbl.q1
+         Group Key: i81.q1
          ->  Sort
-               Sort Key: int8_tbl.q1
+               Sort Key: i81.q1
                ->  Append
                      ->  GroupAggregate
-                           Group Key: int8_tbl.q1
+                           Group Key: i81.q1
                            ->  Sort
-                                 Sort Key: int8_tbl.q1
-                                 ->  Seq Scan on int8_tbl
+                                 Sort Key: i81.q1
+                                 ->  Seq Scan on int8_tbl i81
                                        Filter: ((- q1) = q2)
                      ->  GroupAggregate
-                           Group Key: int8_tbl_1.q1
+                           Group Key: i82.q1
                            ->  Sort
-                                 Sort Key: int8_tbl_1.q1
-                                 ->  Seq Scan on int8_tbl int8_tbl_1
+                                 Sort Key: i82.q1
+                                 ->  Seq Scan on int8_tbl i82
                                        Filter: ((- q1) = q2)
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: GPORCA
 (19 rows)
 
 select distinct q1 from
@@ -1495,14 +1505,14 @@ select * from
 ---------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
-         Hash Cond: (expensivefunc(t3.x) = int4_tbl.f1)
+         Hash Cond: (expensivefunc(a.x) = int4_tbl.f1)
          ->  Append
-               ->  Seq Scan on t3
-               ->  Seq Scan on t3 t3_1
+               ->  Seq Scan on t3 a
+               ->  Seq Scan on t3 b
          ->  Hash
                ->  Broadcast Motion 3:3  (slice2; segments: 3)
                      ->  Seq Scan on int4_tbl
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: GPORCA
 (10 rows)
 
 select * from
@@ -1523,17 +1533,17 @@ select * from
    union all
    select *, 1 as x from int8_tbl b) ss
 where (x = 0) or (q1 >= q2 and q1 <= q2);
-                                                  QUERY PLAN                                                  
---------------------------------------------------------------------------------------------------------------
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
          ->  Result
-               Filter: (((0) = 0) OR ((int8_tbl.q1 >= int8_tbl.q2) AND (int8_tbl.q1 <= int8_tbl.q2)))
-               ->  Seq Scan on int8_tbl
+               Filter: (((0) = 0) OR ((a.q1 >= a.q2) AND (a.q1 <= a.q2)))
+               ->  Seq Scan on int8_tbl a
          ->  Result
-               Filter: (((1) = 0) OR ((int8_tbl_1.q1 >= int8_tbl_1.q2) AND (int8_tbl_1.q1 <= int8_tbl_1.q2)))
-               ->  Seq Scan on int8_tbl int8_tbl_1
- Optimizer: Pivotal Optimizer (GPORCA)
+               Filter: (((1) = 0) OR ((b.q1 >= b.q2) AND (b.q1 <= b.q2)))
+               ->  Seq Scan on int8_tbl b
+ Optimizer: GPORCA
 (9 rows)
 
 select * from

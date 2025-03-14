@@ -4834,15 +4834,17 @@ EXPLAIN SELECT
          LIMIT 1
      )
 FROM ext_subplan_t1;
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
- Foreign Scan on ext_subplan_t1  (cost=0.00..0.00 rows=1 width=8)
+                                             QUERY PLAN                                             
+----------------------------------------------------------------------------------------------------
+ Foreign Scan on ext_subplan_t1  (cost=0.00..451.90 rows=1000000 width=4)
    SubPlan 1
-     ->  Limit  (cost=0.00..0.00 rows=1 width=4)
-           ->  Foreign Scan on ext_subplan_t2  (cost=0.00..0.00 rows=1 width=4)
-                 Filter: (c1 = ext_subplan_t1.c1)
- Optimizer: Postgres query optimizer
-(6 rows)
+     ->  Limit  (cost=0.00..65800467.34 rows=1 width=4)
+           ->  Result  (cost=0.00..65800463.34 rows=1 width=4)
+                 Filter: (ext_subplan_t2.c1 = ext_subplan_t1.c1)
+                 ->  Materialize  (cost=0.00..463.34 rows=1000000 width=4)
+                       ->  Foreign Scan on ext_subplan_t2  (cost=0.00..451.90 rows=1000000 width=4)
+ Optimizer: GPORCA
+(8 rows)
 
 SELECT
      c1,

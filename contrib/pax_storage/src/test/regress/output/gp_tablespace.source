@@ -1,6 +1,6 @@
 -- start_matchignore
--- m/WARNING:  tablespace symlink path is too long for TAR/
--- m/DETAIL:  The symlinked path \".*\" will be truncated to 100 characters when sending a TAR to the utilities \(e.g. pg_basebackup\)/
+-- m/DETAIL:  The location is used to create a symlink target from pg_tblspc.*/
+-- m/WARNING:  tablespace location .*is too long for TAR*/
 -- end_matchignore
 create or replace function has_init_file_for_oid(object oid) returns boolean as $$
 	select count(pg_stat_file(p.pg_relation_filepath || '_init')) = 1 as success

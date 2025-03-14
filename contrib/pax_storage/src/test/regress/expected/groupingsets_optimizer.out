@@ -636,14 +636,17 @@ LINE 3:        lateral (select a, b, sum(v.x) from gstest_data(v.x) ...
 -- min max optimization should still work with GROUP BY ()
 explain (costs off)
   select min(unique1) from tenk1 GROUP BY ();
-                   QUERY PLAN                   
-------------------------------------------------
- Finalize Aggregate
-   ->  Gather Motion 3:1  (slice1; segments: 3)
-         ->  Partial Aggregate
-               ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+                              QUERY PLAN
+----------------------------------------------------------------------
+ Aggregate
+   ->  Limit
+         ->  Gather Motion 3:1  (slice1; segments: 3)
+               Merge Key: unique1
+               ->  Limit
+                     ->  Index Only Scan using tenk1_unique1 on tenk1
+                           Index Cond: (unique1 IS NOT NULL)
+ Optimizer: GPORCA
+(8 rows)
 
 -- Views with GROUPING SET queries
 CREATE VIEW gstest_view AS select a, b, grouping(a,b), sum(c), count(*), max(c)
@@ -910,27 +913,28 @@ explain (costs off)
                                           QUERY PLAN                                          
 ----------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: (NULL::integer)
+   Merge Key: share0_ref2.a
    ->  Sort
-         Sort Key: (NULL::integer)
+         Sort Key: share0_ref2.a
          ->  Sequence
                ->  Shared Scan (share slice:id 1:0)
                      ->  Seq Scan on gstest2
                ->  Append
-                     ->  Redistribute Motion 1:3  (slice2)
-                           ->  Result
-                                 Filter: ((NULL::integer) IS DISTINCT FROM 1)
-                                 ->  Finalize Aggregate
-                                       ->  Gather Motion 3:1  (slice3; segments: 3)
-                                             ->  Partial Aggregate
-                                                   ->  Shared Scan (share slice:id 3:0)
                      ->  GroupAggregate
-                           Group Key: share0_ref3.a
+                           Group Key: share0_ref2.a
                            ->  Sort
-                                 Sort Key: share0_ref3.a
+                                 Sort Key: share0_ref2.a
                                  ->  Result
-                                       Filter: (share0_ref3.a IS DISTINCT FROM 1)
+                                       Filter: (share0_ref2.a IS DISTINCT FROM 1)
                                        ->  Shared Scan (share slice:id 1:0)
+                     ->  Result
+                           Filter: ((NULL::integer) IS DISTINCT FROM 1)
+                           ->  Result
+                                 ->  Redistribute Motion 1:3  (slice2)
+                                       ->  Finalize Aggregate
+                                             ->  Gather Motion 3:1  (slice3; segments: 3)
+                                                   ->  Partial Aggregate
+                                                         ->  Shared Scan (share slice:id 3:0)
  Optimizer: Pivotal Optimizer (GPORCA)
 (24 rows)
 
@@ -1348,24 +1352,24 @@ select a, b, sum(v), count(*) from gstest_empty group by grouping sets ((a,b),a)
 
 explain (costs off)
   select a, b, sum(v), count(*) from gstest_empty group by grouping sets ((a,b),a);
-                         QUERY PLAN                         
-------------------------------------------------------------
- Sequence
-   ->  Shared Scan (share slice:id 0:0)
-         ->  Gather Motion 3:1  (slice1; segments: 3)
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Sequence
+         ->  Shared Scan (share slice:id 1:0)
                ->  Seq Scan on gstest_empty
-   ->  Append
-         ->  GroupAggregate
-               Group Key: share0_ref2.a
-               ->  Sort
-                     Sort Key: share0_ref2.a
-                     ->  Shared Scan (share slice:id 0:0)
-         ->  GroupAggregate
-               Group Key: share0_ref3.a, share0_ref3.b
-               ->  Sort
-                     Sort Key: share0_ref3.a, share0_ref3.b
-                     ->  Shared Scan (share slice:id 0:0)
- Optimizer: Pivotal Optimizer (GPORCA)
+         ->  Append
+               ->  GroupAggregate
+                     Group Key: share0_ref2.a
+                     ->  Sort
+                           Sort Key: share0_ref2.a
+                           ->  Shared Scan (share slice:id 1:0)
+               ->  GroupAggregate
+                     Group Key: share0_ref3.a, share0_ref3.b
+                     ->  Sort
+                           Sort Key: share0_ref3.a, share0_ref3.b
+                           ->  Shared Scan (share slice:id 1:0)
+ Optimizer: GPORCA
 (16 rows)
 
 select a, b, sum(v), count(*) from gstest_empty group by grouping sets ((a,b),());
@@ -1562,31 +1566,42 @@ select a, b, sum(c), sum(d), sum(e), sum(sum(c)) over (order by a,b) as rsum
 explain (costs off)
   select a, b, sum(c), sum(d), sum(e), sum(sum(c)) over (order by a,b) as rsum
     from gstest2 group by cube (a,b) order by rsum, a, b;
-                                  QUERY PLAN
-------------------------------------------------------------------------------
+                                             QUERY PLAN                                             
+----------------------------------------------------------------------------------------------------
  Sort
-   Sort Key: (sum((sum(c))) OVER (?)), a, b
+   Sort Key: (sum((sum(share0_ref2.c))) OVER (?)), share0_ref2.a, share0_ref2.b
    ->  WindowAgg
-         Order By: a, b
+         Order By: share0_ref2.a, share0_ref2.b
          ->  Gather Motion 3:1  (slice1; segments: 3)
-               Merge Key: a, b
+               Merge Key: share0_ref2.a, share0_ref2.b
                ->  Sort
-                     Sort Key: a, b
-                     ->  Finalize HashAggregate
-                           Group Key: a, b, (GROUPINGSET_ID())
-                           ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                                 Hash Key: a, b, (GROUPINGSET_ID())
-                                 ->  Partial GroupAggregate
-                                       Group Key: a, b
-                                       Group Key: a
-                                       Group Key: ()
-                                       Sort Key: b
-                                         Group Key: b
+                     Sort Key: share0_ref2.a, share0_ref2.b
+                     ->  Sequence
+                           ->  Shared Scan (share slice:id 1:0)
+                                 ->  Seq Scan on gstest2
+                           ->  Append
+                                 ->  GroupAggregate
+                                       Group Key: share0_ref2.a, share0_ref2.b
                                        ->  Sort
-                                             Sort Key: a, b
-                                             ->  Seq Scan on gstest2
- Optimizer: Postgres query optimizer
-(22 rows)
+                                             Sort Key: share0_ref2.a, share0_ref2.b
+                                             ->  Shared Scan (share slice:id 1:0)
+                                 ->  HashAggregate
+                                       Group Key: share0_ref3.b
+                                       ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                                             Hash Key: share0_ref3.b
+                                             ->  Result
+                                                   ->  Shared Scan (share slice:id 2:0)
+                                 ->  HashAggregate
+                                       Group Key: share0_ref4.a
+                                       ->  Shared Scan (share slice:id 1:0)
+                                 ->  Result
+                                       ->  Redistribute Motion 1:3  (slice3)
+                                             ->  Finalize Aggregate
+                                                   ->  Gather Motion 3:1  (slice4; segments: 3)
+                                                         ->  Partial Aggregate
+                                                               ->  Shared Scan (share slice:id 4:0)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(33 rows)
 
 select a, b, sum(v.x)
   from (values (1),(2)) v(x), gstest_data(v.x)
@@ -1834,29 +1849,26 @@ select array(select row(v.a,s1.*) from (select two,four, count(*) from onek grou
 -- test the knapsack
 set enable_indexscan = false;
 set work_mem = '64kB';
-WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 explain (costs off)
   select unique1,
          count(two), count(four), count(ten),
          count(hundred), count(thousand), count(twothousand),
          count(*)
     from tenk1 group by grouping sets (unique1,twothousand,thousand,hundred,ten,four,two);
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                               QUERY PLAN                               
+------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Sequence
          ->  Shared Scan (share slice:id 1:0)
                ->  Seq Scan on tenk1
          ->  Append
-               ->  Finalize GroupAggregate
+               ->  Finalize HashAggregate
                      Group Key: share0_ref2.two
-                     ->  Sort
-                           Sort Key: share0_ref2.two
-                           ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                                 Hash Key: share0_ref2.two
-                                 ->  Streaming Partial HashAggregate
-                                       Group Key: share0_ref2.two
-                                       ->  Shared Scan (share slice:id 2:0)
+                     ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                           Hash Key: share0_ref2.two
+                           ->  Streaming Partial HashAggregate
+                                 Group Key: share0_ref2.two
+                                 ->  Shared Scan (share slice:id 2:0)
                ->  Finalize HashAggregate
                      Group Key: share0_ref3.four
                      ->  Redistribute Motion 3:3  (slice3; segments: 3)
@@ -1895,7 +1907,7 @@ explain (costs off)
                      Group Key: share0_ref8.unique1
                      ->  Shared Scan (share slice:id 1:0)
  Optimizer: Pivotal Optimizer (GPORCA)
-(52 rows)
+(50 rows)
 
 explain (costs off)
   select unique1,
@@ -1903,22 +1915,20 @@ explain (costs off)
          count(hundred), count(thousand), count(twothousand),
          count(*)
     from tenk1 group by grouping sets (unique1,hundred,ten,four,two);
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                               QUERY PLAN                               
+------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Sequence
          ->  Shared Scan (share slice:id 1:0)
                ->  Seq Scan on tenk1
          ->  Append
-               ->  Finalize GroupAggregate
+               ->  Finalize HashAggregate
                      Group Key: share0_ref2.two
-                     ->  Sort
-                           Sort Key: share0_ref2.two
-                           ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                                 Hash Key: share0_ref2.two
-                                 ->  Streaming Partial HashAggregate
-                                       Group Key: share0_ref2.two
-                                       ->  Shared Scan (share slice:id 2:0)
+                     ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                           Hash Key: share0_ref2.two
+                           ->  Streaming Partial HashAggregate
+                                 Group Key: share0_ref2.two
+                                 ->  Shared Scan (share slice:id 2:0)
                ->  Finalize HashAggregate
                      Group Key: share0_ref3.four
                      ->  Redistribute Motion 3:3  (slice3; segments: 3)
@@ -1944,32 +1954,29 @@ explain (costs off)
                      Group Key: share0_ref6.unique1
                      ->  Shared Scan (share slice:id 1:0)
  Optimizer: Pivotal Optimizer (GPORCA)
-(39 rows)
+(37 rows)
 
 set work_mem = '384kB';
-WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 explain (costs off)
   select unique1,
          count(two), count(four), count(ten),
          count(hundred), count(thousand), count(twothousand),
          count(*)
     from tenk1 group by grouping sets (unique1,twothousand,thousand,hundred,ten,four,two);
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                               QUERY PLAN                               
+------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Sequence
          ->  Shared Scan (share slice:id 1:0)
                ->  Seq Scan on tenk1
          ->  Append
-               ->  Finalize GroupAggregate
+               ->  Finalize HashAggregate
                      Group Key: share0_ref2.two
-                     ->  Sort
-                           Sort Key: share0_ref2.two
-                           ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                                 Hash Key: share0_ref2.two
-                                 ->  Streaming Partial HashAggregate
-                                       Group Key: share0_ref2.two
-                                       ->  Shared Scan (share slice:id 2:0)
+                     ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                           Hash Key: share0_ref2.two
+                           ->  Streaming Partial HashAggregate
+                                 Group Key: share0_ref2.two
+                                 ->  Shared Scan (share slice:id 2:0)
                ->  Finalize HashAggregate
                      Group Key: share0_ref3.four
                      ->  Redistribute Motion 3:3  (slice3; segments: 3)
@@ -2008,7 +2015,7 @@ explain (costs off)
                      Group Key: share0_ref8.unique1
                      ->  Shared Scan (share slice:id 1:0)
  Optimizer: Pivotal Optimizer (GPORCA)
-(52 rows)
+(50 rows)
 
 -- check collation-sensitive matching between grouping expressions
 -- (similar to a check for aggregates, but there are additional code
@@ -2043,7 +2050,6 @@ update pg_class set reltuples = 10 where relname='bug_16784';
 ERROR:  permission denied: "pg_class" is a system catalog
 insert into bug_16784 select g/10, g from generate_series(1,40) g;
 set work_mem='64kB';
-WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 set enable_sort = false;
 select * from
   (values (1),(2)) v(a),
@@ -2239,7 +2245,6 @@ analyze gs_data_1;
 update pg_class set reltuples = 10 where relname='gs_data_1';
 ERROR:  permission denied: "pg_class" is a system catalog
 set work_mem='64kB';
-WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 -- Produce results with sorting.
 set enable_sort = true;
 set enable_hashagg = false;
@@ -2249,24 +2254,37 @@ select g1000, g100, g10, sum(g::numeric), count(*), max(g::text) from
   (select g%1000 as g1000, g%100 as g100, g%10 as g10, g
    from generate_series(0,199999) g) s
 group by cube (g1000,g100,g10);
-                          QUERY PLAN
----------------------------------------------------------------
- GroupAggregate
-   Group Key: ((g.g % 1000)), ((g.g % 100)), ((g.g % 10))
-   Group Key: ((g.g % 1000)), ((g.g % 100))
-   Group Key: ((g.g % 1000))
-   Group Key: ()
-   Sort Key: ((g.g % 100)), ((g.g % 10))
-     Group Key: ((g.g % 100)), ((g.g % 10))
-     Group Key: ((g.g % 100))
-   Sort Key: ((g.g % 10)), ((g.g % 1000))
-     Group Key: ((g.g % 10)), ((g.g % 1000))
-     Group Key: ((g.g % 10))
-   ->  Sort
-         Sort Key: ((g.g % 1000)), ((g.g % 100)), ((g.g % 10))
-         ->  Function Scan on generate_series g
- Optimizer: Postgres query optimizer
-(15 rows)
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
+ Sequence
+   ->  Shared Scan (share slice:id 0:0)
+         ->  Function Scan on generate_series
+   ->  Append
+         ->  HashAggregate
+               Group Key: share0_ref2.g1000, share0_ref2.g100, share0_ref2.g10
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref3.g100, share0_ref3.g10
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref4.g1000, share0_ref4.g10
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref5.g10
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref6.g1000, share0_ref6.g100
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref7.g100
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref8.g1000
+               ->  Shared Scan (share slice:id 0:0)
+         ->  Aggregate
+               ->  Shared Scan (share slice:id 0:0)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(28 rows)
 
 create table gs_group_1 as
 select g1000, g100, g10, sum(g::numeric), count(*), max(g::text) from
@@ -2281,24 +2299,37 @@ select g1000, g100, g10, sum(g::numeric), count(*), max(g::text) from
   (select g%1000 as g1000, g%100 as g100, g%10 as g10, g
    from generate_series(0,199999) g) s
 group by cube (g1000,g100,g10);
-                          QUERY PLAN
----------------------------------------------------------------
- GroupAggregate
-   Group Key: ((g.g % 1000)), ((g.g % 100)), ((g.g % 10))
-   Group Key: ((g.g % 1000)), ((g.g % 100))
-   Group Key: ((g.g % 1000))
-   Group Key: ()
-   Sort Key: ((g.g % 100)), ((g.g % 10))
-     Group Key: ((g.g % 100)), ((g.g % 10))
-     Group Key: ((g.g % 100))
-   Sort Key: ((g.g % 10)), ((g.g % 1000))
-     Group Key: ((g.g % 10)), ((g.g % 1000))
-     Group Key: ((g.g % 10))
-   ->  Sort
-         Sort Key: ((g.g % 1000)), ((g.g % 100)), ((g.g % 10))
-         ->  Function Scan on generate_series g
- Optimizer: Postgres query optimizer
-(15 rows)
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
+ Sequence
+   ->  Shared Scan (share slice:id 0:0)
+         ->  Function Scan on generate_series
+   ->  Append
+         ->  HashAggregate
+               Group Key: share0_ref2.g1000, share0_ref2.g100, share0_ref2.g10
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref3.g100, share0_ref3.g10
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref4.g1000, share0_ref4.g10
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref5.g10
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref6.g1000, share0_ref6.g100
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref7.g100
+               ->  Shared Scan (share slice:id 0:0)
+         ->  HashAggregate
+               Group Key: share0_ref8.g1000
+               ->  Shared Scan (share slice:id 0:0)
+         ->  Aggregate
+               ->  Shared Scan (share slice:id 0:0)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(28 rows)
 
 create table gs_hash_1 as
 select g1000, g100, g10, sum(g::numeric), count(*), max(g::text) from
@@ -2308,7 +2339,6 @@ group by cube (g1000,g100,g10) distributed by (g1000);
 set jit_above_cost to default;
 set enable_sort = true;
 set work_mem to default;
-WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 -- Compare results of ORCA plan that relies on "IS NOT DISTINCT FROM" HASH Join
 (select * from gs_hash_1 except select * from gs_group_1)
   union all

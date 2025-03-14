@@ -1300,16 +1300,11 @@ select * from int4_tbl o where (f1, f1) in
                            Output: i.f1, ((generate_series(1, 50)) / 10)
                            ->  ProjectSet
                                  Output: generate_series(1, 50), i.f1
-                                 ->  GroupAggregate
+                                 ->  Seq Scan on public.int4_tbl i
                                        Output: i.f1
-                                       Group Key: i.f1
-                                       ->  Sort
-                                             Output: i.f1
-                                             Sort Key: i.f1
-                                             ->  Seq Scan on public.int4_tbl i
-                                                   Output: i.f1
+ Settings: optimizer = 'off'
  Optimizer: Postgres query optimizer
-(25 rows)
+(20 rows)
 
 select * from int4_tbl o where (f1, f1) in
   (select f1, generate_series(1,50) / 10 g from int4_tbl i group by f1);
@@ -1675,16 +1670,20 @@ select * from x where f1 = 1;
 explain (verbose, costs off)
 with x as (select * from (select f1, random() from subselect_tbl) ss)
 select * from x where f1 = 1;
-                 QUERY PLAN                 
---------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)
-   Output: subselect_tbl.f1, (random())
-   ->  Seq Scan on public.subselect_tbl
-         Output: subselect_tbl.f1, random()
-         Filter: (subselect_tbl.f1 = 1)
+                        QUERY PLAN                        
+----------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   Output: x.f1, x.random
+   ->  Subquery Scan on x
+         Output: x.f1, x.random
+         Filter: (x.f1 = 1)
+         ->  Shared Scan (share slice:id 1:0)
+               Output: share0_ref1.f1, share0_ref1.random
+               ->  Seq Scan on public.subselect_tbl
+                     Output: subselect_tbl.f1, random()
+ Settings: optimizer = 'off'
  Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing=on, optimizer=off
-(7 rows)
+(11 rows)
 
 -- SELECT FOR UPDATE cannot be inlined
 -- GPDB: select statement with locking clause is not easy to fully supported

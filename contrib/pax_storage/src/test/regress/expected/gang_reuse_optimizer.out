@@ -26,28 +26,28 @@ explain analyze select count(*) from test_gang_reuse_t1 a
   join test_gang_reuse_t1 b using (c2)
   join test_gang_reuse_t1 c using (c2)
 ;
-                                                                        QUERY PLAN                                                                        
-----------------------------------------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=0.00..1293.00 rows=1 width=8) (actual time=12.198..12.199 rows=1 loops=1)
-   ->  Gather Motion 3:1  (slice1; gang0; segments: 3)  (cost=0.00..1293.00 rows=1 width=8) (actual time=9.198..12.182 rows=3 loops=1)
-         ->  Partial Aggregate  (cost=0.00..1293.00 rows=1 width=8) (actual time=10.824..10.824 rows=1 loops=1)
-               ->  Hash Join  (cost=0.00..1293.00 rows=1 width=1) (never executed)
-                     Hash Cond: (test_gang_reuse_t1.c2 = test_gang_reuse_t1_1.c2)
+                                                                                  QUERY PLAN                                                                                   
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=0.00..1293.00 rows=1 width=8) (actual time=8.425..8.437 rows=1 loops=1)
+   ->  Gather Motion 3:1  (slice1; gang0; segments: 3)  (cost=0.00..1293.00 rows=1 width=8) (actual time=7.120..8.391 rows=3 loops=1)
+         ->  Partial Aggregate  (cost=0.00..1293.00 rows=1 width=8) (actual time=6.288..6.301 rows=1 loops=1)
+               ->  Hash Join  (cost=0.00..1293.00 rows=1 width=1) (actual time=6.271..6.284 rows=0 loops=1)
+                     Hash Cond: (b.c2 = a.c2)
                      ->  Redistribute Motion 3:3  (slice2; gang3; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                           Hash Key: test_gang_reuse_t1.c2
-                           ->  Seq Scan on test_gang_reuse_t1  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                     ->  Hash  (cost=862.00..862.00 rows=1 width=4) (never executed)
+                           Hash Key: b.c2
+                           ->  Seq Scan on test_gang_reuse_t1 b  (cost=0.00..431.00 rows=1 width=4) (actual time=0.788..0.790 rows=0 loops=1)
+                     ->  Hash  (cost=862.00..862.00 rows=1 width=4) (actual time=2.739..2.751 rows=0 loops=1)
                            Buckets: 262144  Batches: 1  Memory Usage: 2048kB
-                           ->  Hash Join  (cost=0.00..862.00 rows=1 width=4) (never executed)
-                                 Hash Cond: (test_gang_reuse_t1_1.c2 = test_gang_reuse_t1_2.c2)
+                           ->  Hash Join  (cost=0.00..862.00 rows=1 width=4) (actual time=2.738..2.749 rows=0 loops=1)
+                                 Hash Cond: (a.c2 = c.c2)
                                  ->  Redistribute Motion 3:3  (slice3; gang6; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                                       Hash Key: test_gang_reuse_t1_1.c2
-                                       ->  Seq Scan on test_gang_reuse_t1 test_gang_reuse_t1_1  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                                 ->  Hash  (cost=431.00..431.00 rows=1 width=4) (never executed)
+                                       Hash Key: a.c2
+                                       ->  Seq Scan on test_gang_reuse_t1 a  (cost=0.00..431.00 rows=1 width=4) (actual time=0.674..0.676 rows=0 loops=1)
+                                 ->  Hash  (cost=431.00..431.00 rows=1 width=4) (actual time=0.023..0.029 rows=0 loops=1)
                                        Buckets: 262144  Batches: 1  Memory Usage: 2048kB
-                                       ->  Redistribute Motion 3:3  (slice4; gang9; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                                             Hash Key: test_gang_reuse_t1_2.c2
-                                             ->  Seq Scan on test_gang_reuse_t1 test_gang_reuse_t1_2  (cost=0.00..431.00 rows=1 width=4) (never executed)
+                                       ->  Redistribute Motion 3:3  (slice4; gang9; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (actual time=0.018..0.019 rows=0 loops=1)
+                                             Hash Key: c.c2
+                                             ->  Seq Scan on test_gang_reuse_t1 c  (cost=0.00..431.00 rows=1 width=4) (actual time=0.729..0.732 rows=0 loops=1)
  Planning Time: 136.820 ms
    (slice0)    Executor memory: 68K bytes.
    (slice1)    Executor memory: 4133K bytes avg x 3 workers, 4133K bytes max (seg0).  Work_mem: 2048K bytes max.
@@ -63,21 +63,21 @@ explain analyze select count(*) from test_gang_reuse_t1 a
 explain analyze select count(*) from test_gang_reuse_t1 a
   join test_gang_reuse_t1 b using (c2)
 ;
-                                                                  QUERY PLAN                                                                  
-----------------------------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=0.00..862.00 rows=1 width=8) (actual time=6.712..6.712 rows=1 loops=1)
-   ->  Gather Motion 3:1  (slice1; gang0; segments: 3)  (cost=0.00..862.00 rows=1 width=8) (actual time=6.243..6.696 rows=3 loops=1)
-         ->  Partial Aggregate  (cost=0.00..862.00 rows=1 width=8) (actual time=6.384..6.385 rows=1 loops=1)
-               ->  Hash Join  (cost=0.00..862.00 rows=1 width=1) (never executed)
-                     Hash Cond: (test_gang_reuse_t1.c2 = test_gang_reuse_t1_1.c2)
+                                                                            QUERY PLAN                                                                             
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=0.00..862.00 rows=1 width=8) (actual time=4.041..4.045 rows=1 loops=1)
+   ->  Gather Motion 3:1  (slice1; gang0; segments: 3)  (cost=0.00..862.00 rows=1 width=8) (actual time=3.745..4.031 rows=3 loops=1)
+         ->  Partial Aggregate  (cost=0.00..862.00 rows=1 width=8) (actual time=3.489..3.494 rows=1 loops=1)
+               ->  Hash Join  (cost=0.00..862.00 rows=1 width=1) (actual time=3.481..3.485 rows=0 loops=1)
+                     Hash Cond: (a.c2 = b.c2)
                      ->  Redistribute Motion 3:3  (slice2; gang3; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                           Hash Key: test_gang_reuse_t1.c2
-                           ->  Seq Scan on test_gang_reuse_t1  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                     ->  Hash  (cost=431.00..431.00 rows=1 width=4) (never executed)
+                           Hash Key: a.c2
+                           ->  Seq Scan on test_gang_reuse_t1 a  (cost=0.00..431.00 rows=1 width=4) (actual time=0.435..0.435 rows=0 loops=1)
+                     ->  Hash  (cost=431.00..431.00 rows=1 width=4) (actual time=0.016..0.018 rows=0 loops=1)
                            Buckets: 524288  Batches: 1  Memory Usage: 4096kB
-                           ->  Redistribute Motion 3:3  (slice3; gang6; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                                 Hash Key: test_gang_reuse_t1_1.c2
-                                 ->  Seq Scan on test_gang_reuse_t1 test_gang_reuse_t1_1  (cost=0.00..431.00 rows=1 width=4) (never executed)
+                           ->  Redistribute Motion 3:3  (slice3; gang6; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (actual time=0.014..0.014 rows=0 loops=1)
+                                 Hash Key: b.c2
+                                 ->  Seq Scan on test_gang_reuse_t1 b  (cost=0.00..431.00 rows=1 width=4) (actual time=0.371..0.372 rows=0 loops=1)
  Planning Time: 43.425 ms
    (slice0)    Executor memory: 49K bytes.
    (slice1)    Executor memory: 4121K bytes avg x 3 workers, 4121K bytes max (seg0).  Work_mem: 4096K bytes max.
@@ -93,28 +93,28 @@ explain analyze select count(*) from test_gang_reuse_t1 a
   join test_gang_reuse_t1 b using (c2)
   join test_gang_reuse_t1 c using (c2)
 ;
-                                                                        QUERY PLAN                                                                        
-----------------------------------------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=0.00..1293.00 rows=1 width=8) (actual time=4.574..4.575 rows=1 loops=1)
-   ->  Gather Motion 3:1  (slice1; gang0; segments: 3)  (cost=0.00..1293.00 rows=1 width=8) (actual time=3.877..4.560 rows=3 loops=1)
-         ->  Partial Aggregate  (cost=0.00..1293.00 rows=1 width=8) (actual time=4.987..4.988 rows=1 loops=1)
-               ->  Hash Join  (cost=0.00..1293.00 rows=1 width=1) (never executed)
-                     Hash Cond: (test_gang_reuse_t1.c2 = test_gang_reuse_t1_1.c2)
+                                                                                  QUERY PLAN                                                                                   
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=0.00..1293.00 rows=1 width=8) (actual time=5.900..5.906 rows=1 loops=1)
+   ->  Gather Motion 3:1  (slice1; gang0; segments: 3)  (cost=0.00..1293.00 rows=1 width=8) (actual time=4.876..5.889 rows=3 loops=1)
+         ->  Partial Aggregate  (cost=0.00..1293.00 rows=1 width=8) (actual time=4.573..4.580 rows=1 loops=1)
+               ->  Hash Join  (cost=0.00..1293.00 rows=1 width=1) (actual time=4.564..4.569 rows=0 loops=1)
+                     Hash Cond: (b.c2 = a.c2)
                      ->  Redistribute Motion 3:3  (slice2; gang3; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                           Hash Key: test_gang_reuse_t1.c2
-                           ->  Seq Scan on test_gang_reuse_t1  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                     ->  Hash  (cost=862.00..862.00 rows=1 width=4) (never executed)
+                           Hash Key: b.c2
+                           ->  Seq Scan on test_gang_reuse_t1 b  (cost=0.00..431.00 rows=1 width=4) (actual time=0.335..0.336 rows=0 loops=1)
+                     ->  Hash  (cost=862.00..862.00 rows=1 width=4) (actual time=3.069..3.074 rows=0 loops=1)
                            Buckets: 262144  Batches: 1  Memory Usage: 2048kB
-                           ->  Hash Join  (cost=0.00..862.00 rows=1 width=4) (never executed)
-                                 Hash Cond: (test_gang_reuse_t1_1.c2 = test_gang_reuse_t1_2.c2)
+                           ->  Hash Join  (cost=0.00..862.00 rows=1 width=4) (actual time=3.068..3.072 rows=0 loops=1)
+                                 Hash Cond: (a.c2 = c.c2)
                                  ->  Redistribute Motion 3:3  (slice3; gang6; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                                       Hash Key: test_gang_reuse_t1_1.c2
-                                       ->  Seq Scan on test_gang_reuse_t1 test_gang_reuse_t1_1  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                                 ->  Hash  (cost=431.00..431.00 rows=1 width=4) (never executed)
+                                       Hash Key: a.c2
+                                       ->  Seq Scan on test_gang_reuse_t1 a  (cost=0.00..431.00 rows=1 width=4) (actual time=0.277..0.278 rows=0 loops=1)
+                                 ->  Hash  (cost=431.00..431.00 rows=1 width=4) (actual time=1.691..1.693 rows=0 loops=1)
                                        Buckets: 262144  Batches: 1  Memory Usage: 2048kB
-                                       ->  Redistribute Motion 3:3  (slice4; gang9; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                                             Hash Key: test_gang_reuse_t1_2.c2
-                                             ->  Seq Scan on test_gang_reuse_t1 test_gang_reuse_t1_2  (cost=0.00..431.00 rows=1 width=4) (never executed)
+                                       ->  Redistribute Motion 3:3  (slice4; gang9; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (actual time=1.689..1.689 rows=0 loops=1)
+                                             Hash Key: c.c2
+                                             ->  Seq Scan on test_gang_reuse_t1 c  (cost=0.00..431.00 rows=1 width=4) (actual time=1.224..1.225 rows=0 loops=1)
  Planning Time: 68.273 ms
    (slice0)    Executor memory: 68K bytes.
    (slice1)    Executor memory: 4133K bytes avg x 3 workers, 4133K bytes max (seg1).  Work_mem: 2048K bytes max.
@@ -130,21 +130,21 @@ explain analyze select count(*) from test_gang_reuse_t1 a
 explain analyze select count(*) from test_gang_reuse_t1 a
   join test_gang_reuse_t1 b using (c2)
 ;
-                                                                  QUERY PLAN                                                                  
-----------------------------------------------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=0.00..862.00 rows=1 width=8) (actual time=5.348..5.348 rows=1 loops=1)
-   ->  Gather Motion 3:1  (slice1; gang0; segments: 3)  (cost=0.00..862.00 rows=1 width=8) (actual time=4.292..5.335 rows=3 loops=1)
-         ->  Partial Aggregate  (cost=0.00..862.00 rows=1 width=8) (actual time=3.496..3.497 rows=1 loops=1)
-               ->  Hash Join  (cost=0.00..862.00 rows=1 width=1) (never executed)
-                     Hash Cond: (test_gang_reuse_t1.c2 = test_gang_reuse_t1_1.c2)
+                                                                            QUERY PLAN                                                                             
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=0.00..862.00 rows=1 width=8) (actual time=4.176..4.180 rows=1 loops=1)
+   ->  Gather Motion 3:1  (slice1; gang0; segments: 3)  (cost=0.00..862.00 rows=1 width=8) (actual time=4.010..4.160 rows=3 loops=1)
+         ->  Partial Aggregate  (cost=0.00..862.00 rows=1 width=8) (actual time=3.684..3.689 rows=1 loops=1)
+               ->  Hash Join  (cost=0.00..862.00 rows=1 width=1) (actual time=3.675..3.679 rows=0 loops=1)
+                     Hash Cond: (a.c2 = b.c2)
                      ->  Redistribute Motion 3:3  (slice2; gang3; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                           Hash Key: test_gang_reuse_t1.c2
-                           ->  Seq Scan on test_gang_reuse_t1  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                     ->  Hash  (cost=431.00..431.00 rows=1 width=4) (never executed)
+                           Hash Key: a.c2
+                           ->  Seq Scan on test_gang_reuse_t1 a  (cost=0.00..431.00 rows=1 width=4) (actual time=0.276..0.277 rows=0 loops=1)
+                     ->  Hash  (cost=431.00..431.00 rows=1 width=4) (actual time=0.852..0.854 rows=0 loops=1)
                            Buckets: 524288  Batches: 1  Memory Usage: 4096kB
-                           ->  Redistribute Motion 3:3  (slice3; gang6; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (never executed)
-                                 Hash Key: test_gang_reuse_t1_1.c2
-                                 ->  Seq Scan on test_gang_reuse_t1 test_gang_reuse_t1_1  (cost=0.00..431.00 rows=1 width=4) (never executed)
+                           ->  Redistribute Motion 3:3  (slice3; gang6; segments: 3)  (cost=0.00..431.00 rows=1 width=4) (actual time=0.848..0.849 rows=0 loops=1)
+                                 Hash Key: b.c2
+                                 ->  Seq Scan on test_gang_reuse_t1 b  (cost=0.00..431.00 rows=1 width=4) (actual time=0.326..0.327 rows=0 loops=1)
  Planning Time: 35.557 ms
    (slice0)    Executor memory: 49K bytes.
    (slice1)    Executor memory: 4121K bytes avg x 3 workers, 4121K bytes max (seg0).  Work_mem: 4096K bytes max.

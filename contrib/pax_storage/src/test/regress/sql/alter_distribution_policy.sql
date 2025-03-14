@@ -135,6 +135,16 @@ select * from atsdb;
 select * from distcheck where rel = 'atsdb';
 drop table atsdb;
 
+-- check DROP TYPE..CASCADE updates distribution policy to random if
+-- any a dist key column is dropped for multi key distribution key columns
+create domain int_new as int;
+create table atsdb (i int_new, j int, t text, n numeric) distributed by (i, j);
+insert into atsdb select i, i+1, i+2, i+3 from generate_series(1, 20) i;
+drop type int_new cascade;
+select * from atsdb;
+select * from distcheck where rel = 'atsdb';
+drop table atsdb;
+
 -- Check that we correctly cascade for partitioned tables
 create table atsdb (i int, j int, k int) distributed by (i) partition by range(k)
 (start(1) end(10) every(1));
@@ -150,6 +160,57 @@ select * from atsdb order by 1, 2, 3;
 insert into atsdb select i+2, i+1, i from generate_series(1, 9) i;
 select * from atsdb order by 1, 2, 3;
 drop table atsdb;
+
+-- check distribution correctly cascaded for inherited tables
+create table dropColumnCascade (a int, b int, e int);
+create table dropColumnCascadeChild (c int) inherits (dropColumnCascade);
+create table dropColumnCascadeAnother (d int) inherits (dropColumnCascadeChild);
+insert into dropColumnCascadeAnother select i,i,i from generate_series(1,10)i;
+alter table dropColumnCascade drop column a;
+select * from distcheck where rel like 'dropcolumnicascade%';
+drop table dropColumnCascade cascade;
+
+-- check DROP TYPE..CASCADE for dist key type for inherited tables
+-- distribution should be set to randomly for base and inherited tables
+create domain int_new as int;
+create table dropColumnCascade (a int_new, b int, e int);
+create table dropColumnCascadeChild (c int) inherits (dropColumnCascade);
+create table dropColumnCascadeAnother (d int) inherits (dropColumnCascadeChild);
+insert into dropColumnCascadeAnother select i,i,i from generate_series(1,10)i;
+drop type int_new cascade;
+select * from distcheck where rel like 'dropcolumncascade%';
+drop table dropColumnCascade cascade;
+
+-- Test corner cases in dropping distkey as inherited columns
+create table p1 (f1 int, f2 int);
+create table c1 (f1 int not null) inherits(p1);
+alter table p1 drop column f1;
+-- only p1 is randomly distributed, c1 is still distributed by c1.f1
+select * from distcheck where rel in ('p1', 'c1');
+alter table c1 drop column f1;
+-- both c1 and p1 randomly distributed
+select * from distcheck where rel in ('p1', 'c1');
+drop table p1 cascade;
+
+create table p1 (f1 int, f2 int);
+create table c1 () inherits(p1);
+alter table only p1 drop column f1;
+-- only p1 is randomly distributed, c1 is still distributed by c1.f1
+select * from distcheck where rel in ('p1', 'c1');
+drop table p1 cascade;
+
+-- check DROP TYPE..CASCADE for dist key type for inherited tables
+-- distribution should be set to randomly for base and inherited tables
+create domain int_new as int;
+create table p1 (f1 int_new, f2 int);
+create table c1 (f1 int_new not null) inherits(p1);
+create table p1_inh (f1 int_new, f2 int);
+create table c1_inh () inherits(p1_inh);
+drop type int_new cascade;
+-- all above tables set to randomly distributed
+select * from distcheck where rel in ('p1', 'c1');
+drop table p1 cascade;
+drop table p1_inh cascade;
 drop view distcheck;
 
 -- MPP-5452
@@ -241,6 +302,7 @@ drop table mpp5754;
 
 -- MPP-5918
 create role atsdb;
+-- pax table won't create toast table
 create table owner_test(i int, toast text) distributed randomly;
 alter table owner_test owner to atsdb;
 alter table owner_test set with (reorganize = true) distributed by (i);
@@ -307,11 +369,6 @@ create table abc (a int, b int, c int) distributed by (a);
 Alter table abc set distributed randomly;
 Alter table abc set with (reorganize=false) distributed randomly;
 drop table abc;
-
--- disallow, so fails
-create table atsdb (i int, j text) distributed by (j);
-alter table atsdb set with(appendonly = true);
-drop table atsdb;
 
 -- MPP-18660: duplicate entry in gp_distribution_policy
 set enable_indexscan=on;
@@ -531,3 +588,39 @@ select check_redistributed('insert into t_distbya select * from t_reorganize', '
 
 reset optimizer;
 reset gp_force_random_redistribution;
+-- When reorganize=false, we won't reorganize and this shouldn't be affected by the existing reloptions.
+CREATE TABLE public.t_reorganize_false (
+a integer,
+b integer
+) with (appendonly=false, autovacuum_enabled=false) DISTRIBUTED BY (a);
+-- Insert values which will all be on one segment
+INSERT INTO t_reorganize_false VALUES (0, generate_series(1,100));
+SELECT gp_segment_id,count(*)￼ from t_reorganize_false GROUP BY 1;
+-- Change the distribution policy but because REORGANIZE=false, it should NOT be re-distributed 
+ALTER TABLE t_reorganize_false SET WITH (REORGANIZE=false) DISTRIBUTED RANDOMLY;
+SELECT gp_segment_id,count(*)￼ from t_reorganize_false GROUP BY 1;
+DROP TABLE t_reorganize_false;
+-- Same rule should apply to partitioned table too
+CREATE TABLE public.t_reorganize_false (
+a integer,
+b integer
+)
+DISTRIBUTED BY (a) PARTITION BY RANGE(b)
+(
+PARTITION "00" START (0) END (1000) WITH (tablename='t_reorganize_false_0', appendonly='false', autovacuum_enabled=false),
+PARTITION "01" START (1000) END (2000) WITH (tablename='t_reorganize_false_1', appendonly='false', autovacuum_enabled=false),
+DEFAULT PARTITION def WITH (tablename='t_reorganize_false_def', appendonly='false', autovacuum_enabled=false)
+);
+-- Insert values which will all be on one segment
+INSERT INTO t_reorganize_false VALUES (0, generate_series(1,100));
+SELECT gp_segment_id,count(*) from t_reorganize_false GROUP BY 1;
+-- Should NOT be re-distributed
+ALTER TABLE t_reorganize_false SET WITH (REORGANIZE=false) DISTRIBUTED RANDOMLY;
+SELECT gp_segment_id,count(*) from t_reorganize_false GROUP BY 1;
+DROP TABLE t_reorganize_false;
+
+-- Check that AT SET DISTRIBUTED BY cannot be combined with other subcommands
+-- on the same table
+CREATE TABLE atsdby_multiple(i int, j int);
+ALTER TABLE atsdby_multiple SET DISTRIBUTED BY(j), ADD COLUMN k int;
+ALTER TABLE atsdby_multiple SET WITH (reorganize=true), ADD COLUMN k int;
