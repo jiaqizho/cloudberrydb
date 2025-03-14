@@ -92,7 +92,7 @@ explain select * from atsdb where i = 1;
  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.00 rows=1 width=6)
    ->  Seq Scan on atsdb  (cost=0.00..431.00 rows=1 width=6)
          Filter: (i = 1)
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: GPORCA
 (4 rows)
 
 select * from atsdb where i = 1;
@@ -108,7 +108,7 @@ explain select * from atsdb where i = 1;
  Gather Motion 1:1  (slice1; segments: 1)  (cost=0.00..431.00 rows=1 width=6)
    ->  Seq Scan on atsdb  (cost=0.00..431.00 rows=1 width=6)
          Filter: (i = 1)
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: GPORCA
 (4 rows)
 
 select * from atsdb where i = 1;
@@ -171,7 +171,7 @@ ERROR:  permission denied: "pg_class" is a system catalog
 create table atsdb (i int, j text) distributed by (j);
 insert into atsdb select i, i::text from generate_series(1, 10) i;
 alter table atsdb set with(appendonly = true);
-ERROR:  option "appendonly" not supported
+ERROR:  could not find pg_appendonly tuple for relation "atsdb" (relcache.c:2118)
 select relname, segrelid != 0, reloptions from pg_class, pg_appendonly where pg_class.oid =
 'atsdb'::regclass and relid = pg_class.oid;
  relname | ?column? | reloptions 
@@ -316,7 +316,7 @@ select * from distcheck where rel = 'atsdb';
 
 alter table atsdb drop column n;
 alter table atsdb set with(appendonly = true, compresslevel = 3);
-ERROR:  cannot specify more than one option in WITH clause
+ERROR:  could not find pg_appendonly tuple for relation "atsdb" (relcache.c:2118)
 select relname, segrelid != 0, reloptions from pg_class, pg_appendonly where pg_class.oid =
 'atsdb'::regclass and relid = pg_class.oid;
  relname | ?column? | reloptions 
@@ -554,10 +554,12 @@ select * from atsdb;
 
 -- validate parameters
 alter table atsdb set with (appendonly = ff);
-ERROR:  option "appendonly" not supported
+ERROR:  appendonly requires a Boolean value
 alter table atsdb set with (reorganize = true);
 alter table atsdb set with (fgdfgef = asds);
-ERROR:  option "fgdfgef" not supported
+ERROR:  invalid storage type
+LINE 1: alter table atsdb set with (fgdfgef = asds);
+                                   ^
 alter table atsdb set with(reorganize = true, reorganize = false) distributed
 randomly;
 ERROR:  cannot specify more than one option in WITH clause
@@ -566,29 +568,68 @@ drop table atsdb;
 create table atsdb (i int, j int, t text, n numeric) distributed by (i, j);
 insert into atsdb select i, i+1, i+2, i+3 from generate_series(1, 20) i;
 alter table atsdb drop column i;
-NOTICE:  dropping a column that is part of the distribution policy forces a NULL distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
 select * from atsdb;
  j  | t  | n  
 ----+----+----
   2 | 3  |  4
-  3 | 4  |  5
-  4 | 5  |  6
-  5 | 6  |  7
-  6 | 7  |  8
-  7 | 8  |  9
-  8 | 9  | 10
   9 | 10 | 11
- 10 | 11 | 12
  11 | 12 | 13
  12 | 13 | 14
- 13 | 14 | 15
+ 21 | 22 | 23
+  4 | 5  |  6
+  7 | 8  |  9
+  8 | 9  | 10
+ 10 | 11 | 12
  14 | 15 | 16
  15 | 16 | 17
  16 | 17 | 18
- 17 | 18 | 19
  18 | 19 | 20
  19 | 20 | 21
  20 | 21 | 22
+  3 | 4  |  5
+  5 | 6  |  7
+  6 | 7  |  8
+ 13 | 14 | 15
+ 17 | 18 | 19
+(20 rows)
+
+select * from distcheck where rel = 'atsdb';
+ rel | attname 
+-----+---------
+(0 rows)
+
+drop table atsdb;
+-- check DROP TYPE..CASCADE updates distribution policy to random if
+-- any a dist key column is dropped for multi key distribution key columns
+create domain int_new as int;
+create table atsdb (i int_new, j int, t text, n numeric) distributed by (i, j);
+insert into atsdb select i, i+1, i+2, i+3 from generate_series(1, 20) i;
+drop type int_new cascade;
+NOTICE:  drop cascades to column i of table atsdb
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+select * from atsdb;
+ j  | t  | n  
+----+----+----
+  4 | 5  |  6
+  7 | 8  |  9
+  8 | 9  | 10
+ 10 | 11 | 12
+ 14 | 15 | 16
+ 15 | 16 | 17
+ 16 | 17 | 18
+ 18 | 19 | 20
+ 19 | 20 | 21
+ 20 | 21 | 22
+  3 | 4  |  5
+  5 | 6  |  7
+  6 | 7  |  8
+ 13 | 14 | 15
+ 17 | 18 | 19
+  2 | 3  |  4
+  9 | 10 | 11
+ 11 | 12 | 13
+ 12 | 13 | 14
  21 | 22 | 23
 (20 rows)
 
@@ -648,7 +689,7 @@ select * from atsdb order by 1, 2, 3;
 (9 rows)
 
 alter table atsdb set with(appendonly = true);
-ERROR:  option "appendonly" not supported
+ERROR:  cannot change access method of a partitioned table
 select relname, a.blocksize, compresslevel, compresstype, checksum from pg_class c, pg_appendonly a where
 relname  like 'atsdb%' and c.oid = a.relid order by 1;
  relname | blocksize | compresslevel | compresstype | checksum 
@@ -694,6 +735,132 @@ select * from atsdb order by 1, 2, 3;
 (18 rows)
 
 drop table atsdb;
+-- check distribution correctly cascaded for inherited tables
+create table dropColumnCascade (a int, b int, e int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table dropColumnCascadeChild (c int) inherits (dropColumnCascade);
+NOTICE:  table has parent, setting distribution columns to match parent table
+create table dropColumnCascadeAnother (d int) inherits (dropColumnCascadeChild);
+NOTICE:  table has parent, setting distribution columns to match parent table
+insert into dropColumnCascadeAnother select i,i,i from generate_series(1,10)i;
+alter table dropColumnCascade drop column a;
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+select * from distcheck where rel like 'dropcolumnicascade%';
+ rel | attname 
+-----+---------
+(0 rows)
+
+drop table dropColumnCascade cascade;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table dropcolumncascadechild
+drop cascades to table dropcolumncascadeanother
+-- check DROP TYPE..CASCADE for dist key type for inherited tables
+-- distribution should be set to randomly for base and inherited tables
+create domain int_new as int;
+create table dropColumnCascade (a int_new, b int, e int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table dropColumnCascadeChild (c int) inherits (dropColumnCascade);
+NOTICE:  table has parent, setting distribution columns to match parent table
+create table dropColumnCascadeAnother (d int) inherits (dropColumnCascadeChild);
+NOTICE:  table has parent, setting distribution columns to match parent table
+insert into dropColumnCascadeAnother select i,i,i from generate_series(1,10)i;
+drop type int_new cascade;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to column a of table dropcolumncascade
+drop cascades to column a of table dropcolumncascadechild
+drop cascades to column a of table dropcolumncascadeanother
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+select * from distcheck where rel like 'dropcolumncascade%';
+ rel | attname 
+-----+---------
+(0 rows)
+
+drop table dropColumnCascade cascade;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table dropcolumncascadechild
+drop cascades to table dropcolumncascadeanother
+-- Test corner cases in dropping distkey as inherited columns
+create table p1 (f1 int, f2 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table c1 (f1 int not null) inherits(p1);
+NOTICE:  table has parent, setting distribution columns to match parent table
+NOTICE:  merging column "f1" with inherited definition
+alter table p1 drop column f1;
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+-- only p1 is randomly distributed, c1 is still distributed by c1.f1
+select * from distcheck where rel in ('p1', 'c1');
+ rel | attname 
+-----+---------
+ c1  | f1
+(1 row)
+
+alter table c1 drop column f1;
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+-- both c1 and p1 randomly distributed
+select * from distcheck where rel in ('p1', 'c1');
+ rel | attname 
+-----+---------
+(0 rows)
+
+drop table p1 cascade;
+NOTICE:  drop cascades to table c1
+create table p1 (f1 int, f2 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table c1 () inherits(p1);
+NOTICE:  table has parent, setting distribution columns to match parent table
+alter table only p1 drop column f1;
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+-- only p1 is randomly distributed, c1 is still distributed by c1.f1
+select * from distcheck where rel in ('p1', 'c1');
+ rel | attname 
+-----+---------
+ c1  | f1
+(1 row)
+
+drop table p1 cascade;
+NOTICE:  drop cascades to table c1
+-- check DROP TYPE..CASCADE for dist key type for inherited tables
+-- distribution should be set to randomly for base and inherited tables
+create domain int_new as int;
+create table p1 (f1 int_new, f2 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table c1 (f1 int_new not null) inherits(p1);
+NOTICE:  table has parent, setting distribution columns to match parent table
+NOTICE:  merging column "f1" with inherited definition
+create table p1_inh (f1 int_new, f2 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table c1_inh () inherits(p1_inh);
+NOTICE:  table has parent, setting distribution columns to match parent table
+drop type int_new cascade;
+NOTICE:  drop cascades to 4 other objects
+DETAIL:  drop cascades to column f1 of table p1
+drop cascades to column f1 of table c1
+drop cascades to column f1 of table p1_inh
+drop cascades to column f1 of table c1_inh
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
+-- all above tables set to randomly distributed
+select * from distcheck where rel in ('p1', 'c1');
+ rel | attname 
+-----+---------
+(0 rows)
+
+drop table p1 cascade;
+NOTICE:  drop cascades to table c1
+drop table p1_inh cascade;
+NOTICE:  drop cascades to table c1_inh
 drop view distcheck;
 -- MPP-5452
 -- Should succeed
@@ -746,7 +913,7 @@ drop table test_add_drop_rename_column_change_datatype ;
 -- should run without error
 create table atsdb with (appendonly=true) as select * from
 generate_series(1,1000);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'generate_series' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'generate_series' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 alter table only atsdb set with(reorganize=true) distributed by (generate_series);
 select count(*) from atsdb;
@@ -758,11 +925,11 @@ select count(*) from atsdb;
 drop table atsdb;
 -- MPP-5746
 create table mpp5746 (c int[], t text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into mpp5746 select array[i], i from generate_series(1, 100) i;
 alter table mpp5746 set with (reorganize=true, appendonly = true);
-ERROR:  cannot specify more than one option in WITH clause
+ERROR:  reorganize isn't supported with other options in SET WITH
 select * from mpp5746 order by 1;
    c   |  t  
 -------+-----
@@ -975,7 +1142,7 @@ select * from mpp5746 order by 1;
 (100 rows)
 
 alter table mpp5746 set with (reorganize=true, appendonly = false);
-ERROR:  cannot specify more than one option in WITH clause
+ERROR:  reorganize isn't supported with other options in SET WITH
 select * from mpp5746 order by 1;
    c   
 -------
@@ -1085,7 +1252,7 @@ drop table mpp5746;
 -- MPP-5738
 create table mpp5738 (a int, b int, c int, d int)
 partition by range(d) (start(1) end(10) inclusive every(1));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into mpp5738 select i, i+1, i+2, i from generate_series(1, 10) i;
 select * from mpp5738;
@@ -1104,7 +1271,7 @@ select * from mpp5738;
 (10 rows)
 
 alter table mpp5738 alter partition for (1) set with (appendonly=true);
-ERROR:  option "appendonly" not supported
+ERROR:  table "mpp5738_1_prt_1" is not partitioned
 select * from mpp5738;
  a  | b  | c  | d  
 ----+----+----+----
@@ -1155,6 +1322,7 @@ drop table mpp5754;
 -- MPP-5918
 create role atsdb;
 NOTICE:  resource queue required -- using default resource queue "pg_default"
+-- pax table won't create toast table
 create table owner_test(i int, toast text) distributed randomly;
 alter table owner_test owner to atsdb;
 alter table owner_test set with (reorganize = true) distributed by (i);
@@ -1230,15 +1398,11 @@ Alter table abc set with (reorganize=false) distributed randomly;
 WARNING:  distribution policy of relation "abc" already set to DISTRIBUTED RANDOMLY
 HINT:  Use ALTER TABLE "abc" SET WITH (REORGANIZE=TRUE) DISTRIBUTED RANDOMLY to force a random redistribution.
 drop table abc;
--- disallow, so fails
-create table atsdb (i int, j text) distributed by (j);
-alter table atsdb set with(appendonly = true);
-ERROR:  option "appendonly" not supported
-drop table atsdb;
 -- MPP-18660: duplicate entry in gp_distribution_policy
 set enable_indexscan=on;
 set enable_seqscan=off;
 drop table if exists distrib_index_test;
+NOTICE:  table "distrib_index_test" does not exist, skipping
 create table distrib_index_test (a int, b text) distributed by (a);
 select count(*) from gp_distribution_policy
 	where localoid in (select oid from pg_class where relname='distrib_index_test');
@@ -1547,3 +1711,64 @@ select check_redistributed('insert into t_distbya select * from t_reorganize', '
 
 reset optimizer;
 reset gp_force_random_redistribution;
+-- When reorganize=false, we won't reorganize and this shouldn't be affected by the existing reloptions.
+CREATE TABLE public.t_reorganize_false (
+a integer,
+b integer
+) with (appendonly=false, autovacuum_enabled=false) DISTRIBUTED BY (a);
+-- Insert values which will all be on one segment
+INSERT INTO t_reorganize_false VALUES (0, generate_series(1,100));
+SELECT gp_segment_id,count(*)￼ from t_reorganize_false GROUP BY 1;
+ gp_segment_id |  ￼  
+---------------+-----
+             1 | 100
+(1 row)
+
+-- Change the distribution policy but because REORGANIZE=false, it should NOT be re-distributed 
+ALTER TABLE t_reorganize_false SET WITH (REORGANIZE=false) DISTRIBUTED RANDOMLY;
+SELECT gp_segment_id,count(*)￼ from t_reorganize_false GROUP BY 1;
+ gp_segment_id |  ￼  
+---------------+-----
+             1 | 100
+(1 row)
+
+DROP TABLE t_reorganize_false;
+-- Same rule should apply to partitioned table too
+CREATE TABLE public.t_reorganize_false (
+a integer,
+b integer
+)
+DISTRIBUTED BY (a) PARTITION BY RANGE(b)
+(
+PARTITION "00" START (0) END (1000) WITH (tablename='t_reorganize_false_0', appendonly='false', autovacuum_enabled=false),
+PARTITION "01" START (1000) END (2000) WITH (tablename='t_reorganize_false_1', appendonly='false', autovacuum_enabled=false),
+DEFAULT PARTITION def WITH (tablename='t_reorganize_false_def', appendonly='false', autovacuum_enabled=false)
+);
+-- Insert values which will all be on one segment
+INSERT INTO t_reorganize_false VALUES (0, generate_series(1,100));
+SELECT gp_segment_id,count(*) from t_reorganize_false GROUP BY 1;
+ gp_segment_id | count 
+---------------+-------
+             1 |   100
+(1 row)
+
+-- Should NOT be re-distributed
+ALTER TABLE t_reorganize_false SET WITH (REORGANIZE=false) DISTRIBUTED RANDOMLY;
+SELECT gp_segment_id,count(*) from t_reorganize_false GROUP BY 1;
+ gp_segment_id | count 
+---------------+-------
+             1 |   100
+(1 row)
+
+DROP TABLE t_reorganize_false;
+-- Check that AT SET DISTRIBUTED BY cannot be combined with other subcommands
+-- on the same table
+CREATE TABLE atsdby_multiple(i int, j int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+ALTER TABLE atsdby_multiple SET DISTRIBUTED BY(j), ADD COLUMN k int;
+ERROR:  cannot alter distribution with other subcommands for relation "atsdby_multiple"
+HINT:  consider separating into multiple statements
+ALTER TABLE atsdby_multiple SET WITH (reorganize=true), ADD COLUMN k int;
+ERROR:  cannot alter distribution with other subcommands for relation "atsdby_multiple"
+HINT:  consider separating into multiple statements

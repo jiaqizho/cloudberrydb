@@ -6,6 +6,7 @@
 -- end_matchsubs
 -- start_matchignore
 -- m/^LOG: .*Feature not supported: Queries on master-only tables./
+-- m/^LOG: .*Falling back to Postgres-based planner because GPORCA does not support the following feature: Queries on master-only tables./
 -- m/^LOG:.*ERROR,"PG exception raised"/
 -- end_matchignore
 set gp_autostats_mode=on_change;
@@ -13,7 +14,7 @@ set gp_autostats_on_change_threshold=9;
 set pax_enable_debug = false;
 set log_autostats=on;
 set client_min_messages=log;
-
+reset optimizer_trace_fallback;
 drop table if exists autostats_test;
 create table autostats_test (a INTEGER);
 drop user if exists autostats_nonowner;

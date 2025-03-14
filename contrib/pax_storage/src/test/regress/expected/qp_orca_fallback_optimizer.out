@@ -98,7 +98,7 @@ explain update constr_tab set a = 10;
                ->  Redistribute Motion 3:3  (slice1; segments: 3)  (cost=0.00..431.00 rows=2 width=30)
                      Hash Key: constr_tab_1.a
                      ->  Split  (cost=0.00..431.00 rows=1 width=30)
-                           ->  Seq Scan on constr_tab constr_tab_1  (cost=0.00..431.00 rows=1 width=26)
+                           ->  Seq Scan on constr_tab  (cost=0.00..431.00 rows=1 width=26)
  Optimizer: Pivotal Optimizer (GPORCA)
 (9 rows)
 
@@ -255,13 +255,16 @@ HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sur
 create external web table p2_ext (like p1) EXECUTE 'cat something.txt' FORMAT 'TEXT';
 alter table ext_part attach partition p1 for values in (1);
 alter table ext_part attach partition p2_ext for values in (2);
+NOTICE:  partition constraints are not validated when attaching a readable external table
 explain select * from ext_part;
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..57799.50 rows=3096300 width=4)
-   ->  Append  (cost=0.00..16515.50 rows=1032100 width=4)
-         ->  Seq Scan on p1 ext_part_1  (cost=0.00..355.00 rows=32100 width=4)
-         ->  Foreign Scan on p2_ext ext_part_2  (cost=0.00..11000.00 rows=1000000 width=4)
- Optimizer: Postgres query optimizer
-(5 rows)
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..897.13 rows=999998 width=4)
+   ->  Append  (cost=0.00..882.23 rows=333333 width=4)
+         ->  Dynamic Seq Scan on ext_part  (cost=0.00..437.97 rows=333333 width=4)
+               Number of partitions to scan: 1 (out of 2)
+         ->  Dynamic Foreign Scan on ext_part  (cost=0.00..437.97 rows=333333 width=4)
+               Number of partitions to scan: 1 (out of 2)
+ Optimizer: GPORCA
+(7 rows)
 

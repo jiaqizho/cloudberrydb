@@ -10,8 +10,8 @@ SELECT count(*) from gp_opt_version();
 
 -- Mask out Log & timestamp for orca message that has feature not supported.
 -- start_matchsubs
--- m/^LOG.*\"Feature/
--- s/^LOG.*\"Feature/\"Feature/
+-- m/^LOG.*\"Falling/
+-- s/^LOG.*\"Falling/\"Falling/
 -- end_matchsubs
 -- TODO: incremental sort is turned off by default, because it may have
 -- wrong result for some core case. Turn it on to run the existing tests
@@ -2150,7 +2150,7 @@ select 129::bigint, 5623::int, 45::smallint from orca.r;
 
 --  distributed tables
 create table orca.foo (x1 int, x2 int, x3 int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x1' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x1' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table orca.bar1 (x1 int, x2 int, x3 int) distributed randomly;
 create table orca.bar2 (x1 int, x2 int, x3 int) distributed randomly;
@@ -4570,12 +4570,12 @@ SELECT a from orca.m UNION ALL select b from orca.m UNION ALL select a+b from or
 
 drop table if exists orca.foo;
 create table orca.foo(a int, b int, c int, d int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 drop table if exists orca.bar;
 NOTICE:  table "bar" does not exist, skipping
 create table orca.bar(a int, b int, c int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.foo select i, i%2, i%4, i-1 from generate_series(1,40)i;
 insert into orca.bar select i, i%3, i%2 from generate_series(1,30)i;
@@ -6546,13 +6546,13 @@ select lead(c,c+d,1000) over(order by c,d) from orca.s order by 1;
 
 -- test normalization of window functions
 create table orca_w1(a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table orca_w2(a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table orca_w3(a int, b text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca_w1 select i, i from generate_series(1, 3) i;
 insert into orca_w2 select i, i from generate_series(2, 4) i;
@@ -6839,7 +6839,7 @@ select * from orca.r where r.a in (select d+r.b+1 as v from orca.foo full join o
 drop table if exists orca.rcte;
 NOTICE:  table "rcte" does not exist, skipping
 create table orca.rcte(a int, b int, c int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.rcte select i, i%2, i%3 from generate_series(1,40)i;
 with x as (select * from orca.rcte where a < 10) select * from x x1, x x2;
@@ -8098,7 +8098,7 @@ stringu1 name,
 stringu2 name,
 string4 name
 );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'unique1' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'unique1' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.onek values (931,1,1,3,1,11,1,31,131,431,931,2,3,'VJAAAA','BAAAAA','HHHHxx');
 insert into orca.onek values (714,2,0,2,4,14,4,14,114,214,714,8,9,'MBAAAA','CAAAAA','OOOOxx');
@@ -8121,7 +8121,7 @@ having exists (select 1 from orca.onek b where sum(distinct a.four) = b.four);
 
 -- indexes on partitioned tables
 create table orca.pp(a int) partition by range(a)(partition pp1 start(1) end(10));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create index pp_a on orca.pp(a);
 -- list partition tests
@@ -8174,7 +8174,7 @@ subpartition sp2 start(10) end(200) every(50)
 )
 (partition aa start(0) end (100) every (50),
 partition bb start(100) end(200) every (50) );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.multilevel_p values (1,1), (100,200);
 select * from orca.multilevel_p;
@@ -8333,7 +8333,6 @@ insert into orca.t_date values('01-03-2012'::date,6,'tag1','tag2');
 insert into orca.t_date values('01-03-2012'::date,7,'tag1','tag2');
 insert into orca.t_date values('01-03-2012'::date,8,'tag1','tag2');
 insert into orca.t_date values('01-03-2012'::date,9,'tag1','tag2');
-set optimizer_enable_partial_index=on;
 set optimizer_enable_space_pruning=off;
 set optimizer_enable_constant_expression_evaluation=on;
 explain select * from orca.t_date where user_id=9;
@@ -8412,7 +8411,6 @@ select * from orca.t_text where user_id=9;
 reset optimizer_enable_space_pruning;
 set optimizer_enumerate_plans=off;
 reset optimizer_enable_constant_expression_evaluation;
-reset optimizer_enable_partial_index;
 -- test that constant expression evaluation works with integers
 drop table if exists orca.t_ceeval_ints;
 NOTICE:  table "t_ceeval_ints" does not exist, skipping
@@ -8426,7 +8424,6 @@ insert into orca.t_ceeval_ints values(2, 100, 'tag1', 'tag2');
 insert into orca.t_ceeval_ints values(3, 100, 'tag1', 'tag2');
 insert into orca.t_ceeval_ints values(4, 101, 'tag1', 'tag2');
 insert into orca.t_ceeval_ints values(5, 102, 'tag1', 'tag2');
-set optimizer_enable_partial_index=on;
 set optimizer_enable_space_pruning=off;
 set optimizer_enable_constant_expression_evaluation=on;
 set optimizer_use_external_constant_expression_evaluation_for_ints = on;
@@ -8454,11 +8451,10 @@ reset optimizer_enable_space_pruning;
 reset optimizer_enumerate_plans;
 reset optimizer_use_external_constant_expression_evaluation_for_ints;
 reset optimizer_enable_constant_expression_evaluation;
-reset optimizer_enable_partial_index;
 -- test project elements in TVF
 CREATE FUNCTION orca.csq_f(a int) RETURNS int AS $$ select $1 $$ LANGUAGE SQL;
 CREATE TABLE orca.csq_r(a int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO orca.csq_r VALUES (1);
 SELECT * FROM orca.csq_r WHERE a IN (SELECT * FROM orca.csq_f(orca.csq_r.a));
@@ -8471,7 +8467,7 @@ SELECT * FROM orca.csq_r WHERE a IN (SELECT * FROM orca.csq_f(orca.csq_r.a));
 drop table if exists orca.tab1;
 NOTICE:  table "tab1" does not exist, skipping
 create table orca.tab1(a int, b int, c int, d int, e int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.tab1 values (1,2,3,4,5);
 insert into orca.tab1 values (1,2,3,4,5);
@@ -8495,10 +8491,10 @@ select b,d from orca.tab1 group by b,d having min(distinct d)>b;
 (1 row)
 
 create table orca.fooh1 (a int, b int, c int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table orca.fooh2 (a int, b int, c int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.fooh1 select i%4, i%3, i from generate_series(1,20) i;
 insert into orca.fooh2 select i%3, i%2, i from generate_series(1,20) i;
@@ -8646,13 +8642,13 @@ select sum(f1.a+1)+avg(f1.a+1), sum(f1.a), sum(f1.a+1) from orca.fooh1 f1 group 
 drop table if exists foo, bar, jazz;
 NOTICE:  table "jazz" does not exist, skipping
 create table foo (a int, b int, c int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table bar (d int, e int, f int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'd' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'd' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table jazz (g int, h int, j int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'g' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'g' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into foo values (1, 1, 1), (2, 2, 2), (3, 3, 3);
 insert into bar values (1, 1, 1), (2, 2, 2), (3, 3, 3);
@@ -8833,7 +8829,7 @@ select foo.b+1, sum((with cte as (select * from jazz) select 1 from cte cte1, ct
 
 drop table foo, bar, jazz;
 create table orca.t77(C952 text) WITH (compresstype=zlib,compresslevel=2,appendonly=true,blocksize=393216,checksum=true);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c952' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c952' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.t77 select 'text'::text;
 insert into orca.t77 select 'mine'::text;
@@ -8848,7 +8844,7 @@ SELECT to_char(AVG( char_length(DT466.C952) ), '9999999.9999999'), MAX( char_len
 (3 rows)
 
 create table orca.prod9 (sale integer, prodnm varchar,price integer);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'sale' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'sale' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.prod9 values (100, 'shirts', 500);
 insert into orca.prod9 values (200, 'pants',800);
@@ -8863,24 +8859,24 @@ select prodnm, price from orca.prod9 GROUP BY prodnm, price HAVING price !=300;
 
 -- analyze on tables with dropped attributes
 create table orca.toanalyze(a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.toanalyze values (1,1), (2,2), (3,3);
 alter table orca.toanalyze drop column a;
-NOTICE:  dropping a column that is part of the distribution policy forces a NULL distribution policy
+NOTICE:  dropping a column that is part of the distribution policy forces a random distribution policy
 analyze orca.toanalyze;
 -- union
 create table orca.ur (a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table orca.us (c int, d int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table orca.ut(a int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table orca.uu(c int, d bigint);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.ur values (1,1);
 insert into orca.ur values (1,2);
@@ -8931,10 +8927,10 @@ select * from (select 2.2 AS two UNION select 1) x(a), (select 1.0 AS two UNION 
 
 -- window functions inside inline CTE
 CREATE TABLE orca.twf1 AS SELECT i as a, i+1 as b from generate_series(1,10)i;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE orca.twf2 AS SELECT i as c, i+1 as d from generate_series(1,10)i;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SET optimizer_cte_inlining_bound=1000;
 SET optimizer_cte_inlining = on;
@@ -8971,10 +8967,10 @@ drop table if exists orca.tab1;
 drop table if exists orca.tab2;
 NOTICE:  table "tab2" does not exist, skipping
 create table orca.tab1 (i, j) as select i,i%2 from generate_series(1,10) i;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'i' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table orca.tab2 (a, b) as select 1, 2;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 select * from orca.tab1 where 0 < (select count(*) from generate_series(1,i)) order by 1;
  i  | j 
@@ -9069,7 +9065,7 @@ CREATE FUNCTION gptfp(anyarray,anyelement) RETURNS anyarray AS 'select $1 || $2'
 CREATE FUNCTION gpffp(anyarray) RETURNS anyarray AS 'select $1' LANGUAGE SQL;
 CREATE AGGREGATE myagg3(BASETYPE = anyelement, SFUNC = gptfp, STYPE = anyarray, FINALFUNC = gpffp, INITCOND = '{}');
 CREATE TABLE array_table(f1 int, f2 int[], f3 text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO array_table values(1,array[1],'a');
 INSERT INTO array_table values(2,array[11],'b');
@@ -9089,7 +9085,7 @@ SELECT f3, myagg3(f1) from (select * from array_table order by f1 limit 10) as f
 
 -- MPP-22453: wrong result in indexscan when the indexqual compares different data types
 create table mpp22453(a int, d date);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into mpp22453 values (1, '2012-01-01'), (2, '2012-01-02'), (3, '2012-12-31');
 create index mpp22453_idx on mpp22453(d);
@@ -9109,7 +9105,7 @@ select * from mpp22453 where d > '2012-02-01';
 reset optimizer_enable_tablescan;
 -- MPP-22791: SIGSEGV when querying a table with default partition only
 create table mpp22791(a int, b int) partition by range(b) (default partition d);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into mpp22791 values (1, 1), (2, 2), (3, 3);
 select * from mpp22791 where b > 1;
@@ -9135,7 +9131,7 @@ select 1 as x where 1 in (2, 3);
 
 -- MPP-23081: keys of partitioned tables
 create table orca.p1(a int) partition by range(a)(partition pp1 start(1) end(10), partition pp2 start(10) end(20));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.p1 select * from generate_series(2,15);
 select count(*) from (select gp_segment_id,ctid,tableoid from orca.p1 group by gp_segment_id,ctid,tableoid) as foo;
@@ -9744,11 +9740,11 @@ SELECT generate_series(1,10) UNION SELECT 1;
 
 -- warning messages for missing stats
 create table foo_missing_stats(a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into foo_missing_stats select i, i%5 from generate_series(1,20) i;
 create table bar_missing_stats(c int, d int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into bar_missing_stats select i, i%8 from generate_series(1,30) i;
 analyze foo_missing_stats;
@@ -9799,7 +9795,7 @@ NOTICE:  table "table_with_small_statistic_precision_diff" does not exist, skipp
 CREATE TABLE orca.table_with_small_statistic_precision_diff (
     col1 double precision
 );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'col1' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'col1' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SET allow_system_table_mods=true;
 DELETE FROM pg_statistic WHERE starelid='table_with_small_statistic_precision_diff'::regclass;
@@ -9861,8 +9857,6 @@ BEGIN
     SELECT $1 + 1;
 END;
 $$ LANGUAGE plpgsql volatile;
--- force_explain
-set optimizer_segments = 3;
 explain
 select c.cid cid,
        c.firstname firstname,
@@ -9873,33 +9867,31 @@ where c.cid = s.cid and s.date_sk = d.date_sk and
       ((d.year = 2001 and lower(s.type) = 't1' and plusone(d.moy) = 5) or (d.moy = 4 and upper(s.type) = 'T2'));
                                                                                QUERY PLAN                                                                               
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice3; segments: 3)  (cost=2215.04..2775.38 rows=110 width=72)
-   ->  Hash Join  (cost=2215.04..2775.38 rows=37 width=72)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=738.36..913.37 rows=109 width=72)
+   ->  Hash Join  (cost=738.36..911.92 rows=36 width=72)
          Hash Cond: (c.cid = s.cid)
-         ->  Seq Scan on cust c  (cost=0.00..434.00 rows=11134 width=68)
-         ->  Hash  (cost=2214.95..2214.95 rows=3 width=8)
-               ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=940.72..2214.95 rows=3 width=8)
+         ->  Seq Scan on cust c  (cost=0.00..145.33 rows=11133 width=68)
+         ->  Hash  (cost=738.33..738.33 rows=2 width=8)
+               ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=314.24..738.33 rows=2 width=8)
                      Hash Key: s.cid
-                     ->  Hash Join  (cost=940.72..2214.80 rows=3 width=8)
+                     ->  Hash Join  (cost=314.24..738.28 rows=2 width=8)
                            Hash Cond: (d.date_sk = s.date_sk)
                            Join Filter: (((d.year = 2001) AND (lower(s.type) = 't1'::text) AND (plusone(d.moy) = 5)) OR ((d.moy = 4) AND (upper(s.type) = 'T2'::text)))
-                           ->  Seq Scan on datedim d  (cost=0.00..1268.50 rows=52 width=12)
+                           ->  Seq Scan on datedim d  (cost=0.00..423.50 rows=52 width=12)
                                  Filter: ((year = 2001) OR (moy = 4))
-                           ->  Hash  (cost=939.68..939.68 rows=28 width=40)
-                                 ->  Redistribute Motion 3:3  (slice1; segments: 3)  (cost=0.00..939.68 rows=28 width=40)
+                           ->  Hash  (cost=313.89..313.89 rows=28 width=40)
+                                 ->  Redistribute Motion 3:3  (slice3; segments: 3)  (cost=0.00..313.89 rows=28 width=40)
                                        Hash Key: s.date_sk
-                                       ->  Seq Scan on sales s  (cost=0.00..938.00 rows=28 width=40)
+                                       ->  Seq Scan on sales s  (cost=0.00..313.33 rows=28 width=40)
                                              Filter: ((lower(type) = 't1'::text) OR (upper(type) = 'T2'::text))
- Planning time: 2.896 ms
  Optimizer: Postgres query optimizer
-(19 rows)
+(18 rows)
 
-reset optimizer_segments;
 -- Bitmap indexes
 drop table if exists orca.bm_test;
 NOTICE:  table "bm_test" does not exist, skipping
 create table orca.bm_test (i int, t text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.bm_test select i % 10, (i % 10)::text  from generate_series(1, 100) i;
 analyze orca.bm_test;
@@ -9944,7 +9936,7 @@ create index bm_dyn_test_idx on orca.bm_dyn_test using bitmap (i);
 alter table orca.bm_dyn_test drop column to_be_dropped;
 alter table orca.bm_dyn_test add partition part5 values(5);
 insert into orca.bm_dyn_test values(2, 5, '2');
-set optimizer_enable_bitmapscan=on;
+set optimizer_enable_dynamicbitmapscan=on;
 -- gather on 1 segment because of direct dispatch
 explain select * from orca.bm_dyn_test where i=2 and t='2';
                                      QUERY PLAN                                     
@@ -10227,7 +10219,7 @@ id serial,
 code character varying(25),
 name character varying(40)
 );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into bm.outer_tab select i % 10, i % 5, i % 2 from generate_series(1, 100) i;
 set optimizer_enable_hashjoin = off;
@@ -10283,33 +10275,6 @@ BEGIN
     SELECT $1 + 1;
 END;
 $$ LANGUAGE plpgsql volatile;
--- start_ignore
-select disable_xform('CXformInnerJoin2DynamicIndexGetApply');
-                  disable_xform
---------------------------------------------------
- CXformInnerJoin2DynamicIndexGetApply is disabled
-(1 row)
-
-select disable_xform('CXformInnerJoin2HashJoin');
-            disable_xform
---------------------------------------
- CXformInnerJoin2HashJoin is disabled
-(1 row)
-
-select disable_xform('CXformInnerJoin2IndexGetApply');
-               disable_xform
--------------------------------------------
- CXformInnerJoin2IndexGetApply is disabled
-(1 row)
-
-select disable_xform('CXformInnerJoin2NLJoin');
-           disable_xform
-------------------------------------
- CXformInnerJoin2NLJoin is disabled
-(1 row)
--- end_ignore
-set optimizer_enable_partial_index=on;
-set optimizer_enable_indexjoin=on;
 -- force_explain
 set optimizer_segments = 3;
 EXPLAIN
@@ -10344,38 +10309,8 @@ ORDER BY 1 asc ;
                                  ->  Hash  (cost=108.67..108.67 rows=7467 width=108)
                                        ->  Seq Scan on my_tt_agg_opt tt  (cost=0.00..108.67 rows=7467 width=108)
  Optimizer: Postgres query optimizer
-(19 rows)
+(21 rows)
 
-reset optimizer_segments;
-reset optimizer_enable_constant_expression_evaluation;
-reset optimizer_enable_indexjoin;
-reset optimizer_enable_partial_index;
--- start_ignore
-select enable_xform('CXformInnerJoin2DynamicIndexGetApply');
-                  enable_xform
--------------------------------------------------
- CXformInnerJoin2DynamicIndexGetApply is enabled
-(1 row)
-
-select enable_xform('CXformInnerJoin2HashJoin');
-            enable_xform
--------------------------------------
- CXformInnerJoin2HashJoin is enabled
-(1 row)
-
-select enable_xform('CXformInnerJoin2IndexGetApply');
-               enable_xform
-------------------------------------------
- CXformInnerJoin2IndexGetApply is enabled
-(1 row)
-
-select enable_xform('CXformInnerJoin2NLJoin');
-           enable_xform
------------------------------------
- CXformInnerJoin2NLJoin is enabled
-(1 row)
-
--- end_ignore
 -- MPP-25661: IndexScan crashing for qual with reference to outer tuple
 drop table if exists idxscan_outer;
 NOTICE:  table "idxscan_outer" does not exist, skipping
@@ -10385,7 +10320,7 @@ id serial,
 code character varying(25),
 name character varying(40)
 );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 drop table if exists idxscan_inner;
 NOTICE:  table "idxscan_inner" does not exist, skipping
@@ -10443,7 +10378,7 @@ drop table idxscan_inner;
 drop table if exists ggg;
 NOTICE:  table "ggg" does not exist, skipping
 create table ggg (a char(1), b char(2), d char(3));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into ggg values ('x', 'a', 'c');
 insert into ggg values ('x', 'a');
@@ -10452,7 +10387,7 @@ insert into ggg values ('x');
 drop table if exists orca.t3;
 NOTICE:  table "t3" does not exist, skipping
 create table orca.t3 (c1 timestamp without time zone);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into orca.t3 values  ('2015-07-03 00:00:00'::timestamp without time zone);
 select to_char(c1, 'YYYY-MM-DD HH24:MI:SS') from orca.t3 where c1 = TO_DATE('2015-07-03','YYYY-MM-DD');
@@ -10521,7 +10456,7 @@ create table can_set_tag_target
 	y int,
 	z char
 );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 drop table if exists can_set_tag_audit;
 NOTICE:  table "can_set_tag_audit" does not exist, skipping
@@ -10532,7 +10467,7 @@ create table can_set_tag_audit
 	y int,
 	z char
 );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 't' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 't' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create rule can_set_tag_audit_update AS
     ON UPDATE TO can_set_tag_target DO  INSERT INTO can_set_tag_audit (t, x, y, z)
@@ -10731,6 +10666,7 @@ create table foo(a int, b int) distributed by (a);
 -- and log_min_duration_statement, they are the most obvious ones.
 set log_statement='none';
 set log_min_duration_statement=-1;
+set pax_enable_debug to off;
 set client_min_messages='log';
 explain select count(*) from foo group by cube(a,b);
                                               QUERY PLAN                                              
@@ -10751,6 +10687,7 @@ explain select count(*) from foo group by cube(a,b);
 (9 rows)
 
 reset client_min_messages;
+reset pax_enable_debug;
 reset log_statement;
 reset log_min_duration_statement;
 -- TVF accepts ANYENUM, ANYELEMENT returns ANYENUM, ANYARRAY
@@ -10850,7 +10787,7 @@ drop table foo;
 -- Test GPDB Expr (T_ArrayCoerceExpr) conversion to Scalar Array Coerce Expr
 -- start_ignore
 create table foo (a int, b character varying(10));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- end_ignore
 -- Query should not fallback to planner
@@ -10867,19 +10804,21 @@ explain select * from foo where b in ('1', '2');
 set optimizer_enable_ctas = off;
 set log_statement='none';
 set log_min_duration_statement=-1;
+set pax_enable_debug to off;
 set client_min_messages='log';
 create table foo_ctas(a) as (select generate_series(1,10)) distributed by (a);
 reset client_min_messages;
+reset pax_enable_debug;
 reset log_min_duration_statement;
 reset log_statement;
 reset optimizer_enable_ctas;
 -- Test to ensure that ORCA produces correct results for a query with an Agg on top of LOJ
 -- start_ignore
 create table input_tab1 (a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table input_tab2 (c int, d int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into input_tab1 values (1, 1);
 insert into input_tab1 values (NULL, NULL);
@@ -10987,10 +10926,10 @@ FROM   (SELECT *
 --
 -- start_ignore
 create table t_outer (c1 integer);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table t_inner (c2 integer);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c2' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c2' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t_outer values (generate_series (1,10));
 insert into t_inner values (generate_series (1,300));
@@ -11035,13 +10974,13 @@ NOTICE:  table "wst0" does not exist, skipping
 NOTICE:  table "wst1" does not exist, skipping
 NOTICE:  table "wst2" does not exist, skipping
 create table wst0(a0 int, b0 int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a0' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a0' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table wst1(a1 int, b1 int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a1' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a1' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table wst2(a2 int, b2 int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a2' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a2' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into wst0 select i, i from generate_series(1,10) i;
 insert into wst1 select i, i from generate_series(1,10) i;
@@ -11063,12 +11002,12 @@ select count(*) from wst0 where exists (select 1, rank() over (order by wst1.a1)
 --
 -- start_ignore
 create table test1 (a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into test1 select generate_series(1,100),generate_series(1,100);
 -- end_ignore
 create table t_new as select avg(a) from test1 join (select i from unnest(array[1,2,3]) i) t on (test1.a = t.i);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'avg' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'avg' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 select * from t_new;
         avg         
@@ -11081,7 +11020,7 @@ drop table t_new;
 set optimizer_enable_gather_on_segment_for_DML=off;
 -- end_ignore
 create table t_new as select avg(a) from test1 join (select i from unnest(array[1,2,3]) i) t on (test1.a = t.i);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'avg' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'avg' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 select * from t_new;
         avg         
@@ -11097,13 +11036,13 @@ reset optimizer_enable_gather_on_segment_for_DML;
 --
 -- start_ignore
 create table x_tab(a int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table y_tab(a int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table z_tab(a int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into x_tab values(1);
 insert into y_tab values(0);
@@ -11158,7 +11097,7 @@ drop table bar;
 -- end_ignore
 -- TVF with a subplan that generates an RTABLE entry
 create table bar(name text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'name' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'name' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into bar values('person');
 select * from unnest((select string_to_array(name, ',') from bar)) as a;
@@ -11183,13 +11122,13 @@ CREATE TYPE myint
 CREATE FUNCTION myint_int8(myint) RETURNS int8 AS 'int48' LANGUAGE INTERNAL STRICT IMMUTABLE;
 CREATE CAST (myint AS int8) WITH FUNCTION myint_int8(myint) AS IMPLICIT;
 CREATE TABLE csq_cast_param_outer (a int, b myint);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO csq_cast_param_outer VALUES
 	(1, '42'),
 	(2, '12');
 CREATE TABLE csq_cast_param_inner (c int, d myint);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO csq_cast_param_inner VALUES
 	(11, '11'),
@@ -11267,10 +11206,10 @@ EXPLAIN SELECT a FROM ggg WHERE a IN (NULL, 'x');
 
 -- result node with one time filter and filter
 CREATE TABLE onetimefilter1 (a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE onetimefilter2 (a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO onetimefilter1 SELECT i, i FROM generate_series(1,10)i;
 INSERT INTO onetimefilter2 SELECT i, i FROM generate_series(1,10)i;
@@ -11427,13 +11366,13 @@ SELECT * FROM touter LEFT JOIN tinnerbtree ON touter.a = tinnerbtree.a AND tinne
 
 -- test subplan in a qual under dynamic scan
 CREATE TABLE ds_part ( a INT, b INT, c INT) PARTITION BY RANGE(c)( START(1) END (10) EVERY (2), DEFAULT PARTITION deflt);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE non_part1 (c INT);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE non_part2 (e INT, f INT);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'e' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'e' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO ds_part SELECT i, i, i FROM generate_series (1, 1000)i; 
 INSERT INTO non_part1 SELECT i FROM generate_series(1, 100)i; 
@@ -11447,7 +11386,7 @@ SELECT * FROM ds_part, non_part2 WHERE ds_part.c = non_part2.e AND non_part2.f =
 ---+---+---+---+---
 (0 rows)
 
-explain SELECT * FROM ds_part, non_part2 WHERE ds_part.c = non_part2.e AND non_part2.f = 10 AND a IN ( SELECT b + 1 FROM non_part1);
+explain analyze SELECT * FROM ds_part, non_part2 WHERE ds_part.c = non_part2.e AND non_part2.f = 10 AND a IN ( SELECT b + 1 FROM non_part1);
                                                  QUERY PLAN                                                  
 -------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)  (cost=10000000004.33..10000000039.45 rows=7 width=20)
@@ -11496,7 +11435,7 @@ SELECT *, a IN ( SELECT b + 1 FROM non_part1) FROM ds_part, non_part2 WHERE ds_p
 RESET optimizer_enforce_subplans;
 -- implied predicate must be generated for the type cast(ident) scalar array cmp const array
 CREATE TABLE varchar_sc_array_cmp(a varchar);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO varchar_sc_array_cmp VALUES ('a'), ('b'), ('c'), ('d');
 EXPLAIN SELECT * FROM varchar_sc_array_cmp t1, varchar_sc_array_cmp t2 where t1.a = t2.a and t1.a in ('b', 'c');
@@ -11553,17 +11492,18 @@ NOTICE:  table "tc3" does not exist, skipping
 NOTICE:  table "tc4" does not exist, skipping
 -- end_ignore
 CREATE TABLE tc0 (a int check (a = 5));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO tc0 VALUES (NULL);
 -- FIXME: Planner gives wrong result
 SELECT * from tc0 where a IS NULL;
  a 
 ---
-(0 rows)
+  
+(1 row)
 
 CREATE TABLE tc1 (a int check (a between 1 and 2 or a != 3 and a > 5));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO tc1 VALUES (NULL);
 SELECT * from tc1 where a IS NULL;
@@ -11573,7 +11513,7 @@ SELECT * from tc1 where a IS NULL;
 (1 row)
 
 CREATE TABLE tc2 (a int check (a in (1,2)));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO tc2 VALUES (NULL);
 SELECT * from tc2 where a IS NULL;
@@ -11584,7 +11524,7 @@ SELECT * from tc2 where a IS NULL;
 
 set optimizer_array_constraints = on;
 CREATE TABLE tc3 (a int check (a = ANY (ARRAY[1,2])));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO tc3 VALUES (NULL);
 SELECT * from tc3 where a IS NULL;
@@ -11595,7 +11535,7 @@ SELECT * from tc3 where a IS NULL;
 
 reset optimizer_array_constraints;
 CREATE TABLE tc4 (a int, b int, check(a + b > 1 and a = b));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO tc4 VALUES(NULL, NULL);
 SELECT * from tc4 where a IS NULL;
@@ -11820,10 +11760,10 @@ select count(*) as expect_20 from noexp_hash h join gpexp_repl r on h.a=r.a;
 (1 row)
 
 create table part1(a int, b int) partition by range(b) (start(1) end(5) every(1));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table part2(a int, b int) partition by range(b) (start(1) end(5) every(1));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into part1 select i, (i % 2) + 1 from generate_series(1, 1000) i;
 insert into part2 select i, (i % 2) + 1 from generate_series(1, 100) i;
@@ -11988,6 +11928,13 @@ SELECT a, b FROM btab_old_hash LEFT OUTER JOIN atab_old_hash ON a |=| b;
 (6 rows)
 
 set optimizer_expand_fulljoin = on;
+select disable_xform('CXformFullOuterJoin2HashJoin');
+              disable_xform               
+------------------------------------------
+ CXformFullOuterJoin2HashJoin is disabled
+(1 row)
+
+-- fallback reason: Invalid system target list found for AO table
 EXPLAIN SELECT a, b FROM atab_old_hash FULL JOIN btab_old_hash ON a |=| b;
                                              QUERY PLAN                                             
 ----------------------------------------------------------------------------------------------------
@@ -12024,13 +11971,13 @@ NOTICE:  table "foo2" does not exist, skipping
 DROP TABLE IF EXISTS foo3 CASCADE;
 NOTICE:  table "foo3" does not exist, skipping
 CREATE table foo1(a int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE table foo2(a int, b int, c int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE table foo3(a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE index f2c on foo2 using bitmap(c);
 INSERT INTO foo1 values (1), (2);
@@ -12042,45 +11989,61 @@ ANALYZE foo3;
 set optimizer_join_order=query;
 -- we ignore enable/disable_xform statements as their output will differ if the server is compiled without Orca (the xform won't exist)
 -- start_ignore
-select disable_xform('CXformInnerJoin2HashJoin');
+select disable_xform('CXformLeftOuterJoin2HashJoin');
+              disable_xform               
+------------------------------------------
+ CXformLeftOuterJoin2HashJoin is disabled
+(1 row)
+
+select disable_xform('CXformImplementInnerJoin');
             disable_xform             
 --------------------------------------
- CXformInnerJoin2HashJoin is disabled
+ CXformImplementInnerJoin is disabled
 (1 row)
 
 -- end_ignore
-EXPLAIN SELECT 1 FROM foo1, foo2 WHERE foo1.a = foo2.a AND foo2.c = 3 AND foo2.b IN (SELECT b FROM foo3);
-                                             QUERY PLAN                                             
-----------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=2.07..3.17 rows=3 width=4)
-   ->  Hash Semi Join  (cost=2.07..3.13 rows=1 width=4)
-         Hash Cond: (foo2.b = foo3.b)
-         ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=1.02..2.07 rows=1 width=4)
-               Hash Key: foo2.b
-               ->  Hash Join  (cost=1.02..2.05 rows=1 width=4)
-                     Hash Cond: (foo2.a = foo1.a)
-                     ->  Seq Scan on foo2  (cost=0.00..1.01 rows=1 width=8)
-                           Filter: (c = 3)
-                     ->  Hash  (cost=1.01..1.01 rows=1 width=4)
-                           ->  Seq Scan on foo1  (cost=0.00..1.01 rows=1 width=4)
-         ->  Hash  (cost=1.03..1.03 rows=1 width=4)
-               ->  Redistribute Motion 3:3  (slice3; segments: 3)  (cost=0.00..1.03 rows=1 width=4)
-                     Hash Key: foo3.b
-                     ->  Seq Scan on foo3  (cost=0.00..1.01 rows=1 width=4)
+EXPLAIN SELECT 1 FROM foo1 left join foo2 on foo1.a = foo2.a AND foo2.c = 3 AND foo2.b IN (SELECT b FROM foo3);
+                                                   QUERY PLAN                                                   
+----------------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=2.07..3.19 rows=3 width=4)
+   ->  Hash Right Join  (cost=2.07..3.15 rows=1 width=4)
+         Hash Cond: (foo2.a = foo1.a)
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)  (cost=1.04..2.11 rows=1 width=4)
+               Hash Key: foo2.a
+               ->  Hash Semi Join  (cost=1.04..2.09 rows=1 width=4)
+                     Hash Cond: (foo2.b = foo3.b)
+                     ->  Redistribute Motion 3:3  (slice3; segments: 3)  (cost=0.00..1.03 rows=1 width=8)
+                           Hash Key: foo2.b
+                           ->  Seq Scan on foo2  (cost=0.00..1.01 rows=1 width=8)
+                                 Filter: (c = 3)
+                     ->  Hash  (cost=1.03..1.03 rows=1 width=4)
+                           ->  Redistribute Motion 3:3  (slice4; segments: 3)  (cost=0.00..1.03 rows=1 width=4)
+                                 Hash Key: foo3.b
+                                 ->  Seq Scan on foo3  (cost=0.00..1.01 rows=1 width=4)
+         ->  Hash  (cost=1.01..1.01 rows=1 width=4)
+               ->  Seq Scan on foo1  (cost=0.00..1.01 rows=1 width=4)
  Optimizer: Postgres query optimizer
-(16 rows)
+(18 rows)
 
-SELECT 1 FROM foo1, foo2 WHERE foo1.a = foo2.a AND foo2.c = 3 AND foo2.b IN (SELECT b FROM foo3);
+SELECT 1 FROM foo1 left join foo2 on foo1.a = foo2.a AND foo2.c = 3 AND foo2.b IN (SELECT b FROM foo3);
  ?column? 
 ----------
-(0 rows)
+        1
+        1
+(2 rows)
 
 reset optimizer_join_order;
 -- start_ignore
-select enable_xform('CXformInnerJoin2HashJoin');
+select enable_xform('CXformLeftOuterJoin2HashJoin');
+              enable_xform               
+-----------------------------------------
+ CXformLeftOuterJoin2HashJoin is enabled
+(1 row)
+
+select enable_xform('CXformImplementInnerJoin');
             enable_xform             
 -------------------------------------
- CXformInnerJoin2HashJoin is enabled
+ CXformImplementInnerJoin is enabled
 (1 row)
 
 -- end_ignore
@@ -12090,7 +12053,7 @@ NOTICE:  table "t55" does not exist, skipping
 drop table if exists tp;
 NOTICE:  table "tp" does not exist, skipping
 create table t55 (c int, lid int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t55 select i, i from generate_series(1, 1000) i;
 analyze t55;
@@ -12102,7 +12065,7 @@ WITH META AS (SELECT '2020-01-01' AS VALID_DT, '99' AS LOAD_ID)
 SELECT DISTINCT L1.c, L1.lid
 FROM t55 L1 CROSS JOIN META
 WHERE L1.lid = int4in(textout(meta.load_id));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
                                     QUERY PLAN                                    
 ----------------------------------------------------------------------------------
@@ -12132,7 +12095,7 @@ WITH META AS (SELECT '2020-01-01' AS VALID_DT, '99' AS LOAD_ID)
 SELECT DISTINCT L1.c, L1.lid
 FROM t55 L1 CROSS JOIN META
 WHERE L1.lid = int4in(textout(meta.load_id));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 reset optimizer_join_order;
 SELECT * from tp;
@@ -12143,7 +12106,7 @@ SELECT * from tp;
 
 -- Test partition selection for lossy casts
 create table lossycastrangepart(a float, b float) partition by range(b) (start(0) end(40) every(10));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into lossycastrangepart (values (5.1,5.1), (9.9,9.9), (10.1,10.1), (9.1,9.1), (10.9,10.9), (11.1,11.1), (21.0,21.0)); 
 explain select * from lossycastrangepart where b::int = 10;
@@ -12241,7 +12204,7 @@ select * from lossycastrangepart where b::int < 11;
 (4 rows)
 
 create table lossycastlistpart( a int, b float) partition by list(b) (partition l1 values(1.7, 2.1), partition l2 values(1.3, 2.7), partition l3 values(1.8, 2.8));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into lossycastlistpart (values (1.0,2.1), (1.0,1.3), (10.1,2.1), (9.1,2.7), (10.9,1.8), (11.1,2.8), (21.0,1.7));
 explain select * from lossycastlistpart where b::int < 2;
@@ -12292,7 +12255,7 @@ drop table if exists sales;
 create table sales(id int, prod_id int, cust_id int, sales_ts timestamp)
 partition by range(sales_ts) (start (timestamp '2010-01-01 00:00:00') end(timestamp '2010-02-02 23:59:59')
 every (interval '1 day'));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 NOTICE:  CREATE TABLE will create partition "sales_1_prt_1" for table "sales"
 NOTICE:  CREATE TABLE will create partition "sales_1_prt_2" for table "sales"
@@ -12370,10 +12333,10 @@ drop table if exists tcorr1, tcorr2;
 NOTICE:  table "tcorr1" does not exist, skipping
 NOTICE:  table "tcorr2" does not exist, skipping
 create table tcorr1(a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table tcorr2(a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into tcorr1 values (1,99);
 insert into tcorr2 values (1,1);
@@ -12920,8 +12883,8 @@ select * from foo join (select a, count(*) as cnt from tbitmap group by a) grby 
 -- 9 btree with proj select grby select
 explain (costs off)
 select * from foo join (select a, count(*) + 5 as cnt from tbtree where tbtree.a < 5000 group by a having count(*) < 2) proj_sel_grby_sel on foo.a=proj_sel_grby_sel.a;
-                         QUERY PLAN                         
-------------------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
          Hash Cond: (tbtree.a = foo.a)
@@ -13011,8 +12974,8 @@ explain (costs off)
 select * from foo join (select a, count(*) + cnt1 as cnt2 from (select a, count(*) as cnt1 from tbtree group by a) grby1
                                                                 where grby1.a < 5000 group by a, cnt1 having count(*) < 2) proj_sel_grby_sel
                     on foo.a=proj_sel_grby_sel.a;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
          Hash Cond: (tbtree.a = foo.a)
@@ -13146,10 +13109,10 @@ reset optimizer_enable_hashjoin;
 reset optimizer_enable_groupagg;
 -- ROJ must use the hash side for deriving the distribution spec. Force a non-redistribute plan to ensure we get some motion (gather)
 create table roj1 (a int, b int) ;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table roj2 (c int, d int) ;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into roj1 values (1, 1);
 insert into roj1 values (2, 2);
@@ -13179,6 +13142,25 @@ explain (costs off) select count(*), t2.c from roj1 t1 left join roj2 t2 on t1.a
  Optimizer: Postgres query optimizer
 (11 rows)
 
+-- check that ROJ can be disabled via GUC
+set optimizer_enable_right_outer_join=off;
+explain (costs off) select count(*), t2.c from roj1 t1 left join roj2 t2 on t1.a = t2.c group by t2.c;
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  HashAggregate
+         Group Key: t2.c
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)
+               Hash Key: t2.c
+               ->  Hash Right Join
+                     Hash Cond: (t2.c = t1.a)
+                     ->  Seq Scan on roj2 t2
+                     ->  Hash
+                           ->  Seq Scan on roj1 t1
+ Optimizer: Postgres-based planner
+(11 rows)
+
+reset optimizer_enable_right_outer_join;
 reset optimizer_enable_motion_redistribute;
 reset enable_sort;
 -- simple check for btree indexes on AO tables
@@ -13262,11 +13244,7 @@ select disable_xform('CXformJoin2BitmapIndexGetApply');
  CXformJoin2BitmapIndexGetApply is disabled
 (1 row)
 
-select disable_xform('CXformInnerJoin2NLJoin');
-           disable_xform            
-------------------------------------
- CXformInnerJoin2NLJoin is disabled
-(1 row)
+set optimizer_enable_nljoin=off;
 -- end_ignore
 -- Make sure we don't allow a regular (btree) index scan or index join for an AO table
 -- We disabled hash join, and bitmap index joins, NLJs, so this should leave ORCA no other choices
@@ -13293,7 +13271,6 @@ explain (costs off) select * from tpart_ao_btree where a = 3 and b = 3;
  Optimizer: Postgres query optimizer
 (6 rows)
 
--- expect a fallback for all four of these queries
 select * from tpart_dim d join t_ao_btree f on d.a=f.a where d.b=1;
  a | b | a | b 
 ---+---+---+---
@@ -13325,12 +13302,7 @@ select enable_xform('CXformJoin2BitmapIndexGetApply');
  CXformJoin2BitmapIndexGetApply is enabled
 (1 row)
 
-select enable_xform('CXformInnerJoin2NLJoin');
-           enable_xform            
------------------------------------
- CXformInnerJoin2NLJoin is enabled
-(1 row)
-
+reset optimizer_enable_nljoin;
 -- end_ignore
 reset optimizer_enable_hashjoin;
 -- Tests converted from MDPs that use tables partitioned on text columns and similar types,
@@ -13410,6 +13382,7 @@ PARTITION BY RANGE(i)
 default partition def);
 create INDEX y_idx on y (j);
 set optimizer_enable_indexjoin=on;
+set optimizer_enable_dynamicindexscan=on;
 explain (costs off) select count(*) from x, y where (x.i > y.j AND x.j <= y.i);
                                    QUERY PLAN                                    
 ---------------------------------------------------------------------------------
@@ -13442,7 +13415,7 @@ reset optimizer_enable_indexjoin;
 -- InferPredicatesBCC-vcpart-txt.mdp
 -- from comment
 create table infer_txt (a text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into infer_txt select * from generate_series(1,1000);
 analyze infer_txt;
@@ -13815,10 +13788,10 @@ select r.a, r.b, r.c, l.c from left_outer_index_nl_foo r left outer join left_ou
 (4 rows)
 
 create table left_outer_index_nl_foo_hash (a integer, b integer, c text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table left_outer_index_nl_bar_hash (a integer, b integer, c text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create index left_outer_index_nl_bar_hash_idx on left_outer_index_nl_bar_hash using btree (b);
 insert into left_outer_index_nl_foo_hash select i, i, i from generate_series(1, 4)i;
@@ -13938,10 +13911,10 @@ reset enable_hashjoin;
 --- IS DISTINCT FROM FALSE previously simplified to IS TRUE, returning incorrect results for some hash anti joins
 --- the following tests were added to verify the behavior is correct
 CREATE TABLE tt1 (a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE tt2 (c int, d int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO tt1 VALUES (1, NULL), (2, 2), (3, 4), (NULL, 5);
 INSERT INTO tt2 VALUES (1, 1), (2, NULL), (4, 4), (NULL, 2);
@@ -14030,7 +14003,7 @@ reset statement_timeout;
 -- an agg of a non-SRF with a nested SRF should be treated as a SRF, the
 -- optimizer must not eliminate the SRF or it can produce incorrect results
 create table nested_srf(a text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into nested_srf values ('abc,def,ghi');
 select * from (select regexp_split_to_table((a)::text, ','::text) from nested_srf)a;
@@ -14092,7 +14065,7 @@ select count(*) from (select trim(regexp_split_to_table((a)::text, ','::text)) f
 --- if the inner child is already distributed on the join column, orca should
 --- not place any motion on the inner child
 CREATE TABLE tone (a int, b int, c int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into tone select i,i,i from generate_series(1, 10) i;
 ANALYZE tone;
@@ -14349,8 +14322,6 @@ INSERT INTO t_clientproductind2 (tradingday, productid, clientid, exchangegroup,
 ('20190715', 'zn_f', 54982370, 'SHFE', 1),
 ('20190715', 'pb_f', 54982370, 'SHFE', 1);
 SET optimizer_enable_hashjoin = OFF;
--- FIXME: orca can't produce correct plan, we fallback this query to
--- postgres optimizer for workaround. See issue 567
 EXPLAIN (COSTS OFF)
 SELECT * FROM(
   SELECT tradingday, 1 AS ins_SpanInsArbitrageRatio
@@ -14467,31 +14438,32 @@ SELECT (
 -- heavy datasets. Sort node should be on it's place for both, Postgres
 -- optimizer and ORCA.
 create table window_agg_test(i int, j int) distributed randomly;
-explain
+-- fallback reason: Attribute number 21 not found in project list
+explain (costs off)
 update window_agg_test t
 set i = tt.i 
 from (select (min(i) over (order by j)) as i, j from window_agg_test) tt
 where t.j = tt.j;
-                                                        QUERY PLAN                                                        
---------------------------------------------------------------------------------------------------------------------------
- Update on window_agg_test t  (cost=3699.81..185385.16 rows=0 width=0)
-   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)  (cost=3699.81..185385.16 rows=2471070 width=78)
-         ->  Hash Join  (cost=3699.81..135963.76 rows=2471070 width=78)
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
+ Update on window_agg_test t
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Hash Join
                Hash Cond: (tt.j = t.j)
-               ->  Redistribute Motion 1:3  (slice2; segments: 1)  (cost=2446.06..6966.31 rows=28700 width=40)
+               ->  Redistribute Motion 1:3  (slice2; segments: 1)
                      Hash Key: tt.j
-                     ->  Subquery Scan on tt  (cost=2446.06..5818.31 rows=86100 width=40)
-                           ->  WindowAgg  (cost=2446.06..4957.31 rows=86100 width=8)
+                     ->  Subquery Scan on tt
+                           ->  WindowAgg
                                  Order By: window_agg_test.j
-                                 ->  Gather Motion 3:1  (slice3; segments: 3)  (cost=2446.06..3665.81 rows=86100 width=8)
+                                 ->  Gather Motion 3:1  (slice3; segments: 3)
                                        Merge Key: window_agg_test.j
-                                       ->  Sort  (cost=2446.06..2517.81 rows=28700 width=8)
+                                       ->  Sort
                                              Sort Key: window_agg_test.j
-                                             ->  Seq Scan on window_agg_test  (cost=0.00..321.00 rows=28700 width=8)
-               ->  Hash  (cost=895.00..895.00 rows=28700 width=46)
-                     ->  Redistribute Motion 3:3  (slice4; segments: 3)  (cost=0.00..895.00 rows=28700 width=46)
+                                             ->  Seq Scan on window_agg_test
+               ->  Hash
+                     ->  Redistribute Motion 3:3  (slice4; segments: 3)
                            Hash Key: t.j
-                           ->  Seq Scan on window_agg_test t  (cost=0.00..321.00 rows=28700 width=46)
+                           ->  Seq Scan on window_agg_test t
  Optimizer: Postgres query optimizer
 (19 rows)
 
@@ -14595,3 +14567,457 @@ select c from mix_func_cast();
  t
 (1 row)
 
+----------------------------------
+-- Test ORCA support for FIELDSELECT
+----------------------------------
+create type comp_type as ( a text, b numeric, c int, d float, e int);
+create table comp_table(id int, item comp_type) distributed by (id);
+create table comp_part (id int, item comp_type) distributed by (id) partition by range(id) (start(1) end(4) every(1));
+insert into comp_table values (1, ROW('GP', 10.5, 10, 10.5, 20)), (2, ROW('VM',20.5, 20, 10.5, 20)), (3, ROW('DB',10.5, 10, 10.5, 10));
+insert into comp_part values (1, ROW('GP', 10.5, 10, 10.5, 20)), (2, ROW('VM',20.5, 20, 10.5, 20)), (3, ROW('DB',10.5, 10, 10.5, 10));
+analyze comp_table;
+analyze comp_part;
+select sum((item).b) from comp_table where (item).c=20;
+ sum  
+------
+ 20.5
+(1 row)
+
+explain (costs off) select sum((item).b) from comp_table where (item).c=20;
+                   QUERY PLAN                   
+------------------------------------------------
+ Aggregate
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         ->  Seq Scan on comp_table
+               Filter: ((item).c = 20)
+ Optimizer: Postgres-based planner
+(5 rows)
+
+select distinct (item).b from comp_table where (item).c=20;
+  b   
+------
+ 20.5
+(1 row)
+
+explain (costs off) select distinct (item).b from comp_table where (item).c=20;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: ((item).b)
+   ->  Unique
+         Group Key: ((item).b)
+         ->  Sort
+               Sort Key: ((item).b)
+               ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                     Hash Key: ((item).b)
+                     ->  Seq Scan on comp_table
+                           Filter: ((item).c = 20)
+ Optimizer: Postgres-based planner
+(11 rows)
+
+-- verify the query output using predicate with the same composite type
+select (item).a from comp_table where (item).c=20 and (item).e >10;
+ a  
+----
+ VM
+(1 row)
+
+explain (costs off) select (item).a from comp_table where (item).c=20 and (item).e >10;
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on comp_table
+         Filter: (((item).e > 10) AND ((item).c = 20))
+ Optimizer: Postgres-based planner
+(4 rows)
+
+-- verify the query output using predicate with the different composite type
+select * from comp_table where (item).c>(item).d;
+ id |         item         
+----+----------------------
+  2 | (VM,20.5,20,10.5,20)
+(1 row)
+
+explain (costs off) select * from comp_table where (item).c>(item).d ;
+                        QUERY PLAN                         
+-----------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on comp_table
+         Filter: (((item).c)::double precision > (item).d)
+ Optimizer: Postgres-based planner
+(4 rows)
+
+-- verify the query output by using a composite type in a join query
+select (x.item).a from comp_table x join comp_table y on (x.item).c=(y.item).c;
+ a  
+----
+ DB
+ DB
+ GP
+ GP
+ VM
+(5 rows)
+
+explain (costs off) select (x.item).a from comp_table x join comp_table y on (x.item).c=(y.item).c;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Hash Join
+         Hash Cond: ((x.item).c = (y.item).c)
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)
+               Hash Key: (x.item).c
+               ->  Seq Scan on comp_table x
+         ->  Hash
+               ->  Redistribute Motion 3:3  (slice3; segments: 3)
+                     Hash Key: (y.item).c
+                     ->  Seq Scan on comp_table y
+ Optimizer: Postgres-based planner
+(11 rows)
+
+-- verify the query output by using a composite type in a TVF query
+select (x.item).a, (select count(*) from generate_series(1, (x.item).c)) from comp_table x;
+ a  | count 
+----+-------
+ GP |    10
+ VM |    20
+ DB |    10
+(3 rows)
+
+explain (costs off) select (x.item).a, (select count(*) from generate_series(1, (x.item).c)) from comp_table x;
+                      QUERY PLAN                      
+------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on comp_table x
+         SubPlan 1
+           ->  Aggregate
+                 ->  Function Scan on generate_series
+ Optimizer: Postgres-based planner
+(6 rows)
+
+-- verify the query output by using a composite type in a cte query
+with cte1 as (select * from comp_table where (item).c>10) select id, (item).a, (item).b, (item).c, (item).e from cte1;
+ id | a  |  b   | c  | e  
+----+----+------+----+----
+  2 | VM | 20.5 | 20 | 20
+(1 row)
+
+explain (costs off) with cte1 as (select * from comp_table where (item).c>10) select id, (item).a, (item).b, (item).c, (item).e from cte1;
+                QUERY PLAN                
+------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Subquery Scan on cte1
+         ->  Seq Scan on comp_table
+               Filter: ((item).c > 10)
+ Optimizer: Postgres-based planner
+(5 rows)
+
+-- verify the query output by using a composite type in a  subquery
+select (item).a from comp_table where (item).c=10 and (item).e IN (SELECT (item).e FROM comp_table WHERE (item).c = 10);
+ a  
+----
+ GP
+ DB
+(2 rows)
+
+explain (costs off) select (item).a from comp_table where (item).c=10 and (item).e IN (SELECT (item).e FROM comp_table WHERE (item).c = 10);
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Hash Semi Join
+         Hash Cond: ((comp_table.item).e = (comp_table_1.item).e)
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)
+               Hash Key: (comp_table.item).e
+               ->  Seq Scan on comp_table
+                     Filter: ((item).c = 10)
+         ->  Hash
+               ->  Redistribute Motion 3:3  (slice3; segments: 3)
+                     Hash Key: (comp_table_1.item).e
+                     ->  Seq Scan on comp_table comp_table_1
+                           Filter: ((item).c = 10)
+ Optimizer: Postgres-based planner
+(13 rows)
+
+-- verify the query output by using a composite type in a partition table query
+select (x.item).a from comp_part x join comp_part y on (X.item).c=(Y.item).c;
+ a  
+----
+ DB
+ DB
+ GP
+ GP
+ VM
+(5 rows)
+
+explain (costs off) select (x.item).a from comp_part x join comp_part y on (X.item).c=(Y.item).c;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Hash Join
+         Hash Cond: ((x.item).c = (y.item).c)
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)
+               Hash Key: (x.item).c
+               ->  Append
+                     ->  Seq Scan on comp_part_1_prt_1 x_1
+                     ->  Seq Scan on comp_part_1_prt_2 x_2
+                     ->  Seq Scan on comp_part_1_prt_3 x_3
+         ->  Hash
+               ->  Redistribute Motion 3:3  (slice3; segments: 3)
+                     Hash Key: (y.item).c
+                     ->  Append
+                           ->  Seq Scan on comp_part_1_prt_1 y_1
+                           ->  Seq Scan on comp_part_1_prt_2 y_2
+                           ->  Seq Scan on comp_part_1_prt_3 y_3
+ Optimizer: Postgres query optimizer
+(17 rows)
+
+-- clean up
+drop table comp_table;
+drop table comp_part;
+drop type comp_type;
+-- the query with empty CTE producer target list should fall back to Postgres
+-- optimizer without any error on build without asserts
+drop table if exists empty_cte_tl_test;
+NOTICE:  table "empty_cte_tl_test" does not exist, skipping
+create table empty_cte_tl_test(id int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Apache Cloudberry data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+with cte as (
+  select from empty_cte_tl_test
+)
+select * 
+from empty_cte_tl_test
+where id in(select id from cte);
+ id 
+----
+(0 rows)
+
+-- test that we use default cardinality estimate (40) for non-comparable types
+create table ts_tbl (ts timestamp);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'ts' as the Apache Cloudberry data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create index ts_tbl_idx on ts_tbl(ts);
+insert into ts_tbl select to_timestamp('99991231'::text, 'YYYYMMDD'::text) from generate_series(1,100);
+analyze ts_tbl;
+explain select * from ts_tbl where ts = to_timestamp('99991231'::text, 'YYYYMMDD'::text);
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..2.75 rows=100 width=8)
+   ->  Seq Scan on ts_tbl  (cost=0.00..1.42 rows=33 width=8)
+         Filter: (ts = 'Fri Dec 31 00:00:00 9999 PST'::timestamp with time zone)
+ Optimizer: Postgres query optimizer
+(4 rows)
+
+-- Test ORCA support for implicit array coerce cast
+-- ORCA should generate a valid plan passing along the cast function as part of ArrayCoerceExpr
+-- While execution thin insert query fails due to the mismatch of column length.
+create table array_coerce_foo (a int, b varchar(2)[]);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table array_coerce_bar (a int, b varchar(10)[]);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+insert into array_coerce_bar values (1, ARRAY['abcde']);
+explain insert into array_coerce_foo select * from array_coerce_bar;
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Insert on array_coerce_foo  (cost=0.00..654.00 rows=16533 width=36)
+   ->  Seq Scan on array_coerce_bar  (cost=0.00..654.00 rows=16533 width=36)
+ Optimizer: Postgres query optimizer
+(3 rows)
+
+insert into array_coerce_foo select * from array_coerce_bar;
+ERROR:  value too long for type character varying(2)  (seg1 127.0.0.1:7003 pid=55908)
+WITH conf AS (
+    SELECT setting
+    FROM pg_catalog.pg_config
+    WHERE name = 'LDFLAGS_EX')
+select * from conf;
+ setting 
+---------
+ 
+(1 row)
+
+reset optimizer_trace_fallback;
+-- These testcases will fallback to postgres when "PexprConvert2In" is enabled if
+-- underlying issues are not fixed
+create table baz (a int,b int);
+explain select baz.* from baz where
+baz.a=1 OR
+baz.b = 1 OR baz.b = 2 OR baz.b = 3 OR baz.b = 4 OR baz.b = 5 OR baz.b = 6 OR baz.b = 7 OR baz.b = 8 OR baz.b = 9 OR baz.b = 10 OR
+baz.b = 11 OR baz.b = 12 OR baz.b = 13 OR baz.b = 14 OR baz.b = 15 OR baz.b = 16 OR baz.b = 17 OR baz.b = 18 OR baz.b = 19 OR baz.b = 20;
+                                                                                                                            QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1851.62 rows=1790 width=8)
+   ->  Seq Scan on baz  (cost=0.00..1827.75 rows=597 width=8)
+         Filter: ((a = 1) OR (b = 1) OR (b = 2) OR (b = 3) OR (b = 4) OR (b = 5) OR (b = 6) OR (b = 7) OR (b = 8) OR (b = 9) OR (b = 10) OR (b = 11) OR (b = 12) OR (b = 13) OR (b = 14) OR (b = 15) OR (b = 16) OR (b = 17) OR (b = 18) OR (b = 19) OR (b = 20))
+ Optimizer: Postgres query optimizer
+(4 rows)
+
+drop table baz;
+create table baz ( a varchar);
+explain select * from baz where baz.a::bpchar='b' or baz.a='c';
+                                   QUERY PLAN
+---------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..299.41 rows=106 width=32)
+   ->  Seq Scan on baz  (cost=0.00..298.00 rows=35 width=32)
+         Filter: (((a)::bpchar = 'b'::bpchar) OR ((a)::text = 'c'::text))
+ Optimizer: Postgres query optimizer
+(4 rows)
+
+drop table baz;
+-- ensure shared scan producer returns 0 rows
+create table cte_test(a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Apache Cloudberry data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+insert into cte_test select i from generate_series(1,10)i;
+analyze cte_test;
+explain (analyze, costs off, summary off, timing off) with cte as (select * from cte_test) select * from cte union all select * from cte;
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3) (actual rows=20 loops=1)
+   ->  Append (actual rows=10 loops=1)
+         ->  Seq Scan on cte_test (actual rows=5 loops=1)
+         ->  Seq Scan on cte_test cte_test_1 (actual rows=5 loops=1)
+ Optimizer: Postgres query optimizer
+(5 rows)
+
+-- While retrieving the columns width in partitioned tables, inherited stats i.e.
+-- stats that cover all the child tables should be used
+-- start_ignore
+create language plpython3u;
+-- end_ignore
+create or replace function check_col_width(query text, operator text, width text) returns int as
+$$
+rv = plpy.execute('EXPLAIN '+ query)
+search_text_1 = operator
+search_text_2 = width
+result = 0
+for i in range(len(rv)):
+    cur_line = rv[i]['QUERY PLAN']
+    if search_text_1 in cur_line and search_text_2 in cur_line:
+        result = result+1
+return result
+$$
+language plpython3u;
+create table testPartWidth (a numeric(7,2), b numeric(7,2)) distributed by (a)
+partition by range(a) (start(0.0) end(4.0) every(2.0));
+insert into testPartWidth values (0.001,0.001),(2.123,2.123);
+analyze testPartWidth;
+--------------------------------------------------------------------------------
+-- The below query shows the column width of 'a' and 'b'
+-- select attname,avg_width from pg_stats where tablename='testPartWidth';
+-- attname | avg_width
+-- ---------+-----------
+--  a       |         5
+--  b       |         5
+--------------------------------------------------------------------------------
+select check_col_width('select a from testPartWidth;','Dynamic Seq Scan','width=5') = 1;
+ ?column? 
+----------
+ f
+(1 row)
+
+select check_col_width('select b from testPartWidth;','Dynamic Seq Scan','width=5') = 1;
+ ?column? 
+----------
+ f
+(1 row)
+
+select check_col_width('select a from testPartWidth;','Append','width=5') = 1;
+ ?column? 
+----------
+ t
+(1 row)
+
+select check_col_width('select a from testPartWidth;','Append','width=5') = 1;
+ ?column? 
+----------
+ t
+(1 row)
+
+drop function check_col_width(query text, operator text, width text);
+---------------------------------------------------------------------------------
+-- Test cast from INT[] to TEXT[]
+CREATE TABLE array_coerceviaio(a INT[]) distributed randomly;
+INSERT INTO array_coerceviaio values(ARRAY[1, 2, 3]);
+EXPLAIN SELECT CAST(a AS TEXT[]) FROM array_coerceviaio;
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..1882.00 rows=52800 width=32)
+   ->  Seq Scan on array_coerceviaio  (cost=0.00..1178.00 rows=17600 width=32)
+ Optimizer: Postgres-based planner
+(3 rows)
+
+SELECT CAST(a AS TEXT[]) FROM array_coerceviaio;
+    a    
+---------
+ {1,2,3}
+(1 row)
+
+---------------------------------------------------------------------------------
+DROP TABLE IF EXISTS schema_test_table;
+CREATE TABLE schema_test_table(a numeric, b numeric(5,2), c char(10) NOT NULL) distributed by (a);
+-- In 7x, redundant Result nodes in planned_stmt are being removed by ORCA,
+-- which caused the loss of typmod info of column type in plan.
+-- Below query is used by external libraries to fetch schema of table.
+-- Test that the typmod of column type is correct in explain plan.
+EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM schema_test_table WHERE 1=0;
+                                                                      QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Result
+   Output: a, b, c
+   One-Time Filter: false
+ Optimizer: Postgres-based planner
+ Settings: optimizer = 'off', optimizer_enable_coordinator_only_queries = 'on', optimizer_enable_master_only_queries = 'on', optimizer_segments = '3'
+(5 rows)
+
+---------------------------------------------------------------------------------
+-- Test ALL NULL scalar array compare 
+create table DatumSortedSet_core (a int, b character varying NOT NULL) distributed by (a);
+explain select * from DatumSortedSet_core where b in (NULL, NULL);
+                                  QUERY PLAN
+-------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..240.69 rows=1 width=36)
+   ->  Seq Scan on datumsortedset_core  (cost=0.00..240.67 rows=1 width=36)
+         Filter: ((b)::text = ANY ('{NULL,NULL}'::text[]))
+ Optimizer: Postgres-based planner
+(4 rows)
+
+---------------------------------------------------------------------------------
+-- Test fill argtypes of PopAggFunc
+-- start_ignore
+drop table if exists foo;
+drop table if exists bar;
+-- end_ignore
+set optimizer_enable_eageragg = on;
+create table foo (j1 int, g1 int, s1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'j1' as the Apache Cloudberry data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+insert into foo select i%10, i %10, i from generate_series(1,100) i;
+create table bar (j2 int, g2 int, s2 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'j2' as the Apache Cloudberry data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+insert into bar select i%1, i %10, i from generate_series(1,10) i;
+analyze foo;
+analyze bar;
+explain (costs off) select max(s1) from foo inner join bar on j1 = j2 group by g1;
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Finalize HashAggregate
+         Group Key: foo.g1
+         ->  Redistribute Motion 3:3  (slice2; segments: 3)
+               Hash Key: foo.g1
+               ->  Partial HashAggregate
+                     Group Key: foo.g1
+                     ->  Hash Join
+                           Hash Cond: (foo.j1 = bar.j2)
+                           ->  Seq Scan on foo
+                           ->  Hash
+                                 ->  Seq Scan on bar
+ Optimizer: Postgres-based planner
+(13 rows)
+
+drop table foo;
+drop table bar;
+reset optimizer_enable_eageragg;

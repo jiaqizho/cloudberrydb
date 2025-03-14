@@ -75,14 +75,12 @@ test: create_aggregate create_function_3 create_cast select inherit typed_table 
 # ignore reason:
 #  1. Pax have not implements tuple_insert_speculative and tuple_lock
 #  2. Pax not support almost of triggers
-#  3. Pax not support vacuum yet
 # test: constraints triggers vacuum updatable_views
 
 # ----------
 # Because vacuum will detect concurrently running transactions, it is necessary to
 # run this test on its own, or it might not detect the pages are 'all visible'
 # ----------
-# ignore reason: Pax not support vacuum yet
 # test: disable_autovacuum
 # test: vacuum_stats
 # test: enable_autovacuum

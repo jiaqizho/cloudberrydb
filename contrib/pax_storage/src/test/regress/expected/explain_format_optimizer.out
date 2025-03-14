@@ -30,8 +30,6 @@ CREATE TABLE apples(id int PRIMARY KEY, type text);
 INSERT INTO apples(id) SELECT generate_series(1, 100000);
 CREATE TABLE box_locations(id int PRIMARY KEY, address text);
 CREATE TABLE boxes(id int PRIMARY KEY, apple_id int REFERENCES apples(id), location_id int REFERENCES box_locations(id));
-WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Cloudberry Database, will not be enforced
-WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Cloudberry Database, will not be enforced
 --- Check Explain Text format output
 -- explain_processing_off
 EXPLAIN SELECT * from boxes LEFT JOIN apples ON apples.id = boxes.apple_id LEFT JOIN box_locations ON box_locations.id = boxes.location_id;
@@ -266,7 +264,7 @@ QUERY PLAN
                 Plan Rows: 1
                 Plan Width: 12
   Settings: 
-    Optimizer: "Pivotal Optimizer (GPORCA)"
+    Optimizer: "GPORCA"
 (1 row)
 --- Check Explain Analyze YAML output that include the slices information
 -- explain_processing_off
@@ -460,7 +458,7 @@ QUERY PLAN
                 Actual Rows: 0
                 Actual Loops: 1
   Settings: 
-    Optimizer: "Pivotal Optimizer (GPORCA)"
+    Optimizer: "GPORCA"
   Planning Time: 17.632
   Triggers: 
   Slice statistics: 
@@ -518,7 +516,7 @@ QUERY PLAN
       "Alias": "generate_series"
     },
     "Settings": {
-      "Optimizer": "Pivotal Optimizer (GPORCA)"
+      "Optimizer": "GPORCA"
     }
   }
 ]
@@ -538,7 +536,7 @@ QUERY PLAN
       <Alias>generate_series</Alias>
     </Plan>
     <Settings>
-      <Optimizer>Pivotal Optimizer (GPORCA)</Optimizer>
+      <Optimizer>GPORCA</Optimizer>
     </Settings>
   </Query>
 </explain>
@@ -563,33 +561,22 @@ QUERY PLAN
       "Async Capable": false,
       "Plans": [
         {
-          "Node Type": "Append",
+          "Node Type": "Dynamic Seq Scan",
           "Parent Relationship": "Outer",
           "Slice": 1,
           "Segments": 1,
           "Gang Type": "primary reader",
           "Parallel Aware": false,
           "Async Capable": false,
-          "Subplans Removed": 0,
-          "Plans": [
-            {
-              "Node Type": "Seq Scan",
-              "Parent Relationship": "Member",
-              "Slice": 1,
-              "Segments": 1,
-              "Gang Type": "primary reader",
-              "Parallel Aware": false,
-              "Async Capable": false,
-              "Relation Name": "jsonexplaintest_1_prt_2",
-              "Alias": "jsonexplaintest_1_prt_2",
-              "Filter": "(i = 2)"
-            }
-          ]
+          "Relation Name": "jsonexplaintest",
+          "Alias": "jsonexplaintest",
+          "Number of partitions to scan": 1,
+          "Filter": "(i = 2)"
         }
       ]
     },
     "Settings": {
-      "Optimizer": "Pivotal Optimizer (GPORCA)"
+      "Optimizer": "GPORCA"
     }
   }
 ]

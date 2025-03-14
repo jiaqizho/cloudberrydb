@@ -697,7 +697,6 @@ DROP TABLE FKTABLE;
 -- because int=int8 exists and is a member of the integer opfamily
 CREATE TEMP TABLE FKTABLE (ftest1 int8);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1) references pktable;
-WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Cloudberry Database, will not be enforced
 -- Check it actually works
 INSERT INTO FKTABLE VALUES(42);		-- should succeed
 INSERT INTO FKTABLE VALUES(43);		-- should fail
@@ -717,7 +716,6 @@ CREATE TEMP TABLE PKTABLE (ptest1 numeric PRIMARY KEY);
 INSERT INTO PKTABLE VALUES(42);
 CREATE TEMP TABLE FKTABLE (ftest1 int);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1) references pktable;
-WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Cloudberry Database, will not be enforced
 -- Check it actually works
 INSERT INTO FKTABLE VALUES(42);		-- should succeed
 INSERT INTO FKTABLE VALUES(43);		-- should fail
@@ -2827,7 +2825,6 @@ select * from my_locks order by 1;
 (0 rows)
 
 alter table alterlock2 add foreign key (f1) references alterlock (f1);
-WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Cloudberry Database, will not be enforced
 select * from my_locks order by 1;
   relname   |     max_lockmode      
 ------------+-----------------------
@@ -2839,7 +2836,6 @@ rollback;
 begin;
 alter table alterlock2
 add constraint alterlock2nv foreign key (f1) references alterlock (f1) NOT VALID;
-WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Cloudberry Database, will not be enforced
 select * from my_locks order by 1;
   relname   |     max_lockmode      
 ------------+-----------------------

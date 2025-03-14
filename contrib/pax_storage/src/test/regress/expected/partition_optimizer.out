@@ -385,8 +385,9 @@ alter table foo_p exchange partition for(6) with table bar_p;
 ERROR:  partition constraint of relation "bar_p" is violated by some row
 alter table foo_p exchange partition for(6) with table bar_p without
 validation;
-NOTICE:  specifying "WITHOUT VALIDATION" acts as no operation. If the new partition is a regular table, validation is performed to make sure all the rows obey partition constraint. If the new partition is external or foreign table, no validation is performed.
-ERROR:  partition constraint of relation "bar_p" is violated by some row
+NOTICE:  specifying "WITHOUT VALIDATION" acts as no operation
+DETAIL:  If the new partition is a regular table, validation is performed to make sure all the rows obey partition constraint. If the new partition is external or foreign table, no validation is performed.
+ERROR:  partition constraint of relation "bar_p" is violated by some row  (seg2 10.13.9.100:7004 pid=1768)
 analyze foo_p;
 select * from foo_p;
  i 
@@ -591,6 +592,7 @@ ERROR:  cannot EXCHANGE PARTITION for relation "sto_ao_ao" -- partition has chil
 create table foo_p (i int, j int) distributed by (i) partition by range(j) (start(1) end(10) every(2));
 create readable external table bar_p(i int, j int) location ('gpfdist://host.invalid:8000/file') format 'text';
 alter table foo_p exchange partition for(3) with table bar_p;
+NOTICE:  partition constraints are not validated when attaching a readable external table
 truncate foo_p;
 ERROR:  cannot truncate foreign table "foo_p_1_prt_2"
 drop table foo_p;
@@ -4890,30 +4892,20 @@ analyze bar;
 set optimizer_segments = 3;
 set optimizer_nestloop_factor = 1.0;
 explain select foo_p.b, foo_p.t from foo_p left outer join bar on foo_p.a = bar.k  where foo_p.t is not null and foo_p.a = (array[1])[1];
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
- Hash Right Join  (cost=0.00..863.18 rows=2485 width=30)
-   Hash Cond: (bar.k = foo_p_1_prt_2.a)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.48 rows=2237 width=4)
-         ->  Seq Scan on bar  (cost=0.00..431.45 rows=746 width=4)
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
+ Hash Right Join  (cost=0.00..863.16 rows=2237 width=30)
+   Hash Cond: (bar.k = foo_p.a)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=0.00..431.50 rows=2237 width=4)
+         ->  Seq Scan on bar  (cost=0.00..431.47 rows=746 width=4)
                Filter: (k = 1)
-   ->  Hash  (cost=431.04..431.04 rows=2 width=34)
-         ->  Gather Motion 3:1  (slice2; segments: 3)  (cost=0.00..431.04 rows=2 width=34)
-               ->  Append  (cost=0.00..431.04 rows=1 width=34)
-                     ->  Seq Scan on foo_p_1_prt_2  (cost=0.00..431.04 rows=1 width=34)
-                           Filter: ((NOT (t IS NULL)) AND (a = 1))
-                     ->  Seq Scan on foo_p_1_prt_3  (cost=0.00..431.04 rows=1 width=34)
-                           Filter: ((NOT (t IS NULL)) AND (a = 1))
-                     ->  Seq Scan on foo_p_1_prt_4  (cost=0.00..431.04 rows=1 width=34)
-                           Filter: ((NOT (t IS NULL)) AND (a = 1))
-                     ->  Seq Scan on foo_p_1_prt_5  (cost=0.00..431.04 rows=1 width=34)
-                           Filter: ((NOT (t IS NULL)) AND (a = 1))
-                     ->  Seq Scan on foo_p_1_prt_6  (cost=0.00..431.04 rows=1 width=34)
-                           Filter: ((NOT (t IS NULL)) AND (a = 1))
-                     ->  Seq Scan on foo_p_1_prt_other  (cost=0.00..431.04 rows=1 width=34)
-                           Filter: ((NOT (t IS NULL)) AND (a = 1))
- Optimizer: Pivotal Optimizer (GPORCA)
-(21 rows)
+   ->  Hash  (cost=431.04..431.04 rows=1 width=34)
+         ->  Gather Motion 3:1  (slice2; segments: 3)  (cost=0.00..431.04 rows=1 width=34)
+               ->  Dynamic Seq Scan on foo_p  (cost=0.00..431.04 rows=1 width=34)
+                     Number of partitions to scan: 6 (out of 6)
+                     Filter: ((NOT (t IS NULL)) AND (a = 1))
+ Optimizer: GPORCA
+(11 rows)
 
 reset optimizer_segments;
 drop table if exists foo_p;

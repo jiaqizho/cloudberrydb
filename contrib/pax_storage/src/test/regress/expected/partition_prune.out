@@ -2183,7 +2183,7 @@ declare cur SCROLL CURSOR for select 1 from list_part where a > (select 1) and a
 move 3 from cur;
 -- Ensure we get two rows.
 fetch backward all from cur;
-ERROR:  backward scan is not supported in this version of Cloudberry Database
+ERROR:  backward scan is not supported in this version of Apache Cloudberry
 commit;
 begin;
 -- Test run-time pruning using stable functions
@@ -3770,13 +3770,13 @@ explain (costs off) select * from pph_arrpart where a in ('{4, 5}', '{1}');
 drop table pph_arrpart;
 -- enum type list partition key
 create type pp_colors as enum ('green', 'blue', 'black');
-create table pp_enumpart (a pp_colors) partition by list (a);
+create table pp_enumpart (col1 int, a pp_colors) partition by list (a);
 create table pp_enumpart_green partition of pp_enumpart for values in ('green');
 create table pp_enumpart_blue partition of pp_enumpart for values in ('blue');
 explain (costs off) select * from pp_enumpart where a = 'blue';
-                   QUERY PLAN                   
-------------------------------------------------
- Gather Motion 1:1  (slice1; segments: 1)
+                QUERY PLAN                
+------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on pp_enumpart_blue pp_enumpart
          Filter: (a = 'blue'::pp_colors)
  Optimizer: Postgres query optimizer
@@ -4215,7 +4215,7 @@ create table listp_12_2 partition of listp_12 for values in(2);
 -- Force the 2nd subnode of the Append to be non-parallel.  This results in
 -- a nested Append node because the mixed parallel / non-parallel paths cannot
 -- be pulled into the top-level Append.
--- alter table listp_12_1 set (parallel_workers = 0);
+alter table listp_12_1 set (parallel_workers = 0);
 -- Ensure that listp_12_2 is not scanned.  (The nested Append is not seen in
 -- the plan as it's pulled in setref.c due to having just a single subnode).
 select explain_parallel_append('select * from listp where a = (select 1);');

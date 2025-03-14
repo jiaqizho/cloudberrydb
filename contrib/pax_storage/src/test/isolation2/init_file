@@ -15,6 +15,8 @@ m/NOTICE:  extension "gp_debug_numsegments" already exists, skipping/
 m/^ Optimizer status:.*/
 m/^ Optimizer: Pivotal Optimizer \(GPORCA\).*/
 m/^ Optimizer: Postgres query optimizer/
+m/^ Optimizer: GPORCA/
+m/^ Optimizer: Postgres-based planner/
 m/^ Settings:.*/
 
 # There are a number of NOTICE and HINT messages around table distribution,
