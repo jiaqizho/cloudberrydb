@@ -133,3 +133,13 @@ CREATE
 CREATE OR REPLACE FUNCTION wait_till_master_shutsdown() RETURNS void AS $$ DECLARE i int; /* in func */ BEGIN i := 0; /* in func */ while i < 120 loop i := i + 1; /* in func */ PERFORM pg_sleep(.5); /* in func */ end loop; /* in func */ END; /* in func */ $$ LANGUAGE plpgsql;
 CREATE
 
+CREATE OR REPLACE FUNCTION pax_get_catalog_rows(rel regclass, segment_id out int, ptblockname out int, pttupcount out int, ptblocksize out int, ptstatistics out pg_ext_aux.paxauxstats, ptvisimapname out name, pthastoast out boolean, ptisclustered out boolean ) returns setof record EXECUTE ON  ALL SEGMENTS AS '$libdir/pax', 'pax_get_catalog_rows' LANGUAGE C;
+CREATE
+
+CREATE OR REPLACE FUNCTION get_pax_aux_table_all(rel regclass) RETURNS TABLE( segment_id integer, ptblockname integer, pttupcount integer, ptstatistics pg_ext_aux.paxauxstats, ptexistvisimap bool, ptexistexttoast bool, ptisclustered bool ) AS $$ SELECT segment_id, ptblockname, pttupcount, ptstatistics, ptvisimapname IS NOT NULL, pthastoast, ptisclustered FROM pax_get_catalog_rows(rel) $$ LANGUAGE sql;
+CREATE
+
+-- start_ignore
+set statement_timeout='180s';
+SET
+-- end_ignore
