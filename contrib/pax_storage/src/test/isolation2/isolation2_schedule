@@ -28,12 +28,6 @@ test: udf_exception_blocks_panic_scenarios
 test: ao_same_trans_truncate_crash
 test: frozen_insert_crash
 
-test: prevent_ao_wal
-
-# Tests for packcore, will use the coredumps generated in crash_recovery_dtm,
-# so must be scheduled after that one.
-test: packcore
-
 # TODO(gongxun:) These gdd testcases are not designed to work with ao and pax tables
 # Tests on global deadlock detector
 #test: gdd/prepare
@@ -112,58 +106,56 @@ test: fsync_ao
 # Disable auto-vacuum for below tests
 test: disable_autovacuum
 
-# Tests on Append-Optimized tables (row-oriented).
+# Tests on PAX tables (row-oriented).
+# FIXME: PAX won't update the reltuples in pg_class after vacuum/vacuum full
 test: concurrent_index_creation_should_not_deadlock
-test: uao/alter_while_vacuum_row uao/alter_while_vacuum2_row
-test: uao/compaction_full_stats_row
-test: uao/compaction_utility_row
-test: uao/compaction_utility_insert_row
-test: uao/cursor_before_delete_row
-test: uao/cursor_before_deletevacuum_row
-test: uao/cursor_before_update_row
-test: uao/cursor_withhold_row
-test: uao/cursor_withhold2_row
-test: uao/delete_while_vacuum_row
-test: uao/index_build_reltuples_row
-test: uao/insert_policy_row
-test: uao/insert_while_vacuum_row
-test: uao/max_concurrency_row
-test: uao/max_concurrency2_row
-test: uao/modcount_row
-test: uao/modcount_vacuum_row
-test: uao/parallel_delete_row
-test: uao/parallel_update_row
-test: uao/parallel_update_readcommitted_row
-test: uao/phantom_reads_row
-test: uao/phantom_reads_serializable_row
-test: uao/phantom_reads_delete_row
-test: uao/phantom_reads_delete_serializable_row
-test: uao/phantom_reads_update_row
-test: uao/phantom_reads_update_serializable_row
-test: uao/select_after_vacuum_row
-test: uao/select_after_vacuum_serializable_row
-test: uao/select_before_vacuum_row
-test: uao/select_while_delete_row
-test: uao/select_while_full_vacuum_row
-test: uao/select_while_vacuum_row
-test: uao/select_while_vacuum_serializable_row
-test: uao/select_while_vacuum_serializable2_row
-test: uao/selectinsert_while_vacuum_row
-test: uao/selectinsertupdate_while_vacuum_row
-test: uao/selectupdate_while_vacuum_row
-test: uao/snapshot_index_corruption_row
-test: uao/update_while_vacuum_row
-test: uao/vacuum_self_serializable_row
-test: uao/vacuum_self_serializable2_row
-test: uao/vacuum_self_serializable3_row
-test: uao/vacuum_self_function_row
-test: uao/vacuum_while_insert_row
-test: uao/vacuum_while_vacuum_row
-test: uao/vacuum_cleanup_row
-test: uao/vacuum_index_stats_row
-test: uao/bitmapindex_rescan_row
-test: uao/limit_indexscan_inits_row
-test: uao/test_pg_appendonly_version_row
+test: pax/alter_while_vacuum2
+test: pax/alter_while_vacuum
+test: pax/bitmapindex_rescan
+test: pax/compaction_full_stats
+test: pax/compaction_utility_insert
+test: pax/compaction_utility
+test: pax/cursor_before_delete
+test: pax/cursor_before_deletevacuum
+test: pax/cursor_before_update
+test: pax/cursor_withhold2
+test: pax/cursor_withhold
+test: pax/delete_while_vacuum
+test: pax/index_build_reltuples
+test: pax/insert_policy
+test: pax/insert_while_vacuum
+test: pax/max_concurrency2
+test: pax/max_concurrency
+test: pax/parallel_delete
+test: pax/parallel_update_readcommitted
+test: pax/parallel_update
+test: pax/phantom_reads_delete_serializable
+test: pax/phantom_reads_delete
+test: pax/phantom_reads_serializable
+test: pax/phantom_reads
+test: pax/phantom_reads_update_serializable
+test: pax/phantom_reads_update
+test: pax/select_after_vacuum_serializable
+test: pax/select_after_vacuum
+test: pax/select_before_vacuum
+test: pax/selectinsertupdate_while_vacuum
+test: pax/selectinsert_while_vacuum
+test: pax/selectupdate_while_vacuum
+test: pax/select_while_delete
+test: pax/select_while_full_vacuum
+test: pax/select_while_vacuum_serializable2
+test: pax/select_while_vacuum_serializable
+test: pax/select_while_vacuum
+test: pax/snapshot_index_corruption
+test: pax/update_while_vacuum
+test: pax/vacuum_index_stats
+test: pax/vacuum_self_function
+test: pax/vacuum_self_serializable2
+test: pax/vacuum_self_serializable3
+test: pax/vacuum_self_serializable
+test: pax/vacuum_while_insert
+test: pax/vacuum_while_vacuum
+
 # Refer to the case comment for why it is commented out.
 # test: uao/bad_buffer_on_temp_ao_row
 
@@ -171,57 +163,6 @@ test: reorganize_after_ao_vacuum_skip_drop truncate_after_ao_vacuum_skip_drop ma
 # below test(s) inject faults so each of them need to be in a separate group
 test: segwalrep/master_wal_switch
 
-# Tests on Append-Optimized tables (column-oriented).
-test: uao/alter_while_vacuum_column uao/alter_while_vacuum2_column
-test: uao/compaction_full_stats_column
-test: uao/compaction_utility_column
-test: uao/compaction_utility_insert_column
-test: uao/cursor_before_delete_column
-test: uao/cursor_before_deletevacuum_column
-test: uao/cursor_before_update_column
-test: uao/cursor_withhold_column
-test: uao/cursor_withhold2_column
-test: uao/delete_while_vacuum_column
-test: uao/index_build_reltuples_column
-test: uao/insert_policy_column
-test: uao/insert_while_vacuum_column
-test: uao/max_concurrency_column
-test: uao/max_concurrency2_column
-test: uao/modcount_column
-test: uao/modcount_vacuum_column
-test: uao/parallel_delete_column
-test: uao/parallel_update_column
-test: uao/parallel_update_readcommitted_column
-test: uao/phantom_reads_column
-test: uao/phantom_reads_serializable_column
-test: uao/phantom_reads_delete_column
-test: uao/phantom_reads_delete_serializable_column
-test: uao/phantom_reads_update_column
-test: uao/phantom_reads_update_serializable_column
-test: uao/select_after_vacuum_column
-test: uao/select_after_vacuum_serializable_column
-test: uao/select_before_vacuum_column
-test: uao/select_while_delete_column
-test: uao/select_while_full_vacuum_column
-test: uao/select_while_vacuum_column
-test: uao/select_while_vacuum_serializable_column
-test: uao/select_while_vacuum_serializable2_column
-test: uao/selectinsert_while_vacuum_column
-test: uao/selectinsertupdate_while_vacuum_column
-test: uao/selectupdate_while_vacuum_column
-test: uao/snapshot_index_corruption_column
-test: uao/update_while_vacuum_column
-test: uao/vacuum_self_serializable_column
-test: uao/vacuum_self_serializable2_column
-test: uao/vacuum_self_serializable3_column
-test: uao/vacuum_self_function_column
-test: uao/vacuum_while_insert_column
-test: uao/vacuum_while_vacuum_column
-test: uao/vacuum_cleanup_column
-test: uao/vacuum_index_stats_column
-test: uao/bitmapindex_rescan_column
-test: uao/limit_indexscan_inits_column
-test: uao/test_pg_appendonly_version_column
 # Refer to the case comment for why it is commented out.
 # test: uao/bad_buffer_on_temp_ao_column
 
@@ -251,7 +192,6 @@ test: segwalrep/cancel_commit_pending_replication
 test: segwalrep/twophase_tolerance_with_mirror_promotion
 # unstable FTS test in different arch
 # test: segwalrep/failover_with_many_records
-test: segwalrep/dtm_recovery_on_standby
 test: segwalrep/commit_blocking_on_standby
 test: segwalrep/dtx_recovery_wait_lsn
 test: fts_manual_probe
@@ -261,22 +201,20 @@ test: fts_session_reset
 
 # Reindex tests
 test: reindex/abort_reindex
-test: reindex/createidx_while_reindex_idx_ao_btree reindex/createidx_while_reindex_idx_heap_btree reindex/createidx_while_reindex_idx_aoco_btree
-test: reindex/createidx_while_reindex_idx_ao_bitmap reindex/createidx_while_reindex_idx_heap_bitmap reindex/createidx_while_reindex_idx_aoco_bitmap
-test: reindex/reindextable_while_addpart_ao_part_btree reindex/reindextable_while_addpart_heap_part_btree reindex/reindextable_while_addpart_aoco_part_btree
-test: reindex/reindextable_while_altertable_ao_part_btree reindex/reindextable_while_altertable_heap_part_btree reindex/reindextable_while_altertable_aoco_part_btree
-
-# The below tests will cause dead lock when reindexing on partitioned table and dropping index concurrently
-# upstream also has this issue, so disable them for now
-# test: reindex/reindextable_while_dropindex_ao_part_btree reindex/reindextable_while_dropindex_heap_part_btree reindex/reindextable_while_dropindex_aoco_part_btree
-
-test: reindex/reindextable_while_reindex_idx_ao_part_btree reindex/reindextable_while_reindex_idx_heap_part_btree reindex/reindextable_while_reindex_idx_aoco_part_btree
-test: reindex/reindextable_while_reindex_idx_ao_bitmap reindex/reindextable_while_reindex_idx_heap_bitmap reindex/reindextable_while_reindex_idx_aoco_bitmap
-test: reindex/serializable_reindex_with_drop_column_heap
-test: reindex/serializable_reindex_with_drop_index_ao reindex/serializable_reindex_with_drop_index_heap
-test: reindex/repeatable_read_reindex_with_insert_heap
-test: reindex/vacuum_analyze_while_reindex_ao_btree
-test: reindex/vacuum_while_reindex_ao_bitmap reindex/vacuum_while_reindex_heap_btree reindex/vacuum_while_reindex_heap_btree_toast
+test: reindex/createidx_while_reindex_idx_pax_bitmap
+test: reindex/createidx_while_reindex_idx_pax_btree
+test: reindex/reindextable_while_addpart_pax_part_btree
+test: reindex/reindextable_while_altertable_pax_part_btree
+test: reindex/reindextable_while_dropindex_pax_part_btree
+test: reindex/reindextable_while_reindex_idx_pax_bitmap
+test: reindex/reindextable_while_reindex_idx_pax_part_btree
+test: reindex/repeatable_read_reindex_with_insert_pax
+test: reindex/serializable_reindex_with_drop_column_pax
+test: reindex/serializable_reindex_with_drop_index_pax
+test: reindex/vacuum_analyze_while_reindex_pax_btree
+test: reindex/vacuum_while_reindex_pax_bitmap
+test: reindex/vacuum_while_reindex_pax_btree
+test: reindex/vacuum_while_reindex_pax_btree_toast
 
 # Cancel test
 test: cancel_plpython
@@ -321,8 +259,6 @@ test: sync_guc
 # Tests for unique indexes on AO/CO tables (uses fault injector)
 #test: ao_unique_index
 #test: aocs_unique_index
-#test: uao/ao_unique_index_vacuum_row
-#test: uao/ao_unique_index_vacuum_column
 
 # directory table not support pax storage
 #test: local_directory_table_mixed
