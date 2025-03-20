@@ -4,6 +4,7 @@ CREATE EXTENSION gp_inject_fault;
 -- end_ignore
 
 CREATE OR REPLACE FUNCTION pax_get_catalog_rows(rel regclass,
+  segment_id out int,
   ptblockname out int,
   pttupcount out int,
   ptblocksize out int,

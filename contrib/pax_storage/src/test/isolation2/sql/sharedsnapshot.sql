@@ -5,7 +5,7 @@
    	WHEN NO_DATA_FOUND THEN/*in func*/
    		RAISE EXCEPTION 'exception';/*in func*/
    END;/*in func*/
-   $$ EXECUTE ON COORDINATOR;
+   $$;
 
 vacuum full pg_class;
 

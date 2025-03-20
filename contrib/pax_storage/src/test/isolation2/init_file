@@ -153,6 +153,10 @@ s/.//gs
 m/reset enable_parallel;/
 s/.//gs
 
+# ignore resource queue ids
+m/resource queue id: \d+/
+s/resource queue id: \d+/resource queue id: XXXX/
+
 -- end_matchsubs
 
 -- pax ignore matchers
