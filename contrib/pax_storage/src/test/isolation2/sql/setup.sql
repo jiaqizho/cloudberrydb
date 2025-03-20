@@ -388,6 +388,34 @@ $$
   END; /* in func */
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION pax_get_catalog_rows(rel regclass,
+  segment_id out int,
+  ptblockname out int,
+  pttupcount out int,
+  ptblocksize out int,
+  ptstatistics out pg_ext_aux.paxauxstats,
+  ptvisimapname out name,
+  pthastoast out boolean,
+  ptisclustered out boolean
+)
+returns setof record
+EXECUTE ON  ALL SEGMENTS
+AS '$libdir/pax', 'pax_get_catalog_rows' LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION get_pax_aux_table_all(rel regclass)
+RETURNS TABLE(
+  segment_id integer,
+  ptblockname integer,
+  pttupcount integer,
+  ptstatistics pg_ext_aux.paxauxstats,
+  ptexistvisimap bool,
+  ptexistexttoast bool,
+  ptisclustered bool
+) AS $$
+  SELECT segment_id, ptblockname, pttupcount, ptstatistics, ptvisimapname IS NOT NULL, pthastoast, ptisclustered
+  FROM pax_get_catalog_rows(rel)
+$$ LANGUAGE sql;
+
 -- start_ignore
 set statement_timeout='180s';
 -- end_ignore
