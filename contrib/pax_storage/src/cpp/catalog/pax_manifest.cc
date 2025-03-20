@@ -201,20 +201,22 @@ Datum pax_get_catalog_rows(PG_FUNCTION_ARGS) {
     fctx = SRF_FIRSTCALL_INIT();
     oldctx = MemoryContextSwitchTo(fctx->multi_call_memory_ctx);
 
-    tupdesc = CreateTemplateTupleDesc(7);
-    TupleDescInitEntry(tupdesc, (AttrNumber)1,
-                      PAX_AUX_PTBLOCKNAME, INT4OID, -1, 0);
+    tupdesc = CreateTemplateTupleDesc(8);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 1, "segment_id",
+                      INT4OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)2,
-                      PAX_AUX_PTTUPCOUNT, INT4OID, -1, 0);
+                      PAX_AUX_PTBLOCKNAME, INT4OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)3,
-                      PAX_AUX_PTBLOCKSIZE, INT4OID, -1, 0);
+                      PAX_AUX_PTTUPCOUNT, INT4OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)4,
-                      PAX_AUX_PTSTATISITICS, PAX_AUX_STATS_TYPE_OID, -1, 0);
+                      PAX_AUX_PTBLOCKSIZE, INT4OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)5,
-                      PAX_AUX_PTVISIMAPNAME, NAMEOID, -1, 0);
+                      PAX_AUX_PTSTATISITICS, PAX_AUX_STATS_TYPE_OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)6,
-                      PAX_AUX_PTEXISTEXTTOAST, BOOLOID, -1, 0);
+                      PAX_AUX_PTVISIMAPNAME, NAMEOID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)7,
+                      PAX_AUX_PTEXISTEXTTOAST, BOOLOID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)8,
                       PAX_AUX_PTISCLUSTERED, BOOLOID, -1, 0);
 
     ctx = (struct fetch_catalog_rows_context *)palloc(sizeof(*ctx));
@@ -236,21 +238,25 @@ Datum pax_get_catalog_rows(PG_FUNCTION_ARGS) {
     ManifestRelation mrel;
     HeapTuple tuple;
     NameData visimap;
-    Datum values[7];
-    bool isnull[7];
+    Datum values[8];
+    bool isnull[8];
 
     mrel = ctx->mrel;
-    values[0] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTBLOCKNAME, &isnull[0]);
-    values[1] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTTUPCOUNT, &isnull[1]);
-    values[2] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTBLOCKSIZE, &isnull[2]);
-    values[3] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTSTATISITICS, &isnull[3]);
-    values[4] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTVISIMAPNAME, &isnull[4]);
-    if (!isnull[4]) {
-      namestrcpy(&visimap, DatumGetCString(values[4]));
-      values[4] = NameGetDatum(&visimap);
+    // segement_id
+    values[0] = Int32GetDatum(GpIdentity.segindex);
+    isnull[0] = false;
+
+    values[1] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTBLOCKNAME, &isnull[1]);
+    values[2] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTTUPCOUNT, &isnull[2]);
+    values[3] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTBLOCKSIZE, &isnull[3]);
+    values[4] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTSTATISITICS, &isnull[4]);
+    values[5] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTVISIMAPNAME, &isnull[5]);
+    if (!isnull[5]) {
+      namestrcpy(&visimap, DatumGetCString(values[5]));
+      values[5] = NameGetDatum(&visimap);
     }
-    values[5] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTEXISTEXTTOAST, &isnull[5]);
-    values[6] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTISCLUSTERED, &isnull[6]);
+    values[6] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTEXISTEXTTOAST, &isnull[6]);
+    values[7] = get_manifesttuple_value(mtuple, mrel, PAX_AUX_PTISCLUSTERED, &isnull[7]);
 
     tuple = heap_form_tuple(fctx->tuple_desc, values, isnull);
     SRF_RETURN_NEXT(fctx, HeapTupleGetDatum(tuple));
@@ -630,20 +636,22 @@ Datum pax_get_catalog_rows(PG_FUNCTION_ARGS) {
     aux_relid = paxc::GetPaxAuxRelid(relid);
     scan_context.BeginSearchMicroPartition(aux_relid, nullptr, AccessShareLock);
 
-    tupdesc = CreateTemplateTupleDesc(7);
-    TupleDescInitEntry(tupdesc, (AttrNumber)1,
-                      PAX_AUX_PTBLOCKNAME, INT4OID, -1, 0);
+    tupdesc = CreateTemplateTupleDesc(8);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 1, "segment_id",
+						   INT4OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)2,
-                      PAX_AUX_PTTUPCOUNT, INT4OID, -1, 0);
+                      PAX_AUX_PTBLOCKNAME, INT4OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)3,
-                      PAX_AUX_PTBLOCKSIZE, INT4OID, -1, 0);
+                      PAX_AUX_PTTUPCOUNT, INT4OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)4,
-                      PAX_AUX_PTSTATISITICS, PAX_AUX_STATS_TYPE_OID, -1, 0);
+                      PAX_AUX_PTBLOCKSIZE, INT4OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)5,
-                      PAX_AUX_PTVISIMAPNAME, NAMEOID, -1, 0);
+                      PAX_AUX_PTSTATISITICS, PAX_AUX_STATS_TYPE_OID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)6,
-                      PAX_AUX_PTEXISTEXTTOAST, BOOLOID, -1, 0);
+                      PAX_AUX_PTVISIMAPNAME, NAMEOID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber)7,
+                      PAX_AUX_PTEXISTEXTTOAST, BOOLOID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber)8,
                       PAX_AUX_PTISCLUSTERED, BOOLOID, -1, 0);
 
     sctx = (paxc::ScanAuxContext *)palloc(sizeof(*sctx));
@@ -659,17 +667,22 @@ Datum pax_get_catalog_rows(PG_FUNCTION_ARGS) {
 
   tuple = sctx->SearchMicroPartitionEntry();
   if (HeapTupleIsValid(tuple)) {
-    Datum values[7];
-    bool isnull[7];
+    Datum values[8];
+    bool isnull[8];
     Relation rel = sctx->GetRelation();
     TupleDesc desc = RelationGetDescr(rel);
-    values[0] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME, desc, &isnull[0]);
-    values[1] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT, desc, &isnull[1]);
-    values[2] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE, desc, &isnull[2]);
-    values[3] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS, desc, &isnull[3]);
-    values[4] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTVISIMAPNAME, desc, &isnull[4]);
-    values[5] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST, desc, &isnull[5]);
-    values[6] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED, desc, &isnull[6]);
+
+    // segement_id
+    values[0] = Int32GetDatum(GpIdentity.segindex);
+    isnull[0] = false;
+
+    values[1] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKNAME, desc, &isnull[1]);
+    values[2] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTTUPCOUNT, desc, &isnull[2]);
+    values[3] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTBLOCKSIZE, desc, &isnull[3]);
+    values[4] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTSTATISITICS, desc, &isnull[4]);
+    values[5] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTVISIMAPNAME, desc, &isnull[5]);
+    values[6] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTEXISTEXTTOAST, desc, &isnull[6]);
+    values[7] = heap_getattr(tuple, ANUM_PG_PAX_BLOCK_TABLES_PTISCLUSTERED, desc, &isnull[7]);
     tuple = heap_form_tuple(fctx->tuple_desc, values, isnull);
     SRF_RETURN_NEXT(fctx, HeapTupleGetDatum(tuple));
   }

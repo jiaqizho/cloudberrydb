@@ -1,4 +1,4 @@
-2: CREATE OR REPLACE PROCEDURE test(bdate text, edate text) LANGUAGE PLPGSQL AS $$/*in func*/ BEGIN /*in func*/ EXECUTE format('ALTER TABLE dummy2 ADD PARTITION START (date ''%s'') INCLUSIVE END (date ''%s'') EXCLUSIVE', bdate, edate);/*in func*/ EXCEPTION/*in func*/ WHEN NO_DATA_FOUND THEN/*in func*/ RAISE EXCEPTION 'exception';/*in func*/ END;/*in func*/ $$ EXECUTE ON COORDINATOR;
+2: CREATE OR REPLACE PROCEDURE test(bdate text, edate text) LANGUAGE PLPGSQL AS $$/*in func*/ BEGIN /*in func*/ EXECUTE format('ALTER TABLE dummy2 ADD PARTITION START (date ''%s'') INCLUSIVE END (date ''%s'') EXCLUSIVE', bdate, edate);/*in func*/ EXCEPTION/*in func*/ WHEN NO_DATA_FOUND THEN/*in func*/ RAISE EXCEPTION 'exception';/*in func*/ END;/*in func*/ $$;
 CREATE
 
 vacuum full pg_class;
