@@ -39,11 +39,11 @@ USE_PAX_CATALOG := $(shell echo $$USE_PAX_CATALOG)
 
 # if the ENVs are not set, set default value
 ifeq ($(USE_MANIFEST_API),)
-    USE_MANIFEST_API := ON
+    USE_MANIFEST_API := OFF
 endif
 
 ifeq ($(USE_PAX_CATALOG),)
-    USE_PAX_CATALOG := OFF
+    USE_PAX_CATALOG := ON
 endif
 
 .PHONY: install-data build
