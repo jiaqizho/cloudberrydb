@@ -3062,7 +3062,6 @@ SetupUDPIFCInterconnect_Internal(SliceTable *sliceTable)
 
 	ChunkTransportStateEntry *sendingChunkTransportState = NULL;
 	ChunkTransportState *interconnect_context;
-	HASHCTL conn_sent_record_typmod_ctl;
 
 	pthread_mutex_lock(&ic_control_info.lock);
 
@@ -3085,10 +3084,6 @@ SetupUDPIFCInterconnect_Internal(SliceTable *sliceTable)
 		ic_control_info.ic_instance_id = sliceTable->ic_instance_id;
 	}
 
-	conn_sent_record_typmod_ctl.keysize = sizeof(MotionConnKey);
-	conn_sent_record_typmod_ctl.entrysize = sizeof(MotionConnSentRecordTypmodEnt);
-	conn_sent_record_typmod_ctl.hcxt = CurrentMemoryContext;
-
 	interconnect_context = palloc0(sizeof(ChunkTransportState));
 
 	/* initialize state variables */
@@ -3102,8 +3097,6 @@ SetupUDPIFCInterconnect_Internal(SliceTable *sliceTable)
 	interconnect_context->incompleteConns = NIL;
 	interconnect_context->sliceTable = copyObject(sliceTable);
 	interconnect_context->sliceId = sliceTable->localSlice;
-	interconnect_context->conn_sent_record_typmod = hash_create(
-        "MotionConn sent record typmod mapping", 128, &conn_sent_record_typmod_ctl, HASH_CONTEXT | HASH_ELEM | HASH_BLOBS);
 
 	mySlice = &interconnect_context->sliceTable->slices[sliceTable->localSlice];
 
@@ -3742,8 +3735,6 @@ TeardownUDPIFCInterconnect_Internal(ChunkTransportState *transportStates,
 			pfree(transportStates->states);
 			transportStates->states = NULL;
 		}
-		if (transportStates->conn_sent_record_typmod)
-			hash_destroy(transportStates->conn_sent_record_typmod);
 		pfree(transportStates);
 	}
 

@@ -137,6 +137,11 @@ extern TupleRemapper * GetMotionConnTupleRemapper(ChunkTransportState *transport
 		int16 motNodeID,
 		int16 targetRoute);
 
+int32 *
+GetMotionSentRecordTypmod(ChunkTransportState * transportStates,
+								   int16 motNodeID,
+								   int16 targetRoute);
+
 extern void DirectPutRxBufferTCP(ChunkTransportState *transportStates, int motNodeID, int route);
 extern uint32 GetActiveMotionConnsTCP(void);
 #endif

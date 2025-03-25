@@ -285,6 +285,10 @@ typedef struct MotionIPCLayer
 		int16 motNodeID,
 		int16 targetRoute);
 
+	int32 *(*GetMotionSentRecordTypmod)  (ChunkTransportState *transportStates,
+		int16 motNodeID,
+		int16 targetRoute);
+
 } MotionIPCLayer;
 
 /* MotionIPCLayer selected */

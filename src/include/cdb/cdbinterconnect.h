@@ -178,18 +178,6 @@ struct ChunkTransportStateEntry;
 typedef struct MotionConn MotionConn;
 typedef struct ChunkTransportStateEntry ChunkTransportStateEntry;
 
-typedef struct MotionConnKey 
-{
-	int mot_node_id;
-	int conn_index;
-} MotionConnKey;
-
-typedef struct MotionConnSentRecordTypmodEnt
-{
-	MotionConnKey key;
-	int32 sent_record_typmod;
-} MotionConnSentRecordTypmodEnt;
-
 typedef struct ChunkTransportState
 {
 	/* array of per-motion-node chunk transport state
@@ -222,17 +210,6 @@ typedef struct ChunkTransportState
 
 	/* Estate pointer for this statement */
 	struct EState *estate;
-
-	/*
-	 * used by the sender.
-	 *
-	 * the typmod of last sent record type in current connection,
-	 * if the connection is for broadcasting then we only check
-	 * and update this attribute on connection 0.
-	 * 
-	 * mapping the MotionConn -> int32
-	 */
-	HTAB* conn_sent_record_typmod;
 
 	/* ic_proxy backend context */
 	struct ICProxyBackendContext *proxyContext;

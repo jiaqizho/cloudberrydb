@@ -59,6 +59,7 @@ MotionIPCLayer tcp_ipc_layer = {
 #endif
 
     .GetMotionConnTupleRemapper = GetMotionConnTupleRemapper,
+    .GetMotionSentRecordTypmod = GetMotionSentRecordTypmod,
 };
 
 MotionIPCLayer proxy_ipc_layer = {
@@ -97,6 +98,7 @@ MotionIPCLayer proxy_ipc_layer = {
 #endif
 
     .GetMotionConnTupleRemapper = GetMotionConnTupleRemapper,
+    .GetMotionSentRecordTypmod = GetMotionSentRecordTypmod,
 };
 
 
@@ -136,6 +138,7 @@ MotionIPCLayer udpifc_ipc_layer = {
 #endif
 
     .GetMotionConnTupleRemapper = GetMotionConnTupleRemapper,
+    .GetMotionSentRecordTypmod = GetMotionSentRecordTypmod,
 };
 
 void

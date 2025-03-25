@@ -1283,7 +1283,6 @@ SetupTCPInterconnect(EState *estate)
 	/* we can have at most one of these. */
 	ChunkTransportStateEntry *sendingChunkTransportState = NULL;
 	ChunkTransportState *interconnect_context;
-	HASHCTL		conn_sent_record_typmod_ctl;
 
 	SIMPLE_FAULT_INJECTOR("interconnect_setup_palloc");
 	interconnect_context = palloc0(sizeof(ChunkTransportState));
@@ -1299,13 +1298,6 @@ SetupTCPInterconnect(EState *estate)
 	interconnect_context->incompleteConns = NIL;
 	interconnect_context->sliceTable = copyObject(sliceTable);
 	interconnect_context->sliceId = sliceTable->localSlice;
-
-	conn_sent_record_typmod_ctl.keysize = sizeof(MotionConnKey);
-	conn_sent_record_typmod_ctl.entrysize = sizeof(MotionConnSentRecordTypmodEnt);
-	conn_sent_record_typmod_ctl.hcxt = CurrentMemoryContext;
-
-	interconnect_context->conn_sent_record_typmod = hash_create(
-																"MotionConn sent record typmod mapping", 128, &conn_sent_record_typmod_ctl, HASH_CONTEXT | HASH_ELEM | HASH_BLOBS);
 
 #ifdef ENABLE_IC_PROXY
 	ic_proxy_backend_init_context(interconnect_context);
@@ -2177,8 +2169,6 @@ TeardownTCPInterconnect(ChunkTransportState * transportStates, bool hasErrors)
 
 	if (transportStates->states != NULL)
 		pfree(transportStates->states);
-	if (transportStates->conn_sent_record_typmod)
-		hash_destroy(transportStates->conn_sent_record_typmod);
 
 	pfree(transportStates);
 

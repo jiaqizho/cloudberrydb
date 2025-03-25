@@ -359,27 +359,10 @@ CheckAndSendRecordCache(MotionLayerState *mlStates,
 	MotionNodeEntry *pMNEntry;
 	TupleChunkListData tcList;
 	MemoryContext oldCtxt;
-	bool sent_record_typmod_found = false;
-	MotionConnKey motion_conn_key;
-	MotionConnSentRecordTypmodEnt *motion_conn_ent;
+	int32 *conn_sent_record_typmod;
 
-	/*
-	 * for broadcast we only mark sent_record_typmod for connection 0 for
-	 * efficiency and convenience
-	 */
-	motion_conn_key.mot_node_id = motNodeID;
-	motion_conn_key.conn_index = targetRoute == BROADCAST_SEGIDX ? 0 : targetRoute;
-
-	motion_conn_ent = (MotionConnSentRecordTypmodEnt *)hash_search(transportStates->conn_sent_record_typmod, 
-			&motion_conn_key, HASH_FIND, &sent_record_typmod_found);
-
-	if (!sent_record_typmod_found) {
-		ereport(ERROR,
-				(errcode(ERRCODE_GP_INTERCONNECTION_ERROR),
-				 errmsg("interconnect error: Unexpected Motion Node Id: %d, targetRoute: %d",
-						motNodeID, targetRoute),
-				 errdetail("Fail to get sent_record_typmod from motion conntion")));
-	}
+	conn_sent_record_typmod = CurrentMotionIPCLayer->GetMotionSentRecordTypmod(transportStates, motNodeID, targetRoute);
+	Assert(conn_sent_record_typmod);
 
 	/*
 	 * Analyze tools.  Do not send any thing if this slice is in the bit mask
@@ -394,7 +377,7 @@ CheckAndSendRecordCache(MotionLayerState *mlStates,
 	 */
 	pMNEntry = getMotionNodeEntry(mlStates, motNodeID);
 
-	if (!ShouldSendRecordCache(motion_conn_ent->sent_record_typmod, &pMNEntry->ser_tup_info))
+	if (!ShouldSendRecordCache(*conn_sent_record_typmod, &pMNEntry->ser_tup_info))
 		return;
 
 #ifdef AMS_VERBOSE_LOGGING
@@ -404,7 +387,7 @@ CheckAndSendRecordCache(MotionLayerState *mlStates,
 	/* Create and store the serialized form, and some stats about it. */
 	oldCtxt = MemoryContextSwitchTo(mlStates->motion_layer_mctx);
 
-	SerializeRecordCacheIntoChunks(&pMNEntry->ser_tup_info, &tcList, motion_conn_ent->sent_record_typmod);
+	SerializeRecordCacheIntoChunks(&pMNEntry->ser_tup_info, &tcList, *conn_sent_record_typmod);
 
 	MemoryContextSwitchTo(oldCtxt);
 
@@ -432,7 +415,7 @@ CheckAndSendRecordCache(MotionLayerState *mlStates,
 	/* cleanup */
 	clearTCList(&pMNEntry->ser_tup_info.chunkCache, &tcList);
 
-	UpdateSentRecordCache(&motion_conn_ent->sent_record_typmod);
+	UpdateSentRecordCache(conn_sent_record_typmod);
 }
 
 /*

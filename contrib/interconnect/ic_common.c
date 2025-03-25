@@ -296,9 +296,6 @@ createChunkTransportState(ChunkTransportState * transportStates,
 	for (i = 0; i < pEntry->numConns; i++)
 	{
 		MotionConn *conn = NULL;
-		MotionConnKey motion_conn_key;
-		MotionConnSentRecordTypmodEnt *motion_conn_ent;
-
 		getMotionConn(pEntry, i, &conn);
 
 		/* Initialize MotionConn entry. */
@@ -310,13 +307,7 @@ createChunkTransportState(ChunkTransportState * transportStates,
 		conn->stopRequested = false;
 		conn->cdbProc = NULL;
 		conn->remapper = NULL;
-
-		motion_conn_key.mot_node_id = motNodeID;
-		motion_conn_key.conn_index = i;
-
-		motion_conn_ent = (MotionConnSentRecordTypmodEnt *) hash_search(transportStates->conn_sent_record_typmod,
-																		&motion_conn_key, HASH_ENTER, NULL);
-		motion_conn_ent->sent_record_typmod = 0;
+		conn->sent_record_typmod = 0;
 	}
 
 	return pEntry;
@@ -542,6 +533,24 @@ GetMotionConnTupleRemapper(ChunkTransportState * transportStates,
 	Assert(conn);
 
 	return conn->remapper;
+}
+
+
+int32 *
+GetMotionSentRecordTypmod(ChunkTransportState * transportStates,
+						   int16 motNodeID,
+						   int16 targetRoute)
+{
+	MotionConn *conn;
+	ChunkTransportStateEntry *pEntry = NULL;
+	getChunkTransportState(transportStates, motNodeID, &pEntry);
+
+	if (targetRoute == BROADCAST_SEGIDX)
+		conn = &pEntry->conns[0];
+	else
+		conn = &pEntry->conns[targetRoute];
+
+	return &conn->sent_record_typmod;
 }
 
 /*
