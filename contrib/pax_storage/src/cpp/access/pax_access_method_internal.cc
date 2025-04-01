@@ -254,7 +254,7 @@ void CCPaxAccessMethod::RelationSetNewFilenode(Relation rel,
         (fs->CreateDirectory(path) == 0),
         cbdb::CException::ExType::kExTypeIOError,
         fmt("Create directory failed [path=%s, errno=%d], "
-            "relfilenode [spcNode=%u, dbNode=%u, relNode=%lu, backend=%d]",
+            "relfilenode [spcNode=%u, dbNode=%u, relNode=%u, backend=%d]",
             path.c_str(), errno, newrnode->spcNode, newrnode->dbNode,
             newrnode->relNode, rel->rd_backend));
   }
