@@ -59,7 +59,7 @@ void pax_rmgr_desc(StringInfo buf, XLogReaderState *record) {
       xl_pax_directory *xlrec = (xl_pax_directory *)rec;
       appendStringInfo(buf,
                        "PAX_CREATE_DIRECTORY, dbid = %u, spcId = %u, "
-                       "relfilenodeid = %lu",
+                       "relfilenodeid = %u",
                        xlrec->node.dbNode, xlrec->node.spcNode,
                        xlrec->node.relNode);
       break;
@@ -68,7 +68,7 @@ void pax_rmgr_desc(StringInfo buf, XLogReaderState *record) {
       xl_pax_directory *xlrec = (xl_pax_directory *)rec;
       appendStringInfo(buf,
                        "PAX_TRUNCATE, dbid = %u, spcId = %u, "
-                       "relfilenodeid = %lu",
+                       "relfilenodeid = %u",
                        xlrec->node.dbNode, xlrec->node.spcNode,
                        xlrec->node.relNode);
       break;

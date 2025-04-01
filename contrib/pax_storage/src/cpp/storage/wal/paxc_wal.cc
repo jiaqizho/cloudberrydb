@@ -130,12 +130,12 @@ void XLogForgetInvalidPaxFile(RelFileNode node, const char *filename) {
   hash_search(invalid_pax_file_tab, (void *)&hentry.key, HASH_REMOVE, &found);
   if (found) {
     PAX_LOG_IF(pax::pax_enable_debug,
-               "forget invalid pax file, node: %u/%u/%lu, filename: %s",
+               "forget invalid pax file, node: %u/%u/%u, filename: %s",
                node.dbNode, node.spcNode, node.relNode, filename);
   } else {
     PAX_LOG_IF(
         pax::pax_enable_debug,
-        "forget invalid pax file not found, node: %u/%u/%lu, filename: %s",
+        "forget invalid pax file not found, node: %u/%u/%u, filename: %s",
         node.dbNode, node.spcNode, node.relNode, filename);
   }
 }
@@ -186,7 +186,7 @@ void XLogConsistencyCheck() {
   // do consistency check for pax storage
   hash_seq_init(&status, invalid_pax_file_tab);
   while ((hentry = (xl_invalid_pax_file *)hash_seq_search(&status)) != NULL) {
-    elog(WARNING, "pax file is invalid, node: %u/%u/%lu, filename: %s",
+    elog(WARNING, "pax file is invalid, node: %u/%u/%u, filename: %s",
          hentry->key.node.dbNode, hentry->key.node.spcNode,
          hentry->key.node.relNode, hentry->key.filename);
     foundone = true;
@@ -226,7 +226,7 @@ void XLogPaxInsert(RelFileNode node, const char *filename, int64 offset,
 
   XLogRecPtr lsn = XLogInsert(PAX_RMGR_ID, XLOG_PAX_INSERT);
   PAX_LOG_IF(pax::pax_enable_debug,
-             "pax xlog insert, node: %u/%u/%lu,filename: %s, offset: %ld, "
+             "pax xlog insert, node: %u/%u/%u,filename: %s, offset: %ld, "
              "bufferLen: %d, "
              "xlog_ptr: %X/%X",
              node.dbNode, node.spcNode, node.relNode, filename, offset,
@@ -247,7 +247,7 @@ void XLogPaxCreateDirectory(RelFileNode node) {
 
   XLogRecPtr lsn = XLogInsert(PAX_RMGR_ID, XLOG_PAX_CREATE_DIRECTORY);
   PAX_LOG_IF(pax::pax_enable_debug,
-             "pax xlog create directory, node: %u/%u/%lu, xlog_ptr: %X/%X",
+             "pax xlog create directory, node: %u/%u/%u, xlog_ptr: %X/%X",
              node.dbNode, node.spcNode, node.relNode, (uint32)(lsn >> 32),
              (uint32)lsn);
 }
@@ -263,7 +263,7 @@ void XLogPaxTruncate(RelFileNode node) {
 
   XLogRecPtr lsn = XLogInsert(PAX_RMGR_ID, XLOG_PAX_TRUNCATE);
   PAX_LOG_IF(pax::pax_enable_debug,
-             "pax xlog truncate, node: %u/%u/%lu,  xlog_ptr: %X/%X",
+             "pax xlog truncate, node: %u/%u/%u,  xlog_ptr: %X/%X",
              node.dbNode, node.spcNode, node.relNode, (uint32)(lsn >> 32),
              (uint32)lsn);
 }
@@ -295,7 +295,7 @@ void XLogRedoPaxInsert(XLogReaderState *record) {
   path = psprintf("%s/%s", relpath, filepath);
 
   PAX_LOG_IF(pax::pax_enable_debug,
-             "pax xlog redo insert, node: %u/%u/%lu, offset: %ld, "
+             "pax xlog redo insert, node: %u/%u/%u, offset: %ld, "
              "path: %s",
              xlrec->target.node.dbNode, xlrec->target.node.spcNode,
              xlrec->target.node.relNode, xlrec->target.offset, path);
@@ -312,7 +312,7 @@ void XLogRedoPaxInsert(XLogReaderState *record) {
   if (ret != 0) {
     if (errno == ENOENT) {
       PAX_LOG_IF(pax::pax_enable_debug,
-                 "directory not exists, node: %u/%u/%lu, path: %s",
+                 "directory not exists, node: %u/%u/%u, path: %s",
                  xlrec->target.node.dbNode, xlrec->target.node.spcNode,
                  xlrec->target.node.relNode, path);
       LogInvalidPaxDirctory(xlrec->target.node);
@@ -346,7 +346,7 @@ void XLogRedoPaxInsert(XLogReaderState *record) {
     // if the file is not exists, mark the file as invalid
     if (errno == ENOENT) {
       PAX_LOG_IF(pax::pax_enable_debug,
-                 "file not exists, node: %u/%u/%lu, path: %s",
+                 "file not exists, node: %u/%u/%u, path: %s",
                  xlrec->target.node.dbNode, xlrec->target.node.spcNode,
                  xlrec->target.node.relNode, path);
       LogInvalidPaxFile(xlrec->target.node, path);
@@ -382,7 +382,7 @@ void XLogRedoPaxCreateDirectory(XLogReaderState *record) {
   dirpath = paxc::BuildPaxDirectoryPath(xlrec->node, InvalidBackendId);
 
   PAX_LOG_IF(pax::pax_enable_debug,
-             "pax xlog redo create directory, node: %u/%u/%lu, dirpath: %s",
+             "pax xlog redo create directory, node: %u/%u/%u, dirpath: %s",
              xlrec->node.dbNode, xlrec->node.spcNode, xlrec->node.relNode,
              dirpath);
 
@@ -396,7 +396,7 @@ void XLogRedoPaxCreateDirectory(XLogReaderState *record) {
     // if directory already exists, skip
     if (errno == EEXIST) {
       PAX_LOG_IF(pax::pax_enable_debug,
-                 "directory already exists, node: %u/%u/%lu, dirpath: %s",
+                 "directory already exists, node: %u/%u/%u, dirpath: %s",
                  xlrec->node.dbNode, xlrec->node.spcNode, xlrec->node.relNode,
                  dirpath);
     } else {
@@ -415,7 +415,7 @@ void XLogRedoPaxTruncate(XLogReaderState *record) {
   dirpath = paxc::BuildPaxDirectoryPath(xlrec->node, InvalidBackendId);
 
   PAX_LOG_IF(pax::pax_enable_debug,
-             "pax xlog redo truncate, node: %u/%u/%lu, dirpath: %s",
+             "pax xlog redo truncate, node: %u/%u/%u, dirpath: %s",
              xlrec->node.dbNode, xlrec->node.spcNode, xlrec->node.relNode,
              dirpath);
 
