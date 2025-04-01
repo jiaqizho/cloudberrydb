@@ -107,8 +107,8 @@ void PaxCopyAllDataFiles(Relation rel, const RelFileNode *newrnode,
   CBDB_CHECK(!src_path.empty() && !dst_path.empty(),
              cbdb::CException::ExType::kExTypeFileOperationError,
              fmt("Fail to build directory path. "
-                 "src [spcNode=%u, dbNode=%u, relNode=%lu, backend=%d]"
-                 "dst [spcNode=%u, dbNode=%u, relNode=%lu, backend=%d]",
+                 "src [spcNode=%u, dbNode=%u, relNode=%u, backend=%d]"
+                 "dst [spcNode=%u, dbNode=%u, relNode=%u, backend=%d]",
                  rel->rd_node.spcNode, rel->rd_node.dbNode,
                  rel->rd_node.relNode, rel->rd_backend, newrnode->spcNode,
                  newrnode->dbNode, newrnode->relNode, rel->rd_backend));

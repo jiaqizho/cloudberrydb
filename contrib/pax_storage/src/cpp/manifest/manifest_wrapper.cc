@@ -62,7 +62,7 @@ void paxc_create_pax_directory(Relation rel, RelFileNode newrnode) {
   CBDB_END_TRY();
 
   if (rc != 0)
-    elog(ERROR, "create data dir failed for %u/%u/%lu",
+    elog(ERROR, "create data dir failed for %u/%u/%u",
                 newrnode.dbNode, newrnode.spcNode, newrnode.relNode);
 }
 
