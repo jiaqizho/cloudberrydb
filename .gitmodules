@@ -3,17 +3,18 @@
 	url = https://github.com/google/googletest.git
 [submodule "contrib/pax_storage/src/cpp/contrib/googletest"]
 	path = contrib/pax_storage/src/cpp/contrib/googletest
-	url = https://code.hashdata.xyz/cloudberry/googletest
+	url = https://github.com/google/googletest.git
+	branch = v1.15.x
 [submodule "contrib/pax_storage/src/cpp/contrib/tabulate"]
 	path = contrib/pax_storage/src/cpp/contrib/tabulate
-	url = https://code.hashdata.xyz/cloudberry/tabulate
+	url = https://github.com/p-ranav/tabulate.git
 [submodule "contrib/pax_storage/src/cpp/contrib/googlebench"]
 	path = contrib/pax_storage/src/cpp/contrib/googlebench
-	url = https://code.hashdata.xyz/cloudberry/benchmark.git
+	url = https://github.com/google/benchmark.git
 [submodule "contrib/pax_storage/src/cpp/contrib/cpp-stub"]
 	path = contrib/pax_storage/src/cpp/contrib/cpp-stub
-	url = https://code.hashdata.xyz/cloudberry/cpp-stub.git
-	branch = dev
+	url = https://github.com/coolxv/cpp-stub.git
 [submodule "dependency/yyjson"]
 	path = dependency/yyjson
 	url = https://github.com/ibireme/yyjson.git
+
