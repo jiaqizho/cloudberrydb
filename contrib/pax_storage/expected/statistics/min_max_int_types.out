@@ -11,7 +11,7 @@ set pax_max_tuples_per_group to 5;
 -- Test the int2 min/max types support 
 -- 
 create table t_int2(i int, v int2) with(minmax_columns='v');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t_int2(i, v) values(1, generate_series(1, 10));
 insert into t_int2(i, v) values(1, generate_series(11, 20));
@@ -607,7 +607,7 @@ drop table t_int2;
 -- Test the int4 min/max types support 
 -- 
 create table t_int4(i int, v int4) with(minmax_columns='v');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t_int4(i, v) values(1, generate_series(1, 10));
 insert into t_int4(i, v) values(1, generate_series(10, 20));
@@ -1209,7 +1209,7 @@ drop table t_int4;
 -- Test the int8 min/max types support 
 -- 
 create table t_int8(i int,v int8) with(minmax_columns='v');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t_int8(i, v) values(1, generate_series(1, 10));
 insert into t_int8(i, v) values(1, generate_series(10, 20));
@@ -1811,7 +1811,7 @@ drop table t_int8;
 -- Test the numeric min/max types support 
 --
 create table t_numeric(i int, v numeric) with(minmax_columns='v');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t_numeric(i, v) values(1, generate_series(1, 10));
 insert into t_numeric(i, v) values(1, generate_series(10, 20));

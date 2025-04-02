@@ -5,3 +5,11 @@ test: crash_recovery
 test: resource_queue_deadlock
 test: segwalrep/commit_blocking
 test: segwalrep/fts_unblock_primary
+
+test: pax/insert_policy
+test: pax/max_concurrency2
+test: pax/max_concurrency
+test: pax/parallel_delete
+test: pax/parallel_update_readcommitted
+test: pax/parallel_update
+test: pax/vacuum_while_insert

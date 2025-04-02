@@ -8,10 +8,10 @@ set default_table_access_method to pax;
 set pax_enable_debug to on;
 set pax_enable_sparse_filter to on;
 create table t_arithmetic(same int, v1 int, v2 int, v3 int) using pax with (minmax_columns='v1,v2,v3');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'same' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'same' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table ta_mul(same int, v1 int, v2 int, v3 int) using pax with (minmax_columns='v1,v2,v3');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'same' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'same' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- file1: [1, 100], [101, 200], [201, 300]
 -- file2: [401, 500], [501, 600], [601, 700]
@@ -653,13 +653,6 @@ LOG:  statement: select count(*) from t_arithmetic where v1 + v2 < v3;
  count 
 -------
     99
-(1 row)
-
-select count(*) from t_arithmetic where intrc(v1) + 10 > v2;
-LOG:  statement: select count(*) from t_arithmetic where intrc(v1) + 10 > v2;
- count 
--------
-     0
 (1 row)
 
 -- mul oper

@@ -24,19 +24,6 @@
  *
  *-------------------------------------------------------------------------
  */
-
-//-------------------------------------------------------------------------
-// Cloudberry Database
-// Copyright (c) 2023, HashData Technology Limited.
-// pax_fastsequence.h
-// provide a system table maintaining a light-weight fast sequence number for a
-// unique object.
-//
-// IDENTIFICATION
-//	    src/catalog/pax_fastsequence.h
-// Author: Tony Ying
-//--------------------------------------------------------------------------
-
 #pragma once
 #include "comm/cbdb_api.h"
 

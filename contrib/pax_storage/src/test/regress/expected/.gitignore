@@ -39,6 +39,7 @@
 /guc_env_var.out
 /hooktest.out
 /oid_wraparound.out
+/oid_wraparound_1.out
 /part_external_table.out
 /part_external_table_optimizer.out
 /partition_ddl.out
