@@ -220,7 +220,7 @@ explain (costs off) select * from pt1 where a = 1 and i >= 2 and i < 10;
  Gather Motion 1:1  (slice1; segments: 1)
    ->  Seq Scan on pt1
          Filter: ((a = 1) AND (i >= 2) AND (i < 10))
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: GPORCA
 (4 rows)
 
 select * from pt1 where a = 1 and i >= 2 and i < 10;

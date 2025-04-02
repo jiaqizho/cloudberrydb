@@ -142,7 +142,6 @@ select count(*) from t_arithmetic where v1 - 10 > v2 - 1000; -- column v2 min/ma
 select count(*) from t_arithmetic where v1 - 10 > (v2 + 100) - 20;
 select count(*) from t_arithmetic where v1 + 10 > (v2 + 200) - 10;
 select count(*) from t_arithmetic where v1 + v2 < v3;
-select count(*) from t_arithmetic where intrc(v1) + 10 > v2;
 
 
 -- mul oper

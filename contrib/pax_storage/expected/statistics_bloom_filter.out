@@ -167,7 +167,7 @@ reset client_min_messages;
 drop table t1;
 -- the non-fixed type
 create table t2(single_seg int, v1 varchar(100), v2 varchar(100)) with (bloomfilter_columns='v1,v2');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'single_seg' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'single_seg' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t2 values(1, generate_series(1, 100), generate_series(101, 200));
 insert into t2 values(1, generate_series(1, 100), generate_series(101, 200));
@@ -279,7 +279,7 @@ reset client_min_messages;
 drop table t2;
 -- the fixed length but not type by value type
 create table t3(single_seg int, v1 uuid, v2 int) with (bloomfilter_columns='v1,v2');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'single_seg' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'single_seg' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t3 values 
 (1, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 31),(1, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 32),(1, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', 33),
@@ -407,7 +407,7 @@ drop table t3;
 set pax_max_tuples_per_group to 16384;
 set pax_max_tuples_per_file to 131072;
 create table t4(single_seg int, v1 varchar, v2 varchar) with (bloomfilter_columns='v1,v2');
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'single_seg' as the Cloudberry Database data distribution key for this table.
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'single_seg' as the Apache Cloudberry data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t4 values(1, generate_series(1, 1000000), generate_series(1000001, 2000000));
 set client_min_messages to log;
