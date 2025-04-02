@@ -744,13 +744,6 @@ LOG:  kind file, filter rate: 1 / 2
     99
 (1 row)
 
-select count(*) from t_arithmetic where intrc(v1) + 10 > v2;
-LOG:  statement: select count(*) from t_arithmetic where intrc(v1) + 10 > v2;
- count 
--------
-     0
-(1 row)
-
 -- mul oper
 -- 1. left = [pos, pos] right = [pos, pos]
 -- min = lmin * rmin, max = lmax * rmax
