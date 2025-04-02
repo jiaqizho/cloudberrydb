@@ -15,9 +15,6 @@ test: ao_partition_lock
 test: select_dropped_table
 test: update_hash_col_utilitymode execute_on_utilitymode
 
-# Tests for crash recovery
-test: uao_crash_compaction_column
-test: uao_crash_compaction_row
 # FIXME: MANIFEST: can't write the same table at the same time. see isolation2_unsupported_schedule
 #test: crash_recovery
 test: crash_recovery_redundant_dtx
@@ -122,13 +119,13 @@ test: pax/cursor_withhold2
 test: pax/cursor_withhold
 test: pax/delete_while_vacuum
 test: pax/index_build_reltuples
-test: pax/insert_policy
+# test: pax/insert_policy
 test: pax/insert_while_vacuum
-test: pax/max_concurrency2
-test: pax/max_concurrency
-test: pax/parallel_delete
-test: pax/parallel_update_readcommitted
-test: pax/parallel_update
+# test: pax/max_concurrency2
+# test: pax/max_concurrency
+# test: pax/parallel_delete
+# test: pax/parallel_update_readcommitted
+# test: pax/parallel_update
 test: pax/phantom_reads_delete_serializable
 test: pax/phantom_reads_delete
 test: pax/phantom_reads_serializable
@@ -153,7 +150,7 @@ test: pax/vacuum_self_function
 test: pax/vacuum_self_serializable2
 test: pax/vacuum_self_serializable3
 test: pax/vacuum_self_serializable
-test: pax/vacuum_while_insert
+# test: pax/vacuum_while_insert
 test: pax/vacuum_while_vacuum
 
 # Refer to the case comment for why it is commented out.

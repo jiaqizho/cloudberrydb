@@ -306,7 +306,9 @@ test: oid_wraparound
 # fts_recovery_in_progresss uses fault injectors to simulate FTS fault states,
 # hence it should be run in isolation.
 test: fts_recovery_in_progress
-test: mirror_replay
+
+# append only case, and it must generate a core file.
+ignore: mirror_replay
 #test: autovacuum [not support]
 #test: autovacuum-segment [not support]
 #test: autovacuum-template0-segment [not support]
