@@ -620,7 +620,6 @@ void TableDeleter::DeleteWithVisibilityMap(
         visi_bitmap =
             Bitmap8::Union(&visibility_file_bitmap, delete_visi_bitmap.get());
 
-#ifdef USE_ASSERT_CHECKING
         {
           int blocknum;
           TransactionId xid;
@@ -636,7 +635,6 @@ void TableDeleter::DeleteWithVisibilityMap(
                      fmt("Fail to sscanf [rc=%d, filename=%s, rel_path=%s]", rc,
                          visibility_map_filename.c_str(), rel_path.c_str()));
         }
-#endif
       } else {
         visi_bitmap = std::move(delete_visi_bitmap);
       }
