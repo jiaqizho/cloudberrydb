@@ -52,6 +52,8 @@ struct ValidateIndexState;
  */
 #define SCAN_SUPPORT_COLUMN_ORIENTED_SCAN (1 << 0)  /* support column-oriented scanning*/
 #define SCAN_SUPPORT_RUNTIME_FILTER       (1 << 1)  /* support runtime filter scan */
+#define SCAN_SUPPORT_VECTORIZATION        (1 << 2)  /* support vectorization scan */
+#define SCAN_FORCE_BIG_WRITE_LOCK         (1 << 3)  /* force big write lock */
 
 /*
  * Bitmask values for the flags argument to the scan_begin callback.

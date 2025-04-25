@@ -1,0 +1,120 @@
+# --------------------------------------------------------------------
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements. See the NOTICE file distributed
+# with this work for additional information regarding copyright
+# ownership. The ASF licenses this file to You under the Apache
+# License, Version 2.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy of the
+# License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+# --------------------------------------------------------------------
+# GitHub Actions Workflow: Apache Cloudberry SonarQube Pipeline
+# --------------------------------------------------------------------
+# Description:
+#
+#   This workflow performs scheduled SonarQube analysis for Cloudberry.
+#
+# Workflow Overview:
+# 1. **Check Skip**:
+#    - workflow run currently is limited to "apache" GitHub organization
+#
+# 2. **scan Job**:
+#    - performs scan and upload result to https://sonarcloud.io/project/overview?id=apache_cloudberry
+# Triggers:
+# - Weekly schedule
+# - optional manual dispatch.
+#
+# Notes:
+# - SONARCLOUD_TOKEN secret is provided by the ASF Infra team
+# --------------------------------------------------------------------
+name: Apache Cloudberry SonarQube Cloud Analysis
+
+on:
+  schedule:
+  - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sonarqube-analysis:
+    runs-on: ubuntu-22.04
+    if: ${{ github.repository_owner == 'apache' }}
+
+    container:
+      image: apache/incubator-cloudberry:cbdb-build-rocky9-latest
+      options: >-
+        --user root
+        -h cdw
+    env:
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+
+    steps:
+    - name: Checkout Apache Cloudberry
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+        submodules: true
+
+    - name: Environment Initialization
+      run: |
+        if ! su - gpadmin -c "/tmp/init_system.sh"; then
+          echo "::error::Container initialization failed"
+          exit 1
+        fi
+
+    - name: Install Build Wrapper
+      uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v5
+
+    - name: Run Build Wrapper
+      run: |
+        set -euox pipefail
+        sudo chmod a+w /usr/local
+        mkdir -p /usr/local/cloudberry-db/lib
+        sudo cp /usr/local/xerces-c/lib/libxerces-c.so \
+             /usr/local/xerces-c/lib/libxerces-c-3.3.so \
+             /usr/local/cloudberry-db/lib
+        sudo chown -R gpadmin:gpadmin /usr/local/cloudberry-db
+        export LD_LIBRARY_PATH=/usr/local/cloudberry-db/lib:LD_LIBRARY_PATH
+        ./configure --prefix=/usr/local/cloudberry-db \
+            --disable-external-fts \
+            --enable-gpcloud \
+            --enable-ic-proxy \
+            --enable-orafce \
+            --enable-orca \
+            --enable-pax \
+            --enable-pxf \
+            --enable-tap-tests \
+            --with-gssapi \
+            --with-ldap \
+            --with-libxml \
+            --with-lz4 \
+            --with-openssl \
+            --with-pam \
+            --with-perl \
+            --with-pgport=5432 \
+            --with-python \
+            --with-pythonsrc-ext \
+            --with-ssl=openssl \
+            --with-uuid=e2fs \
+            --with-includes=/usr/local/xerces-c/include \
+            --with-libraries=/usr/local/cloudberry-db/lib
+        build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -j$(nproc)
+
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@v5
+      env:
+        SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+      with:
+        args: >
+          --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
