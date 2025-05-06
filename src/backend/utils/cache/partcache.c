@@ -422,8 +422,8 @@ generate_partition_qual(Relation rel)
 		rel->rd_partcheck = NIL;
 	rel->rd_partcheckvalid = true;
 
-	/* Keep the parent locked until commit */
-	relation_close(parent, NoLock);
+	/* Release the parent lock */
+	relation_close(parent, AccessShareLock);
 
 	/* Return the working copy to the caller */
 	return result;

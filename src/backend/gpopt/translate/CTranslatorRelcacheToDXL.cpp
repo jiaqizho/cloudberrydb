@@ -605,10 +605,10 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 	CDXLNode *mdpart_constraint = nullptr;
 
 	// retrieve the part constraints if relation is partitioned
-	// FIMXE: Do this only if Relation::rd_rel::relispartition is true
-	mdpart_constraint =
-		RetrievePartConstraintForRel(mp, md_accessor, rel.get(), mdcol_array);
-
+	if (rel->rd_rel->relispartition) {
+		mdpart_constraint =
+			RetrievePartConstraintForRel(mp, md_accessor, rel.get(), mdcol_array);
+	}
 
 	// root partitions don't have a foreign server
 	if (IMDRelation::ErelstorageForeign == rel_storage_type && !is_partitioned)
