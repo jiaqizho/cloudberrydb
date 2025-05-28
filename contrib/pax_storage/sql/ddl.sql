@@ -48,3 +48,13 @@ drop table pax_test.t3;
 create table pax_test.t4 (v1 text) with(compresstype=zstd, compresslevel=1);
 alter table pax_test.t4 add column v2 text;
 drop table pax_test.t4;
+
+-- test pg_relation_size
+CREATE TABLE pt_pax (id int, date date) using pax DISTRIBUTED BY (id)
+PARTITION BY RANGE (date)
+( PARTITION subpt1 START (date '2016-01-01') INCLUSIVE ,
+  PARTITION subpt2 START (date '2016-02-01') INCLUSIVE);
+
+SELECT pg_catalog.pg_relation_size('pt_pax'::regclass);
+select 1 from (select count(*) from gp_toolkit.gp_size_of_schema_disk) empty_out;
+drop table pt_pax;
