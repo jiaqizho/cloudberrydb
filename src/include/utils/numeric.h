@@ -5,7 +5,7 @@
  *
  * Original coding 1998, Jan Wieck.  Heavily revised 2003, Tom Lane.
  *
- * Copyright (c) 1998-2021, PostgreSQL Global Development Group
+ * Copyright (c) 1998-2019, PostgreSQL Global Development Group
  *
  * src/include/utils/numeric.h
  *
@@ -37,6 +37,90 @@
  * deliver a result no worse than float8 would.
  */
 #define NUMERIC_MIN_SIG_DIGITS		16
+
+/* The actual contents of Numeric are private to numeric.c */
+struct NumericData;
+typedef struct NumericData *Numeric;
+typedef struct Int8TransTypeData
+{
+	int64		count;
+	int64		sum;
+} Int8TransTypeData;
+
+/* ----------
+ * Fast sum accumulator.
+ *
+ * NumericSumAccum is used to implement SUM(), and other standard aggregates
+ * that track the sum of input values.  It uses 32-bit integers to store the
+ * digits, instead of the normal 16-bit integers (with NBASE=10000).  This
+ * way, we can safely accumulate up to NBASE - 1 values without propagating
+ * carry, before risking overflow of any of the digits.  'num_uncarried'
+ * tracks how many values have been accumulated without propagating carry.
+ *
+ * Positive and negative values are accumulated separately, in 'pos_digits'
+ * and 'neg_digits'.  This is simpler and faster than deciding whether to add
+ * or subtract from the current value, for each new value (see sub_var() for
+ * the logic we avoid by doing this).  Both buffers are of same size, and
+ * have the same weight and scale.  In accum_sum_final(), the positive and
+ * negative sums are added together to produce the final result.
+ *
+ * When a new value has a larger ndigits or weight than the accumulator
+ * currently does, the accumulator is enlarged to accommodate the new value.
+ * We normally have one zero digit reserved for carry propagation, and that
+ * is indicated by the 'have_carry_space' flag.  When accum_sum_carry() uses
+ * up the reserved digit, it clears the 'have_carry_space' flag.  The next
+ * call to accum_sum_add() will enlarge the buffer, to make room for the
+ * extra digit, and set the flag again.
+ *
+ * To initialize a new accumulator, simply reset all fields to zeros.
+ *
+ * The accumulator does not handle NaNs.
+ * ----------
+ */
+typedef struct NumericSumAccum
+{
+	int			ndigits;
+	int			weight;
+	int			dscale;
+	int			num_uncarried;
+	bool		have_carry_space;
+	int32	   *pos_digits;
+	int32	   *neg_digits;
+} NumericSumAccum;
+
+typedef struct NumericAggState
+{
+	bool		calcSumX2;		/* if true, calculate sumX2 */
+	MemoryContext agg_context;	/* context we're calculating in */
+	int64		N;				/* count of processed numbers */
+	NumericSumAccum sumX;		/* sum of processed numbers */
+	NumericSumAccum sumX2;		/* sum of squares of processed numbers */
+	int			maxScale;		/* maximum scale seen so far */
+	int64		maxScaleCount;	/* number of values seen with maximum scale */
+	int64		NaNcount;		/* count of NaN values (not included in N!) */
+} NumericAggState;
+
+extern NumericAggState *makeNumericAggState(FunctionCallInfo fcinfo, bool calcSumX2);
+extern NumericAggState *makeNumericAggStateCurrentContext(bool calcSumX2);
+
+#ifdef HAVE_INT128
+typedef struct Int128AggState
+{
+	bool		calcSumX2;		/* if true, calculate sumX2 */
+	int64		N;				/* count of processed numbers */
+	int128		sumX;			/* sum of processed numbers */
+	int128		sumX2;			/* sum of squares of processed numbers */
+} Int128AggState;
+extern Int128AggState *makeInt128AggState(FunctionCallInfo fcinfo, bool calcSumX2);
+extern Int128AggState *makeInt128AggStateCurrentContext(bool calcSumX2);
+typedef Int128AggState PolyNumAggState;
+#define makePolyNumAggState makeInt128AggState
+#define makePolyNumAggStateCurrentContext makeInt128AggStateCurrentContext
+#else
+typedef NumericAggState PolyNumAggState;
+#define makePolyNumAggState makeNumericAggState
+#define makePolyNumAggStateCurrentContext makeNumericAggStateCurrentContext
+#endif
 
 
 /* ----------
@@ -77,13 +161,14 @@ typedef int16 NumericDigit;
  * If the high bits of the first word of a NumericChoice (n_header, or
  * n_short.n_header, or n_long.n_sign_dscale) are NUMERIC_SHORT, then the
  * numeric follows the NumericShort format; if they are NUMERIC_POS or
- * NUMERIC_NEG, it follows the NumericLong format. If they are NUMERIC_SPECIAL,
- * the value is a NaN or Infinity.  We currently always store SPECIAL values
- * using just two bytes (i.e. only n_header), but previous releases used only
- * the NumericLong format, so we might find 4-byte NaNs (though not infinities)
- * on disk if a database has been migrated using pg_upgrade.  In either case,
- * the low-order bits of a special value's header are reserved and currently
- * should always be set to zero.
+ * NUMERIC_NEG, it follows the NumericLong format.  If they are NUMERIC_NAN,
+ * it is a NaN.  We currently always store a NaN using just two bytes (i.e.
+ * only n_header), but previous releases used only the NumericLong format,
+ * so we might find 4-byte NaNs on disk if a database has been migrated using
+ * pg_upgrade.  In either case, when the high bits indicate a NaN, the
+ * remaining bits are never examined.  Currently, we always initialize these
+ * to zero, but it might be possible to use them for some other purpose in
+ * the future.
  *
  * In the NumericShort format, the remaining 14 bits of the header word
  * (n_short.n_header) are allocated as follows: 1 for sign (positive or
@@ -125,7 +210,7 @@ struct NumericData
 	int32		vl_len_;		/* varlena header (do not touch directly!) */
 	union NumericChoice choice; /* choice of format */
 };
-typedef struct NumericData *Numeric;
+
 
 /*
  * Interpretation of high bits.
@@ -135,46 +220,25 @@ typedef struct NumericData *Numeric;
 #define NUMERIC_POS			0x0000
 #define NUMERIC_NEG			0x4000
 #define NUMERIC_SHORT		0x8000
-#define NUMERIC_SPECIAL		0xC000
+#define NUMERIC_NAN			0xC000
 
 #define NUMERIC_FLAGBITS(n) ((n)->choice.n_header & NUMERIC_SIGN_MASK)
+#define NUMERIC_IS_NAN(n)		(NUMERIC_FLAGBITS(n) == NUMERIC_NAN)
 #define NUMERIC_IS_SHORT(n)		(NUMERIC_FLAGBITS(n) == NUMERIC_SHORT)
-#define NUMERIC_IS_SPECIAL(n)	(NUMERIC_FLAGBITS(n) == NUMERIC_SPECIAL)
+#define NUMERIC_IS_SPECIAL(n)	(NUMERIC_FLAGBITS(n) == NUMERIC_NAN)
 
 #define NUMERIC_HDRSZ	(VARHDRSZ + sizeof(uint16) + sizeof(int16))
 #define NUMERIC_HDRSZ_SHORT (VARHDRSZ + sizeof(uint16))
 
 /*
- * If the flag bits are NUMERIC_SHORT or NUMERIC_SPECIAL, we want the short
- * header; otherwise, we want the long one.  Instead of testing against each
- * value, we can just look at the high bit, for a slight efficiency gain.
+ * If the flag bits are NUMERIC_SHORT or NUMERIC_NAN, we want the short header;
+ * otherwise, we want the long one.  Instead of testing against each value, we
+ * can just look at the high bit, for a slight efficiency gain.
  */
 #define NUMERIC_HEADER_IS_SHORT(n)	(((n)->choice.n_header & 0x8000) != 0)
 #define NUMERIC_HEADER_SIZE(n) \
 	(VARHDRSZ + sizeof(uint16) + \
 	 (NUMERIC_HEADER_IS_SHORT(n) ? 0 : sizeof(int16)))
-
-/*
- * Definitions for special values (NaN, positive infinity, negative infinity).
- *
- * The two bits after the NUMERIC_SPECIAL bits are 00 for NaN, 01 for positive
- * infinity, 11 for negative infinity.  (This makes the sign bit match where
- * it is in a short-format value, though we make no use of that at present.)
- * We could mask off the remaining bits before testing the active bits, but
- * currently those bits must be zeroes, so masking would just add cycles.
- */
-#define NUMERIC_EXT_SIGN_MASK	0xF000	/* high bits plus NaN/Inf flag bits */
-#define NUMERIC_NAN				0xC000
-#define NUMERIC_PINF			0xD000
-#define NUMERIC_NINF			0xF000
-#define NUMERIC_INF_SIGN_MASK	0x2000
-
-#define NUMERIC_EXT_FLAGBITS(n)	((n)->choice.n_header & NUMERIC_EXT_SIGN_MASK)
-#define NUMERIC_IS_NAN(n)		((n)->choice.n_header == NUMERIC_NAN)
-#define NUMERIC_IS_PINF(n)		((n)->choice.n_header == NUMERIC_PINF)
-#define NUMERIC_IS_NINF(n)		((n)->choice.n_header == NUMERIC_NINF)
-#define NUMERIC_IS_INF(n) \
-	(((n)->choice.n_header & ~NUMERIC_INF_SIGN_MASK) == NUMERIC_PINF)
 
 /*
  * Short format definitions.
@@ -191,13 +255,7 @@ typedef struct NumericData *Numeric;
 #define NUMERIC_SHORT_WEIGHT_MIN		(-(NUMERIC_SHORT_WEIGHT_MASK+1))
 
 /*
- * Extract sign, display scale, weight.  These macros extract field values
- * suitable for the NumericVar format from the Numeric (on-disk) format.
- *
- * Note that we don't trouble to ensure that dscale and weight read as zero
- * for an infinity; however, that doesn't matter since we never convert
- * "special" numerics to NumericVar form.  Only the constants defined below
- * (const_nan, etc) ever represent a non-finite value as a NumericVar.
+ * Extract sign, display scale, weight.
  */
 
 #define NUMERIC_DSCALE_MASK			0x3FFF
@@ -206,9 +264,7 @@ typedef struct NumericData *Numeric;
 #define NUMERIC_SIGN(n) \
 	(NUMERIC_IS_SHORT(n) ? \
 		(((n)->choice.n_short.n_header & NUMERIC_SHORT_SIGN_MASK) ? \
-		 NUMERIC_NEG : NUMERIC_POS) : \
-		(NUMERIC_IS_SPECIAL(n) ? \
-		 NUMERIC_EXT_FLAGBITS(n) : NUMERIC_FLAGBITS(n)))
+		NUMERIC_NEG : NUMERIC_POS) : NUMERIC_FLAGBITS(n))
 #define NUMERIC_DSCALE(n)	(NUMERIC_HEADER_IS_SHORT((n)) ? \
 	((n)->choice.n_short.n_header & NUMERIC_SHORT_DSCALE_MASK) \
 		>> NUMERIC_SHORT_DSCALE_SHIFT \
@@ -218,10 +274,6 @@ typedef struct NumericData *Numeric;
 		~NUMERIC_SHORT_WEIGHT_MASK : 0) \
 	 | ((n)->choice.n_short.n_header & NUMERIC_SHORT_WEIGHT_MASK)) \
 	: ((n)->choice.n_long.n_weight))
-#define NUMERIC_DIGITS(num) (NUMERIC_HEADER_IS_SHORT(num) ? \
-	(num)->choice.n_short.n_data : (num)->choice.n_long.n_data)
-#define NUMERIC_NDIGITS(num) \
-	((VARSIZE(num) - NUMERIC_HEADER_SIZE(num)) / sizeof(NumericDigit))
 
 /* ----------
  * NumericVar is the format we use for arithmetic.  The digit-array part
@@ -229,9 +281,7 @@ typedef struct NumericData *Numeric;
  * complex.
  *
  * The value represented by a NumericVar is determined by the sign, weight,
- * ndigits, and digits[] array.  If it is a "special" value (NaN or Inf)
- * then only the sign field matters; ndigits should be zero, and the weight
- * and dscale fields are ignored.
+ * ndigits, and digits[] array.
  *
  * Note: the first digit of a NumericVar's value is assumed to be multiplied
  * by NBASE ** weight.  Another way to say it is that there are weight+1
@@ -285,7 +335,7 @@ typedef struct NumericVar
 {
 	int			ndigits;		/* # of digits in digits[] - can be 0! */
 	int			weight;			/* weight of first digit */
-	int			sign;			/* NUMERIC_POS, _NEG, _NAN, _PINF, or _NINF */
+	int			sign;			/* NUMERIC_POS, NUMERIC_NEG, or NUMERIC_NAN */
 	int			dscale;			/* display scale */
 	NumericDigit *buf;			/* start of space for digits[] */
 	NumericDigit *digits;		/* base-NBASE digits */
@@ -294,36 +344,6 @@ typedef struct NumericVar
 
 #define NUMERIC_LOCAL_HSIZ	\
 			(sizeof(NumericVar) - (sizeof(NumericDigit) * NUMERIC_LOCAL_NDIG))
-
-
-/*
- * NumericVar interface macros
- * used to build a Numeric by NumericVar
- */
-
-extern void init_numeric_var(NumericVar *var);
-extern void free_numeric_var(NumericVar *var);
-
-extern void alloc_numeric_var(NumericVar *var, int ndigits);
-extern void zero_numeric_var(NumericVar *var);
-extern const char *init_var_from_str(const char *str, const char *cp, NumericVar *dest);
-extern void init_var_from_var(const NumericVar *value, NumericVar *dest);
-extern void init_ro_var_from_var(const NumericVar *value, NumericVar *dest);
-extern void set_var_from_num(Numeric value, NumericVar *dest);
-extern void init_var_from_num(Numeric value, NumericVar *dest);
-extern void set_var_from_var(const NumericVar *value, NumericVar *dest);
-extern char *get_str_from_var(const NumericVar *var);
-extern char *get_str_from_var_sci(const NumericVar *var, int rscale);
-
-extern Numeric make_numeric_result(const NumericVar *var);
-
-extern Numeric make_zero_numeric_result(void);
-extern Numeric make_one_numeric_result(void);
-extern Numeric make_minus_one_numeric_result(void);
-
-extern Numeric make_nan_numeric_result(void);
-extern Numeric make_pinf_numeric_result(void);
-extern Numeric make_ninf_numeric_result(void);
 
 /*
  * fmgr interface macros
@@ -340,26 +360,91 @@ extern int cmp_numerics(Numeric num1, Numeric num2);
 extern float8 numeric_li_fraction(Numeric x, Numeric x0, Numeric x1, 
 								  bool *eq_bounds, bool *eq_abscissas);
 extern Numeric numeric_li_value(float8 f, Numeric y0, Numeric y1);
+extern void do_numeric_accum(NumericAggState *state, Numeric newval);
+
+#ifdef NUMERIC_DEBUG
+static void dump_numeric(const char *str, Numeric num);
+static void dump_var(const char *str, NumericVar *var);
+#else
+#define dump_numeric(s,n)
+#define dump_var(s,v)
+#endif
+
+#define init_sumaccum(v) \
+	do { \
+		(v)->ndigits = (v)->weight = (v)->dscale = (v)->have_carry_space = 0; \
+		(v)->pos_digits = NULL; 	\
+		(v)->neg_digits = NULL; 	\
+	} while (0)
+
+#define quick_init_var(v) \
+	do { \
+		(v)->buf = (v)->ndb;	\
+		(v)->digits = NULL; 	\
+	} while (0)
+
+
+#define init_var(v) \
+	do { \
+		quick_init_var((v));	\
+		(v)->ndigits = (v)->weight = (v)->sign = (v)->dscale = 0; \
+	} while (0)
+
+
+#define digitbuf_alloc(ndigits)  \
+	((NumericDigit *) palloc((ndigits) * sizeof(NumericDigit)))
+
+#define digitbuf_free(v)	\
+	do { \
+		if ((v)->buf != (v)->ndb)	\
+		{							\
+		 	pfree((v)->buf); 		\
+			(v)->buf = (v)->ndb;	\
+		}	\
+	} while (0)
+
+#define free_var(v)	\
+				digitbuf_free((v));
 
 /*
- * Some of utility functions. which have same definition as the macro,
- * but some of extension will these function rather than use the marco
- * like `pgrx`.
+ * init_alloc_var() -
+ *
+ *	Init a var and allocate digit buffer of ndigits digits (plus a spare
+ *  digit for rounding).
+ *  Called when first using a var.
  */
-extern int16 *numeric_digits(Numeric num);
-extern int numeric_len(Numeric num);
-extern bool numeric_is_nan(Numeric num);
-extern bool numeric_is_inf(Numeric num);
+#define	init_alloc_var(v, n) \
+	do 	{	\
+		(v)->buf = (v)->ndb;	\
+		(v)->ndigits = (n);	\
+		if ((n) > NUMERIC_LOCAL_NMAX)	\
+			(v)->buf = digitbuf_alloc((n) + 1);	\
+		(v)->buf[0] = 0;	\
+		(v)->digits = (v)->buf + 1;	\
+	} while (0)
 
-/*
- * Utility functions in numeric.c
- */
-int32		numeric_maximum_size(int32 typmod);
-extern char *numeric_out_sci(Numeric num, int scale);
-extern char *numeric_normalize(Numeric num);
+#define NUMERIC_DIGITS(num) (NUMERIC_HEADER_IS_SHORT(num) ? \
+	(num)->choice.n_short.n_data : (num)->choice.n_long.n_data)
+#define NUMERIC_NDIGITS(num) \
+	((VARSIZE(num) - NUMERIC_HEADER_SIZE(num)) / sizeof(NumericDigit))
+#define NUMERIC_CAN_BE_SHORT(scale,weight) \
+	((scale) <= NUMERIC_SHORT_DSCALE_MAX && \
+	(weight) <= NUMERIC_SHORT_WEIGHT_MAX && \
+	(weight) >= NUMERIC_SHORT_WEIGHT_MIN)
+
+
 
 extern Numeric int64_to_numeric(int64 val);
 extern Numeric int64_div_fast_to_numeric(int64 val1, int log10val2);
+/*
+ * Utility functions in numeric.c
+ */
+extern bool numeric_is_nan(Numeric num);
+extern int16 *numeric_digits(Numeric num);
+extern int numeric_len(Numeric num);
+int32		numeric_maximum_size(int32 typmod);
+extern char *numeric_out_sci(Numeric num, int scale);
+extern char *numeric_normalize(Numeric num);
 
 extern Numeric numeric_add_opt_error(Numeric num1, Numeric num2,
 									 bool *have_error);
