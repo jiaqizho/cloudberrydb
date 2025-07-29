@@ -42,6 +42,7 @@ DELETE FROM reindex_crtab_part_aoco_btree  WHERE id < 128;
 -- of one column.
 -- See https://github.com/apache/cloudberry/issues/26#issuecomment-1682097755
 -- for more details.
+3: select dbid,count(distinct relfilenode) as cnt, relname from old_relfilenodes group by dbid, relname order by 1,2,3;
 3: select relname,
           relname = 'reindex_crtab_part_aoco_btree_1_prt_p_one_id_idx' and res.cnt in (1, 2) as special_case_for_p_one_id_idx,
           case
